@@ -12,26 +12,37 @@
 - GitHub Actions build, test, sanitizer, and quality jobs
 - Course map and learning/acceptance contract
 
-P0 PR #1 passed hosted Ubuntu CI and was merged. Local WSL2 verification remains separate.
-
 ## P1 — Learning engine
 
-**Current increment: P1-A, W1 Hello World vertical slice. Implemented on the feature branch; PR #2 is pending merge.**
+### P1-A — W1 Hello World
 
-- CLI commands: `list`, `start`, `lesson`, `hint`, `check`, `status`, `next`
-- Course/task registry and learner workspace marker
-- Reference and learner source separation
-- Explicit-only execution; navigation commands do not execute learner code
-- Fixed GCC compile + exact-output acceptance for the first task
-- Source fingerprint and stale local evidence handling
-- Symlink/path-traversal rejection for declared learner source paths
-- Process timeout, output cap, stdin isolation, and process-group termination
-- 15/15 GoogleTest cases in both ordinary and ASan/UBSan builds
-- clang-format and clang-tidy checks passed
+**Status: merged into `main`.**
 
-**Remaining P1 work:**
+- CLI: `list/start/lesson/hint/check/status/next`
+- task registry and learner workspace marker
+- reference and learner source separation
+- explicit-only execution; navigation commands do not execute learner code
+- fixed GCC compile + exact-output acceptance
+- source fingerprint and stale local evidence handling
+- symlink/path-traversal rejection for declared source paths
+- process timeout, output cap, stdin isolation, and process-group termination
 
-- P1-B: multi-file W1 Calculator task and platform-owned CMake/GoogleTest fixture
+Hosted Ubuntu CI passed 15/15 tests in both ordinary and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks.
+
+### P1-B — W1 multi-file Calculator
+
+**Status: implemented on `feat/p1b-calculator`; final hosted CI passed; PR pending review and merge.**
+
+- second registered learning task
+- separate interface, implementation, and command-line front end
+- platform-owned CMake/GoogleTest acceptance fixture
+- seven fixed arithmetic/error-path tests
+- CLI smoke checks for normal arithmetic and division by zero
+- 17/17 hosted GoogleTest cases in both ordinary and ASan/UBSan builds
+- source staging so learner-controlled build files and headers cannot replace the platform fixture
+
+### Remaining P1 work
+
 - prerequisite graph and cross-workspace progress
 - more complete diagnostics and task-specific acceptance runners
 - workspace recovery and evidence history

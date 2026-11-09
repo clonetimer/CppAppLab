@@ -61,6 +61,13 @@ for tool in clang-format clang-tidy; do
     fi
 done
 
+
+if dpkg-query -W -f='${Status}' libgtest-dev 2>/dev/null | grep -q 'install ok installed'; then
+    pass "GoogleTest development package is installed"
+else
+    fail "libgtest-dev is required for platform acceptance tests; install it with: sudo apt install libgtest-dev"
+fi
+
 if command -v cmake >/dev/null 2>&1; then
     cmake_version="$(cmake --version | awk 'NR == 1 {print $3}')"
     if dpkg --compare-versions "$cmake_version" ge "3.18"; then

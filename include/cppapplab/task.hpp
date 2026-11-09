@@ -7,7 +7,7 @@
 
 namespace cppapplab {
 
-enum class AcceptanceKind { ExactStdout };
+enum class AcceptanceKind { ExactStdout, CMakeGoogleTest };
 
 struct Task {
     std::string id;
@@ -20,6 +20,8 @@ struct Task {
     std::vector<std::filesystem::path> source_files;
     AcceptanceKind acceptance_kind{AcceptanceKind::ExactStdout};
     std::string expected_stdout;
+    std::filesystem::path acceptance_fixture;
+    unsigned expected_unit_test_count{};
 };
 
 [[nodiscard]] const std::vector<Task>& task_catalog();

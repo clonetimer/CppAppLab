@@ -1,9 +1,11 @@
 # Project Status
 
-**Current milestone:** P1-A — W1 Hello World learning-engine vertical slice  
+**Current milestone:** P1-B — W1 multi-file Calculator  
 **Release status:** no release has been declared.
 
 ## Merged P0 foundation
+
+P0 PR #1 is merged into `main`.
 
 - C++17 CMake project and minimal CLI
 - GoogleTest / CTest baseline
@@ -14,42 +16,39 @@
 - architecture, development, environment, learning contract, roadmap, and decision documents
 - eight-week curriculum map
 
-P0 PR #1 is merged into `main`. Its GCC build, GoogleTest, ASan/UBSan, clang-format, and clang-tidy checks passed. Local WSL2 acceptance remains a separate maintainer-machine verification item.
+## Merged P1-A — W1 Hello World
 
-## P1-A implementation
+P1-A PR #2 is merged into `main`.
 
-Implemented on `feat/p1-learning-engine`; PR #2 is awaiting review and merge.
-
-- task registry for W1 Hello World
-- learner workspace creation that reserves the destination and refuses to overwrite existing work
+- task registry and CLI: `list/start/lesson/hint/check/status/next`
+- learner workspace creation with no-overwrite behavior
 - separate learner and reference implementations
-- lesson and three progressive hints
-- explicit GCC compile/run check with a fixed exact-output contract
+- fixed GCC compile/run check with exact-output acceptance
 - bounded process output and execution time
 - process-group termination on timeout
 - source fingerprint and stale local evidence detection
-- rejection of symlinked or path-traversing learner source paths
-- CLI: `list`, `start`, `lesson`, `hint`, `check`, `status`, `next`
+- symlink/path-traversal rejection for declared learner source paths
+- end-to-end check and stale-evidence regression coverage
 
-Only the explicit `check` command compiles and executes learner code. Navigation commands remain read-only.
+Hosted Ubuntu 24.04 CI passed 15/15 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks. Local WSL2 acceptance remains outstanding.
 
-## Latest automated evidence — 2026-11-09
+## P1-B — W1 multi-file Calculator
 
-Verified commit: `b0405f8b5db04aeaa96ecf290afac9a1a7bb3621`
+**Current implementation branch:** `feat/p1b-calculator`  
+**Status:** implementation complete on the feature branch; final hosted CI passed; PR pending review and merge.
 
-- GCC Build and GoogleTest: PASS, 15/15 tests
-- GCC ASan and UBSan: PASS, 15/15 tests
-- clang-format: PASS
-- clang-tidy-enabled build and tests: PASS
-- Runner: GitHub-hosted Ubuntu 24.04
+- second registered task: `w1.calculator`
+- multi-file learner project: public interface, implementation, and CLI
+- separate reference implementation
+- platform-owned CMake/GoogleTest fixture
+- fixed interface header used by the acceptance build
+- seven platform-owned unit tests plus two CLI smoke checks
+- learner-provided CMakeLists.txt and tests are not the acceptance authority
 
-The end-to-end tests create a learner workspace, compile and run the learner's actual source against the fixed contract, verify the recorded result, then modify the source and confirm that the previous result becomes stale.
-
-The local evidence file remains editable navigation data, not a tamper-proof certificate.
+The latest hosted Ubuntu 24.04 workflow on commit `f0343cd9b7e0e61a39e14553fe4841d9eebb3e11` passed 17/17 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks. The environment checker reported zero failures; its single WSL2 warning is expected on the GitHub-hosted non-WSL runner.
 
 ## Not yet implemented
 
-- W1 Calculator multi-file acceptance fixture
 - cross-workspace prerequisite graph and persistent progress
 - task catalog externalization
 - workspace recovery and evidence history
@@ -59,10 +58,10 @@ The local evidence file remains editable navigation data, not a tamper-proof cer
 
 ## Remaining acceptance
 
+- Open and review P1-B PR after the final green CI run.
 - Run `bash scripts/check_environment.sh --strict-wsl` on the maintainer's Windows 11 + WSL2 + Ubuntu 24.04 machine.
-- Complete the PR #2 review and merge after the final branch checks pass.
-- Exercise the workflow manually in the target environment.
+- Exercise both W1 tasks manually in the target environment.
 
 ## Evidence policy
 
-A repository commit is not evidence that the code passed. Hosted Ubuntu CI and local WSL2 acceptance are recorded separately. A release is not declared until the target WSL2 environment and the required course workflow have been verified.
+A repository commit is not evidence that the code passed. Hosted Ubuntu CI and local WSL2 acceptance are recorded separately. Local evidence is editable navigation data, not a tamper-proof certificate. A release is not declared until the target WSL2 environment and the required course workflow have been verified.

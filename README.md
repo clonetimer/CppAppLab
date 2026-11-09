@@ -1,6 +1,6 @@
 # CppAppLab
 
-**CppAppLab** is a hands-on C++ learning and engineering-practice platform. It is designed to take a learner from the first C++ program to maintainable Linux systems software, concurrent programs, TCP services, and an HTTP/1.1 server.
+**CppAppLab** is a hands-on C++ learning and engineering-practice platform. It takes a learner from the first C++ program to maintainable Linux systems software, concurrent programs, TCP services, and an HTTP/1.1 server.
 
 ## First-version baseline
 
@@ -17,11 +17,31 @@
 
 Linux/POSIX topics use real Linux APIs. The first release does not claim full native MSVC parity; Windows-native compatibility can be added for portable course modules after the Linux baseline is stable.
 
+## Current learning tasks
+
+The P1 learning engine currently provides W1 Hello World and W1 multi-file Calculator.
+
+```bash
+./build/cppapplab list
+
+./build/cppapplab start w1.hello-world "$HOME/cppapplab-work/hello-world"
+./build/cppapplab lesson "$HOME/cppapplab-work/hello-world"
+./build/cppapplab hint "$HOME/cppapplab-work/hello-world" 1
+./build/cppapplab check "$HOME/cppapplab-work/hello-world"
+
+./build/cppapplab start w1.calculator "$HOME/cppapplab-work/calculator"
+./build/cppapplab lesson "$HOME/cppapplab-work/calculator"
+./build/cppapplab hint "$HOME/cppapplab-work/calculator" 1
+./build/cppapplab check "$HOME/cppapplab-work/calculator"
+```
+
+The Calculator acceptance runner uses a platform-owned CMake/GoogleTest fixture. It does not trust learner-provided CMakeLists.txt or tests.
+
 ## Learning path
 
 | Stage | Focus | Main work product |
 |---|---|---|
-| W1 | Environment, C++ basics, multi-file compilation, CMake, GDB | Command-line calculator |
+| W1 | Environment, C++ basics, multi-file compilation, CMake, GDB | Calculator |
 | W2 | STL, algorithms, lambdas, file I/O | Persistent Todo CLI |
 | W3 | Classes, RAII, smart pointers, copy/move semantics | Refactored Task / TaskManager |
 | W4 | GoogleTest, debugging, sanitizers, static analysis, CI | Tested and versioned C++ project |
@@ -32,26 +52,11 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 The detailed course map and acceptance boundaries live in [course/CURRICULUM.md](course/CURRICULUM.md).
 
-## Current learning engine
-
-The first usable vertical slice is W1 Hello World. Build the platform, then use:
-
-```bash
-./build/cppapplab list
-./build/cppapplab start w1.hello-world "$HOME/cppapplab-work/hello-world"
-./build/cppapplab lesson "$HOME/cppapplab-work/hello-world"
-./build/cppapplab hint "$HOME/cppapplab-work/hello-world" 1
-./build/cppapplab check "$HOME/cppapplab-work/hello-world"
-./build/cppapplab status "$HOME/cppapplab-work/hello-world"
-```
-
-The learning engine design and its evidence boundaries are in [docs/LEARNING_ENGINE_DESIGN.md](docs/LEARNING_ENGINE_DESIGN.md). The W1 Calculator task is the next implementation increment, not yet available.
-
 ## Project principles
 
 1. **Real programs before isolated syntax drills.** Each concept is introduced in the context of a working program.
 2. **Reference and learner work are separate.** Reference solutions are not used as learner submissions.
-3. **Fixed acceptance contracts.** Platform-owned tests validate behavior; learner tests and build files are not treated as the authority for acceptance.
+3. **Fixed acceptance contracts.** Platform-owned tests validate behavior; learner tests and build files are not the authority for acceptance.
 4. **Hints do not replace implementation.** Learners can request progressive hints, implement the task, and rerun checks.
 5. **Evidence is reproducible.** A check records compiler output, toolchain metadata, source fingerprint, and exit status.
 6. **No fake portability.** POSIX and Linux networking lessons use the actual Linux APIs they teach.

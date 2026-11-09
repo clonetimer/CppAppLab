@@ -109,6 +109,13 @@ TEST(LearningWorkflowTest, FixedCheckPassesAndSourceEditsMakeEvidenceStale) {
     EXPECT_EQ(evidence->tests_passed, 1U);
     EXPECT_EQ(evidence->tests_total, 1U);
 
+    {
+        StdoutCapture capture;
+        const int next_result = invoke({"cppapplab", "next", workspace.root.string()});
+        EXPECT_EQ(next_result, 0);
+        EXPECT_NE(capture.str().find("w1.calculator"), std::string::npos);
+    }
+
     write_source(workspace.root,
                  "#include <iostream>\n"
                  "int main() {\n"

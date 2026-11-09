@@ -1,8 +1,8 @@
 # Learning Engine — P1 Design
 
-## Current vertical slice
+## Current learning loop
 
-The first implemented learning loop is W1 Hello World:
+The available task sequence begins with W1 Hello World and continues to the W1 multi-file Calculator:
 
 ```text
 list
@@ -26,9 +26,7 @@ Only explicit `check` compiles and executes learner code. `list`, `lesson`, `hin
 - The workspace marker identifies the task and platform version.
 - Build output and local check records are stored under `.cppapplab/` inside the learner workspace.
 
-## Check contract for W1 Hello World
-
-The current task uses a fixed platform-owned contract:
+## W1 Hello World check contract
 
 - source file: `src/main.cpp`
 - compiler: GCC with `-std=c++17 -Wall -Wextra -Wpedantic -Werror`
@@ -36,11 +34,24 @@ The current task uses a fixed platform-owned contract:
 - maximum program time: 5 seconds
 - combined stdout/stderr capture is bounded
 - stdin is redirected from `/dev/null`
-- timeout kills the process group, not only the direct child
+- timeout kills the process group
 - expected stdout: exactly `Hello, CppAppLab!\n`
 - process exit code: 0
 
-The learner's CMakeLists.txt and tests are not consulted. The acceptance contract is owned by the platform task registry.
+## W1 Calculator check contract
+
+The calculator task is built through a platform-owned CMake fixture, not the learner's CMakeLists.txt.
+
+- learner source files are fingerprinted before and after checking
+- only declared `.cpp` implementation files are staged into a controlled build directory
+- the fixture supplies its own fixed `calculator.hpp` interface
+- the fixture builds the learner library and CLI with C++17 and warnings-as-errors
+- seven platform-owned GoogleTest cases cover four operations, division by zero, and negative/zero operands
+- two CLI smoke checks cover a normal calculation and division by zero
+- the learner's CMakeLists.txt, tests, and copied header cannot replace the platform acceptance contract
+- configure, build, CTest, and CLI execution all have bounded time/output
+
+The calculator task records 9 acceptance checks: seven fixed unit tests and two CLI smoke checks.
 
 ## Evidence semantics
 
@@ -48,16 +59,12 @@ The local evidence and log are navigation records, not certificates. They are us
 
 The source fingerprint uses FNV-1a 64-bit to detect ordinary source changes. It is not a cryptographic integrity mechanism. Declared source paths are checked for path traversal and symlink components. A changed fingerprint marks the recorded result stale; learners must rerun the explicit check.
 
-A passing check proves only that the declared source, at that moment, compiled and produced the required output under the recorded constraints. It does not prove conceptual understanding or provide a security boundary.
+A passing check proves only that the declared source, at that moment, compiled and passed the fixed behavior contract. It does not prove conceptual understanding or provide a security boundary.
 
 ## Execution boundary
 
 The process runner uses direct `execvp` argument vectors (no shell interpolation), captures stdout/stderr, redirects stdin from `/dev/null`, enforces a time limit, bounds captured output, and kills the process group on timeout. This is operational control, not a hostile-code sandbox. Learner programs still run with the learner's operating-system permissions.
 
-## Automated coverage
-
-The current hosted Ubuntu 24.04 CI run passed 15/15 tests in both the ordinary GCC build and the ASan/UBSan build. Coverage includes task lookup, output capture, stdin behavior, timeout and process-group termination, output limits, workspace creation/no-overwrite, source fingerprint changes, symlink rejection, and the end-to-end check/stale-evidence loop.
-
 ## Next vertical slice
 
-W1 Calculator will add a multi-file learner project and a platform-owned CMake/GoogleTest fixture. The fixture will compile the learner implementation against a platform-owned public interface and acceptance tests; it will not trust the learner's own CMakeLists.txt or tests.
+P1-C will add cross-workspace prerequisite/progress state and task-catalog externalization, followed by more task packs. The next course work product after Calculator is W2 Todo CLI.

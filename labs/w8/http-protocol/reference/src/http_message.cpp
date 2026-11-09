@@ -11,6 +11,8 @@
 namespace cppapplab::http {
 namespace {
 
+constexpr std::string_view kHeaderPunctuation = "!#$%&'*+-.^_`|~";
+
 [[nodiscard]] bool has_forbidden_line_break(std::string_view value) {
     return value.find('\r') != std::string_view::npos ||
            value.find('\n') != std::string_view::npos;
@@ -20,13 +22,12 @@ namespace {
     if (name.empty()) {
         return false;
     }
-    constexpr std::string_view punctuation = "!#$%&'*+-.^_`|~";
     return std::all_of(name.begin(), name.end(), [](unsigned char character) {
         const bool alpha_numeric = (character >= 'a' && character <= 'z') ||
                                    (character >= 'A' && character <= 'Z') ||
                                    (character >= '0' && character <= '9');
-        return alpha_numeric || punctuation.find(static_cast<char>(character)) !=
-                                    std::string_view::npos;
+        return alpha_numeric ||
+               kHeaderPunctuation.find(static_cast<char>(character)) != std::string_view::npos;
     });
 }
 

@@ -77,8 +77,8 @@ class TestClient {
     [[nodiscard]] bool send_text(const std::string& text) const {
         std::size_t offset = 0U;
         while (offset < text.size()) {
-            const ssize_t count = ::send(fd_, text.data() + offset, text.size() - offset,
-                                         MSG_NOSIGNAL);
+            const ssize_t count =
+                ::send(fd_, text.data() + offset, text.size() - offset, MSG_NOSIGNAL);
             if (count > 0) {
                 offset += static_cast<std::size_t>(count);
             } else if (count < 0 && errno == EINTR) {

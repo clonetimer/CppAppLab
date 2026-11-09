@@ -23,17 +23,27 @@ constexpr std::string_view kTokenPunctuation = "!#$%&'*+-.^_`|~";
 }
 
 [[nodiscard]] bool valid_method(std::string_view method) {
-    return !method.empty() &&
-           std::all_of(method.begin(), method.end(), [](unsigned char character) {
-               return is_token_character(character);
-           });
+    if (method.empty()) {
+        return false;
+    }
+    for (const unsigned char character : method) {
+        if (!is_token_character(character)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 [[nodiscard]] bool valid_target(std::string_view target) {
-    return !target.empty() &&
-           std::all_of(target.begin(), target.end(), [](unsigned char character) {
-               return character > 0x20U && character < 0x7fU;
-           });
+    if (target.empty()) {
+        return false;
+    }
+    for (const unsigned char character : target) {
+        if (character <= 0x20U || character >= 0x7fU) {
+            return false;
+        }
+    }
+    return true;
 }
 
 [[nodiscard]] std::string trim_ows(std::string_view value) {
@@ -79,8 +89,9 @@ constexpr std::string_view kTokenPunctuation = "!#$%&'*+-.^_`|~";
         second_space + 1U >= line.size()) {
         return false;
     }
-    if (line.find(' ', second_space + 1U) != std::string_view::npos ||
-        line.find('\t') != std::string_view::npos) {
+    const bool extra_space = line.find(' ', second_space + 1U) != std::string_view::npos;
+    const bool tab_separator = line.find('\t') != std::string_view::npos;
+    if (extra_space || tab_separator) {
         return false;
     }
 
@@ -102,6 +113,18 @@ constexpr std::string_view kTokenPunctuation = "!#$%&'*+-.^_`|~";
     return true;
 }
 
+[[nodiscard]] bool valid_header_name(std::string_view name) {
+    if (name.empty()) {
+        return false;
+    }
+    for (const unsigned char character : name) {
+        if (!is_token_character(character)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 [[nodiscard]] bool parse_header_line(std::string_view line, HttpRequest& request) {
     const std::size_t colon = line.find(':');
     if (colon == std::string_view::npos || colon == 0U) {
@@ -109,9 +132,7 @@ constexpr std::string_view kTokenPunctuation = "!#$%&'*+-.^_`|~";
     }
 
     const std::string_view raw_name = line.substr(0U, colon);
-    if (!std::all_of(raw_name.begin(), raw_name.end(), [](unsigned char character) {
-            return is_token_character(character);
-        })) {
+    if (!valid_header_name(raw_name)) {
         return false;
     }
 

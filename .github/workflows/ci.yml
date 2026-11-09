@@ -87,8 +87,11 @@ jobs:
 
 
   format-preview:
-    name: Temporary clang-format preview
+    name: Apply clang-format and refresh CI
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -100,11 +103,25 @@ jobs:
         run: |
           find include src tests -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
             | xargs -0 clang-format -i
-      - name: Package formatted sources
-        run: tar -czf cppapplab-formatted-source.tar.gz include src tests
-      - name: Upload formatted sources
-        uses: actions/upload-artifact@v4
+      - name: Commit formatter changes
+        if: github.event_name == 'push'
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add include src tests
+            git commit -m "style: apply clang-format to learning engine"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+      - name: Dispatch CI for formatted commit
+        if: github.event_name == 'push'
+        uses: actions/github-script@v7
         with:
-          name: cppapplab-formatted-source
-          path: cppapplab-formatted-source.tar.gz
-          if-no-files-found: error
+          script: |
+            const branch = context.ref.replace("refs/heads/", "");
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "ci.yml",
+              ref: branch
+            });

@@ -36,14 +36,14 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 The first usable vertical slice is W1 Hello World. Build the platform, then use:
 
-\`\`\`bash
+```bash
 ./build/cppapplab list
 ./build/cppapplab start w1.hello-world "$HOME/cppapplab-work/hello-world"
 ./build/cppapplab lesson "$HOME/cppapplab-work/hello-world"
 ./build/cppapplab hint "$HOME/cppapplab-work/hello-world" 1
 ./build/cppapplab check "$HOME/cppapplab-work/hello-world"
 ./build/cppapplab status "$HOME/cppapplab-work/hello-world"
-\`\`\`
+```
 
 The learning engine design and its evidence boundaries are in [docs/LEARNING_ENGINE_DESIGN.md](docs/LEARNING_ENGINE_DESIGN.md). The W1 Calculator task is the next implementation increment, not yet available.
 
@@ -69,7 +69,7 @@ The repository is in P1 learning-engine development. See:
 
 ## Quick start
 
-\`\`\`bash
+```bash
 git clone https://github.com/clonetimer/CppAppLab.git
 cd CppAppLab
 
@@ -78,7 +78,7 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 
 ./build/cppapplab --help
-\`\`\`
+```
 
 ## Scope boundary
 

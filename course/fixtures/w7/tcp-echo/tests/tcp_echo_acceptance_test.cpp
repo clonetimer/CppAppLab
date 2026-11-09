@@ -32,7 +32,7 @@ std::string echo_round_trip(const std::string& payload, std::size_t chunk_size =
     } else {
         for (std::size_t offset = 0; offset < payload.size(); offset += chunk_size) {
             const std::size_t count = std::min(chunk_size, payload.size() - offset);
-            EXPECT_TRUE(send_all(client, payload.data() + offset, count));
+            EXPECT_TRUE(net::send_all(client, payload.data() + offset, count));
         }
     }
     EXPECT_EQ(::shutdown(client, SHUT_WR), 0);
@@ -62,39 +62,39 @@ std::string echo_round_trip(const std::string& payload, std::size_t chunk_size =
 }  // namespace
 
 TEST(TcpEchoAcceptanceTest, BindsEphemeralPort) {
-    TcpEchoServer server(0U);
+    net::TcpEchoServer server(0U);
     EXPECT_NE(server.port(), 0U);
 }
 
 TEST(TcpEchoAcceptanceTest, RejectsZeroBacklog) {
-    EXPECT_THROW(TcpEchoServer(0U, "127.0.0.1", 0), std::invalid_argument);
+    EXPECT_THROW(net::TcpEchoServer(0U, "127.0.0.1", 0), std::invalid_argument);
 }
 
 TEST(TcpEchoAcceptanceTest, RejectsNegativeBacklog) {
-    EXPECT_THROW(TcpEchoServer(0U, "127.0.0.1", -1), std::invalid_argument);
+    EXPECT_THROW(net::TcpEchoServer(0U, "127.0.0.1", -1), std::invalid_argument);
 }
 
 TEST(TcpEchoAcceptanceTest, RejectsMalformedBindAddress) {
-    EXPECT_THROW(TcpEchoServer(0U, "localhost"), std::invalid_argument);
+    EXPECT_THROW(net::TcpEchoServer(0U, "localhost"), std::invalid_argument);
 }
 
 TEST(TcpEchoAcceptanceTest, RejectsMalformedClientAddress) {
-    EXPECT_THROW((void)connect_tcp("not-an-ip", 8080U), std::invalid_argument);
+    EXPECT_THROW((void)net::connect_tcp("not-an-ip", 8080U), std::invalid_argument);
 }
 
 TEST(TcpEchoAcceptanceTest, RejectsNegativeSendDescriptor) {
     const char value = 'x';
-    EXPECT_FALSE(send_all(-1, &value, 1U));
+    EXPECT_FALSE(net::send_all(-1, &value, 1U));
 }
 
 TEST(TcpEchoAcceptanceTest, RejectsNullNonEmptySendBuffer) {
-    EXPECT_FALSE(send_all(1, nullptr, 1U));
+    EXPECT_FALSE(net::send_all(1, nullptr, 1U));
 }
 
 TEST(TcpEchoAcceptanceTest, AcceptsEmptySendOnValidSocket) {
     int descriptors[2]{};
     ASSERT_EQ(::socketpair(AF_UNIX, SOCK_STREAM, 0, descriptors), 0);
-    EXPECT_TRUE(send_all(descriptors[0], nullptr, 0U));
+    EXPECT_TRUE(net::send_all(descriptors[0], nullptr, 0U));
     ::close(descriptors[0]);
     ::close(descriptors[1]);
 }
@@ -131,11 +131,11 @@ TEST(TcpEchoAcceptanceTest, HandlesPeerWriteShutdown) {
 }
 
 TEST(TcpEchoAcceptanceTest, UsesLoopbackByDefault) {
-    TcpEchoServer server(0U);
+    net::TcpEchoServer server(0U);
     auto done = std::async(std::launch::async, [&server] { server.serve_one(); });
-    const int client = connect_tcp("127.0.0.1", server.port());
+    const int client = net::connect_tcp("127.0.0.1", server.port());
     const char message[] = "x";
-    ASSERT_TRUE(send_all(client, message, 1U));
+    ASSERT_TRUE(net::send_all(client, message, 1U));
     (void)::shutdown(client, SHUT_WR);
     char echoed{};
     EXPECT_EQ(::recv(client, &echoed, 1U, 0), 1);
@@ -145,8 +145,8 @@ TEST(TcpEchoAcceptanceTest, UsesLoopbackByDefault) {
 }
 
 TEST(TcpEchoAcceptanceTest, RejectsSecondListenerOnSameEndpoint) {
-    TcpEchoServer first(0U);
-    EXPECT_THROW(TcpEchoServer(first.port()), std::runtime_error);
+    net::TcpEchoServer first(0U);
+    EXPECT_THROW(net::TcpEchoServer(first.port()), std::runtime_error);
 }
 
 TEST(TcpEchoAcceptanceTest, SendAllWritesLargeSocketPairPayload) {
@@ -165,7 +165,7 @@ TEST(TcpEchoAcceptanceTest, SendAllWritesLargeSocketPairPayload) {
         }
         return actual;
     });
-    EXPECT_TRUE(send_all(descriptors[0], expected.data(), expected.size()));
+    EXPECT_TRUE(net::send_all(descriptors[0], expected.data(), expected.size()));
     ::shutdown(descriptors[0], SHUT_WR);
     ::close(descriptors[0]);
     EXPECT_EQ(reader.get(), expected);
@@ -182,9 +182,9 @@ TEST(TcpEchoAcceptanceTest, EchoesPayloadWithNoTerminator) {
 }
 
 TEST(TcpEchoAcceptanceTest, ServerClosesAcceptedSocketAfterClientFin) {
-    TcpEchoServer server(0U);
+    net::TcpEchoServer server(0U);
     auto done = std::async(std::launch::async, [&server] { server.serve_one(); });
-    const int client = connect_tcp("127.0.0.1", server.port());
+    const int client = net::connect_tcp("127.0.0.1", server.port());
     (void)::shutdown(client, SHUT_WR);
     char byte{};
     EXPECT_EQ(::recv(client, &byte, 1U, 0), 0);

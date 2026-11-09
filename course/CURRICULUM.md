@@ -56,14 +56,17 @@ The first-version language baseline is C++17. WSL2 Ubuntu 24.04 is the full acce
 
 **Topics**
 
-- GoogleTest and CTest
-- normal, boundary, and error-path tests
-- GDB with failing tests, conditional breakpoints, watchpoints and call stacks
-- AddressSanitizer, UndefinedBehaviorSanitizer, Valgrind
-- compiler warnings, clang-format and clang-tidy
-- README, GitHub Actions CI, clean build, version tag and release notes
+- GoogleTest / CTest and Arrange–Act–Assert
+- normal, boundary, negative and failure-path tests
+- GDB breakpoints, stepping, watchpoints and call-stack inspection
+- AddressSanitizer and UndefinedBehaviorSanitizer
+- clang-format and clang-tidy
+- Valgrind leak diagnostics
+- clean builds, reproducible quality scripts and engineering README
 
-**Work product:** a tested and reproducibly buildable Todo CLI release candidate.
+**Work product:** a tested and reproducibly buildable W3 TaskManager application with learner-authored tests and a documented quality gate.
+
+**Acceptance boundary:** 30 platform-owned tests, 10 learner-authored tests and one multi-process CLI workflow test (41 total). Sanitizer and static-analysis builds are separate from the normal Debug build.
 
 ## W5 — Linux system programming
 

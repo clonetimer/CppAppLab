@@ -19,7 +19,7 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 ## Current learning tasks
 
-The learning engine provides W1 Hello World, W1 multi-file Calculator, W2 persistent Todo CLI, and the W3 Task / TaskManager refactor.
+The learning engine provides W1 Hello World, W1 multi-file Calculator, W2 persistent Todo CLI, W3 Task / TaskManager refactor, and W4 TaskManager quality gate.
 
 ```bash
 ./build/cppapplab list
@@ -43,6 +43,11 @@ The learning engine provides W1 Hello World, W1 multi-file Calculator, W2 persis
 ./build/cppapplab lesson "$HOME/cppapplab-work/task-manager"
 ./build/cppapplab hint "$HOME/cppapplab-work/task-manager" 1
 ./build/cppapplab check "$HOME/cppapplab-work/task-manager"
+
+./build/cppapplab start w4.quality-gate "$HOME/cppapplab-work/quality-gate"
+./build/cppapplab lesson "$HOME/cppapplab-work/quality-gate"
+./build/cppapplab hint "$HOME/cppapplab-work/quality-gate" 1
+./build/cppapplab check "$HOME/cppapplab-work/quality-gate"
 
 ./build/cppapplab progress
 ./build/cppapplab resume w1.hello-world

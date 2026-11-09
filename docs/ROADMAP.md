@@ -97,6 +97,17 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - platform-owned fixture: 30 unit tests plus one multi-process CLI workflow test
 - hosted Ubuntu CI passed 32/32 root tests in GCC and ASan/UBSan; clang-format and clang-tidy-enabled checks passed
 
+### P3-A — W4 TaskManager Quality Gate
+
+**Status: implementation complete on `feat/p3-w4-quality-gate`; hosted CI passed; PR preparation pending.**
+
+- ten learner-authored GoogleTest cases with meaningful TODO prompts
+- CMake Debug build, CTest, ASan/UBSan, clang-format and clang-tidy configurations
+- GDB debugging workflow and optional Valgrind diagnostics
+- platform fixture: 30 fixed behavior tests + 10 learner tests + CLI workflow (41 total)
+- hosted Ubuntu CI passed 34/34 root tests in GCC and ASan/UBSan; clang-format and clang-tidy-enabled checks passed
+- W4 depends on a current PASS for W3 TaskManager
+
 ## P3 — W4: engineering quality
 
 - GoogleTest design and boundary/error-path coverage

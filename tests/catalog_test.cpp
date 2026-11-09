@@ -52,6 +52,19 @@ TEST(TaskCatalogTest, ExposesTaskManagerRefactorExercise) {
     EXPECT_EQ(task->prerequisites.front(), "w2.todo-cli");
 }
 
+TEST(TaskCatalogTest, ExposesTaskManagerQualityGateExercise) {
+    const cppapplab::Task* task = cppapplab::find_task("w4.quality-gate");
+
+    ASSERT_NE(task, nullptr);
+    EXPECT_EQ(task->week, 4U);
+    EXPECT_EQ(task->order, 1U);
+    EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
+    EXPECT_EQ(task->source_files.size(), 4U);
+    EXPECT_EQ(task->expected_test_count, 41U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w3.task-manager");
+}
+
 TEST(TaskCatalogTest, UnknownTaskDoesNotResolve) {
     EXPECT_EQ(cppapplab::find_task("w99.unknown"), nullptr);
 }

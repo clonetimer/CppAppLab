@@ -117,6 +117,16 @@ Persistence deliberately retains the W2 `CPPAPPLAB_TODO_V1` format. Loading pars
 
 The root integration test copies the reference implementation into a temporary learner workspace and invokes the actual platform check command. It also places a deliberately failing learner `CMakeLists.txt` in that workspace to verify the acceptance runner uses the platform-owned fixture.
 
+## W4 TaskManager quality-gate contract
+
+Task ID: `w4.quality-gate`; prerequisite: a current PASS for `w3.task-manager`.
+
+The learner receives the completed W3 TaskManager implementation and writes ten GoogleTest cases in `tests/task_manager_test.cpp`. The learner's CMake project builds a reusable core library, the CLI, and a separate test executable. A quality script performs a Debug build, CTest, ASan/UBSan, clang-format, clang-tidy-enabled compilation, and optional Valgrind.
+
+The fixed platform fixture supplies its own headers and CMake project. It runs 30 platform-owned behavior tests, compiles and runs the ten learner-authored tests, and executes one multi-process CLI workflow test (41 total). The root integration test invokes the actual `cppapplab check` command and verifies that learner-controlled CMake configuration is not the acceptance authority.
+
+The lesson distinguishes test evidence from static-analysis diagnostics: a passing test suite does not imply zero clang-tidy warnings, and a clean sanitizer run covers only the executed test paths. GDB and Valgrind are taught as reproducible diagnostic tools; Valgrind is optional when unavailable in the target environment.
+
 ## Evidence semantics
 
 The local evidence and log are navigation records, not certificates. They are user-editable files and must never be represented as tamper-proof proof of learning.

@@ -16,8 +16,7 @@ bool parse_number(std::string_view text, double& value) {
     errno = 0;
     const double parsed = std::strtod(owned_text.c_str(), &end);
 
-    if (end == owned_text.c_str() || *end != '\0' || errno == ERANGE ||
-        !std::isfinite(parsed)) {
+    if (end == owned_text.c_str() || *end != '\0' || errno == ERANGE || !std::isfinite(parsed)) {
         return false;
     }
 
@@ -25,10 +24,7 @@ bool parse_number(std::string_view text, double& value) {
     return true;
 }
 
-bool parse_operation(
-    std::string_view text,
-    cppapplab::calculator::Operation& operation
-) {
+bool parse_operation(std::string_view text, cppapplab::calculator::Operation& operation) {
     using cppapplab::calculator::Operation;
 
     if (text == "add") {
@@ -62,8 +58,7 @@ int main(int argc, char* argv[]) {
     double left = 0.0;
     double right = 0.0;
 
-    if (!parse_operation(argv[1], operation) ||
-        !parse_number(argv[2], left) ||
+    if (!parse_operation(argv[1], operation) || !parse_number(argv[2], left) ||
         !parse_number(argv[3], right)) {
         std::cerr << "error: invalid operation or number\n";
         print_usage();

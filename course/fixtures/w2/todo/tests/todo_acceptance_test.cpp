@@ -14,7 +14,7 @@
 namespace {
 
 class TemporaryDirectory {
-public:
+   public:
     TemporaryDirectory() {
         const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
         path_ = std::filesystem::temp_directory_path() /
@@ -31,7 +31,7 @@ public:
         return path_;
     }
 
-private:
+   private:
     std::filesystem::path path_;
 };
 
@@ -56,18 +56,13 @@ TEST(TodoAcceptanceTest, NextIdStartsAtOneForAnEmptyList) {
 
 TEST(TodoAcceptanceTest, NextIdUsesTheLargestExistingId) {
     const cppapplab::todo::List items{
-        {2U, "second", false},
-        {9U, "ninth", true},
-        {4U, "fourth", false}
-    };
+        {2U, "second", false}, {9U, "ninth", true}, {4U, "fourth", false}};
 
     EXPECT_EQ(cppapplab::todo::next_id(items), 10U);
 }
 
 TEST(TodoAcceptanceTest, NextIdReportsExhaustedIdSpace) {
-    const cppapplab::todo::List items{
-        {std::numeric_limits<std::uint64_t>::max(), "last", false}
-    };
+    const cppapplab::todo::List items{{std::numeric_limits<std::uint64_t>::max(), "last", false}};
 
     EXPECT_EQ(cppapplab::todo::next_id(items), 0U);
 }
@@ -87,18 +82,11 @@ TEST(TodoAcceptanceTest, AddCreatesPendingItemAndPreservesTitle) {
 TEST(TodoAcceptanceTest, AddRejectsZeroIdAndInvalidTitles) {
     cppapplab::todo::List items;
 
-    EXPECT_EQ(
-        cppapplab::todo::add(items, 0U, "valid title").error,
-        cppapplab::todo::Error::InvalidId
-    );
-    EXPECT_EQ(
-        cppapplab::todo::add(items, 1U, "").error,
-        cppapplab::todo::Error::InvalidTitle
-    );
-    EXPECT_EQ(
-        cppapplab::todo::add(items, 2U, " \t\r\n").error,
-        cppapplab::todo::Error::InvalidTitle
-    );
+    EXPECT_EQ(cppapplab::todo::add(items, 0U, "valid title").error,
+              cppapplab::todo::Error::InvalidId);
+    EXPECT_EQ(cppapplab::todo::add(items, 1U, "").error, cppapplab::todo::Error::InvalidTitle);
+    EXPECT_EQ(cppapplab::todo::add(items, 2U, " \t\r\n").error,
+              cppapplab::todo::Error::InvalidTitle);
     EXPECT_TRUE(items.empty());
 }
 
@@ -132,11 +120,7 @@ TEST(TodoAcceptanceTest, MarkDoneReportsMissingItem) {
 }
 
 TEST(TodoAcceptanceTest, RemoveErasesAnExistingItem) {
-    cppapplab::todo::List items{
-        {1U, "keep", false},
-        {2U, "remove", true},
-        {3U, "keep too", false}
-    };
+    cppapplab::todo::List items{{1U, "keep", false}, {2U, "remove", true}, {3U, "keep too", false}};
 
     const auto result = cppapplab::todo::remove(items, 2U);
 
@@ -159,10 +143,7 @@ TEST(TodoAcceptanceTest, SaveAndLoadRoundTripEscapedText) {
     TemporaryDirectory temporary;
     const auto path = temporary.path() / "nested" / "todos.tsv";
     const std::string title = "review\tparser\nand \"quotes\" \\ path\r";
-    cppapplab::todo::List original{
-        {1U, title, false},
-        {4U, "completed item", true}
-    };
+    cppapplab::todo::List original{{1U, title, false}, {4U, "completed item", true}};
     cppapplab::todo::List loaded;
 
     ASSERT_TRUE(cppapplab::todo::save(original, path));
@@ -181,10 +162,7 @@ TEST(TodoAcceptanceTest, LoadOfMissingFileCreatesAnEmptyLogicalList) {
     TemporaryDirectory temporary;
     cppapplab::todo::List items{{8U, "old item", true}};
 
-    const auto result = cppapplab::todo::load(
-        items,
-        temporary.path() / "not-created.tsv"
-    );
+    const auto result = cppapplab::todo::load(items, temporary.path() / "not-created.tsv");
 
     ASSERT_TRUE(result);
     EXPECT_TRUE(items.empty());
@@ -193,12 +171,10 @@ TEST(TodoAcceptanceTest, LoadOfMissingFileCreatesAnEmptyLogicalList) {
 TEST(TodoAcceptanceTest, MalformedFileDoesNotReplaceExistingItems) {
     TemporaryDirectory temporary;
     const auto path = temporary.path() / "malformed.tsv";
-    write_file(
-        path,
-        "CPPAPPLAB_TODO_V1\n"
-        "1\t0\tvalid record parsed before failure\n"
-        "this record is malformed\n"
-    );
+    write_file(path,
+               "CPPAPPLAB_TODO_V1\n"
+               "1\t0\tvalid record parsed before failure\n"
+               "this record is malformed\n");
     cppapplab::todo::List items{{5U, "keep this", true}};
 
     const auto result = cppapplab::todo::load(items, path);
@@ -213,11 +189,9 @@ TEST(TodoAcceptanceTest, MalformedFileDoesNotReplaceExistingItems) {
 TEST(TodoAcceptanceTest, LoadRejectsUnsupportedEscapeSequence) {
     TemporaryDirectory temporary;
     const auto path = temporary.path() / "bad-escape.tsv";
-    write_file(
-        path,
-        "CPPAPPLAB_TODO_V1\n"
-        "1\t0\tinvalid\\qescape\n"
-    );
+    write_file(path,
+               "CPPAPPLAB_TODO_V1\n"
+               "1\t0\tinvalid\\qescape\n");
     cppapplab::todo::List items;
 
     const auto result = cppapplab::todo::load(items, path);
@@ -229,11 +203,9 @@ TEST(TodoAcceptanceTest, LoadRejectsUnsupportedEscapeSequence) {
 TEST(TodoAcceptanceTest, LoadRejectsInvalidCompletionFlag) {
     TemporaryDirectory temporary;
     const auto path = temporary.path() / "bad-flag.tsv";
-    write_file(
-        path,
-        "CPPAPPLAB_TODO_V1\n"
-        "1\t2\tinvalid completion flag\n"
-    );
+    write_file(path,
+               "CPPAPPLAB_TODO_V1\n"
+               "1\t2\tinvalid completion flag\n");
     cppapplab::todo::List items;
 
     const auto result = cppapplab::todo::load(items, path);
@@ -245,12 +217,10 @@ TEST(TodoAcceptanceTest, LoadRejectsInvalidCompletionFlag) {
 TEST(TodoAcceptanceTest, LoadRejectsDuplicateIds) {
     TemporaryDirectory temporary;
     const auto path = temporary.path() / "duplicate.tsv";
-    write_file(
-        path,
-        "CPPAPPLAB_TODO_V1\n"
-        "1\t0\tfirst\n"
-        "1\t1\tsecond\n"
-    );
+    write_file(path,
+               "CPPAPPLAB_TODO_V1\n"
+               "1\t0\tfirst\n"
+               "1\t1\tsecond\n");
     cppapplab::todo::List items;
 
     const auto result = cppapplab::todo::load(items, path);

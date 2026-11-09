@@ -24,8 +24,7 @@ bool valid_title(std::string_view title) {
         return false;
     }
     return std::any_of(title.begin(), title.end(), [](unsigned char character) {
-        return character != ' ' && character != '\t' &&
-               character != '\r' && character != '\n';
+        return character != ' ' && character != '\t' && character != '\r' && character != '\n';
     });
 }
 
@@ -99,18 +98,14 @@ bool has_duplicate_ids(const List& items) {
     std::unordered_map<std::uint64_t, bool> seen;
     seen.reserve(items.size());
     for (const Item& item : items) {
-        if (item.id == 0U || !valid_title(item.title) ||
-            !seen.emplace(item.id, true).second) {
+        if (item.id == 0U || !valid_title(item.title) || !seen.emplace(item.id, true).second) {
             return true;
         }
     }
     return false;
 }
 
-Result atomic_write(
-    const std::filesystem::path& path,
-    std::string_view content
-) {
+Result atomic_write(const std::filesystem::path& path, std::string_view content) {
     if (std::filesystem::is_symlink(path)) {
         return make_result(Error::IoError, "refusing to replace a symlinked data file");
     }
@@ -162,13 +157,9 @@ std::uint64_t next_id(const List& items) noexcept {
         return 1U;
     }
 
-    const auto largest = std::max_element(
-        items.begin(),
-        items.end(),
-        [](const Item& left, const Item& right) {
-            return left.id < right.id;
-        }
-    );
+    const auto largest =
+        std::max_element(items.begin(), items.end(),
+                         [](const Item& left, const Item& right) { return left.id < right.id; });
     if (largest->id == std::numeric_limits<std::uint64_t>::max()) {
         return 0U;
     }
@@ -182,13 +173,8 @@ Result add(List& items, std::uint64_t id, std::string_view title) {
     if (!valid_title(title)) {
         return make_result(Error::InvalidTitle, "title cannot be empty or whitespace-only");
     }
-    const auto duplicate = std::find_if(
-        items.begin(),
-        items.end(),
-        [id](const Item& item) {
-            return item.id == id;
-        }
-    );
+    const auto duplicate =
+        std::find_if(items.begin(), items.end(), [id](const Item& item) { return item.id == id; });
     if (duplicate != items.end()) {
         return make_result(Error::DuplicateId, "task ID already exists");
     }
@@ -201,13 +187,8 @@ Result mark_done(List& items, std::uint64_t id) {
     if (id == 0U) {
         return make_result(Error::InvalidId, "task ID must be positive");
     }
-    const auto found = std::find_if(
-        items.begin(),
-        items.end(),
-        [id](const Item& item) {
-            return item.id == id;
-        }
-    );
+    const auto found =
+        std::find_if(items.begin(), items.end(), [id](const Item& item) { return item.id == id; });
     if (found == items.end()) {
         return make_result(Error::NotFound, "task not found");
     }
@@ -220,13 +201,8 @@ Result remove(List& items, std::uint64_t id) {
     if (id == 0U) {
         return make_result(Error::InvalidId, "task ID must be positive");
     }
-    const auto found = std::find_if(
-        items.begin(),
-        items.end(),
-        [id](const Item& item) {
-            return item.id == id;
-        }
-    );
+    const auto found =
+        std::find_if(items.begin(), items.end(), [id](const Item& item) { return item.id == id; });
     if (found == items.end()) {
         return make_result(Error::NotFound, "task not found");
     }
@@ -310,12 +286,10 @@ Result load(List& items, const std::filesystem::path& path) {
         }
 
         const std::size_t first_separator = line.find('\t');
-        const std::size_t second_separator =
-            first_separator == std::string::npos
-                ? std::string::npos
-                : line.find('\t', first_separator + 1U);
-        if (first_separator == std::string::npos ||
-            second_separator == std::string::npos) {
+        const std::size_t second_separator = first_separator == std::string::npos
+                                                 ? std::string::npos
+                                                 : line.find('\t', first_separator + 1U);
+        if (first_separator == std::string::npos || second_separator == std::string::npos) {
             return make_result(Error::InvalidFormat, "todo record must contain three fields");
         }
 
@@ -324,20 +298,15 @@ Result load(List& items, const std::filesystem::path& path) {
             return make_result(Error::InvalidFormat, "todo record contains an invalid ID");
         }
 
-        const std::string_view completed_text =
-            std::string_view(line).substr(
-                first_separator + 1U,
-                second_separator - first_separator - 1U
-            );
+        const std::string_view completed_text = std::string_view(line).substr(
+            first_separator + 1U, second_separator - first_separator - 1U);
         if (completed_text != "0" && completed_text != "1") {
-            return make_result(Error::InvalidFormat, "todo record contains an invalid completion flag");
+            return make_result(Error::InvalidFormat,
+                               "todo record contains an invalid completion flag");
         }
 
         std::string title;
-        if (!unescape_title(
-                std::string_view(line).substr(second_separator + 1U),
-                title
-            )) {
+        if (!unescape_title(std::string_view(line).substr(second_separator + 1U), title)) {
             return make_result(Error::InvalidFormat, "todo record contains an invalid title");
         }
 

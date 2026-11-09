@@ -98,8 +98,8 @@ int main(int argc, char* argv[]) {
             return 0;
         }
         for (const auto& item : items) {
-            std::cout << '#' << item.id << (item.completed ? " [x] " : " [ ] ")
-                      << item.title << '\n';
+            std::cout << '#' << item.id << (item.completed ? " [x] " : " [ ] ") << item.title
+                      << '\n';
         }
         return 0;
     }
@@ -116,9 +116,8 @@ int main(int argc, char* argv[]) {
             return 2;
         }
 
-        const auto result = command == "done"
-                                ? cppapplab::todo::mark_done(items, id)
-                                : cppapplab::todo::remove(items, id);
+        const auto result = command == "done" ? cppapplab::todo::mark_done(items, id)
+                                              : cppapplab::todo::remove(items, id);
         if (!result) {
             return print_error(result);
         }

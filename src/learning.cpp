@@ -202,14 +202,11 @@ int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
     return passed ? 0 : 1;
 }
 
-std::filesystem::path stage_declared_cpp_sources(
-    const Task& task,
-    const std::filesystem::path& workspace_root,
-    const std::filesystem::path& build_directory
-) {
+std::filesystem::path stage_declared_cpp_sources(const Task& task,
+                                                 const std::filesystem::path& workspace_root,
+                                                 const std::filesystem::path& build_directory) {
     const auto stage_directory = build_directory / "learner-source";
-    if (std::filesystem::exists(stage_directory) ||
-        std::filesystem::is_symlink(stage_directory)) {
+    if (std::filesystem::exists(stage_directory) || std::filesystem::is_symlink(stage_directory)) {
         const auto status = std::filesystem::symlink_status(stage_directory);
         if (std::filesystem::is_symlink(status) || !std::filesystem::is_directory(status)) {
             throw std::runtime_error("Refusing to replace an unsafe learner staging path.");
@@ -244,11 +241,9 @@ bool process_succeeded(const ProcessResult& result) {
 int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
     const Workspace workspace = open_workspace(workspace_path);
     const Task& task = *workspace.task;
-    if (task.acceptance_kind != AcceptanceKind::CMakeGoogleTest ||
-        task.expected_test_count == 0U) {
+    if (task.acceptance_kind != AcceptanceKind::CMakeGoogleTest || task.expected_test_count == 0U) {
         throw std::runtime_error(
-            "This task has no configured CMake/GoogleTest acceptance contract."
-        );
+            "This task has no configured CMake/GoogleTest acceptance contract.");
     }
 
     const std::string fingerprint_before = source_fingerprint(task, workspace.root);
@@ -269,8 +264,7 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
         throw std::runtime_error("Platform acceptance fixture is missing or unsafe.");
     }
 
-    const auto staged_sources =
-        stage_declared_cpp_sources(task, workspace.root, build_directory);
+    const auto staged_sources = stage_declared_cpp_sources(task, workspace.root, build_directory);
 
     const std::vector<std::string> configure_arguments{
         "cmake",
@@ -279,17 +273,12 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
         "-B",
         build_directory.string(),
         "-DCMAKE_BUILD_TYPE=Debug",
-        "-DCPPAPPLAB_LEARNER_SOURCE_DIR=" + staged_sources.string()
-    };
+        "-DCPPAPPLAB_LEARNER_SOURCE_DIR=" + staged_sources.string()};
     log << "$ cmake -S " << fixture.string() << " -B " << build_directory.string()
         << " -DCPPAPPLAB_LEARNER_SOURCE_DIR=" << staged_sources.string() << '\n';
 
-    const ProcessResult configure = run_process(
-        configure_arguments,
-        workspace.root,
-        std::chrono::seconds(30),
-        kMaxCompilerOutput
-    );
+    const ProcessResult configure = run_process(configure_arguments, workspace.root,
+                                                std::chrono::seconds(30), kMaxCompilerOutput);
     log << configure.output;
 
     const bool configured = process_succeeded(configure);
@@ -299,43 +288,36 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
 
     bool built = false;
     if (configured) {
-        const ProcessResult build = run_process(
-            {"cmake", "--build", build_directory.string(), "--parallel", "2"},
-            workspace.root,
-            std::chrono::seconds(90),
-            kMaxCompilerOutput
-        );
+        const ProcessResult build =
+            run_process({"cmake", "--build", build_directory.string(), "--parallel", "2"},
+                        workspace.root, std::chrono::seconds(90), kMaxCompilerOutput);
         log << "\n$ cmake --build " << build_directory.string() << " --parallel 2\n"
             << build.output;
         built = process_succeeded(build);
         if (!built) {
-            log << "\n[CppAppLab] Platform-owned fixture build failed or exceeded its resource limit.\n";
+            log << "\n[CppAppLab] Platform-owned fixture build failed or exceeded its resource "
+                   "limit.\n";
         }
     }
 
     bool acceptance_tests_passed = false;
     if (built) {
-        const ProcessResult ctest = run_process(
-            {"ctest", "--test-dir", build_directory.string(), "--output-on-failure"},
-            workspace.root,
-            std::chrono::seconds(45),
-            kMaxCompilerOutput
-        );
-        log << "\n$ ctest --test-dir " << build_directory.string()
-            << " --output-on-failure\n"
+        const ProcessResult ctest =
+            run_process({"ctest", "--test-dir", build_directory.string(), "--output-on-failure"},
+                        workspace.root, std::chrono::seconds(45), kMaxCompilerOutput);
+        log << "\n$ ctest --test-dir " << build_directory.string() << " --output-on-failure\n"
             << ctest.output;
 
         const std::string expected_summary =
-            "100% tests passed, 0 tests failed out of " +
-            std::to_string(task.expected_test_count);
+            "100% tests passed, 0 tests failed out of " + std::to_string(task.expected_test_count);
         acceptance_tests_passed =
-            process_succeeded(ctest) &&
-            ctest.output.find(expected_summary) != std::string::npos;
+            process_succeeded(ctest) && ctest.output.find(expected_summary) != std::string::npos;
 
         if (acceptance_tests_passed) {
             tests_passed = task.expected_test_count;
         } else {
-            log << "\n[CppAppLab] Fixed acceptance test count/result did not match the task contract.\n";
+            log << "\n[CppAppLab] Fixed acceptance test count/result did not match the task "
+                   "contract.\n";
         }
     }
 
@@ -344,8 +326,7 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
         log << "\n[CppAppLab] Learner source changed while the check was running; "
                "the result is not accepted.\n";
     } else {
-        passed = configured && built && acceptance_tests_passed &&
-                 tests_passed == tests_total;
+        passed = configured && built && acceptance_tests_passed && tests_passed == tests_total;
     }
 
     Evidence evidence;

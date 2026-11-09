@@ -8,15 +8,7 @@
 
 namespace cppapplab::todo {
 
-enum class Error {
-    None,
-    InvalidId,
-    InvalidTitle,
-    DuplicateId,
-    NotFound,
-    InvalidFormat,
-    IoError
-};
+enum class Error { None, InvalidId, InvalidTitle, DuplicateId, NotFound, InvalidFormat, IoError };
 
 struct Item {
     std::uint64_t id{};
@@ -41,30 +33,14 @@ struct Result {
 
 [[nodiscard]] std::uint64_t next_id(const List& items) noexcept;
 
-[[nodiscard]] Result add(
-    List& items,
-    std::uint64_t id,
-    std::string_view title
-);
+[[nodiscard]] Result add(List& items, std::uint64_t id, std::string_view title);
 
-[[nodiscard]] Result mark_done(
-    List& items,
-    std::uint64_t id
-);
+[[nodiscard]] Result mark_done(List& items, std::uint64_t id);
 
-[[nodiscard]] Result remove(
-    List& items,
-    std::uint64_t id
-);
+[[nodiscard]] Result remove(List& items, std::uint64_t id);
 
-[[nodiscard]] Result save(
-    const List& items,
-    const std::filesystem::path& path
-);
+[[nodiscard]] Result save(const List& items, const std::filesystem::path& path);
 
-[[nodiscard]] Result load(
-    List& items,
-    const std::filesystem::path& path
-);
+[[nodiscard]] Result load(List& items, const std::filesystem::path& path);
 
 }  // namespace cppapplab::todo

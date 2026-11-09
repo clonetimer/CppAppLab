@@ -83,18 +83,21 @@ The first-version language baseline is C++17. WSL2 Ubuntu 24.04 is the full acce
 
 **Implemented task:** `w5.system-lab`. The learner implements queue synchronization and the process runner. The platform fixture covers 20 fixed tests, 10 learner-authored tests and one CLI smoke test (31 total).
 
-## W6 — Concurrency engineering
+## W6 — Concurrency and thread pools
 
 **Topics**
 
-- task queue and worker threads
-- `std::future`, `std::promise`, `std::packaged_task`
-- generic submit, variadic templates and perfect forwarding
-- exception propagation, shutdown semantics and rejecting new work
-- `std::atomic` and memory-order fundamentals
-- concurrency tests, logging and benchmarking
+- std::thread worker lifecycle
+- bounded task submission and backpressure
+- std::packaged_task, std::future and asynchronous results
+- callable/argument forwarding and move-only values
+- exception propagation through futures
+- submit/shutdown linearization and concurrent shutdown
+- graceful queue drain and deterministic worker joining
 
-**Work product:** a reusable thread pool with defined submission, exception, and shutdown behavior.
+**Work product:** a fixed-size C++17 thread pool built on the W5 bounded queue.
+
+**Acceptance boundary:** 22 platform-owned behavior tests, 10 learner-authored tests and one CLI smoke test (33 total).
 
 ## W7 — TCP/IP and socket programming
 

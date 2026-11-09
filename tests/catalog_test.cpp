@@ -78,6 +78,18 @@ TEST(TaskCatalogTest, ExposesLinuxSystemProgrammingLab) {
     EXPECT_EQ(task->prerequisites.front(), "w4.quality-gate");
 }
 
+TEST(TaskCatalogTest, ExposesThreadPoolAndFuturesExercise) {
+    const cppapplab::Task* task = cppapplab::find_task("w6.thread-pool");
+    ASSERT_NE(task, nullptr);
+    EXPECT_EQ(task->week, 6U);
+    EXPECT_EQ(task->order, 1U);
+    EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
+    EXPECT_EQ(task->source_files.size(), 4U);
+    EXPECT_EQ(task->expected_test_count, 34U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w5.system-lab");
+}
+
 TEST(TaskCatalogTest, UnknownTaskDoesNotResolve) {
     EXPECT_EQ(cppapplab::find_task("w99.unknown"), nullptr);
 }

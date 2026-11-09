@@ -137,6 +137,16 @@ The platform fixture runs 20 platform-owned behavior tests, ten learner-authored
 
 The task is intentionally Linux/POSIX-specific and is accepted on WSL2 Ubuntu 24.04. It does not claim Windows-native compatibility. The CLI passes an argument vector directly; it does not implicitly interpret a shell command string.
 
+## W6 ThreadPool contract
+
+Task ID: `w6.thread-pool`; prerequisite: a current PASS for `w5.system-lab`.
+
+The learner implements a fixed-size worker pool on top of the W5 bounded queue. The template submit API uses packaged_task/future, supports move-only callable and argument storage, and propagates task exceptions through future::get.
+
+The submit/shutdown boundary is serialized by a lifecycle mutex: a submission either completes its enqueue before shutdown closes the queue, or is rejected. Shutdown closes the queue, drains accepted work and joins every worker. A once-only shutdown mechanism ensures concurrent shutdown callers wait for the join operation to complete.
+
+The fixed platform fixture runs 22 platform-owned tests, ten learner-authored tests and one CLI smoke test (33 total). Tests cover constructor validation, task return types, void tasks, move-only values, exceptions, concurrency across workers, accepted-task drain, post-shutdown rejection, concurrent shutdown, submit/shutdown races, and destructor joining.
+
 ## Evidence semantics
 
 The local evidence and log are navigation records, not certificates. They are user-editable files and must never be represented as tamper-proof proof of learning.

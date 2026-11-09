@@ -36,7 +36,7 @@ const std::vector<Task>& task_catalog() {
             AcceptanceKind::CMakeGoogleTest,
             {},
             "course/fixtures/w1/calculator",
-            6
+            7
         }
     };
 

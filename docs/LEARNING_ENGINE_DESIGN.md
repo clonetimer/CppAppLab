@@ -46,12 +46,12 @@ The calculator task is built through a platform-owned CMake fixture, not the lea
 - only declared \`.cpp\` implementation files are staged into a controlled build directory
 - the fixture supplies its own fixed \`calculator.hpp\` interface
 - the fixture builds the learner library and CLI with C++17 and warnings-as-errors
-- six platform-owned GoogleTest cases cover four operations, division by zero, and negative/zero operands
+- seven platform-owned GoogleTest cases cover four operations, division by zero, and negative/zero operands
 - two CLI smoke checks cover a normal calculation and division by zero
 - the learner's CMakeLists.txt, tests, and copied header cannot replace the platform acceptance contract
 - configure, build, CTest, and CLI execution all have bounded time/output
 
-The calculator task records 8 acceptance checks: six fixed unit tests and two CLI smoke checks.
+The calculator task records 9 acceptance checks: seven fixed unit tests and two CLI smoke checks.
 
 ## Evidence semantics
 

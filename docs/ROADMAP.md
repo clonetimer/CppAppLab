@@ -151,7 +151,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - W7-A: IPv4 socket API, blocking TCP echo server/client, partial sends, descriptor lifetime
 - W7-B: thread-per-connection learning path, non-blocking sockets, select/poll, epoll
 - final work product: multi-client TCP chat with connection state, newline framing, read/write buffers and input limits
-- W7-A acceptance: 20 fixed tests + 10 learner tests + CLI smoke (31 total)
+- W7-A acceptance: 21 fixed tests + 10 learner tests + CLI smoke (32 total)
 
 ## P6 — W8: HTTP server engineering
 

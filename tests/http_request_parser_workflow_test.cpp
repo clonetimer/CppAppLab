@@ -80,10 +80,8 @@ TEST(HttpRequestParserWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImp
     const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "http-parser");
     const auto reference = cppapplab::data_root() / "labs/w8/http-parser/reference";
     const std::vector<std::filesystem::path> reference_files{
-        "include/http_message.hpp",
-        "include/http_request_parser.hpp",
-        "src/http_request_parser.cpp",
-        "src/main.cpp",
+        "include/http_message.hpp", "include/http_request_parser.hpp",
+        "src/http_request_parser.cpp", "src/main.cpp",
         "tests/http_request_parser_test.cpp",
     };
     for (const auto& relative_path : reference_files) {

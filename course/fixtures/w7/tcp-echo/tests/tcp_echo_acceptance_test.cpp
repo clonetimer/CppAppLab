@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "tcp_echo.hpp"
 
 #include <gtest/gtest.h>

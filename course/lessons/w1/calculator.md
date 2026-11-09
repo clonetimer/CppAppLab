@@ -79,7 +79,7 @@ The explicit \`cppapplab check\` command:
 2. stages only the declared C++ implementation files
 3. configures a platform-owned CMake fixture
 4. compiles the learner implementation against the fixed interface
-5. runs six platform-owned GoogleTest cases
+5. runs seven platform-owned GoogleTest cases
 6. runs two CLI smoke cases, including division by zero
 7. records the result, source fingerprint, and bounded log
 
@@ -97,6 +97,6 @@ The learner's own build files and tests are not used as the acceptance authority
 - [ ] Addition, subtraction, multiplication, and division return correct values.
 - [ ] Division by zero returns \`Error::DivisionByZero\`.
 - [ ] Invalid operation values return \`Error::InvalidOperation\`.
-- [ ] All six platform-owned unit tests pass.
+- [ ] All seven platform-owned unit tests pass.
 - [ ] Both command-line smoke cases pass.
 - [ ] The learner source has not changed during the check.

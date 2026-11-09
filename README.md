@@ -100,7 +100,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-W1–W7-A are merged into `main`; W7-B multi-client TCP chat is under development on `feat/p4-w7-epoll-chat`. No release has been declared. See:
+W1–W7 are merged into `main`; W8 HTTP Server Engineering is the active development milestone. No release has been declared. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)

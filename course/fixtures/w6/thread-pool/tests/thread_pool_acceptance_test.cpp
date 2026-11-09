@@ -186,7 +186,12 @@ TEST(ThreadPoolAcceptanceTest, BoundedSubmissionBlocksUntilCapacityIsAvailable) 
         gate.wait();
         return 1;
     });
-    ASSERT_EQ(entered.wait_for(1s), std::future_status::ready);
+    const auto worker_status = entered.wait_for(1s);
+    if (worker_status != std::future_status::ready) {
+        release_worker.set_value();
+        FAIL() << "worker did not start the first task";
+        return;
+    }
     auto second = pool.submit([] { return 2; });
 
     std::promise<std::future<int>> third_submission;

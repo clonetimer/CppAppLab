@@ -2,6 +2,7 @@
 
 #include "cppapplab/app.hpp"
 #include "cppapplab/process.hpp"
+#include "cppapplab/progress.hpp"
 #include "cppapplab/task.hpp"
 #include "cppapplab/workspace.hpp"
 
@@ -68,7 +69,17 @@ std::string extract_hint(const std::string& content, unsigned level) {
 void print_task_catalog() {
     std::cout << "CppAppLab · Available tasks\n\n";
     for (const Task& task : task_catalog()) {
-        std::cout << task.id << "  |  " << task.title << "  |  W" << task.week << '\n';
+        std::cout << task.id << "  |  " << task.title << "  |  W" << task.week;
+        if (!task.prerequisites.empty()) {
+            std::cout << "  |  requires ";
+            for (std::size_t index = 0; index < task.prerequisites.size(); ++index) {
+                if (index != 0U) {
+                    std::cout << ", ";
+                }
+                std::cout << task.prerequisites[index];
+            }
+        }
+        std::cout << '\n';
     }
     std::cout << "\nStart a task with: cppapplab start <task-id> <workspace-directory>\n";
 }
@@ -179,6 +190,7 @@ int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
     }
 
     write_evidence(workspace.root, evidence, log.str());
+    write_progress(workspace.root, evidence);
 
     std::cout << "Task: " << task.id << '\n'
               << "Result: " << (passed ? "PASS" : "FAIL") << '\n'
@@ -376,6 +388,7 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
     }
 
     write_evidence(workspace.root, evidence, log.str());
+    write_progress(workspace.root, evidence);
 
     std::cout << "Task: " << task.id << '\n'
               << "Result: " << (passed ? "PASS" : "FAIL") << '\n'
@@ -437,40 +450,117 @@ int show_status(const std::filesystem::path& workspace_path) {
 
 int show_next(const std::filesystem::path& workspace_path) {
     const Workspace workspace = open_workspace(workspace_path);
-    const auto evidence = read_evidence(workspace.root);
-
-    if (!evidence.has_value() || !evidence->passed ||
-        evidence->fingerprint != source_fingerprint(*workspace.task, workspace.root)) {
-        std::cout << "The current task has no recorded PASS for its current source.\n"
-                  << "Complete the implementation and run cppapplab check first.\n";
+    if (!has_current_pass(workspace.task->id)) {
+        std::cout << "Current task does not have a current PASS in course progress.\n"
+                  << "Complete the task and run cppapplab check first.\n";
         return 1;
     }
 
-    const Task* next_task = nullptr;
+    std::cout << "Current task has a current PASS: " << workspace.task->id << '\n';
     bool found_current = false;
     for (const Task& candidate : task_catalog()) {
-        if (found_current) {
-            next_task = &candidate;
-            break;
-        }
         if (candidate.id == workspace.task->id) {
             found_current = true;
+            continue;
         }
+        if (!found_current) {
+            continue;
+        }
+
+        std::string missing_prerequisite;
+        if (prerequisites_satisfied(candidate, &missing_prerequisite)) {
+            std::cout << "Next available task: " << candidate.id << " · " << candidate.title << '\n'
+                      << "Start it with: cppapplab start " << candidate.id
+                      << " <new-workspace-directory>\n";
+            std::cout << "Course progress is saved independently of this workspace.\n";
+            return 0;
+        }
+
+        std::cout << "Next task is locked: " << candidate.id
+                  << " requires a current PASS for " << missing_prerequisite << ".\n";
     }
 
-    std::cout << "Current task has a recorded PASS: " << workspace.task->id << "\n";
-    if (next_task != nullptr) {
-        std::cout << "Next available task: " << next_task->id << " · " << next_task->title << "\n"
-                  << "Start it with: cppapplab start " << next_task->id
-                  << " <new-workspace-directory>\n";
-    } else {
-        std::cout
-            << "No later task is available yet; continue with the next planned course work.\n";
-    }
-    std::cout
-        << "This is learning navigation only; local evidence is not a completion certificate.\n";
+    std::cout << "No later task is currently available.\n";
     return 0;
 }
+
+int show_progress() {
+    std::cout << "CppAppLab · Course progress\n\n";
+    for (const Task& task : task_catalog()) {
+        const auto record = read_progress(task.id);
+        std::string state;
+        std::string detail;
+
+        if (!record.has_value()) {
+            std::string missing_prerequisite;
+            if (prerequisites_satisfied(task, &missing_prerequisite)) {
+                state = "NOT STARTED";
+            } else {
+                state = "LOCKED";
+                detail = "requires " + missing_prerequisite;
+            }
+        } else if (has_current_pass(task.id)) {
+            state = "PASSED";
+            detail = record->evidence.timestamp;
+        } else if (record->evidence.passed) {
+            state = "STALE";
+            detail = "source changed or saved workspace is unavailable";
+        } else {
+            state = "NEEDS WORK";
+            detail = record->evidence.timestamp;
+        }
+
+        std::cout << '[' << state << "] " << task.id << " · " << task.title;
+        if (!detail.empty()) {
+            std::cout << "  (" << detail << ')';
+        }
+        std::cout << '\n';
+    }
+    std::cout << "\nProgress records are local navigation data, not certificates.\n";
+    return 0;
+}
+
+int resume_task(std::string_view task_id) {
+    const auto record = read_progress(task_id);
+    if (!record.has_value()) {
+        std::cout << "No saved workspace record exists for task " << task_id << ".\n";
+        return 1;
+    }
+
+    try {
+        const Workspace workspace = open_workspace(record->workspace_root);
+        if (workspace.task->id != task_id) {
+            throw std::runtime_error("Saved workspace belongs to a different task.");
+        }
+        std::cout << "Resuming task: " << workspace.task->id << '\n'
+                  << "Workspace: " << workspace.root.string() << '\n';
+        return show_status(workspace.root);
+    } catch (const std::exception& error) {
+        std::cout << "Saved workspace is unavailable: " << record->workspace_root.string() << '\n'
+                  << "Reason: " << error.what() << '\n'
+                  << "Create a new workspace with cppapplab start if the original was moved or deleted.\n";
+        return 2;
+    }
+}
+
+int show_history(std::string_view task_id) {
+    const auto records = read_progress_history(task_id);
+    if (records.empty()) {
+        std::cout << "No check history exists for task " << task_id << ".\n";
+        return 0;
+    }
+
+    std::cout << "Check history: " << task_id << '\n';
+    for (const ProgressRecord& record : records) {
+        std::cout << record.evidence.timestamp << "  "
+                  << (record.evidence.passed ? "PASS" : "FAIL") << "  "
+                  << record.evidence.tests_passed << '/' << record.evidence.tests_total << '\n'
+                  << "  Workspace: " << record.workspace_root.string() << '\n'
+                  << "  Fingerprint: " << record.evidence.fingerprint << '\n';
+    }
+    return 0;
+}
+
 
 void print_help() {
     std::cout << usage();
@@ -499,6 +589,30 @@ int run_cli(int argc, char* argv[]) {
             print_task_catalog();
             return 0;
         }
+        if (command == "progress") {
+            if (argc != 2) {
+                throw std::invalid_argument("Usage: cppapplab progress");
+            }
+            return show_progress();
+        }
+        if (command == "resume") {
+            if (argc != 3) {
+                throw std::invalid_argument("Usage: cppapplab resume <task-id>");
+            }
+            if (find_task(argv[2]) == nullptr) {
+                throw std::invalid_argument("Unknown task ID: " + std::string(argv[2]));
+            }
+            return resume_task(argv[2]);
+        }
+        if (command == "history") {
+            if (argc != 3) {
+                throw std::invalid_argument("Usage: cppapplab history <task-id>");
+            }
+            if (find_task(argv[2]) == nullptr) {
+                throw std::invalid_argument("Unknown task ID: " + std::string(argv[2]));
+            }
+            return show_history(argv[2]);
+        }
         if (command == "start") {
             if (argc != 4) {
                 throw std::invalid_argument(
@@ -508,6 +622,14 @@ int run_cli(int argc, char* argv[]) {
             const Task* task = find_task(argv[2]);
             if (task == nullptr) {
                 throw std::invalid_argument("Unknown task ID: " + std::string(argv[2]));
+            }
+
+            std::string missing_prerequisite;
+            if (!prerequisites_satisfied(*task, &missing_prerequisite)) {
+                throw std::invalid_argument(
+                    "Task is locked: complete " + missing_prerequisite +
+                    " and pass its current acceptance check first."
+                );
             }
 
             const Workspace workspace = create_workspace(*task, argv[3]);

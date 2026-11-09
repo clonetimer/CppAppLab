@@ -1,0 +1,4 @@
+# CppAppLab task catalog v1
+# id	title	week	order	lesson_path	hints_path	learner_template	source_files	acceptance_kind	expected_stdout	acceptance_fixture	expected_unit_test_count	prerequisites
+w1.hello-world	W1 · First C++ Program	1	1	course/lessons/w1/hello-world.md	course/lessons/w1/hello-world.hints.md	labs/w1/hello-world/learner	src/main.cpp	exact_stdout	Hello, CppAppLab!\n		0	
+w1.calculator	W1 · Multi-file Calculator	1	2	course/lessons/w1/calculator.md	course/lessons/w1/calculator.hints.md	labs/w1/calculator/learner	include/calculator.hpp;src/calculator.cpp;src/main.cpp	cmake_gtest		course/fixtures/w1/calculator	7	w1.hello-world

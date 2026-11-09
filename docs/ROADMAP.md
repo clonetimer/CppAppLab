@@ -66,7 +66,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ### P2-A — W2 persistent Todo CLI
 
-**Status: implementation complete on `feat/p2-w2-todo-cli`; hosted CI passed; PR preparation pending.**
+**Status: merged into `main` via PR #5.**
 
 - STL-backed Todo model with `std::vector`, standard algorithms, and `std::unordered_map`
 - add/list/done/remove CLI commands

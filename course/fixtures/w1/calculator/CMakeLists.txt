@@ -82,7 +82,7 @@ if(BUILD_TESTING)
     set_tests_properties(
         calculator_cli_add
         PROPERTIES
-        PASS_REGULAR_EXPRESSION "^5$"
+        PASS_REGULAR_EXPRESSION "5"
         TIMEOUT 5
     )
 

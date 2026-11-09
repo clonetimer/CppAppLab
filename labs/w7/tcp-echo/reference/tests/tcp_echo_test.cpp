@@ -22,7 +22,7 @@ TEST(TcpEchoLearnerTest, ServerBindsAnEphemeralPort) {
 }
 
 TEST(TcpEchoLearnerTest, EchoesOneClientPayload) {
-    TcpEchoServer server(0U);
+    net::TcpEchoServer server(0U);
     auto finished = std::async(std::launch::async, [&] { server.serve_one(); });
     const int client = net::connect_tcp("127.0.0.1", server.port());
     const std::string message = "hello tcp";
@@ -46,34 +46,34 @@ TEST(TcpEchoLearnerTest, EchoesOneClientPayload) {
 TEST(TcpEchoLearnerTest, SendAllAcceptsAnEmptyPayload) {
     int descriptors[2]{};
     ASSERT_EQ(::socketpair(AF_UNIX, SOCK_STREAM, 0, descriptors), 0);
-    EXPECT_TRUE(send_all(descriptors[0], nullptr, 0U));
+    EXPECT_TRUE(net::send_all(descriptors[0], nullptr, 0U));
     ::close(descriptors[0]);
     ::close(descriptors[1]);
 }
 
 TEST(TcpEchoLearnerTest, RejectsInvalidBacklog) {
-    EXPECT_THROW(TcpEchoServer(0U, "127.0.0.1", 0), std::invalid_argument);
+    EXPECT_THROW(net::TcpEchoServer(0U, "127.0.0.1", 0), std::invalid_argument);
 }
 
 TEST(TcpEchoLearnerTest, RejectsInvalidIPv4Address) {
-    EXPECT_THROW(TcpEchoServer(0U, "localhost"), std::invalid_argument);
+    EXPECT_THROW(net::TcpEchoServer(0U, "localhost"), std::invalid_argument);
 }
 
 TEST(TcpEchoLearnerTest, ClientRejectsInvalidIPv4Address) {
-    EXPECT_THROW((void)connect_tcp("not-an-ip", 8080U), std::invalid_argument);
+    EXPECT_THROW((void)net::connect_tcp("not-an-ip", 8080U), std::invalid_argument);
 }
 
 TEST(TcpEchoLearnerTest, ServerReportsBoundPort) {
-    TcpEchoServer server(0U);
+    net::TcpEchoServer server(0U);
     EXPECT_GT(server.port(), 0U);
 }
 
 TEST(TcpEchoLearnerTest, EchoesBinaryPayload) {
-    TcpEchoServer server(0U);
+    net::TcpEchoServer server(0U);
     auto finished = std::async(std::launch::async, [&] { server.serve_one(); });
-    const int client = connect_tcp("127.0.0.1", server.port());
+    const int client = net::connect_tcp("127.0.0.1", server.port());
     const std::string message("A\0B\nC", 5U);
-    ASSERT_TRUE(send_all(client, message.data(), message.size()));
+    ASSERT_TRUE(net::send_all(client, message.data(), message.size()));
     (void)::shutdown(client, SHUT_WR);
     std::string response;
     char buffer[16]{};
@@ -90,11 +90,11 @@ TEST(TcpEchoLearnerTest, EchoesBinaryPayload) {
 }
 
 TEST(TcpEchoLearnerTest, EchoesLargePayload) {
-    TcpEchoServer server(0U);
+    net::TcpEchoServer server(0U);
     auto finished = std::async(std::launch::async, [&] { server.serve_one(); });
-    const int client = connect_tcp("127.0.0.1", server.port());
+    const int client = net::connect_tcp("127.0.0.1", server.port());
     const std::string message(128U * 1024U, 'x');
-    ASSERT_TRUE(send_all(client, message.data(), message.size()));
+    ASSERT_TRUE(net::send_all(client, message.data(), message.size()));
     (void)::shutdown(client, SHUT_WR);
     std::string response;
     char buffer[8192]{};
@@ -111,9 +111,9 @@ TEST(TcpEchoLearnerTest, EchoesLargePayload) {
 }
 
 TEST(TcpEchoLearnerTest, ServerClosesAcceptedClientOnPeerShutdown) {
-    TcpEchoServer server(0U);
+    net::TcpEchoServer server(0U);
     auto finished = std::async(std::launch::async, [&] { server.serve_one(); });
-    const int client = connect_tcp("127.0.0.1", server.port());
+    const int client = net::connect_tcp("127.0.0.1", server.port());
     (void)::shutdown(client, SHUT_WR);
     char byte{};
     EXPECT_EQ(::recv(client, &byte, 1U, 0), 0);

@@ -180,7 +180,7 @@ Hosted Ubuntu 24.04 CI on final PR head `c20c60665d891edd54106779f99e84fbc3f5812
 ## P5-B — W8-D2 Incremental HTTP Request Parser
 
 **Branch:** `feat/p5-w8-http-parser`  
-**Status:** next implementation stage.
+**Status:** W8-D2 implementation and fixed acceptance fixture added; hosted CI pending.
 
 - incremental request parser over arbitrary TCP byte chunks
 - request line and case-insensitive headers
@@ -189,6 +189,7 @@ Hosted Ubuntu 24.04 CI on final PR head `c20c60665d891edd54106779f99e84fbc3f5812
 - NeedMoreData / Complete / Error parser states
 - duplicate and conflicting Content-Length handling
 - parser limits and malformed request diagnostics
+- 26 platform-owned tests, 10 learner tests and one CLI smoke test (37 total)
 
 ## Remaining work
 

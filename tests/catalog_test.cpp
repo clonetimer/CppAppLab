@@ -84,8 +84,8 @@ TEST(TaskCatalogTest, ExposesThreadPoolAndFuturesExercise) {
     EXPECT_EQ(task->week, 6U);
     EXPECT_EQ(task->order, 1U);
     EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
-    EXPECT_EQ(task->source_files.size(), 5U);
-    EXPECT_EQ(task->expected_test_count, 33U);
+    EXPECT_EQ(task->source_files.size(), 4U);
+    EXPECT_EQ(task->expected_test_count, 34U);
     ASSERT_EQ(task->prerequisites.size(), 1U);
     EXPECT_EQ(task->prerequisites.front(), "w5.system-lab");
 }

@@ -79,11 +79,12 @@ TEST(HttpRequestParserWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImp
     ScopedEnvironment state_directory("CPPAPPLAB_STATE_DIR", temporary.path() / "state");
     const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "http-parser");
     const auto reference = cppapplab::data_root() / "labs/w8/http-parser/reference";
-    const std::vector<std::filesystem::path> reference_files{
-        "include/http_message.hpp", "include/http_request_parser.hpp",
-        "src/http_request_parser.cpp", "src/main.cpp",
-        "tests/http_request_parser_test.cpp",
-    };
+    std::vector<std::filesystem::path> reference_files;
+    reference_files.emplace_back("include/http_message.hpp");
+    reference_files.emplace_back("include/http_request_parser.hpp");
+    reference_files.emplace_back("src/http_request_parser.cpp");
+    reference_files.emplace_back("src/main.cpp");
+    reference_files.emplace_back("tests/http_request_parser_test.cpp");
     for (const auto& relative_path : reference_files) {
         std::filesystem::copy_file(reference / relative_path, workspace.root / relative_path,
                                    std::filesystem::copy_options::overwrite_existing);

@@ -18,7 +18,7 @@
 namespace {
 
 class TemporaryDirectory {
-public:
+   public:
     TemporaryDirectory() {
         const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
         path_ = std::filesystem::temp_directory_path() /
@@ -35,14 +35,13 @@ public:
         return path_;
     }
 
-private:
+   private:
     std::filesystem::path path_;
 };
 
 class ScopedEnvironment {
-public:
-    ScopedEnvironment(const char* name, const std::filesystem::path& value)
-        : name_(name) {
+   public:
+    ScopedEnvironment(const char* name, const std::filesystem::path& value) : name_(name) {
         if (const char* previous = std::getenv(name_.c_str())) {
             previous_ = previous;
             had_previous_ = true;
@@ -61,14 +60,14 @@ public:
         }
     }
 
-private:
+   private:
     std::string name_;
     std::string previous_;
     bool had_previous_{false};
 };
 
 class StdoutCapture {
-public:
+   public:
     StdoutCapture() : previous_(std::cout.rdbuf(stream_.rdbuf())) {}
 
     ~StdoutCapture() {
@@ -79,7 +78,7 @@ public:
         return stream_.str();
     }
 
-private:
+   private:
     std::ostringstream stream_;
     std::streambuf* previous_;
 };
@@ -111,14 +110,10 @@ void write_file(const std::filesystem::path& path, const std::string& content) {
 }
 
 void copy_reference_sources(const std::filesystem::path& workspace_root) {
-    const auto reference_root =
-        cppapplab::data_root() / "labs/w3/task-manager/reference/src";
+    const auto reference_root = cppapplab::data_root() / "labs/w3/task-manager/reference/src";
     for (const char* source : {"task.cpp", "task_manager.cpp", "main.cpp"}) {
-        std::filesystem::copy_file(
-            reference_root / source,
-            workspace_root / "src" / source,
-            std::filesystem::copy_options::overwrite_existing
-        );
+        std::filesystem::copy_file(reference_root / source, workspace_root / "src" / source,
+                                   std::filesystem::copy_options::overwrite_existing);
     }
 }
 
@@ -131,16 +126,11 @@ CheckOutcome run_platform_check(const std::filesystem::path& workspace_root) {
     }
 
     if (outcome.exit_code != 0) {
-        std::ifstream log_file(
-            workspace_root / ".cppapplab/last-check.log",
-            std::ios::binary
-        );
+        std::ifstream log_file(workspace_root / ".cppapplab/last-check.log", std::ios::binary);
         if (log_file) {
             outcome.output += "\n--- acceptance log ---\n";
-            outcome.output.append(
-                std::istreambuf_iterator<char>(log_file),
-                std::istreambuf_iterator<char>()
-            );
+            outcome.output.append(std::istreambuf_iterator<char>(log_file),
+                                  std::istreambuf_iterator<char>());
         }
     }
     return outcome;
@@ -153,20 +143,15 @@ TEST(TaskManagerWorkflowTest, FixedFixtureChecksRefactorAndPreservesCliPersisten
     ASSERT_NE(task, nullptr);
 
     TemporaryDirectory temporary;
-    ScopedEnvironment state_directory(
-        "CPPAPPLAB_STATE_DIR",
-        temporary.path() / "state"
-    );
-    const auto workspace =
-        cppapplab::create_workspace(*task, temporary.path() / "task-manager");
+    ScopedEnvironment state_directory("CPPAPPLAB_STATE_DIR", temporary.path() / "state");
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "task-manager");
 
     copy_reference_sources(workspace.root);
 
     // The platform must use its fixed fixture, not learner-controlled CMake files.
-    write_file(
-        workspace.root / "CMakeLists.txt",
-        "message(FATAL_ERROR \"Learner CMakeLists must not be executed by platform acceptance\")\n"
-    );
+    write_file(workspace.root / "CMakeLists.txt",
+               "message(FATAL_ERROR \"Learner CMakeLists must not be executed by platform "
+               "acceptance\")\n");
 
     const CheckOutcome outcome = run_platform_check(workspace.root);
 

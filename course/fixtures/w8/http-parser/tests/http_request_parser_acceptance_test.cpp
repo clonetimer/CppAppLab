@@ -137,7 +137,10 @@ TEST(HttpRequestParserAcceptanceTest, RejectsWhitespaceBeforeHeaderColon) {
 
 TEST(HttpRequestParserAcceptanceTest, RejectsInvalidHeaderFieldNameCharacters) {
     const std::string wire =
-        "GET / HTTP/1.1\r\nHost: localhost\r\nBad@Name: value\r\n\r\n";
+        "GET / HTTP/1.1\r\n"
+        "Host: localhost\r\n"
+        "Bad@Name: value\r\n"
+        "\r\n";
     EXPECT_EQ(HttpRequestParser{}.parse(wire).status, ParseStatus::Error);
 }
 

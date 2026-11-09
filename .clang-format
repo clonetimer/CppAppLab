@@ -1,3 +1,4 @@
+# Keep the project's header-first include blocks intact.
 BasedOnStyle: Google
 Language: Cpp
 Standard: c++17

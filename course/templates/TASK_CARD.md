@@ -14,7 +14,7 @@ Describe the behavior to implement without giving away the full solution.
 
 ## Learner-editable files
 
-- \`path/to/file.cpp\`
+- `path/to/file.cpp`
 
 ## Stable interfaces
 
@@ -26,11 +26,11 @@ Describe the behavior to implement without giving away the full solution.
 
 ## Build and check
 
-\`\`\`bash
+```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
-\`\`\`
+```
 
 ## Acceptance cases
 

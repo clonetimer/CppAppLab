@@ -1,4 +1,4 @@
-# Learning Engine — P1 Design
+# Learning Engine — P1/P2 Design
 
 ## Current learning loop
 
@@ -98,6 +98,25 @@ The W2 task uses the same platform-owned CMake acceptance mechanism as the Calcu
 
 The persistence format is versioned with a `CPPAPPLAB_TODO_V1` header. A record contains ID, completion flag, and escaped title. Loading parses into a temporary collection and replaces the current collection only after complete validation. Saving writes a temporary sibling file and publishes it by rename. The default data file is `~/.local/share/cppapplab/todos.tsv`; `CPPAPPLAB_TODO_FILE` overrides it for isolated workspaces and tests.
 
+
+## W3 Task / TaskManager check contract
+
+Task ID: `w3.task-manager`; prerequisite: a current PASS for `w2.todo-cli`.
+
+The learner implements:
+
+- `src/task.cpp`
+- `src/task_manager.cpp`
+- the supplied CLI entry point remains `src/main.cpp`
+
+The fixed platform interface separates the `Task` value object from the owning `TaskManager`. The manager owns a `std::vector<std::unique_ptr<Task>>`; callers receive non-owning pointers from `find()` and value copies from `snapshot()`.
+
+The acceptance fixture supplies platform-owned copies of both headers and runs 30 GoogleTest cases plus one multi-process CLI workflow test (31 total). Tests cover constructor invariants, ID identity/order, stream output, invalid input, CRUD, overflow, const lookup, deep copy, copy-and-swap assignment, self-assignment, move semantics, ordered snapshots, W2-format compatibility, escaped fields, malformed/duplicate records, and symlink rejection.
+
+Persistence deliberately retains the W2 `CPPAPPLAB_TODO_V1` format. Loading parses into a temporary manager and swaps only after complete validation. Saving writes a temporary sibling file and publishes it by rename. This makes W3 an internal ownership refactor rather than a data migration or replacement application.
+
+The root integration test copies the reference implementation into a temporary learner workspace and invokes the actual platform check command. It also places a deliberately failing learner `CMakeLists.txt` in that workspace to verify the acceptance runner uses the platform-owned fixture.
+
 ## Evidence semantics
 
 The local evidence and log are navigation records, not certificates. They are user-editable files and must never be represented as tamper-proof proof of learning.
@@ -112,4 +131,4 @@ The process runner uses direct `execvp` argument vectors (no shell interpolation
 
 ## Next vertical slice
 
-P1-C now provides external task metadata, prerequisite enforcement, persistent progress, workspace recovery, and per-task check history. The next course work product after W2 Todo CLI is the W3 Task / TaskManager refactor, focusing on classes, RAII, and ownership semantics.
+P1-C now provides external task metadata, prerequisite enforcement, persistent progress, workspace recovery, and per-task check history. The next course work product after W3 is W4 engineering quality: test design, debugging, sanitizers, static analysis, and reproducible builds.

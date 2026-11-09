@@ -39,6 +39,19 @@ TEST(TaskCatalogTest, ExposesPersistentTodoCliExercise) {
     EXPECT_EQ(task->prerequisites.front(), "w1.calculator");
 }
 
+TEST(TaskCatalogTest, ExposesTaskManagerRefactorExercise) {
+    const cppapplab::Task* task = cppapplab::find_task("w3.task-manager");
+
+    ASSERT_NE(task, nullptr);
+    EXPECT_EQ(task->week, 3U);
+    EXPECT_EQ(task->order, 1U);
+    EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
+    EXPECT_EQ(task->source_files.size(), 3U);
+    EXPECT_EQ(task->expected_test_count, 31U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w2.todo-cli");
+}
+
 TEST(TaskCatalogTest, UnknownTaskDoesNotResolve) {
     EXPECT_EQ(cppapplab::find_task("w99.unknown"), nullptr);
 }

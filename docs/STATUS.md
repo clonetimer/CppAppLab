@@ -1,6 +1,6 @@
 # Project Status
 
-**Current milestone:** P2-A — W2 persistent Todo CLI  
+**Current milestone:** P2-B — W3 Task / TaskManager Refactor  
 **Release status:** no release has been declared.
 
 ## Merged P0 foundation
@@ -80,8 +80,26 @@ Hosted Ubuntu 24.04 verification on the P1-C branch passed 28/28 tests in both o
 
 Hosted Ubuntu 24.04 CI on commit `6e7b3f3b9f5c68f24e832afe33af3e9d0727ad5f` passed 30/30 root tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks. The W2 end-to-end acceptance test independently ran the 19-case Todo fixture and passed.
 
+## P2-B — W3 Task / TaskManager Refactor
+
+**Branch:** `feat/p2-w3-task-manager`  
+**Status:** implementation complete on the feature branch; hosted CI passed; PR preparation pending.
+
+- `Task` value object with constructor invariants and ID-based equality/order
+- `TaskManager` owns tasks through `std::unique_ptr<Task>`
+- deep-copy constructor, copy-and-swap assignment, move construction/assignment
+- non-owning lookup and ordered value snapshots
+- W2-compatible `CPPAPPLAB_TODO_V1` persistence with transactional load and atomic save
+- unchanged add/list/done/remove CLI behavior
+- platform-owned acceptance fixture: 30 GoogleTest cases plus one CLI workflow test (31 total)
+- W3 depends on a current W2 Todo CLI PASS
+
+Hosted Ubuntu 24.04 CI on commit `01325e756b70f951bda2dfc58ed6d48acbad80fd` passed 32/32 root tests in ordinary GCC and ASan/UBSan builds. The W3 platform-owned fixture passed 31/31; clang-format and clang-tidy-enabled checks passed. The environment checker reported zero failures and one expected WSL2 warning on the GitHub-hosted runner.
+
 ## Remaining work
 
+- complete W3 hosted GCC, ASan/UBSan, clang-format, and clang-tidy CI
+- merge W3 after acceptance passes
 - additional W1–W8 learner/reference task packs
 - richer task-specific diagnostics and feedback
 - verified offline dependency package

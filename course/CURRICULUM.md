@@ -35,18 +35,22 @@ The first-version language baseline is C++17. WSL2 Ubuntu 24.04 is the full acce
 
 **Implemented task:** `w2.todo-cli` (P2-A). The learner uses `std::vector`, standard algorithms, `std::unordered_map`, and versioned text serialization. The platform acceptance contract covers malformed input, escaped titles, file safety, and a multi-process command workflow.
 
-## W3 — Classes and resource lifetime
+## W3 — Classes, RAII, and ownership
 
 **Topics**
 
-- `struct` / `class`, access control, constructors and destructors
-- RAII, stack and heap lifetime
-- `unique_ptr`, `shared_ptr`, `weak_ptr`
-- copy constructor/assignment and move constructor/assignment
-- operator overloads
-- encapsulation and ownership boundaries
+- classes, access control, constructors, invariants, and encapsulation
+- value semantics and object identity
+- operator overloading for equality, ordering, and stream output
+- RAII and deterministic resource lifetime
+- `std::unique_ptr` and exclusive ownership
+- non-owning observers versus owning handles
+- deep copy, copy-and-swap, move construction, and move assignment
+- preserving an existing serialization format during an internal refactor
 
-**Work product:** refactor Todo into `Task` and `TaskManager`, with explicit resource ownership.
+**Work product:** refactor the W2 Todo core into a `Task` value object and an owning `TaskManager`, retaining the same CLI commands and W2 data-file compatibility.
+
+**Acceptance boundary:** the learner implements both class source files. The platform supplies fixed headers and 30 unit tests plus one end-to-end CLI workflow test. The reference implementation is not copied into the learner workspace.
 
 ## W4 — Testing and maintainable C++
 

@@ -8,7 +8,7 @@
 namespace cppapplab::tasks {
 
 class Task {
-public:
+   public:
     Task(std::uint64_t id, std::string title, bool completed = false);
 
     Task(const Task&) = default;
@@ -27,7 +27,7 @@ public:
     friend bool operator<(const Task& left, const Task& right) noexcept;
     friend std::ostream& operator<<(std::ostream& output, const Task& task);
 
-private:
+   private:
     std::uint64_t id_{};
     std::string title_;
     bool completed_{false};

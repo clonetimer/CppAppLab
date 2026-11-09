@@ -16,7 +16,7 @@
 namespace {
 
 class TemporaryDirectory {
-public:
+   public:
     TemporaryDirectory() {
         const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
         path_ = std::filesystem::temp_directory_path() /
@@ -33,7 +33,7 @@ public:
         return path_;
     }
 
-private:
+   private:
     std::filesystem::path path_;
 };
 
@@ -305,12 +305,10 @@ TEST(TaskAcceptanceTest, SaveAndLoadPreserveEscapedTitlesAndCompletion) {
 TEST(TaskAcceptanceTest, LoadsExistingW2TodoFileWithoutMigration) {
     TemporaryDirectory temporary;
     const auto path = temporary.path() / "w2-todos.tsv";
-    write_file(
-        path,
-        "CPPAPPLAB_TODO_V1\n"
-        "4\t0\tcreated by W2\n"
-        "9\t1\tlegacy completed task\n"
-    );
+    write_file(path,
+               "CPPAPPLAB_TODO_V1\n"
+               "4\t0\tcreated by W2\n"
+               "9\t1\tlegacy completed task\n");
     cppapplab::tasks::TaskManager manager;
 
     ASSERT_TRUE(manager.load(path));
@@ -337,12 +335,10 @@ TEST(TaskAcceptanceTest, MissingFileLoadsAsAnEmptyManager) {
 TEST(TaskAcceptanceTest, MalformedLoadPreservesTheExistingManager) {
     TemporaryDirectory temporary;
     const auto path = temporary.path() / "malformed.tsv";
-    write_file(
-        path,
-        "CPPAPPLAB_TODO_V1\n"
-        "1\t0\tvalid row before failure\n"
-        "this row is malformed\n"
-    );
+    write_file(path,
+               "CPPAPPLAB_TODO_V1\n"
+               "1\t0\tvalid row before failure\n"
+               "this row is malformed\n");
     cppapplab::tasks::TaskManager manager;
     ASSERT_TRUE(manager.add(9U, "keep current state"));
 
@@ -356,12 +352,10 @@ TEST(TaskAcceptanceTest, MalformedLoadPreservesTheExistingManager) {
 TEST(TaskAcceptanceTest, DuplicateIdsDuringLoadPreserveTheExistingManager) {
     TemporaryDirectory temporary;
     const auto path = temporary.path() / "duplicate.tsv";
-    write_file(
-        path,
-        "CPPAPPLAB_TODO_V1\n"
-        "1\t0\tfirst\n"
-        "1\t1\tduplicate\n"
-    );
+    write_file(path,
+               "CPPAPPLAB_TODO_V1\n"
+               "1\t0\tfirst\n"
+               "1\t1\tduplicate\n");
     cppapplab::tasks::TaskManager manager;
     ASSERT_TRUE(manager.add(9U, "keep current state"));
 

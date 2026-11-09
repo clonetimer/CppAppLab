@@ -16,8 +16,7 @@ bool valid_title(std::string_view title) {
         return false;
     }
     return std::any_of(title.begin(), title.end(), [](unsigned char character) {
-        return character != ' ' && character != '\t' &&
-               character != '\r' && character != '\n';
+        return character != ' ' && character != '\t' && character != '\r' && character != '\n';
     });
 }
 

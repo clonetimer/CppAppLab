@@ -115,9 +115,7 @@ int main(int argc, char* argv[]) {
             return 2;
         }
 
-        const auto result = command == "done"
-                                ? manager.mark_done(id)
-                                : manager.remove(id);
+        const auto result = command == "done" ? manager.mark_done(id) : manager.remove(id);
         if (!result) {
             return print_error(result);
         }

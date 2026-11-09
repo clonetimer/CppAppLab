@@ -24,8 +24,7 @@ bool valid_title(std::string_view title) {
         return false;
     }
     return std::any_of(title.begin(), title.end(), [](unsigned char character) {
-        return character != ' ' && character != '\t' &&
-               character != '\r' && character != '\n';
+        return character != ' ' && character != '\t' && character != '\r' && character != '\n';
     });
 }
 
@@ -157,8 +156,7 @@ TaskManager& TaskManager::operator=(const TaskManager& other) {
     return *this;
 }
 
-TaskManager::TaskManager(TaskManager&& other) noexcept
-    : tasks_(std::move(other.tasks_)) {
+TaskManager::TaskManager(TaskManager&& other) noexcept : tasks_(std::move(other.tasks_)) {
     other.tasks_.clear();
 }
 
@@ -201,13 +199,9 @@ Result TaskManager::remove(std::uint64_t id) {
     if (id == 0U) {
         return make_result(Error::InvalidId, "task ID must be positive");
     }
-    const auto found = std::find_if(
-        tasks_.begin(),
-        tasks_.end(),
-        [id](const std::unique_ptr<Task>& task) {
-            return task->id() == id;
-        }
-    );
+    const auto found =
+        std::find_if(tasks_.begin(), tasks_.end(),
+                     [id](const std::unique_ptr<Task>& task) { return task->id() == id; });
     if (found == tasks_.end()) {
         return make_result(Error::NotFound, "task not found");
     }
@@ -217,24 +211,16 @@ Result TaskManager::remove(std::uint64_t id) {
 }
 
 Task* TaskManager::find(std::uint64_t id) noexcept {
-    const auto found = std::find_if(
-        tasks_.begin(),
-        tasks_.end(),
-        [id](const std::unique_ptr<Task>& task) {
-            return task->id() == id;
-        }
-    );
+    const auto found =
+        std::find_if(tasks_.begin(), tasks_.end(),
+                     [id](const std::unique_ptr<Task>& task) { return task->id() == id; });
     return found == tasks_.end() ? nullptr : found->get();
 }
 
 const Task* TaskManager::find(std::uint64_t id) const noexcept {
-    const auto found = std::find_if(
-        tasks_.begin(),
-        tasks_.end(),
-        [id](const std::unique_ptr<Task>& task) {
-            return task->id() == id;
-        }
-    );
+    const auto found =
+        std::find_if(tasks_.begin(), tasks_.end(),
+                     [id](const std::unique_ptr<Task>& task) { return task->id() == id; });
     return found == tasks_.end() ? nullptr : found->get();
 }
 
@@ -243,13 +229,11 @@ std::uint64_t TaskManager::next_id() const noexcept {
         return 1U;
     }
 
-    const auto largest = std::max_element(
-        tasks_.begin(),
-        tasks_.end(),
-        [](const std::unique_ptr<Task>& left, const std::unique_ptr<Task>& right) {
-            return left->id() < right->id();
-        }
-    );
+    const auto largest =
+        std::max_element(tasks_.begin(), tasks_.end(),
+                         [](const std::unique_ptr<Task>& left, const std::unique_ptr<Task>& right) {
+                             return left->id() < right->id();
+                         });
     if ((*largest)->id() == std::numeric_limits<std::uint64_t>::max()) {
         return 0U;
     }
@@ -366,11 +350,10 @@ Result TaskManager::load(const std::filesystem::path& path) {
         }
 
         const std::string_view completed_text = std::string_view(line).substr(
-            first_separator + 1U,
-            second_separator - first_separator - 1U
-        );
+            first_separator + 1U, second_separator - first_separator - 1U);
         if (completed_text != "0" && completed_text != "1") {
-            return make_result(Error::InvalidFormat, "task record contains an invalid completion flag");
+            return make_result(Error::InvalidFormat,
+                               "task record contains an invalid completion flag");
         }
 
         std::string title;

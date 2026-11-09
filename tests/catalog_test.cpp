@@ -39,7 +39,6 @@ TEST(TaskCatalogTest, ExposesPersistentTodoCliExercise) {
     EXPECT_EQ(task->prerequisites.front(), "w1.calculator");
 }
 
-
 TEST(TaskCatalogTest, ExposesTaskManagerRefactorExercise) {
     const cppapplab::Task* task = cppapplab::find_task("w3.task-manager");
 

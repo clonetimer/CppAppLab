@@ -12,15 +12,7 @@
 
 namespace cppapplab::tasks {
 
-enum class Error {
-    None,
-    InvalidId,
-    InvalidTitle,
-    DuplicateId,
-    NotFound,
-    InvalidFormat,
-    IoError
-};
+enum class Error { None, InvalidId, InvalidTitle, DuplicateId, NotFound, InvalidFormat, IoError };
 
 struct Result {
     Error error{Error::None};
@@ -36,7 +28,7 @@ struct Result {
 };
 
 class TaskManager {
-public:
+   public:
     TaskManager() = default;
     TaskManager(const TaskManager& other);
     TaskManager& operator=(const TaskManager& other);
@@ -61,7 +53,7 @@ public:
 
     void swap(TaskManager& other) noexcept;
 
-private:
+   private:
     std::vector<std::unique_ptr<Task>> tasks_;
 };
 

@@ -187,14 +187,14 @@ Workspace create_workspace(
 
     const auto template_path = data_root() / task.learner_template;
     std::filesystem::create_directories(absolute_destination.parent_path());
+    if (!std::filesystem::create_directory(absolute_destination)) {
+        throw std::runtime_error(
+            "Workspace already exists; start never overwrites learner work: " +
+            absolute_destination.string()
+        );
+    }
 
     try {
-        if (!std::filesystem::create_directory(absolute_destination)) {
-            throw std::runtime_error(
-                "Workspace already exists; start never overwrites learner work: " +
-                absolute_destination.string()
-            );
-        }
         copy_tree_without_symlinks(template_path, absolute_destination, false);
 
         const std::string marker =

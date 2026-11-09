@@ -15,8 +15,7 @@ constexpr std::size_t kMaxBodySize = 1024U * 1024U;
 
 [[nodiscard]] std::string trim(std::string_view value) {
     std::size_t begin = 0U;
-    while (begin < value.size() &&
-           std::isspace(static_cast<unsigned char>(value[begin])) != 0) {
+    while (begin < value.size() && std::isspace(static_cast<unsigned char>(value[begin])) != 0) {
         ++begin;
     }
 

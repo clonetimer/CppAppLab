@@ -1,6 +1,6 @@
 # Project Status
 
-**Current milestone:** P4-B — W7 Multi-client TCP Chat Server  
+**Current milestone:** P5-A — W8 HTTP Protocol Foundations  
 **Release status:** no release has been declared.
 
 ## Merged P0 foundation
@@ -153,7 +153,7 @@ Hosted Ubuntu 24.04 CI on final PR head `c20c60665d891edd54106779f99e84fbc3f5812
 ## P4-B — W7 Multi-client TCP Chat Server
 
 **Branch:** `feat/p4-w7-epoll-chat`  
-**Status:** implementation and fixed acceptance fixture added; hosted CI pending.
+**Status:** merged into `main` via PR #11; hosted Ubuntu 24.04 CI passed.
 
 - Linux non-blocking IPv4 listener and level-triggered epoll event loop
 - single-thread ownership of client state
@@ -163,6 +163,17 @@ Hosted Ubuntu 24.04 CI on final PR head `c20c60665d891edd54106779f99e84fbc3f5812
 - eventfd stop wakeup and deterministic event-loop cleanup
 - 26 platform-owned tests, 10 learner tests and one CLI smoke test (37 total)
 - W7-B depends on a current W7-A TCP Echo PASS
+
+## P5-A — W8 HTTP Protocol Foundations
+
+**Branch:** `feat/p5-w8-http-protocol`  
+**Status:** next implementation stage.
+
+- HTTP/1.1 request and response message structure
+- request-line parsing: method, target and version
+- response serialization with byte-accurate Content-Length
+- status line, headers and CRLF framing
+- W8-D1 protocol foundation precedes the incremental request parser in W8-D2
 
 ## Remaining work
 

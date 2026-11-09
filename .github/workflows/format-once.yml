@@ -1,0 +1,32 @@
+name: One-time W6 C++ formatter
+
+on:
+  push:
+    branches:
+      - feat/p3-w6-thread-pool
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+      - name: Format W6 sources
+        run: |
+          find tests labs/w6 course/fixtures/w6 -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
+            | xargs -0 clang-format -i
+      - name: Commit formatted files
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add tests labs/w6 course/fixtures/w6
+            git commit -m "style: format W6 thread pool sources and tests"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi

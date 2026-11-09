@@ -46,7 +46,7 @@ public:
 
 private:
     void worker_loop();
-    BoundedQueue<std::function<void()>> queue_;
+    system_lab::BoundedQueue<std::function<void()>> queue_;
     std::vector<std::thread> workers_;
     mutable std::mutex lifecycle_mutex_;
     std::once_flag shutdown_once_;

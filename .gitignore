@@ -24,6 +24,8 @@ Testing/
 .DS_Store
 Thumbs.db
 /workspace/
+/workspaces/
 /.local/
+**/.cppapplab/
 *.attempt.json
 *.evidence.json

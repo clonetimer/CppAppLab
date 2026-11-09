@@ -1,44 +1,40 @@
 # Project Status
 
-**Current milestone:** P0 — Foundation  
+**Current milestone:** P1-A — W1 Hello World learning-engine vertical slice  
 **Release status:** no release has been declared.
 
-## Implemented in the initial foundation branch
+## Merged P0 foundation
 
-- Repository initialized with project scope and first-version environment
-- C++17 CMake project and minimal `cppapplab` CLI
+- C++17 CMake project and minimal CLI
 - GoogleTest / CTest smoke tests
 - GCC warning and optional ASan/UBSan settings
 - optional clang-tidy integration and clang-format configuration
 - WSL2/Ubuntu toolchain checker
 - GitHub Actions build/test, sanitizer, and quality workflows
-- architecture, development, environment, learning contract, and roadmap documents
+- architecture, development, environment, learning contract, roadmap, and decision documents
 - eight-week curriculum map
 
-## Latest automated evidence — 2026-11-09
+P0 PR #1 was merged after GCC build, GoogleTest, ASan/UBSan, clang-format, and clang-tidy jobs passed. The local WSL2 acceptance check remains a separate maintainer-machine verification item.
 
-Commit: `2c3be9e5ed3a92c9272d4581cee69c6d20d5bb02`
+## P1-A implementation in progress
 
-- GCC Build and GoogleTest: PASS, 2/2 tests
-- GCC ASan and UBSan: PASS, 2/2 tests
-- clang-format check: PASS
-- clang-tidy-enabled build and tests: PASS
-- Runner: GitHub-hosted Ubuntu 24.04
+- task registry for W1 Hello World
+- learner workspace creation that refuses to overwrite existing directories
+- separate reference implementation
+- lesson and three progressive hints
+- explicit GCC compile/run check with exact-output contract
+- bounded process output and execution time
+- source fingerprint and stale local evidence detection
+- CLI: list/start/lesson/hint/check/status/next
 
-The first formatting run failed because clang-format reordered the project header include blocks. The configuration was corrected to preserve include order; the subsequent push and pull-request workflows both passed.
-
-## Remaining P0 verification
-
-- Local WSL2 + Ubuntu 24.04 environment check has not yet been run on the maintainer's Windows machine.
-- The environment checker and full local acceptance commands are documented in [the WSL2 guide](ENVIRONMENT_WSL2_UBUNTU.md).
+P1-A is not complete until the new engine code and tests pass CI. The local evidence file is a navigation record, not a tamper-proof certificate.
 
 ## Not yet implemented
 
-- learning-engine commands and persistent progress
-- task catalog parser and prerequisite graph
-- learner workspace generator
-- fixed acceptance harness and source fingerprinting
-- actual W1–W8 lesson projects and learner/reference pairs
+- W1 Calculator multi-file acceptance fixture
+- cross-workspace prerequisite graph and persistent progress
+- remaining W1–W8 learner/reference task packs
+- full acceptance harness for CMake/GoogleTest projects
 - verified offline dependency package
 - first release package
 

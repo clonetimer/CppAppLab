@@ -7,6 +7,10 @@ project(
     LANGUAGES CXX
 )
 
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    message(FATAL_ERROR "CppAppLab v1 learning engine requires Linux; use WSL2 + Ubuntu 24.04.")
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -66,13 +70,26 @@ if(CPPAPPLAB_ENABLE_SANITIZERS)
     endif()
 endif()
 
-add_library(cppapplab_core src/app.cpp)
+add_library(
+    cppapplab_core
+    src/app.cpp
+    src/task.cpp
+    src/workspace.cpp
+    src/process.cpp
+    src/learning.cpp
+)
 target_include_directories(
     cppapplab_core
     PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
 )
-target_compile_definitions(cppapplab_core PUBLIC CPPAPPLAB_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(
+    cppapplab_core
+    PUBLIC
+    CPPAPPLAB_VERSION="${PROJECT_VERSION}"
+    PRIVATE
+    CPPAPPLAB_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+)
 target_link_libraries(cppapplab_core PUBLIC cppapplab_build_options)
 
 add_executable(cppapplab src/main.cpp)
@@ -100,7 +117,13 @@ if(BUILD_TESTING)
         endif()
     endif()
 
-    add_executable(cppapplab_tests tests/smoke_test.cpp)
+    add_executable(
+        cppapplab_tests
+        tests/smoke_test.cpp
+        tests/catalog_test.cpp
+        tests/process_test.cpp
+        tests/workspace_test.cpp
+    )
     target_link_libraries(cppapplab_tests PRIVATE cppapplab_core GTest::gtest_main)
 
     include(GoogleTest)

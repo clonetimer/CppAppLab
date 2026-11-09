@@ -109,19 +109,10 @@ Hosted Ubuntu 24.04 CI on commit `01325e756b70f951bda2dfc58ed6d48acbad80fd` pass
 
 Hosted Ubuntu 24.04 CI on final PR head `88d43e8425467e5f4b7cb0d181c625aa66199475` passed: GCC root tests 36/36, ASan/UBSan 36/36, W5 fixed fixture 31/31, CLI smoke, environment acceptance, clang-format and clang-tidy-enabled build/tests.
 
-## P3-C — W6 Concurrency and Thread Pool
-
-**Status:** next development stage; implementation follows W5.
-
-- thread pool with bounded task submission
-- futures/promises and exception propagation
-- graceful shutdown and worker lifecycle
-- race/deadlock tests and sanitizer validation
-
 ## P3-C — W6 Thread Pool and Futures
 
 **Branch:** `feat/p3-w6-thread-pool`  
-**Status:** implementation committed; hosted CI pending.
+**Status:** implementation and acceptance-harness correction committed; hosted CI pending.
 
 - fixed-size worker pool built on the W5 bounded queue
 - templated submit with move-aware callable/argument storage and std::future results
@@ -129,13 +120,13 @@ Hosted Ubuntu 24.04 CI on final PR head `88d43e8425467e5f4b7cb0d181c625aa6619947
 - lifecycle mutex serializes submit acceptance with shutdown
 - std::call_once ensures concurrent shutdown callers wait for worker joins
 - shutdown drains accepted work and rejects later submissions
-- 22 platform-owned tests, 10 learner tests and one CLI smoke test (33 total)
+- 23 platform-owned tests, 10 learner tests and one CLI smoke test (34 total)
 - W6 depends on a current W5 system-lab PASS
 
 ## Remaining work
 
-- complete W3 hosted GCC, ASan/UBSan, clang-format, and clang-tidy CI
-- merge W3 after acceptance passes
+- complete W6 hosted GCC, ASan/UBSan, clang-format, and clang-tidy CI
+- merge W6 after final-head acceptance passes
 - additional W1–W8 learner/reference task packs
 - richer task-specific diagnostics and feedback
 - verified offline dependency package

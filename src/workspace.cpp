@@ -87,7 +87,8 @@ void atomic_write(
 
 void copy_tree_without_symlinks(
     const std::filesystem::path& source,
-    const std::filesystem::path& destination
+    const std::filesystem::path& destination,
+    bool create_destination = true
 ) {
     std::error_code error;
     const auto source_status = std::filesystem::symlink_status(source, error);
@@ -96,7 +97,9 @@ void copy_tree_without_symlinks(
         throw std::runtime_error("Learner template is not a regular directory: " + source.string());
     }
 
-    std::filesystem::create_directory(destination);
+    if (create_destination && !std::filesystem::create_directory(destination)) {
+        throw std::runtime_error("Destination directory already exists: " + destination.string());
+    }
     for (const auto& entry : std::filesystem::directory_iterator(source)) {
         const auto source_path = entry.path();
         const auto destination_path = destination / source_path.filename();
@@ -186,7 +189,13 @@ Workspace create_workspace(
     std::filesystem::create_directories(absolute_destination.parent_path());
 
     try {
-        copy_tree_without_symlinks(template_path, absolute_destination);
+        if (!std::filesystem::create_directory(absolute_destination)) {
+            throw std::runtime_error(
+                "Workspace already exists; start never overwrites learner work: " +
+                absolute_destination.string()
+            );
+        }
+        copy_tree_without_symlinks(template_path, absolute_destination, false);
 
         const std::string marker =
             std::string(kWorkspaceMarker) + "\ntask_id=" + task.id + "\n";

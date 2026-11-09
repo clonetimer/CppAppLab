@@ -22,6 +22,7 @@ struct Task {
     std::string expected_stdout;
     std::filesystem::path acceptance_fixture;
     unsigned expected_unit_test_count{};
+    std::vector<std::string> prerequisites;
 };
 
 [[nodiscard]] const std::vector<Task>& task_catalog();

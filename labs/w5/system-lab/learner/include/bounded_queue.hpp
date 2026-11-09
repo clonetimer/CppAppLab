@@ -11,7 +11,7 @@ namespace cppapplab::system_lab {
 
 template <typename T>
 class BoundedQueue {
-public:
+   public:
     explicit BoundedQueue(std::size_t capacity) : capacity_(capacity) {}
 
     BoundedQueue(const BoundedQueue&) = delete;
@@ -19,9 +19,7 @@ public:
 
     [[nodiscard]] bool push(T value) {
         std::unique_lock<std::mutex> lock(mutex_);
-        not_full_.wait(lock, [this] {
-            return closed_ || queue_.size() < capacity_;
-        });
+        not_full_.wait(lock, [this] { return closed_ || queue_.size() < capacity_; });
         if (closed_) {
             return false;
         }
@@ -32,9 +30,7 @@ public:
 
     [[nodiscard]] std::optional<T> pop() {
         std::unique_lock<std::mutex> lock(mutex_);
-        not_empty_.wait(lock, [this] {
-            return closed_ || !queue_.empty();
-        });
+        not_empty_.wait(lock, [this] { return closed_ || !queue_.empty(); });
         if (queue_.empty()) {
             return std::nullopt;
         }
@@ -67,7 +63,7 @@ public:
         return capacity_;
     }
 
-private:
+   private:
     const std::size_t capacity_;
     mutable std::mutex mutex_;
     std::condition_variable not_empty_;

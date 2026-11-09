@@ -14,11 +14,9 @@ struct ProcessResult {
     std::string output;
 };
 
-[[nodiscard]] ProcessResult run_process(
-    const std::vector<std::string>& arguments,
-    std::chrono::milliseconds timeout = std::chrono::seconds(5),
-    std::size_t output_limit = 1024U * 1024U
-);
+[[nodiscard]] ProcessResult run_process(const std::vector<std::string>& arguments,
+                                        std::chrono::milliseconds timeout = std::chrono::seconds(5),
+                                        std::size_t output_limit = 1024U * 1024U);
 
 [[nodiscard]] bool write_all(int file_descriptor, const char* data, std::size_t size);
 

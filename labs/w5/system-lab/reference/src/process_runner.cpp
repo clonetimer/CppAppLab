@@ -33,11 +33,8 @@ bool write_all(int file_descriptor, const char* data, std::size_t size) {
     return true;
 }
 
-ProcessResult run_process(
-    const std::vector<std::string>& arguments,
-    std::chrono::milliseconds timeout,
-    std::size_t output_limit
-) {
+ProcessResult run_process(const std::vector<std::string>& arguments,
+                          std::chrono::milliseconds timeout, std::size_t output_limit) {
     if (arguments.empty() || arguments.front().empty()) {
         throw std::invalid_argument("process arguments must contain a program name");
     }
@@ -54,8 +51,7 @@ ProcessResult run_process(
     }
 
     const int read_flags = ::fcntl(pipe_descriptors[0], F_GETFL, 0);
-    if (read_flags < 0 ||
-        ::fcntl(pipe_descriptors[0], F_SETFL, read_flags | O_NONBLOCK) < 0) {
+    if (read_flags < 0 || ::fcntl(pipe_descriptors[0], F_SETFL, read_flags | O_NONBLOCK) < 0) {
         const int saved_errno = errno;
         ::close(pipe_descriptors[0]);
         ::close(pipe_descriptors[1]);
@@ -128,14 +124,11 @@ ProcessResult run_process(
                 for (;;) {
                     const ssize_t count = ::read(pipe_descriptors[0], buffer, sizeof(buffer));
                     if (count > 0) {
-                        const std::size_t available =
-                            output_limit > result.output.size()
-                                ? output_limit - result.output.size()
-                                : 0U;
-                        result.output.append(
-                            buffer,
-                            std::min(available, static_cast<std::size_t>(count))
-                        );
+                        const std::size_t available = output_limit > result.output.size()
+                                                          ? output_limit - result.output.size()
+                                                          : 0U;
+                        result.output.append(buffer,
+                                             std::min(available, static_cast<std::size_t>(count)));
                     } else if (count == 0) {
                         pipe_open = false;
                         break;

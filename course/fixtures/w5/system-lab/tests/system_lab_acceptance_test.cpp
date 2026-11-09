@@ -81,9 +81,7 @@ TEST(SystemLabAcceptanceTest, QueueWakesBlockedProducerOnClose) {
     BoundedQueue<int> queue(1U);
     ASSERT_TRUE(queue.push(1));
     std::atomic<bool> accepted{true};
-    std::thread producer([&] {
-        accepted.store(queue.push(2));
-    });
+    std::thread producer([&] { accepted.store(queue.push(2)); });
     std::this_thread::sleep_for(20ms);
     queue.close();
     producer.join();
@@ -111,9 +109,11 @@ TEST(SystemLabAcceptanceTest, QueueSupportsMultipleProducersAndConsumers) {
             }
         });
     }
-    for (auto& producer : producers) producer.join();
+    for (auto& producer : producers)
+        producer.join();
     queue.close();
-    for (auto& consumer : consumers) consumer.join();
+    for (auto& consumer : consumers)
+        consumer.join();
     EXPECT_EQ(consumed.load(), producer_count * values_per_producer);
 }
 
@@ -173,11 +173,7 @@ TEST(SystemLabAcceptanceTest, WriteAllWritesCompleteBuffer) {
     int descriptors[2]{};
     ASSERT_EQ(::pipe(descriptors), 0);
     const std::string expected = "complete message";
-    ASSERT_TRUE(cppapplab::system_lab::write_all(
-        descriptors[1],
-        expected.data(),
-        expected.size()
-    ));
+    ASSERT_TRUE(cppapplab::system_lab::write_all(descriptors[1], expected.data(), expected.size()));
     ::close(descriptors[1]);
     char buffer[64]{};
     const ssize_t count = ::read(descriptors[0], buffer, sizeof(buffer));

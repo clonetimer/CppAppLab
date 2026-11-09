@@ -16,7 +16,7 @@
 namespace {
 
 class TemporaryDirectory {
-public:
+   public:
     TemporaryDirectory() {
         const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
         path_ = std::filesystem::temp_directory_path() /
@@ -27,13 +27,16 @@ public:
         std::error_code ignored;
         std::filesystem::remove_all(path_, ignored);
     }
-    const std::filesystem::path& path() const noexcept { return path_; }
-private:
+    const std::filesystem::path& path() const noexcept {
+        return path_;
+    }
+
+   private:
     std::filesystem::path path_;
 };
 
 class ScopedEnvironment {
-public:
+   public:
     ScopedEnvironment(const char* name, const std::filesystem::path& value) : name_(name) {
         if (const char* previous = std::getenv(name_.c_str())) {
             previous_ = previous;
@@ -45,10 +48,13 @@ public:
         }
     }
     ~ScopedEnvironment() {
-        if (had_previous_) ::setenv(name_.c_str(), previous_.c_str(), 1);
-        else ::unsetenv(name_.c_str());
+        if (had_previous_)
+            ::setenv(name_.c_str(), previous_.c_str(), 1);
+        else
+            ::unsetenv(name_.c_str());
     }
-private:
+
+   private:
     std::string name_;
     std::string previous_;
     bool had_previous_{false};
@@ -56,7 +62,8 @@ private:
 
 void write_file(const std::filesystem::path& path, const std::string& content) {
     std::ofstream output(path, std::ios::binary | std::ios::trunc);
-    if (!output) throw std::runtime_error("Cannot create test file.");
+    if (!output)
+        throw std::runtime_error("Cannot create test file.");
     output << content;
 }
 
@@ -82,11 +89,10 @@ TEST(SystemLabWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImplementat
     write_file(workspace.root / "CMakeLists.txt",
                "message(FATAL_ERROR \"Learner CMakeLists must not run\")\n");
 
-    std::vector<std::string> arguments{
-        "cppapplab", "check", workspace.root.string()
-    };
+    std::vector<std::string> arguments{"cppapplab", "check", workspace.root.string()};
     std::vector<char*> argv;
-    for (auto& argument : arguments) argv.push_back(argument.data());
+    for (auto& argument : arguments)
+        argv.push_back(argument.data());
     const int result = cppapplab::run_cli(static_cast<int>(argv.size()), argv.data());
     EXPECT_EQ(result, 0);
     const auto evidence = cppapplab::read_evidence(workspace.root);

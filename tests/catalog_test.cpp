@@ -65,7 +65,6 @@ TEST(TaskCatalogTest, ExposesTaskManagerQualityGateExercise) {
     EXPECT_EQ(task->prerequisites.front(), "w3.task-manager");
 }
 
-
 TEST(TaskCatalogTest, ExposesLinuxSystemProgrammingLab) {
     const cppapplab::Task* task = cppapplab::find_task("w5.system-lab");
 

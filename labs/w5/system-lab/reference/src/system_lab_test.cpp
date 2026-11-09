@@ -24,9 +24,7 @@ TEST(SystemLabLearnerTest, QueueBlocksProducerUntilCapacityIsAvailable) {
     BoundedQueue<int> queue(1U);
     ASSERT_TRUE(queue.push(1));
     std::atomic<bool> completed{false};
-    std::thread producer([&] {
-        completed.store(queue.push(2));
-    });
+    std::thread producer([&] { completed.store(queue.push(2)); });
     std::this_thread::sleep_for(20ms);
     EXPECT_FALSE(completed.load());
     EXPECT_EQ(queue.pop(), 1);
@@ -38,9 +36,7 @@ TEST(SystemLabLearnerTest, QueueBlocksProducerUntilCapacityIsAvailable) {
 TEST(SystemLabLearnerTest, QueueCloseWakesWaitingConsumer) {
     BoundedQueue<int> queue(1U);
     std::atomic<bool> returned{false};
-    std::thread consumer([&] {
-        returned.store(!queue.pop().has_value());
-    });
+    std::thread consumer([&] { returned.store(!queue.pop().has_value()); });
     std::this_thread::sleep_for(20ms);
     queue.close();
     consumer.join();
@@ -67,10 +63,17 @@ TEST(SystemLabLearnerTest, MultipleProducersDeliverEveryItemExactlyOnce) {
     BoundedQueue<int> queue(5U);
     std::atomic<int> total{0};
     std::thread consumer([&] {
-        while (queue.pop().has_value()) total.fetch_add(1);
+        while (queue.pop().has_value())
+            total.fetch_add(1);
     });
-    std::thread first([&] { for (int i=0;i<100;++i) (void)queue.push(i); });
-    std::thread second([&] { for (int i=0;i<100;++i) (void)queue.push(i); });
+    std::thread first([&] {
+        for (int i = 0; i < 100; ++i)
+            (void)queue.push(i);
+    });
+    std::thread second([&] {
+        for (int i = 0; i < 100; ++i)
+            (void)queue.push(i);
+    });
     first.join();
     second.join();
     queue.close();

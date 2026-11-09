@@ -21,11 +21,8 @@ bool write_all(int file_descriptor, const char* data, std::size_t size) {
     return false;
 }
 
-ProcessResult run_process(
-    const std::vector<std::string>& arguments,
-    std::chrono::milliseconds timeout,
-    std::size_t output_limit
-) {
+ProcessResult run_process(const std::vector<std::string>& arguments,
+                          std::chrono::milliseconds timeout, std::size_t output_limit) {
     // TODO(W5-PROCESS-2): validate arguments, create a pipe, fork, and execvp.
     // TODO(W5-PROCESS-3): close unused descriptors in both parent and child.
     // TODO(W5-PROCESS-4): capture output without invoking a shell.

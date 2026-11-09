@@ -103,4 +103,4 @@ The fixed fixture tests complete GET/POST requests, partial headers and bodies, 
 - [ ] Content-Length is strict and byte-based.
 - [ ] Header and body size limits are enforced.
 - [ ] consumed reports only the first request.
-- [ ] All 37 acceptance checks pass.
+- [ ] All 39 acceptance checks pass.

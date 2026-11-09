@@ -39,7 +39,7 @@ constexpr std::size_t kMaxBodySize = 1024U * 1024U;
     return result;
 }
 
-[[nodiscard]] bool parse_request_line(std::string_view line, HttpRequest& request) {
+[[nodiscard]] bool parse_request_line_fields(std::string_view line, HttpRequest& request) {
     std::istringstream input{std::string(line)};
     std::string method;
     std::string target;
@@ -125,7 +125,7 @@ ParseResult HttpRequestParser::parse(std::string_view buffer) const {
         return make_error("invalid request line");
     }
 
-    if (!parse_request_line(buffer.substr(0U, request_line_end), result.request)) {
+    if (!parse_request_line_fields(buffer.substr(0U, request_line_end), result.request)) {
         return make_error("invalid request line", std::move(result.request));
     }
 

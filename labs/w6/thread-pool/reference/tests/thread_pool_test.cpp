@@ -97,6 +97,9 @@ TEST(ThreadPoolLearnerTest, DestructorJoinsWorkersAndDrainsWork) {
 TEST(ThreadPoolLearnerTest, HandlesManyTasksWithoutLossOrDuplication) {
     ThreadPool pool(4U, 128U);
     std::vector<std::atomic<int>> counts(100);
+    for (auto& count : counts) {
+        count.store(0);
+    }
     std::vector<std::future<void>> tasks;
     for (int index = 0; index < 100; ++index) {
         tasks.push_back(pool.submit([&, index] { counts[static_cast<std::size_t>(index)]++; }));

@@ -2,7 +2,7 @@
 
 ## P0 — Foundation
 
-**Status: merged into \`main\`.**
+**Status: merged into `main`.**
 
 - Repository layout and engineering conventions
 - WSL2 + Ubuntu 24.04 + GCC + CMake + GDB environment contract
@@ -16,9 +16,9 @@
 
 ### P1-A — W1 Hello World
 
-**Status: merged into \`main\`.**
+**Status: merged into `main`.**
 
-- task registry and CLI: \`list/start/lesson/hint/check/status/next\`
+- task registry and CLI: `list/start/lesson/hint/check/status/next`
 - learner workspace marker and no-overwrite workspace creation
 - reference and learner source separation
 - fixed GCC compile + exact-output acceptance
@@ -30,7 +30,7 @@ Hosted Ubuntu CI passed 15/15 tests in both ordinary and ASan/UBSan builds, plus
 
 ### P1-B — W1 multi-file Calculator
 
-**Status: merged into \`main\`.**
+**Status: merged into `main`.**
 
 - second registered learning task
 - separate interface, implementation, and command-line front end
@@ -43,19 +43,19 @@ Hosted Ubuntu CI passed 17/17 tests in both ordinary and ASan/UBSan builds.
 
 ### P1-C — persistent progress and workspace recovery
 
-**Status: implemented on \`feat/p1c-progress-state\`; hosted CI passed; PR preparation pending.**
+**Status: implemented on `feat/p1c-progress-state`; hosted CI passed; PR preparation pending.**
 
-- external task catalog in \`course/tasks.tsv\`
+- external task catalog in `course/tasks.tsv`
 - validated task metadata and prerequisite ordering
 - cross-workspace prerequisite checks using current source fingerprints
 - persistent progress outside the source checkout
-- workspace registration at \`start\`, before the first check
-- \`progress\`, \`resume <task-id>\`, and \`history <task-id>\` commands
+- workspace registration at `start`, before the first check
+- `progress`, `resume <task-id>`, and `history <task-id>` commands
 - latest result plus bounded per-task check history
 - multiple workspaces per task; a current PASS in any workspace can satisfy a prerequisite
 - source edits, failed latest attempts, or deleted workspaces invalidate that workspace's PASS
 
-Hosted Ubuntu 24.04 CI passed 27/27 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks.
+Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks.
 
 ### Remaining P1 work
 

@@ -5,7 +5,7 @@
 
 ## Merged P0 foundation
 
-P0 PR #1 is merged into \`main\`.
+P0 PR #1 is merged into `main`.
 
 - C++17 CMake project and minimal CLI
 - GoogleTest / CTest baseline
@@ -18,9 +18,9 @@ P0 PR #1 is merged into \`main\`.
 
 ## Merged P1-A — W1 Hello World
 
-P1-A PR #2 is merged into \`main\`.
+P1-A PR #2 is merged into `main`.
 
-- task registry and CLI: \`list/start/lesson/hint/check/status/next\`
+- task registry and CLI: `list/start/lesson/hint/check/status/next`
 - learner workspace creation with no-overwrite behavior
 - separate learner and reference implementations
 - fixed GCC compile/run check with exact-output acceptance
@@ -33,9 +33,9 @@ Hosted Ubuntu 24.04 CI passed 15/15 tests in both ordinary GCC and ASan/UBSan bu
 
 ## Merged P1-B — W1 multi-file Calculator
 
-P1-B PR #3 is merged into \`main\`.
+P1-B PR #3 is merged into `main`.
 
-- second registered task: \`w1.calculator\`
+- second registered task: `w1.calculator`
 - multi-file learner project and separate reference implementation
 - platform-owned CMake/GoogleTest fixture
 - seven fixed unit tests plus two CLI smoke checks
@@ -45,26 +45,26 @@ Hosted Ubuntu 24.04 CI passed 17/17 tests in both ordinary GCC and ASan/UBSan bu
 
 ## P1-C — persistent progress and workspace recovery
 
-**Branch:** \`feat/p1c-progress-state\`  
+**Branch:** `feat/p1c-progress-state`  
 **Status:** implementation complete; hosted CI validation passed; PR preparation pending.
 
-- task catalog externalized to \`course/tasks.tsv\`, with validation for paths, acceptance metadata, duplicate IDs, and prerequisite ordering
+- task catalog externalized to `course/tasks.tsv`, with validation for paths, acceptance metadata, duplicate IDs, and prerequisite ordering
 - explicit prerequisite metadata; Calculator is locked until Hello World has a current PASS
 - course progress persisted outside the source checkout
-- \`progress\` displays NOT STARTED, IN PROGRESS, LOCKED, PASSED, NEEDS WORK, and STALE states
-- \`resume <task-id>\` restores the latest saved workspace, including before the first check
-- \`history <task-id>\` displays previous check attempts
+- `progress` displays NOT STARTED, IN PROGRESS, LOCKED, PASSED, NEEDS WORK, and STALE states
+- `resume <task-id>` restores the latest saved workspace, including before the first check
+- `history <task-id>` displays previous check attempts
 - every check records the latest result and appends a bounded history record
 - prerequisite PASS can be satisfied by any workspace whose latest attempt is PASS and whose current source fingerprint still matches
 - starting a second workspace does not erase a valid PASS from another workspace
 
 Default state location:
 
-\`~/.local/share/cppapplab/progress/\`
+`~/.local/share/cppapplab/progress/`
 
-Override with \`CPPAPPLAB_STATE_DIR\`.
+Override with `CPPAPPLAB_STATE_DIR`.
 
-Latest hosted Ubuntu 24.04 verification on commit \`b4bb3d082fd73787304979aba7e5b2a4119cf18f\` passed 27/27 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks. The environment checker reported zero failures and one expected WSL2 warning on the GitHub-hosted runner.
+Latest hosted Ubuntu 24.04 verification on commit `23981cd485de59efc656c9f348c62e8414a9d7ef` passed 28/28 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks. The environment checker reported zero failures and one expected WSL2 warning on the GitHub-hosted runner.
 
 ## Remaining work
 

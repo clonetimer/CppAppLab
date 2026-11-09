@@ -120,10 +120,8 @@ TEST(CalculatorWorkflowTest, FixedCMakeAndGoogleTestFixtureChecksLearnerImplemen
         std::ifstream log_file(workspace.root / ".cppapplab/last-check.log", std::ios::binary);
         if (log_file) {
             check_output += "\n--- acceptance log ---\n";
-            check_output.append(
-                std::istreambuf_iterator<char>(log_file),
-                std::istreambuf_iterator<char>()
-            );
+            check_output.append(std::istreambuf_iterator<char>(log_file),
+                                std::istreambuf_iterator<char>());
         }
     }
 

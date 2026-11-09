@@ -94,10 +94,15 @@ TEST(SystemLabWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImplementat
     for (auto& argument : arguments)
         argv.push_back(argument.data());
     const int result = cppapplab::run_cli(static_cast<int>(argv.size()), argv.data());
-    EXPECT_EQ(result, 0);
+    std::string diagnostic;
+    if (result != 0) {
+        std::ifstream log(workspace.root / ".cppapplab/last-check.log", std::ios::binary);
+        if (log) diagnostic.assign(std::istreambuf_iterator<char>(log), std::istreambuf_iterator<char>());
+    }
+    EXPECT_EQ(result, 0) << diagnostic;
     const auto evidence = cppapplab::read_evidence(workspace.root);
-    ASSERT_TRUE(evidence.has_value());
-    EXPECT_TRUE(evidence->passed);
-    EXPECT_EQ(evidence->tests_passed, 31U);
-    EXPECT_EQ(evidence->tests_total, 31U);
+    ASSERT_TRUE(evidence.has_value()) << diagnostic;
+    EXPECT_TRUE(evidence->passed) << diagnostic;
+    EXPECT_EQ(evidence->tests_passed, 31U) << diagnostic;
+    EXPECT_EQ(evidence->tests_total, 31U) << diagnostic;
 }

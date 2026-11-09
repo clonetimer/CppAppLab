@@ -6,37 +6,62 @@
 ## Merged P0 foundation
 
 - C++17 CMake project and minimal CLI
-- GoogleTest / CTest smoke tests
+- GoogleTest / CTest baseline
 - GCC warning and optional ASan/UBSan settings
-- optional clang-tidy integration and clang-format configuration
+- clang-format and clang-tidy integration
 - WSL2/Ubuntu toolchain checker
 - GitHub Actions build/test, sanitizer, and quality workflows
 - architecture, development, environment, learning contract, roadmap, and decision documents
 - eight-week curriculum map
 
-P0 PR #1 was merged after GCC build, GoogleTest, ASan/UBSan, clang-format, and clang-tidy jobs passed. The local WSL2 acceptance check remains a separate maintainer-machine verification item.
+P0 PR #1 is merged into \`main\`. Its GCC build, GoogleTest, ASan/UBSan, clang-format, and clang-tidy checks passed. Local WSL2 acceptance remains a separate maintainer-machine verification item.
 
-## P1-A implementation in progress
+## P1-A implementation
+
+Implemented on \`feat/p1-learning-engine\`; PR #2 is awaiting review and merge.
 
 - task registry for W1 Hello World
-- learner workspace creation that refuses to overwrite existing directories
-- separate reference implementation
+- learner workspace creation that reserves the destination and refuses to overwrite existing work
+- separate learner and reference implementations
 - lesson and three progressive hints
-- explicit GCC compile/run check with exact-output contract
+- explicit GCC compile/run check with a fixed exact-output contract
 - bounded process output and execution time
+- process-group termination on timeout
 - source fingerprint and stale local evidence detection
-- CLI: list/start/lesson/hint/check/status/next
+- rejection of symlinked or path-traversing learner source paths
+- CLI: \`list\`, \`start\`, \`lesson\`, \`hint\`, \`check\`, \`status\`, \`next\`
 
-P1-A is not complete until the new engine code and tests pass CI. The local evidence file is a navigation record, not a tamper-proof certificate.
+Only the explicit \`check\` command compiles and executes learner code. Navigation commands remain read-only.
+
+## Latest automated evidence — 2026-11-09
+
+Verified commit: \`b0405f8b5db04aeaa96ecf290afac9a1a7bb3621\`
+
+- GCC Build and GoogleTest: PASS, 15/15 tests
+- GCC ASan and UBSan: PASS, 15/15 tests
+- clang-format: PASS
+- clang-tidy-enabled build and tests: PASS
+- Runner: GitHub-hosted Ubuntu 24.04
+
+The end-to-end tests create a learner workspace, compile and run the learner's actual source against the fixed contract, verify the recorded result, then modify the source and confirm that the previous result becomes stale.
+
+The local evidence file remains editable navigation data, not a tamper-proof certificate.
 
 ## Not yet implemented
 
 - W1 Calculator multi-file acceptance fixture
 - cross-workspace prerequisite graph and persistent progress
+- task catalog externalization
+- workspace recovery and evidence history
 - remaining W1–W8 learner/reference task packs
-- full acceptance harness for CMake/GoogleTest projects
 - verified offline dependency package
 - first release package
+
+## Remaining acceptance
+
+- Run \`bash scripts/check_environment.sh --strict-wsl\` on the maintainer's Windows 11 + WSL2 + Ubuntu 24.04 machine.
+- Complete the PR #2 review and merge after the final branch checks pass.
+- Exercise the workflow manually in the target environment.
 
 ## Evidence policy
 

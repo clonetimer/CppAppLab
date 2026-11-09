@@ -78,7 +78,6 @@ TEST(TaskCatalogTest, ExposesLinuxSystemProgrammingLab) {
     EXPECT_EQ(task->prerequisites.front(), "w4.quality-gate");
 }
 
-
 TEST(TaskCatalogTest, ExposesThreadPoolAndFuturesExercise) {
     const cppapplab::Task* task = cppapplab::find_task("w6.thread-pool");
     ASSERT_NE(task, nullptr);

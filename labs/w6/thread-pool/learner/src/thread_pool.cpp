@@ -22,8 +22,14 @@ void ThreadPool::shutdown() {
     // TODO(W6-POOL-6): serialize shutdown, close the queue and join workers exactly once.
 }
 
-std::size_t ThreadPool::worker_count() const noexcept { return workers_.size(); }
-std::size_t ThreadPool::pending() const { return queue_.size(); }
-bool ThreadPool::is_shutdown() const noexcept { return shutdown_started_.load(); }
+std::size_t ThreadPool::worker_count() const noexcept {
+    return workers_.size();
+}
+std::size_t ThreadPool::pending() const {
+    return queue_.size();
+}
+bool ThreadPool::is_shutdown() const noexcept {
+    return shutdown_started_.load();
+}
 
 }  // namespace cppapplab::concurrency

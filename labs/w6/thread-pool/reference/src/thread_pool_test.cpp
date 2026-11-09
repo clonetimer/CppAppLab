@@ -21,7 +21,9 @@ TEST(ThreadPoolLearnerTest, ExecutesTasksAndReturnsValues) {
 TEST(ThreadPoolLearnerTest, ForwardsArgumentsAndMoveOnlyValues) {
     ThreadPool pool(1U, 4U);
     auto value = std::make_unique<int>(9);
-    EXPECT_EQ(pool.submit([](std::unique_ptr<int> p, int n) { return *p + n; }, std::move(value), 3).get(), 12);
+    EXPECT_EQ(pool.submit([](std::unique_ptr<int> p, int n) { return *p + n; }, std::move(value), 3)
+                  .get(),
+              12);
     EXPECT_EQ(value, nullptr);
 }
 TEST(ThreadPoolLearnerTest, PropagatesExceptionsThroughFuture) {
@@ -42,26 +44,33 @@ TEST(ThreadPoolLearnerTest, ExecutesConcurrentTasksAcrossWorkers) {
     std::atomic<int> peak{0};
     std::atomic<bool> release{false};
     std::vector<std::future<void>> futures;
-    for (int i = 0; i < 3; ++i) futures.push_back(pool.submit([&] {
-        const int now = ++active;
-        int old = peak.load();
-        while (old < now && !peak.compare_exchange_weak(old, now)) {}
-        while (!release.load()) std::this_thread::yield();
-        --active;
-    }));
+    for (int i = 0; i < 3; ++i)
+        futures.push_back(pool.submit([&] {
+            const int now = ++active;
+            int old = peak.load();
+            while (old < now && !peak.compare_exchange_weak(old, now)) {
+            }
+            while (!release.load())
+                std::this_thread::yield();
+            --active;
+        }));
     const auto deadline = std::chrono::steady_clock::now() + 1s;
-    while (peak.load() < 3 && std::chrono::steady_clock::now() < deadline) std::this_thread::yield();
+    while (peak.load() < 3 && std::chrono::steady_clock::now() < deadline)
+        std::this_thread::yield();
     release.store(true);
-    for (auto& future : futures) future.get();
+    for (auto& future : futures)
+        future.get();
     EXPECT_EQ(peak.load(), 3);
 }
 TEST(ThreadPoolLearnerTest, ShutdownDrainsAcceptedTasks) {
     ThreadPool pool(2U, 16U);
     std::atomic<int> count{0};
     std::vector<std::future<void>> futures;
-    for (int i = 0; i < 10; ++i) futures.push_back(pool.submit([&] { ++count; }));
+    for (int i = 0; i < 10; ++i)
+        futures.push_back(pool.submit([&] { ++count; }));
     pool.shutdown();
-    for (auto& future : futures) future.get();
+    for (auto& future : futures)
+        future.get();
     EXPECT_EQ(count.load(), 10);
 }
 TEST(ThreadPoolLearnerTest, RejectsSubmissionAfterShutdown) {
@@ -81,7 +90,8 @@ TEST(ThreadPoolLearnerTest, DestructorJoinsWorkersAndDrainsWork) {
     std::atomic<int> count{0};
     {
         ThreadPool pool(2U, 16U);
-        for (int i = 0; i < 12; ++i) (void)pool.submit([&] { ++count; });
+        for (int i = 0; i < 12; ++i)
+            (void)pool.submit([&] { ++count; });
     }
     EXPECT_EQ(count.load(), 12);
 }
@@ -89,7 +99,10 @@ TEST(ThreadPoolLearnerTest, HandlesManyTasksWithoutLossOrDuplication) {
     ThreadPool pool(4U, 128U);
     std::vector<std::atomic<int>> seen(100);
     std::vector<std::future<void>> futures;
-    for (int i = 0; i < 100; ++i) futures.push_back(pool.submit([&, i] { ++seen[static_cast<std::size_t>(i)]; }));
-    for (auto& future : futures) future.get();
-    for (const auto& count : seen) EXPECT_EQ(count.load(), 1);
+    for (int i = 0; i < 100; ++i)
+        futures.push_back(pool.submit([&, i] { ++seen[static_cast<std::size_t>(i)]; }));
+    for (auto& future : futures)
+        future.get();
+    for (const auto& count : seen)
+        EXPECT_EQ(count.load(), 1);
 }

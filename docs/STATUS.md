@@ -35,7 +35,7 @@ Hosted Ubuntu 24.04 CI passed 15/15 tests in both ordinary GCC and ASan/UBSan bu
 ## P1-B — W1 multi-file Calculator
 
 **Current implementation branch:** `feat/p1b-calculator`  
-**Status:** implementation and CI validation in progress.
+**Status:** implementation complete on the feature branch; final hosted CI passed; PR pending review and merge.
 
 - second registered task: `w1.calculator`
 - multi-file learner project: public interface, implementation, and CLI
@@ -45,7 +45,7 @@ Hosted Ubuntu 24.04 CI passed 15/15 tests in both ordinary GCC and ASan/UBSan bu
 - seven platform-owned unit tests plus two CLI smoke checks
 - learner-provided CMakeLists.txt and tests are not the acceptance authority
 
-The latest hosted Ubuntu 24.04 workflow on commit `982a80686ac4eceb0015df4d8efa750fe4d46976` passed 17/17 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks.
+The latest hosted Ubuntu 24.04 workflow on commit `ed2aa17a7ec530c164d78a6450418befc92bd473` passed 17/17 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks.
 
 ## Not yet implemented
 
@@ -58,7 +58,7 @@ The latest hosted Ubuntu 24.04 workflow on commit `982a80686ac4eceb0015df4d8efa7
 
 ## Remaining acceptance
 
-- Complete P1-B build, test, sanitizer, formatting, and static-analysis checks.
+- Open and review P1-B PR after the final green CI run.
 - Run `bash scripts/check_environment.sh --strict-wsl` on the maintainer's Windows 11 + WSL2 + Ubuntu 24.04 machine.
 - Exercise both W1 tasks manually in the target environment.
 

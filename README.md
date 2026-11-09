@@ -100,7 +100,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-W1–W7 and W8-D1 are merged into `main`; W8-D2 incremental HTTP parsing is the next development milestone. No release has been declared. See:
+W1–W7 and W8-D1 are merged into `main`; W8-D2 incremental HTTP parsing is under development on `feat/p5-w8-http-parser`. No release has been declared. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)

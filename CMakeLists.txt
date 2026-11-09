@@ -75,6 +75,7 @@ add_library(
     src/app.cpp
     src/task.cpp
     src/workspace.cpp
+    src/progress.cpp
     src/process.cpp
     src/learning.cpp
 )
@@ -121,6 +122,7 @@ if(BUILD_TESTING)
         cppapplab_tests
         tests/smoke_test.cpp
         tests/catalog_test.cpp
+        tests/progress_test.cpp
         tests/process_test.cpp
         tests/workspace_test.cpp
         tests/learning_workflow_test.cpp

@@ -1,6 +1,6 @@
 # Project Status
 
-**Current milestone:** P1-B — W1 multi-file Calculator  
+**Current milestone:** P1-C — persistent course progress and workspace recovery  
 **Release status:** no release has been declared.
 
 ## Merged P0 foundation
@@ -28,40 +28,52 @@ P1-A PR #2 is merged into `main`.
 - process-group termination on timeout
 - source fingerprint and stale local evidence detection
 - symlink/path-traversal rejection for declared learner source paths
-- end-to-end check and stale-evidence regression coverage
 
-Hosted Ubuntu 24.04 CI passed 15/15 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks. Local WSL2 acceptance remains outstanding.
+Hosted Ubuntu 24.04 CI passed 15/15 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks.
 
-## P1-B — W1 multi-file Calculator
+## Merged P1-B — W1 multi-file Calculator
 
-**Current implementation branch:** `feat/p1b-calculator`  
-**Status:** implementation complete on the feature branch; final hosted CI passed; PR pending review and merge.
+P1-B PR #3 is merged into `main`.
 
 - second registered task: `w1.calculator`
-- multi-file learner project: public interface, implementation, and CLI
-- separate reference implementation
+- multi-file learner project and separate reference implementation
 - platform-owned CMake/GoogleTest fixture
-- fixed interface header used by the acceptance build
-- seven platform-owned unit tests plus two CLI smoke checks
-- learner-provided CMakeLists.txt and tests are not the acceptance authority
+- seven fixed unit tests plus two CLI smoke checks
+- learner CMakeLists.txt and tests are not the acceptance authority
 
-The latest hosted Ubuntu 24.04 workflow on commit `f0343cd9b7e0e61a39e14553fe4841d9eebb3e11` passed 17/17 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks. The environment checker reported zero failures; its single WSL2 warning is expected on the GitHub-hosted non-WSL runner.
+Hosted Ubuntu 24.04 CI passed 17/17 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks.
 
-## Not yet implemented
+## P1-C — persistent progress and workspace recovery
 
-- cross-workspace prerequisite graph and persistent progress
-- task catalog externalization
-- workspace recovery and evidence history
-- remaining W1–W8 learner/reference task packs
+**Branch:** `feat/p1c-progress-state`  
+**Status:** implementation complete; hosted CI validation passed; PR preparation pending.
+
+- task catalog externalized to `course/tasks.tsv`, with validation for paths, acceptance metadata, duplicate IDs, and prerequisite ordering
+- explicit prerequisite metadata; Calculator is locked until Hello World has a current PASS
+- course progress persisted outside the source checkout
+- `progress` displays NOT STARTED, IN PROGRESS, LOCKED, PASSED, NEEDS WORK, and STALE states
+- `resume <task-id>` restores the latest saved workspace, including before the first check
+- `history <task-id>` displays previous check attempts
+- every check records the latest result and appends a bounded history record
+- prerequisite PASS can be satisfied by any workspace whose latest attempt is PASS and whose current source fingerprint still matches
+- starting a second workspace does not erase a valid PASS from another workspace
+
+Default state location:
+
+`~/.local/share/cppapplab/progress/`
+
+Override with `CPPAPPLAB_STATE_DIR`.
+
+Latest hosted Ubuntu 24.04 verification on commit `23981cd485de59efc656c9f348c62e8414a9d7ef` passed 28/28 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks. The environment checker reported zero failures and one expected WSL2 warning on the GitHub-hosted runner.
+
+## Remaining work
+
+- additional W1–W8 learner/reference task packs
+- richer task-specific diagnostics and feedback
 - verified offline dependency package
-- first release package
-
-## Remaining acceptance
-
-- Open and review P1-B PR after the final green CI run.
-- Run `bash scripts/check_environment.sh --strict-wsl` on the maintainer's Windows 11 + WSL2 + Ubuntu 24.04 machine.
-- Exercise both W1 tasks manually in the target environment.
+- local Windows 11 + WSL2 + Ubuntu 24.04 acceptance
+- first release package and release notes
 
 ## Evidence policy
 
-A repository commit is not evidence that the code passed. Hosted Ubuntu CI and local WSL2 acceptance are recorded separately. Local evidence is editable navigation data, not a tamper-proof certificate. A release is not declared until the target WSL2 environment and the required course workflow have been verified.
+A repository commit is not evidence that the code passed. Hosted Ubuntu CI and local WSL2 acceptance are recorded separately. Local progress and evidence files are editable navigation data, not tamper-proof certificates. A release is not declared until the target WSL2 environment and the required course workflow have been verified.

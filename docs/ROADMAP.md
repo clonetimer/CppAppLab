@@ -18,10 +18,9 @@
 
 **Status: merged into `main`.**
 
-- CLI: `list/start/lesson/hint/check/status/next`
-- task registry and learner workspace marker
+- task registry and CLI: `list/start/lesson/hint/check/status/next`
+- learner workspace marker and no-overwrite workspace creation
 - reference and learner source separation
-- explicit-only execution; navigation commands do not execute learner code
 - fixed GCC compile + exact-output acceptance
 - source fingerprint and stale local evidence handling
 - symlink/path-traversal rejection for declared source paths
@@ -31,22 +30,39 @@ Hosted Ubuntu CI passed 15/15 tests in both ordinary and ASan/UBSan builds, plus
 
 ### P1-B — W1 multi-file Calculator
 
-**Status: implemented on `feat/p1b-calculator`; final hosted CI passed; PR pending review and merge.**
+**Status: merged into `main`.**
 
 - second registered learning task
 - separate interface, implementation, and command-line front end
 - platform-owned CMake/GoogleTest acceptance fixture
 - seven fixed arithmetic/error-path tests
-- CLI smoke checks for normal arithmetic and division by zero
-- 17/17 hosted GoogleTest cases in both ordinary and ASan/UBSan builds
-- source staging so learner-controlled build files and headers cannot replace the platform fixture
+- two CLI smoke checks for normal arithmetic and division by zero
+- source staging prevents learner build files and headers from replacing the platform fixture
+
+Hosted Ubuntu CI passed 17/17 tests in both ordinary and ASan/UBSan builds.
+
+### P1-C — persistent progress and workspace recovery
+
+**Status: implemented on `feat/p1c-progress-state`; hosted CI passed; PR preparation pending.**
+
+- external task catalog in `course/tasks.tsv`
+- validated task metadata and prerequisite ordering
+- cross-workspace prerequisite checks using current source fingerprints
+- persistent progress outside the source checkout
+- workspace registration at `start`, before the first check
+- `progress`, `resume <task-id>`, and `history <task-id>` commands
+- latest result plus bounded per-task check history
+- multiple workspaces per task; a current PASS in any workspace can satisfy a prerequisite
+- source edits, failed latest attempts, or deleted workspaces invalidate that workspace's PASS
+
+Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks.
 
 ### Remaining P1 work
 
-- prerequisite graph and cross-workspace progress
-- more complete diagnostics and task-specific acceptance runners
-- workspace recovery and evidence history
-- task catalog externalization
+- additional W1–W8 learner/reference task packs
+- richer task-specific diagnostics and feedback
+- verified offline dependency package
+- local WSL2 acceptance and first release preparation
 
 **P1 exit criteria:** a learner can start a task, read it, request hints, implement it, run fixed platform-owned checks, inspect failures, and resume without losing work. A local evidence record is navigation data, not a certificate.
 

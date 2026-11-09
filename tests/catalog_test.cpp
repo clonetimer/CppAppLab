@@ -10,6 +10,7 @@ TEST(TaskCatalogTest, ExposesFirstHelloWorldExercise) {
     EXPECT_EQ(task->order, 1U);
     EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::ExactStdout);
     EXPECT_EQ(task->source_files.size(), 1U);
+    EXPECT_TRUE(task->prerequisites.empty());
 }
 
 TEST(TaskCatalogTest, ExposesMultiFileCalculatorExercise) {
@@ -21,6 +22,8 @@ TEST(TaskCatalogTest, ExposesMultiFileCalculatorExercise) {
     EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
     EXPECT_EQ(task->source_files.size(), 3U);
     EXPECT_EQ(task->expected_unit_test_count, 7U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w1.hello-world");
 }
 
 TEST(TaskCatalogTest, UnknownTaskDoesNotResolve) {

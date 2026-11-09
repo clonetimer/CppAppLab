@@ -3,6 +3,8 @@
 #include "cppapplab/workspace.hpp"
 
 #include <cerrno>
+#include <chrono>
+#include <ctime>
 #include <cstdint>
 #include <cstdlib>
 #include <fcntl.h>
@@ -284,7 +286,7 @@ std::string serialize_progress(const ProgressRecord& record) {
                   std::filesystem::absolute(record.workspace_root).lexically_normal().string()
               ) << '\n'
            << "fingerprint=" << encode_field(record.evidence.fingerprint) << '\n'
-           << "result=" << (record.evidence.passed ? "PASS" : "FAIL") << '\n'
+           << "result=" << (!record.checked ? "STARTED" : (record.evidence.passed ? "PASS" : "FAIL")) << '\n'
            << "tests_passed=" << record.evidence.tests_passed << '\n'
            << "tests_total=" << record.evidence.tests_total << '\n'
            << "timestamp=" << encode_field(record.evidence.timestamp) << '\n';
@@ -399,11 +401,12 @@ std::optional<ProgressRecord> read_progress(std::string_view task_id) {
     }
 
     const std::string& result = required_field(fields, "result");
-    if (result != "PASS" && result != "FAIL") {
-        throw std::runtime_error("Progress result must be PASS or FAIL.");
+    if (result != "PASS" && result != "FAIL" && result != "STARTED") {
+        throw std::runtime_error("Progress result must be PASS, FAIL, or STARTED.");
     }
 
     ProgressRecord record;
+    record.checked = result != "STARTED";
     record.evidence.task_id = required_field(fields, "task_id");
     record.evidence.fingerprint = decode_field(required_field(fields, "fingerprint"));
     record.evidence.passed = result == "PASS";
@@ -412,7 +415,7 @@ std::optional<ProgressRecord> read_progress(std::string_view task_id) {
     record.evidence.timestamp = decode_field(required_field(fields, "timestamp"));
     record.workspace_root = decode_field(required_field(fields, "workspace_root"));
 
-    if (record.evidence.task_id != task_id || record.workspace_root.empty()) {
+    if (record.evidence.task_id != std::string(task_id) || record.workspace_root.empty()) {
         throw std::runtime_error("Progress record task ID or workspace path is invalid.");
     }
     return record;
@@ -439,6 +442,39 @@ std::vector<ProgressRecord> read_progress_history(std::string_view task_id) {
         }
     }
     return records;
+}
+
+void register_workspace(const std::filesystem::path& workspace_root) {
+    const Workspace workspace = open_workspace(workspace_root);
+    const std::string fingerprint =
+        source_fingerprint(*workspace.task, workspace.root);
+
+    const auto now = std::chrono::system_clock::now();
+    const std::time_t timestamp = std::chrono::system_clock::to_time_t(now);
+    std::tm utc{};
+    char formatted[32]{};
+    std::string timestamp_text = "unknown";
+    if (::gmtime_r(&timestamp, &utc) != nullptr &&
+        std::strftime(formatted, sizeof(formatted), "%Y-%m-%dT%H:%M:%SZ", &utc) != 0) {
+        timestamp_text = formatted;
+    }
+
+    Evidence evidence;
+    evidence.task_id = workspace.task->id;
+    evidence.fingerprint = fingerprint;
+    evidence.passed = false;
+    evidence.tests_passed = 0U;
+    evidence.tests_total = 0U;
+    evidence.timestamp = timestamp_text;
+
+    const ProgressRecord record{evidence, workspace.root, false};
+    const auto directory = progress_directory();
+    ensure_real_directory(directory);
+    ensure_real_directory(directory / "history");
+    atomic_write(
+        directory / (evidence.task_id + ".progress"),
+        serialize_progress(record)
+    );
 }
 
 void write_progress(
@@ -474,7 +510,7 @@ void write_progress(
         );
     }
 
-    const ProgressRecord record{evidence, workspace.root};
+    const ProgressRecord record{evidence, workspace.root, true};
     const auto directory = progress_directory();
     ensure_real_directory(directory);
     ensure_real_directory(directory / "history");
@@ -492,7 +528,7 @@ void write_progress(
 bool has_current_pass(std::string_view task_id) {
     try {
         const auto record = read_progress(task_id);
-        if (!record.has_value() || !record->evidence.passed) {
+        if (!record.has_value() || !record->checked || !record->evidence.passed) {
             return false;
         }
 

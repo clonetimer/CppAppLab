@@ -499,6 +499,9 @@ int show_progress() {
                 state = "LOCKED";
                 detail = "requires " + missing_prerequisite;
             }
+        } else if (!record->checked) {
+            state = "IN PROGRESS";
+            detail = record->workspace_root.string();
         } else if (has_current_pass(task.id)) {
             state = "PASSED";
             detail = record->evidence.timestamp;
@@ -633,6 +636,7 @@ int run_cli(int argc, char* argv[]) {
             }
 
             const Workspace workspace = create_workspace(*task, argv[3]);
+            register_workspace(workspace.root);
             std::cout << "Created learner workspace: " << workspace.root.string() << '\n'
                       << "Task: " << task->id << '\n'
                       << "Next: cppapplab lesson \"" << workspace.root.string() << "\"\n";

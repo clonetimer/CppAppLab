@@ -8,6 +8,7 @@
 #include <future>
 #include <string>
 #include <thread>
+#include <sys/socket.h>
 #include <unistd.h>
 
 using namespace std::chrono_literals;
@@ -43,7 +44,11 @@ TEST(TcpEchoLearnerTest, EchoesOneClientPayload) {
 }
 
 TEST(TcpEchoLearnerTest, SendAllAcceptsAnEmptyPayload) {
-    EXPECT_TRUE(send_all(-1, nullptr, 0U) == false);
+    int descriptors[2]{};
+    ASSERT_EQ(::socketpair(AF_UNIX, SOCK_STREAM, 0, descriptors), 0);
+    EXPECT_TRUE(send_all(descriptors[0], nullptr, 0U));
+    ::close(descriptors[0]);
+    ::close(descriptors[1]);
 }
 
 TEST(TcpEchoLearnerTest, RejectsInvalidBacklog) {

@@ -87,7 +87,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ### P2-B — W3 Task / TaskManager Refactor
 
-**Status: implementation in progress on `feat/p2-w3-task-manager`; hosted CI pending.**
+**Status: implementation complete on `feat/p2-w3-task-manager`; hosted CI passed; PR preparation pending.**
 
 - `Task` value object with validated invariants and ID-based identity/order
 - `TaskManager` uses `std::vector<std::unique_ptr<Task>>` for exclusive ownership
@@ -95,6 +95,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - non-owning lookup and ordered value snapshots
 - W2 file-format compatibility and transactional load
 - platform-owned fixture: 30 unit tests plus one multi-process CLI workflow test
+- hosted Ubuntu CI passed 32/32 root tests in GCC and ASan/UBSan; clang-format and clang-tidy-enabled checks passed
 
 ## P3 — W4: engineering quality
 

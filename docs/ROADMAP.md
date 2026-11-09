@@ -169,7 +169,8 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 **Status: W8-D1 HTTP Protocol Foundations merged into `main` via PR #12; hosted Ubuntu 24.04 CI passed.**
 
 - D1: HTTP/1.1 request/response structure, request-line parser and response serializer; 22 fixed + 10 learner tests + CLI smoke (33 total), all CI passed
-- D2: incremental request parser with NeedMoreData/Complete/Error states, CRLFCRLF header framing and Content-Length body accounting; 26 fixed + 10 learner tests + CLI smoke (37 total)
+- D2: incremental request parser with NeedMoreData/Complete/Error states, CRLFCRLF header framing and Content-Length body accounting; 26 fixed + 10 learner tests + CLI smoke (37 total), all CI passed
+- D3: HttpResponse serialization, binary static-file reads, MIME types, 400/404/405 handling and path traversal checks
 - D2: incremental request parser, headers, Content-Length and complete-message detection
 - D3: response serialization and static file serving
 

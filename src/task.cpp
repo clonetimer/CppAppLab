@@ -161,8 +161,8 @@ Task parse_task(const std::vector<std::string>& fields) {
     if (!fields[10].empty()) {
         task.acceptance_fixture = required_path(fields[10], "acceptance_fixture");
     }
-    task.expected_unit_test_count =
-        fields[11].empty() ? 0U : parse_unsigned(fields[11], "expected_unit_test_count");
+    task.expected_test_count =
+        fields[11].empty() ? 0U : parse_unsigned(fields[11], "expected_test_count");
     task.prerequisites = parse_ids(fields[12]);
 
     if (!valid_task_id(task.id) || task.title.empty() || task.week == 0U || task.order == 0U ||
@@ -172,10 +172,10 @@ Task parse_task(const std::vector<std::string>& fields) {
 
     if (task.acceptance_kind == AcceptanceKind::ExactStdout) {
         if (task.expected_stdout.empty() || !task.acceptance_fixture.empty() ||
-            task.expected_unit_test_count != 0U) {
+            task.expected_test_count != 0U) {
             throw std::runtime_error("Exact-stdout task has inconsistent acceptance metadata.");
         }
-    } else if (task.acceptance_fixture.empty() || task.expected_unit_test_count == 0U ||
+    } else if (task.acceptance_fixture.empty() || task.expected_test_count == 0U ||
                !task.expected_stdout.empty()) {
         throw std::runtime_error("CMake/GoogleTest task has inconsistent acceptance metadata.");
     }

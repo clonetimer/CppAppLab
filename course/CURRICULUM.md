@@ -33,6 +33,8 @@ The first-version language baseline is C++17. WSL2 Ubuntu 24.04 is the full acce
 
 **Work product:** a Todo CLI supporting add/list/done/remove and file persistence.
 
+**Implemented task:** `w2.todo-cli` (P2-A). The learner uses `std::vector`, standard algorithms, `std::unordered_map`, and versioned text serialization. The platform acceptance contract covers malformed input, escaped titles, file safety, and a multi-process command workflow.
+
 ## W3 — Classes and resource lifetime
 
 **Topics**

@@ -22,7 +22,7 @@ struct Task {
     AcceptanceKind acceptance_kind{AcceptanceKind::ExactStdout};
     std::string expected_stdout;
     std::filesystem::path acceptance_fixture;
-    unsigned expected_unit_test_count{};
+    unsigned expected_test_count{};
     std::vector<std::string> prerequisites;
 };
 

@@ -33,9 +33,29 @@ The P1 learning engine currently provides W1 Hello World and W1 multi-file Calcu
 ./build/cppapplab lesson "$HOME/cppapplab-work/calculator"
 ./build/cppapplab hint "$HOME/cppapplab-work/calculator" 1
 ./build/cppapplab check "$HOME/cppapplab-work/calculator"
+
+./build/cppapplab progress
+./build/cppapplab resume w1.hello-world
+./build/cppapplab history w1.hello-world
 ```
 
 The Calculator acceptance runner uses a platform-owned CMake/GoogleTest fixture. It does not trust learner-provided CMakeLists.txt or tests.
+
+## Course progress and workspace recovery
+
+- `cppapplab progress` shows task states and prerequisite locks.
+- `cppapplab resume <task-id>` reopens the most recently started workspace for that task, including before its first check.
+- `cppapplab history <task-id>` shows previous acceptance attempts.
+- A dependent task can start after its prerequisite has a current PASS in any saved workspace.
+- A PASS is current only while its workspace exists and the declared source fingerprint still matches.
+
+Progress is stored outside the repository by default:
+
+```text
+~/.local/share/cppapplab/progress/
+```
+
+Set `CPPAPPLAB_STATE_DIR` to move this state directory. The course catalog is maintained separately in `course/tasks.tsv`; it declares lesson paths, source files, acceptance type, and prerequisite relationships.
 
 ## Learning path
 
@@ -61,6 +81,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 5. **Evidence is reproducible.** A check records compiler output, toolchain metadata, source fingerprint, and exit status.
 6. **No fake portability.** POSIX and Linux networking lessons use the actual Linux APIs they teach.
 7. **CI is not human learning validation.** Green automation proves build/test behavior, not that a learner understands the code.
+8. **Progress survives sessions.** Workspace locations and check history are stored outside the source checkout; current PASS state is revalidated against the workspace source fingerprint.
 
 ## Repository status
 

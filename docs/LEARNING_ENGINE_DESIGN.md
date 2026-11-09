@@ -53,6 +53,37 @@ The calculator task is built through a platform-owned CMake fixture, not the lea
 
 The calculator task records 9 acceptance checks: seven fixed unit tests and two CLI smoke checks.
 
+## Course catalog and prerequisites
+
+Task metadata is externalized in \`course/tasks.tsv\`. Each row declares the task ID, display title, week/order, lesson and hint files, learner template, source files, acceptance type, fixed acceptance metadata, and prerequisite task IDs.
+
+The loader validates the catalog before exposing tasks: task IDs must be unique and well-formed; paths must be relative and cannot contain \`.\` or \`..\`; acceptance metadata must match its acceptance type; prerequisites must exist and appear earlier in course order.
+
+The Calculator task depends on \`w1.hello-world\`. The \`start\` command refuses to create a dependent workspace until the prerequisite has a current PASS.
+
+## Persistent progress and recovery
+
+Progress is stored outside the repository by default:
+
+\`\`\`text
+~/.local/share/cppapplab/progress/
+  w1.hello-world.progress
+  w1.calculator.progress
+  history/
+    w1.hello-world.history
+    w1.calculator.history
+\`\`\`
+
+Set \`CPPAPPLAB_STATE_DIR\` to select another state root. Starting a workspace writes a \`STARTED\` record before the learner runs a check. Each explicit check updates the latest task record and appends a history entry. History is bounded to 1 MiB per task.
+
+- \`cppapplab progress\`: show NOT STARTED, IN PROGRESS, LOCKED, PASSED, NEEDS WORK, and STALE states
+- \`cppapplab resume <task-id>\`: reopen the most recently started workspace, even before the first check
+- \`cppapplab history <task-id>\`: inspect previous check attempts
+
+The latest workspace pointer is maintained per task, while the check history retains attempts from multiple workspaces. A prerequisite can be satisfied by any workspace whose latest recorded attempt is PASS, whose workspace still exists, whose local evidence agrees, and whose current declared-source fingerprint still matches. Starting a second workspace does not erase a valid PASS in another workspace. A later FAIL in the same workspace supersedes its previous PASS.
+
+These files are local navigation state and remain editable by the user; they are not tamper-proof certificates.
+
 ## Evidence semantics
 
 The local evidence and log are navigation records, not certificates. They are user-editable files and must never be represented as tamper-proof proof of learning.

@@ -472,23 +472,43 @@ void write_progress(const std::filesystem::path& workspace_root, const Evidence&
 
 bool has_current_pass(std::string_view task_id) {
     try {
-        const auto record = read_progress(task_id);
-        if (!record.has_value() || !record->checked || !record->evidence.passed) {
-            return false;
+        std::map<std::string, ProgressRecord> latest_by_workspace;
+        for (const ProgressRecord& attempt : read_progress_history(task_id)) {
+            latest_by_workspace[attempt.workspace_root.string()] = attempt;
         }
 
-        const Workspace workspace = open_workspace(record->workspace_root);
-        if (workspace.task->id != task_id) {
-            return false;
+        const auto latest = read_progress(task_id);
+        if (latest.has_value() && latest->checked) {
+            latest_by_workspace[latest->workspace_root.string()] = *latest;
         }
 
-        const auto local_evidence = read_evidence(workspace.root);
-        if (!local_evidence.has_value() || !local_evidence->passed ||
-            local_evidence->fingerprint != record->evidence.fingerprint) {
-            return false;
-        }
+        for (const auto& item : latest_by_workspace) {
+            const ProgressRecord& record = item.second;
+            if (!record.checked || !record.evidence.passed) {
+                continue;
+            }
 
-        return source_fingerprint(*workspace.task, workspace.root) == record->evidence.fingerprint;
+            try {
+                const Workspace workspace = open_workspace(record.workspace_root);
+                if (workspace.task->id != task_id) {
+                    continue;
+                }
+
+                const auto local_evidence = read_evidence(workspace.root);
+                if (!local_evidence.has_value() || !local_evidence->passed ||
+                    local_evidence->fingerprint != record.evidence.fingerprint) {
+                    continue;
+                }
+
+                if (source_fingerprint(*workspace.task, workspace.root) ==
+                    record.evidence.fingerprint) {
+                    return true;
+                }
+            } catch (...) {
+                continue;
+            }
+        }
+        return false;
     } catch (...) {
         return false;
     }

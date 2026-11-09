@@ -126,10 +126,14 @@ TEST(ProgressTest, StartingWorkspaceRegistersRecoverableInProgressState) {
 
     EXPECT_EQ(result, 0);
     const auto saved = cppapplab::read_progress("w1.hello-world");
-    ASSERT_TRUE(saved.has_value());
-    EXPECT_FALSE(saved->checked);
-    EXPECT_FALSE(saved->evidence.passed);
-    EXPECT_TRUE(std::filesystem::is_directory(saved->workspace_root));
+    if (!saved.has_value()) {
+        FAIL() << "start did not persist a workspace progress record";
+        return;
+    }
+    const auto& saved_record = saved.value();
+    EXPECT_FALSE(saved_record.checked);
+    EXPECT_FALSE(saved_record.evidence.passed);
+    EXPECT_TRUE(std::filesystem::is_directory(saved_record.workspace_root));
     EXPECT_FALSE(cppapplab::has_current_pass("w1.hello-world"));
 }
 
@@ -140,6 +144,7 @@ TEST(ProgressTest, StartBlocksCalculatorBeforeItsPrerequisitePasses) {
     const std::vector<std::string> arguments{"cppapplab", "start", "w1.calculator",
                                              (temporary.path() / "calculator").string()};
     std::vector<char*> argv;
+    argv.reserve(arguments.size());
     for (const std::string& argument : arguments) {
         argv.push_back(const_cast<char*>(argument.c_str()));
     }
@@ -157,6 +162,7 @@ TEST(ProgressTest, ResumeFindsWorkspaceBeforeFirstCheck) {
 
     const std::vector<std::string> arguments{"cppapplab", "resume", "w1.hello-world"};
     std::vector<char*> argv;
+    argv.reserve(arguments.size());
     for (const std::string& argument : arguments) {
         argv.push_back(const_cast<char*>(argument.c_str()));
     }
@@ -193,8 +199,11 @@ TEST(ProgressTest, StartAllowsCalculatorAfterPrerequisitePasses) {
         std::filesystem::is_regular_file(temporary.path() / "calculator" / ".cppapplab-workspace"));
 
     const auto calculator_progress = cppapplab::read_progress("w1.calculator");
-    ASSERT_TRUE(calculator_progress.has_value());
-    EXPECT_FALSE(calculator_progress->checked);
+    if (!calculator_progress.has_value()) {
+        FAIL() << "calculator start did not persist its workspace";
+        return;
+    }
+    EXPECT_FALSE(calculator_progress.value().checked);
 }
 
 TEST(ProgressTest, PersistsCurrentPassAndWorkspaceForResume) {
@@ -206,15 +215,40 @@ TEST(ProgressTest, PersistsCurrentPassAndWorkspaceForResume) {
     const auto evidence = save_result(workspace, true);
 
     const auto saved = cppapplab::read_progress("w1.hello-world");
-    ASSERT_TRUE(saved.has_value());
-    EXPECT_EQ(saved->workspace_root, workspace.root);
-    EXPECT_EQ(saved->evidence.fingerprint, evidence.fingerprint);
-    EXPECT_TRUE(saved->evidence.passed);
+    if (!saved.has_value()) {
+        FAIL() << "check did not persist course progress";
+        return;
+    }
+    const auto& saved_record = saved.value();
+    EXPECT_EQ(saved_record.workspace_root, workspace.root);
+    EXPECT_EQ(saved_record.evidence.fingerprint, evidence.fingerprint);
+    EXPECT_TRUE(saved_record.evidence.passed);
     EXPECT_TRUE(cppapplab::has_current_pass("w1.hello-world"));
 
     const auto history = cppapplab::read_progress_history("w1.hello-world");
     ASSERT_EQ(history.size(), 1U);
     EXPECT_TRUE(history.front().evidence.passed);
+}
+
+TEST(ProgressTest, PassInOneWorkspaceSurvivesStartingAnotherWorkspace) {
+    TemporaryDirectory temporary;
+    ScopedStateDirectory state(temporary.path() / "state");
+    const auto first_workspace = create_hello_workspace(temporary.path() / "first");
+
+    write_hello_source(first_workspace.root);
+    (void)save_result(first_workspace, true);
+    ASSERT_TRUE(cppapplab::has_current_pass("w1.hello-world"));
+
+    const cppapplab::Task* hello_task = cppapplab::find_task("w1.hello-world");
+    ASSERT_NE(hello_task, nullptr);
+    const auto second_workspace =
+        cppapplab::create_workspace(*hello_task, temporary.path() / "second" / "hello");
+    cppapplab::register_workspace(second_workspace.root);
+
+    EXPECT_TRUE(cppapplab::has_current_pass("w1.hello-world"));
+    const cppapplab::Task* calculator = cppapplab::find_task("w1.calculator");
+    ASSERT_NE(calculator, nullptr);
+    EXPECT_TRUE(cppapplab::prerequisites_satisfied(*calculator));
 }
 
 TEST(ProgressTest, SourceChangesInvalidatePreviouslySavedPass) {
@@ -272,8 +306,11 @@ TEST(ProgressTest, KeepsMultipleAttemptsAndUsesLatestResult) {
     (void)save_result(workspace, false);
 
     const auto latest = cppapplab::read_progress("w1.hello-world");
-    ASSERT_TRUE(latest.has_value());
-    EXPECT_FALSE(latest->evidence.passed);
+    if (!latest.has_value()) {
+        FAIL() << "latest check result was not persisted";
+        return;
+    }
+    EXPECT_FALSE(latest.value().evidence.passed);
     EXPECT_FALSE(cppapplab::has_current_pass("w1.hello-world"));
 
     const auto history = cppapplab::read_progress_history("w1.hello-world");

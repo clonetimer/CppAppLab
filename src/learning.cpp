@@ -499,12 +499,14 @@ int show_progress() {
                 state = "LOCKED";
                 detail = "requires " + missing_prerequisite;
             }
+        } else if (has_current_pass(task.id)) {
+            state = "PASSED";
+            detail = record->checked
+                         ? record->evidence.timestamp
+                         : "another workspace has a current PASS";
         } else if (!record->checked) {
             state = "IN PROGRESS";
             detail = record->workspace_root.string();
-        } else if (has_current_pass(task.id)) {
-            state = "PASSED";
-            detail = record->evidence.timestamp;
         } else if (record->evidence.passed) {
             state = "STALE";
             detail = "source changed or saved workspace is unavailable";

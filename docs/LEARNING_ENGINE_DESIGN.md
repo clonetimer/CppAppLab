@@ -4,7 +4,7 @@
 
 The available task sequence begins with W1 Hello World and continues to the W1 multi-file Calculator:
 
-\`\`\`text
+```text
 list
   -> start
   -> lesson
@@ -13,9 +13,9 @@ list
   -> check
   -> status
   -> next
-\`\`\`
+```
 
-Only explicit \`check\` compiles and executes learner code. \`list\`, \`lesson\`, \`hint\`, \`status\`, and \`next\` are navigation/read-only operations.
+Only explicit `check` compiles and executes learner code. `list`, `lesson`, `hint`, `status`, and `next` are navigation/read-only operations.
 
 ## Workspace boundary
 
@@ -24,18 +24,18 @@ Only explicit \`check\` compiles and executes learner code. \`list\`, \`lesson\`
 - The destination directory is reserved before copying; an existing destination is never overwritten.
 - Template symlinks and unsupported file types are rejected.
 - The workspace marker identifies the task and platform version.
-- Build output and local check records are stored under \`.cppapplab/\` inside the learner workspace.
+- Build output and local check records are stored under `.cppapplab/` inside the learner workspace.
 
 ## W1 Hello World check contract
 
-- source file: \`src/main.cpp\`
-- compiler: GCC with \`-std=c++17 -Wall -Wextra -Wpedantic -Werror\`
+- source file: `src/main.cpp`
+- compiler: GCC with `-std=c++17 -Wall -Wextra -Wpedantic -Werror`
 - maximum compile time: 30 seconds
 - maximum program time: 5 seconds
 - combined stdout/stderr capture is bounded
-- stdin is redirected from \`/dev/null\`
+- stdin is redirected from `/dev/null`
 - timeout kills the process group
-- expected stdout: exactly \`Hello, CppAppLab!\\n\`
+- expected stdout: exactly `Hello, CppAppLab!\n`
 - process exit code: 0
 
 ## W1 Calculator check contract
@@ -43,8 +43,8 @@ Only explicit \`check\` compiles and executes learner code. \`list\`, \`lesson\`
 The calculator task is built through a platform-owned CMake fixture, not the learner's CMakeLists.txt.
 
 - learner source files are fingerprinted before and after checking
-- only declared \`.cpp\` implementation files are staged into a controlled build directory
-- the fixture supplies its own fixed \`calculator.hpp\` interface
+- only declared `.cpp` implementation files are staged into a controlled build directory
+- the fixture supplies its own fixed `calculator.hpp` interface
 - the fixture builds the learner library and CLI with C++17 and warnings-as-errors
 - seven platform-owned GoogleTest cases cover four operations, division by zero, and negative/zero operands
 - two CLI smoke checks cover a normal calculation and division by zero
@@ -63,7 +63,7 @@ A passing check proves only that the declared source, at that moment, compiled a
 
 ## Execution boundary
 
-The process runner uses direct \`execvp\` argument vectors (no shell interpolation), captures stdout/stderr, redirects stdin from \`/dev/null\`, enforces a time limit, bounds captured output, and kills the process group on timeout. This is operational control, not a hostile-code sandbox. Learner programs still run with the learner's operating-system permissions.
+The process runner uses direct `execvp` argument vectors (no shell interpolation), captures stdout/stderr, redirects stdin from `/dev/null`, enforces a time limit, bounds captured output, and kills the process group on timeout. This is operational control, not a hostile-code sandbox. Learner programs still run with the learner's operating-system permissions.
 
 ## Next vertical slice
 

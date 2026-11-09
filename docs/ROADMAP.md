@@ -2,7 +2,7 @@
 
 ## P0 — Foundation
 
-**Status: merged into \`main\`.**
+**Status: merged into `main`.**
 
 - Repository layout and engineering conventions
 - WSL2 + Ubuntu 24.04 + GCC + CMake + GDB environment contract
@@ -18,7 +18,7 @@ P0 PR #1 passed hosted Ubuntu CI and was merged. Local WSL2 verification remains
 
 **Current increment: P1-A, W1 Hello World vertical slice. Implemented on the feature branch; PR #2 is pending merge.**
 
-- CLI commands: \`list\`, \`start\`, \`lesson\`, \`hint\`, \`check\`, \`status\`, \`next\`
+- CLI commands: `list`, `start`, `lesson`, `hint`, `check`, `status`, `next`
 - Course/task registry and learner workspace marker
 - Reference and learner source separation
 - Explicit-only execution; navigation commands do not execute learner code

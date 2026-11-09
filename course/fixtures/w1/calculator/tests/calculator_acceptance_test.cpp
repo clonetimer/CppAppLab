@@ -48,3 +48,12 @@ TEST(CalculatorAcceptanceTest, HandlesZeroAndNegativeOperands) {
     EXPECT_EQ(result.error, cppapplab::calculator::Error::None);
     EXPECT_DOUBLE_EQ(result.value, -2.5);
 }
+
+TEST(CalculatorAcceptanceTest, RejectsAnInvalidOperationValue) {
+    const auto invalid_operation =
+        static_cast<cppapplab::calculator::Operation>(99);
+    const auto result =
+        cppapplab::calculator::calculate(invalid_operation, 1.0, 2.0);
+
+    EXPECT_EQ(result.error, cppapplab::calculator::Error::InvalidOperation);
+}

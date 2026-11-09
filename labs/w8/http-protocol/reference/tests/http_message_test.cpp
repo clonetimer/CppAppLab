@@ -45,7 +45,7 @@ TEST(HttpProtocolReferenceTest, PreservesExistingHeadersAndBody) {
 TEST(HttpProtocolReferenceTest, SerializesDefaultStatusLine) {
     const HttpResponse response;
     const std::string wire = serialize_response(response);
-    EXPECT_TRUE(wire.starts_with("HTTP/1.1 200 OK\r\n"));
+    EXPECT_EQ(wire.rfind("HTTP/1.1 200 OK\r\n", 0U), 0U);
 }
 
 TEST(HttpProtocolReferenceTest, ComputesContentLengthFromBodyBytes) {

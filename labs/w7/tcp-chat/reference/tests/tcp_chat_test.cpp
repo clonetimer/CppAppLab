@@ -40,7 +40,9 @@ class TestServer {
             runner_.join();
         }
     }
-    [[nodiscard]] std::uint16_t port() const noexcept { return server_.port(); }
+    [[nodiscard]] std::uint16_t port() const noexcept {
+        return server_.port();
+    }
 
    private:
     net::ChatServer server_;

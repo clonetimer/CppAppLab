@@ -32,30 +32,42 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 The detailed course map and acceptance boundaries live in [course/CURRICULUM.md](course/CURRICULUM.md).
 
+## Current learning engine
+
+The first usable vertical slice is W1 Hello World. Build the platform, then use:
+
+```bash
+./build/cppapplab list
+./build/cppapplab start w1.hello-world "$HOME/cppapplab-work/hello-world"
+./build/cppapplab lesson "$HOME/cppapplab-work/hello-world"
+./build/cppapplab hint "$HOME/cppapplab-work/hello-world" 1
+./build/cppapplab check "$HOME/cppapplab-work/hello-world"
+./build/cppapplab status "$HOME/cppapplab-work/hello-world"
+```
+
+The learning engine design and its evidence boundaries are in [docs/LEARNING_ENGINE_DESIGN.md](docs/LEARNING_ENGINE_DESIGN.md). The W1 Calculator task is the next implementation increment, not yet available.
+
 ## Project principles
 
 1. **Real programs before isolated syntax drills.** Each concept is introduced in the context of a working program.
 2. **Reference and learner work are separate.** Reference solutions are not used as learner submissions.
 3. **Fixed acceptance contracts.** Platform-owned tests validate behavior; learner tests and build files are not treated as the authority for acceptance.
 4. **Hints do not replace implementation.** Learners can request progressive hints, implement the task, and rerun checks.
-5. **Evidence is reproducible.** A pass is tied to the current source fingerprint, build configuration, test result, and toolchain.
+5. **Evidence is reproducible.** A check records compiler output, toolchain metadata, source fingerprint, and exit status.
 6. **No fake portability.** POSIX and Linux networking lessons use the actual Linux APIs they teach.
 7. **CI is not human learning validation.** Green automation proves build/test behavior, not that a learner understands the code.
 
 ## Repository status
 
-The repository is being bootstrapped. P0 establishes the project boundary, course map, build/test baseline, and WSL2 environment check. Learning-engine features and course labs are added in later milestones.
-
-See:
+The repository is in P1 learning-engine development. See:
 - [Architecture](docs/ARCHITECTURE.md)
+- [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Development and acceptance](docs/DEVELOPMENT.md)
 - [Environment setup](docs/ENVIRONMENT_WSL2_UBUNTU.md)
 - [Project status](docs/STATUS.md)
 
 ## Quick start
-
-The detailed, verified setup steps are in [the WSL2 environment guide](docs/ENVIRONMENT_WSL2_UBUNTU.md). Once the toolchain is installed:
 
 ```bash
 git clone https://github.com/clonetimer/CppAppLab.git

@@ -4,28 +4,28 @@
 
 From the repository root in Ubuntu:
 
-\`\`\`bash
+```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ./build/cppapplab --help
-\`\`\`
+```
 
-If GoogleTest is installed from Ubuntu packages, configure with \`-DCPPAPPLAB_FETCH_GTEST=OFF\`. Otherwise CMake can fetch the pinned GoogleTest source when network access is available.
+If GoogleTest is installed from Ubuntu packages, configure with `-DCPPAPPLAB_FETCH_GTEST=OFF`. Otherwise CMake can fetch the pinned GoogleTest source when network access is available.
 
 ## Sanitizer build
 
-\`\`\`bash
+```bash
 cmake -S . -B build-sanitize \\
   -DCMAKE_BUILD_TYPE=Debug \\
   -DCPPAPPLAB_ENABLE_SANITIZERS=ON
 cmake --build build-sanitize --parallel
 ctest --test-dir build-sanitize --output-on-failure
-\`\`\`
+```
 
 ## Quality checks
 
-\`\`\`bash
+```bash
 find include src tests -type f \\( -name '*.cpp' -o -name '*.hpp' \\) -print0 \\
   | xargs -0 clang-format --dry-run --Werror
 
@@ -34,12 +34,12 @@ cmake -S . -B build-quality \\
   -DCPPAPPLAB_ENABLE_CLANG_TIDY=ON
 cmake --build build-quality --parallel
 ctest --test-dir build-quality --output-on-failure
-\`\`\`
+```
 
 ## Contribution workflow
 
-1. Inspect current \`main\`, open issues, and active pull requests.
-2. Create a focused feature branch from the current \`main\`.
+1. Inspect current `main`, open issues, and active pull requests.
+2. Create a focused feature branch from the current `main`.
 3. Make one coherent change; keep learner-facing material and platform code clearly separated.
 4. Run configure, build, CTest, relevant sanitizer checks, formatting, and static analysis.
 5. Record exact commands, toolchain versions, test counts, and known limitations.

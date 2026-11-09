@@ -25,11 +25,11 @@ The first-version language baseline is C++17. WSL2 Ubuntu 24.04 is the full acce
 
 **Topics**
 
-- \`std::string\` and \`std::string_view\`
-- \`std::vector\`, \`std::array\`, iterators and range-for
-- \`std::map\`, \`std::unordered_map\`, \`std::set\`
+- `std::string` and `std::string_view`
+- `std::vector`, `std::array`, iterators and range-for
+- `std::map`, `std::unordered_map`, `std::set`
 - standard algorithms and lambdas
-- \`std::fstream\`, file errors, serialization and deserialization
+- `std::fstream`, file errors, serialization and deserialization
 
 **Work product:** a Todo CLI supporting add/list/done/remove and file persistence.
 
@@ -37,14 +37,14 @@ The first-version language baseline is C++17. WSL2 Ubuntu 24.04 is the full acce
 
 **Topics**
 
-- \`struct\` / \`class\`, access control, constructors and destructors
+- `struct` / `class`, access control, constructors and destructors
 - RAII, stack and heap lifetime
-- \`unique_ptr\`, \`shared_ptr\`, \`weak_ptr\`
+- `unique_ptr`, `shared_ptr`, `weak_ptr`
 - copy constructor/assignment and move constructor/assignment
 - operator overloads
 - encapsulation and ownership boundaries
 
-**Work product:** refactor Todo into \`Task\` and \`TaskManager\`, with explicit resource ownership.
+**Work product:** refactor Todo into `Task` and `TaskManager`, with explicit resource ownership.
 
 ## W4 — Testing and maintainable C++
 
@@ -63,11 +63,11 @@ The first-version language baseline is C++17. WSL2 Ubuntu 24.04 is the full acce
 
 **Topics**
 
-- POSIX file descriptors and \`open/read/write/close\`
-- process creation and lifecycle: \`fork/exec/wait\`
-- \`std::thread\`, join and detach
-- \`std::mutex\`, \`lock_guard\`, \`unique_lock\`
-- \`std::condition_variable\`
+- POSIX file descriptors and `open/read/write/close`
+- process creation and lifecycle: `fork/exec/wait`
+- `std::thread`, join and detach
+- `std::mutex`, `lock_guard`, `unique_lock`
+- `std::condition_variable`
 - producer/consumer model and thread-safe queue
 
 **Work product:** a thread-safe queue and producer/consumer demonstration using real Linux process/file interfaces where specified.
@@ -77,10 +77,10 @@ The first-version language baseline is C++17. WSL2 Ubuntu 24.04 is the full acce
 **Topics**
 
 - task queue and worker threads
-- \`std::future\`, \`std::promise\`, \`std::packaged_task\`
+- `std::future`, `std::promise`, `std::packaged_task`
 - generic submit, variadic templates and perfect forwarding
 - exception propagation, shutdown semantics and rejecting new work
-- \`std::atomic\` and memory-order fundamentals
+- `std::atomic` and memory-order fundamentals
 - concurrency tests, logging and benchmarking
 
 **Work product:** a reusable thread pool with defined submission, exception, and shutdown behavior.
@@ -91,8 +91,8 @@ The first-version language baseline is C++17. WSL2 Ubuntu 24.04 is the full acce
 
 - TCP/IP layers and Linux socket API
 - blocking TCP server
-- nonblocking sockets and \`EAGAIN/EWOULDBLOCK\`
-- \`select\`, \`poll\`, and \`epoll\`
+- nonblocking sockets and `EAGAIN/EWOULDBLOCK`
+- `select`, `poll`, and `epoll`
 - multiple clients, connection lifecycle, framing and error handling
 
 **Work product:** a multi-client TCP chat server.

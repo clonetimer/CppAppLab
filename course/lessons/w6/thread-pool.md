@@ -66,7 +66,7 @@ Run:
 ./build/cppapplab check "/absolute/path/to/your/thread-pool-workspace"
 ```
 
-The fixed fixture runs 22 platform-owned tests, ten learner tests and one CLI smoke test: 33 checks total.
+The fixed fixture runs 23 platform-owned tests, ten learner tests and one CLI smoke test: 34 checks total.
 
 Coverage includes argument validation, void/value returns, move-only inputs, exception propagation, multiple workers, exactly-once task execution, backpressure, queue draining, concurrent shutdown callers, submit/shutdown races, and destructor joining.
 
@@ -91,4 +91,4 @@ Coverage includes argument validation, void/value returns, move-only inputs, exc
 - [ ] Concurrent shutdown callers wait until all workers are joined.
 - [ ] submit racing shutdown results in accepted-and-completed or rejected work, never silent loss.
 - [ ] Destructor joins all workers.
-- [ ] All 33 fixed checks pass.
+- [ ] All 34 fixed checks pass.

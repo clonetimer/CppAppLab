@@ -13,13 +13,12 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace {
 
 class TemporaryDirectory {
-   public:
+public:
     TemporaryDirectory() {
         const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
         path_ = std::filesystem::temp_directory_path() /
@@ -36,18 +35,20 @@ class TemporaryDirectory {
         return path_;
     }
 
-   private:
+private:
     std::filesystem::path path_;
 };
 
 class ScopedEnvironment {
-   public:
-    ScopedEnvironment(std::string name, std::string value) : name_(std::move(name)) {
+public:
+    ScopedEnvironment(const char* name, const std::filesystem::path& value)
+        : name_(name) {
         if (const char* previous = std::getenv(name_.c_str())) {
             previous_ = previous;
             had_previous_ = true;
         }
-        if (::setenv(name_.c_str(), value.c_str(), 1) != 0) {
+        const std::string value_string = value.string();
+        if (::setenv(name_.c_str(), value_string.c_str(), 1) != 0) {
             throw std::runtime_error("Cannot set test environment variable.");
         }
     }
@@ -60,14 +61,14 @@ class ScopedEnvironment {
         }
     }
 
-   private:
+private:
     std::string name_;
     std::string previous_;
     bool had_previous_{false};
 };
 
 class StdoutCapture {
-   public:
+public:
     StdoutCapture() : previous_(std::cout.rdbuf(stream_.rdbuf())) {}
 
     ~StdoutCapture() {
@@ -78,9 +79,14 @@ class StdoutCapture {
         return stream_.str();
     }
 
-   private:
+private:
     std::ostringstream stream_;
     std::streambuf* previous_;
+};
+
+struct CheckOutcome {
+    int exit_code{};
+    std::string output;
 };
 
 int invoke(const std::vector<std::string>& arguments) {
@@ -104,6 +110,42 @@ void write_file(const std::filesystem::path& path, const std::string& content) {
     }
 }
 
+void copy_reference_sources(const std::filesystem::path& workspace_root) {
+    const auto reference_root =
+        cppapplab::data_root() / "labs/w3/task-manager/reference/src";
+    for (const char* source : {"task.cpp", "task_manager.cpp", "main.cpp"}) {
+        std::filesystem::copy_file(
+            reference_root / source,
+            workspace_root / "src" / source,
+            std::filesystem::copy_options::overwrite_existing
+        );
+    }
+}
+
+CheckOutcome run_platform_check(const std::filesystem::path& workspace_root) {
+    CheckOutcome outcome;
+    {
+        StdoutCapture capture;
+        outcome.exit_code = invoke({"cppapplab", "check", workspace_root.string()});
+        outcome.output = capture.str();
+    }
+
+    if (outcome.exit_code != 0) {
+        std::ifstream log_file(
+            workspace_root / ".cppapplab/last-check.log",
+            std::ios::binary
+        );
+        if (log_file) {
+            outcome.output += "\n--- acceptance log ---\n";
+            outcome.output.append(
+                std::istreambuf_iterator<char>(log_file),
+                std::istreambuf_iterator<char>()
+            );
+        }
+    }
+    return outcome;
+}
+
 }  // namespace
 
 TEST(TaskManagerWorkflowTest, FixedFixtureChecksRefactorAndPreservesCliPersistence) {
@@ -111,44 +153,35 @@ TEST(TaskManagerWorkflowTest, FixedFixtureChecksRefactorAndPreservesCliPersisten
     ASSERT_NE(task, nullptr);
 
     TemporaryDirectory temporary;
-    ScopedEnvironment state_directory("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+    ScopedEnvironment state_directory(
+        "CPPAPPLAB_STATE_DIR",
+        temporary.path() / "state"
+    );
+    const auto workspace =
+        cppapplab::create_workspace(*task, temporary.path() / "task-manager");
 
-    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "task-manager");
-    const auto reference_root = cppapplab::data_root() / "labs/w3/task-manager/reference/src";
-    for (const char* source : {"task.cpp", "task_manager.cpp", "main.cpp"}) {
-        std::filesystem::copy_file(reference_root / source, workspace.root / "src" / source,
-                                   std::filesystem::copy_options::overwrite_existing);
-    }
+    copy_reference_sources(workspace.root);
 
     // The platform must use its fixed fixture, not learner-controlled CMake files.
-    write_file(workspace.root / "CMakeLists.txt",
-               "message(FATAL_ERROR \"Learner CMakeLists must not be executed by platform "
-               "acceptance\")\n");
+    write_file(
+        workspace.root / "CMakeLists.txt",
+        "message(FATAL_ERROR \"Learner CMakeLists must not be executed by platform acceptance\")\n"
+    );
 
-    int check_result = -1;
-    std::string check_output;
-    {
-        StdoutCapture capture;
-        check_result = invoke({"cppapplab", "check", workspace.root.string()});
-        check_output = capture.str();
-    }
+    const CheckOutcome outcome = run_platform_check(workspace.root);
 
-    if (check_result != 0) {
-        std::ifstream log_file(workspace.root / ".cppapplab/last-check.log", std::ios::binary);
-        if (log_file) {
-            check_output += "\n--- acceptance log ---\n";
-            check_output.append(std::istreambuf_iterator<char>(log_file),
-                                std::istreambuf_iterator<char>());
-        }
-    }
-
-    EXPECT_EQ(check_result, 0) << check_output;
-    EXPECT_NE(check_output.find("Result: PASS"), std::string::npos);
-    EXPECT_NE(check_output.find("Acceptance: 31/31"), std::string::npos);
+    EXPECT_EQ(outcome.exit_code, 0) << outcome.output;
+    EXPECT_NE(outcome.output.find("Result: PASS"), std::string::npos);
+    EXPECT_NE(outcome.output.find("Acceptance: 31/31"), std::string::npos);
 
     const auto evidence = cppapplab::read_evidence(workspace.root);
-    ASSERT_TRUE(evidence.has_value());
-    EXPECT_TRUE(evidence->passed);
-    EXPECT_EQ(evidence->tests_passed, 31U);
-    EXPECT_EQ(evidence->tests_total, 31U);
+    if (!evidence.has_value()) {
+        FAIL() << "Platform check did not write acceptance evidence.";
+        return;
+    }
+
+    const auto& record = evidence.value();
+    EXPECT_TRUE(record.passed);
+    EXPECT_EQ(record.tests_passed, 31U);
+    EXPECT_EQ(record.tests_total, 31U);
 }

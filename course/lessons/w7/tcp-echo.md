@@ -57,7 +57,7 @@ ctest --test-dir build --output-on-failure
 
 ## What the platform checks
 
-The fixed fixture runs 20 platform-owned behavior tests, ten learner tests and one CLI smoke test: 31 checks total.
+The fixed fixture runs 21 platform-owned behavior tests, ten learner tests and one CLI smoke test: 32 checks total.
 
 Coverage includes socket setup, invalid addresses/backlog, ephemeral ports, loopback connection, byte-for-byte echo, binary payloads, large payloads, split writes, peer shutdown, and complete send behavior. The platform uses its own CMake fixture and declaration header; learner build files and tests are not the acceptance authority.
 
@@ -80,4 +80,4 @@ Coverage includes socket setup, invalid addresses/backlog, ephemeral ports, loop
 - [ ] Peer write shutdown ends the echo session cleanly.
 - [ ] Partial sends and EINTR are handled.
 - [ ] Descriptors are closed on all normal paths.
-- [ ] All 31 fixed checks pass.
+- [ ] All 32 fixed checks pass.

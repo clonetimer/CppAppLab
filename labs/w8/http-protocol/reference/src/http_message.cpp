@@ -42,9 +42,9 @@ constexpr std::string_view kHeaderPunctuation = "!#$%&'*+-.^_`|~";
 
 void validate_header_value(std::string_view value) {
     for (const unsigned char character : value) {
-        if (character == '\r' || character == '\n' ||
-            (character < 0x20U && character != '\t') ||
-            character == 0x7fU) {
+        const bool line_break = character == '\r' || character == '\n';
+        const bool control = character < 0x20U && character != '\t';
+        if (line_break || control || character == 0x7fU) {
             throw std::invalid_argument("HTTP header value contains a forbidden control byte");
         }
     }

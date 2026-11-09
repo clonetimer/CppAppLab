@@ -471,10 +471,27 @@ int show_next(const std::filesystem::path& workspace_path) {
         return 1;
     }
 
-    std::cout
-        << "Current task has a recorded PASS: " << workspace.task->id << "\n"
-        << "Next planned work product: W1 Calculator (not yet available as a learner task).\n"
-        << "This is learning navigation only; local evidence is not a completion certificate.\n";
+    const Task* next_task = nullptr;
+    bool found_current = false;
+    for (const Task& candidate : task_catalog()) {
+        if (found_current) {
+            next_task = &candidate;
+            break;
+        }
+        if (candidate.id == workspace.task->id) {
+            found_current = true;
+        }
+    }
+
+    std::cout << "Current task has a recorded PASS: " << workspace.task->id << "\n";
+    if (next_task != nullptr) {
+        std::cout << "Next available task: " << next_task->id << " · " << next_task->title << "\n"
+                  << "Start it with: cppapplab start " << next_task->id
+                  << " <new-workspace-directory>\n";
+    } else {
+        std::cout << "No later task is available yet; continue with the next planned course work.\n";
+    }
+    std::cout << "This is learning navigation only; local evidence is not a completion certificate.\n";
     return 0;
 }
 

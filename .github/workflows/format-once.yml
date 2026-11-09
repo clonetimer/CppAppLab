@@ -1,0 +1,32 @@
+name: One-time W4 C++ formatter
+
+on:
+  push:
+    branches:
+      - feat/p3-w4-quality-gate
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+      - name: Format W4 C++ files
+        run: |
+          find tests labs/w4 course/fixtures/w4 -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
+            | xargs -0 clang-format -i
+      - name: Commit formatted files
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add tests labs/w4 course/fixtures/w4
+            git commit -m "style: format W4 quality-gate sources and tests"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi

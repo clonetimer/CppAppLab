@@ -87,6 +87,38 @@ TEST(StaticFileHandlerReferenceTest, SelectsJsonMimeType) {
     EXPECT_EQ(response.headers.at("Content-Type"), "application/json");
 }
 
+TEST(StaticFileHandlerReferenceTest, SelectsPngMimeType) {
+    TemporaryDocumentRoot root;
+    root.write("pixel.png", "png-bytes");
+    const auto response =
+        StaticFileHandler(root.path()).handle(make_request("GET", "/pixel.png"));
+    EXPECT_EQ(response.headers.at("Content-Type"), "image/png");
+}
+
+TEST(StaticFileHandlerReferenceTest, SelectsJpegMimeType) {
+    TemporaryDocumentRoot root;
+    root.write("photo.jpeg", "jpeg-bytes");
+    const auto response =
+        StaticFileHandler(root.path()).handle(make_request("GET", "/photo.jpeg"));
+    EXPECT_EQ(response.headers.at("Content-Type"), "image/jpeg");
+}
+
+TEST(StaticFileHandlerReferenceTest, SelectsSvgMimeType) {
+    TemporaryDocumentRoot root;
+    root.write("icon.svg", "<svg/>");
+    const auto response =
+        StaticFileHandler(root.path()).handle(make_request("GET", "/icon.svg"));
+    EXPECT_EQ(response.headers.at("Content-Type"), "image/svg+xml");
+}
+
+TEST(StaticFileHandlerReferenceTest, UsesBinaryMimeTypeForUnknownExtension) {
+    TemporaryDocumentRoot root;
+    root.write("payload.bin", "bytes");
+    const auto response =
+        StaticFileHandler(root.path()).handle(make_request("GET", "/payload.bin"));
+    EXPECT_EQ(response.headers.at("Content-Type"), "application/octet-stream");
+}
+
 TEST(StaticFileHandlerReferenceTest, ReturnsNotFoundForMissingFile) {
     TemporaryDocumentRoot root;
     const auto response =
@@ -115,6 +147,15 @@ TEST(StaticFileHandlerReferenceTest, RemovesQueryBeforeFileLookup) {
     root.write("hello.txt", "hello");
     const auto response =
         StaticFileHandler(root.path()).handle(make_request("GET", "/hello.txt?x=1"));
+    EXPECT_EQ(response.status_code, 200);
+    EXPECT_EQ(response.body, "hello");
+}
+
+TEST(StaticFileHandlerReferenceTest, QueryTextDoesNotAffectPathTraversalCheck) {
+    TemporaryDocumentRoot root;
+    root.write("hello.txt", "hello");
+    const auto response =
+        StaticFileHandler(root.path()).handle(make_request("GET", "/hello.txt?next=.."));
     EXPECT_EQ(response.status_code, 200);
     EXPECT_EQ(response.body, "hello");
 }

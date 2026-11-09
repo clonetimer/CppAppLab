@@ -112,7 +112,7 @@ Hosted Ubuntu 24.04 CI on final PR head `88d43e8425467e5f4b7cb0d181c625aa6619947
 ## P3-C — W6 Thread Pool and Futures
 
 **Branch:** `feat/p3-w6-thread-pool`  
-**Status:** implementation and acceptance-harness correction committed; hosted CI pending.
+**Status:** merged into `main` via PR #9.
 
 - fixed-size worker pool built on the W5 bounded queue
 - templated submit with move-aware callable/argument storage and std::future results
@@ -123,10 +123,10 @@ Hosted Ubuntu 24.04 CI on final PR head `88d43e8425467e5f4b7cb0d181c625aa6619947
 - 23 platform-owned tests, 10 learner tests and one CLI smoke test (34 total)
 - W6 depends on a current W5 system-lab PASS
 
+Hosted Ubuntu 24.04 CI on final PR head `0b9a453c1ab21e62ad81723ecb4618bce17a045f` passed: GCC build and tests, ASan/UBSan, clang-format, clang-tidy-enabled build/tests, CLI smoke, environment acceptance, and the 34-case W6 fixed fixture. Local Windows 11 + WSL2 acceptance remains separate.
+
 ## Remaining work
 
-- complete W6 hosted GCC, ASan/UBSan, clang-format, and clang-tidy CI
-- merge W6 after final-head acceptance passes
 - additional W1–W8 learner/reference task packs
 - richer task-specific diagnostics and feedback
 - verified offline dependency package

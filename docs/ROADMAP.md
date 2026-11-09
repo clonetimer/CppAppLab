@@ -161,7 +161,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - final level-triggered epoll chat server with single-owner connection state
 - nickname protocol, message broadcast and newline framing
 - bounded input/output buffers, slow-client handling and eventfd stop wakeup
-- acceptance: 25 platform tests + 10 learner tests + CLI smoke (36 total)
+- acceptance: 26 platform tests + 10 learner tests + CLI smoke (37 total)
 - prerequisite: current PASS for W7-A TCP Echo
 
 ## P6 — W8: HTTP server engineering

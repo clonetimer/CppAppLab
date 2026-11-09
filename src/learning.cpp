@@ -45,10 +45,10 @@ std::string read_lesson_file(
         throw std::runtime_error("Cannot open course material: " + path.string());
     }
 
-    std::string content(
+    std::string content{
         std::istreambuf_iterator<char>(input),
         std::istreambuf_iterator<char>()
-    );
+    };
     if (!input.eof() && input.fail()) {
         throw std::runtime_error("Failed while reading course material.");
     }

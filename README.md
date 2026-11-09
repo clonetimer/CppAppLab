@@ -100,7 +100,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-The repository is in P2 C++ foundations development; W3 Task / TaskManager is merged into main. See:
+W1–W5 are merged into `main`; W6 Thread Pool and Futures is the active development milestone. No release has been declared. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)

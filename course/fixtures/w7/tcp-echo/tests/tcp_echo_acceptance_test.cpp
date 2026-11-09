@@ -81,7 +81,7 @@ TEST(TcpEchoAcceptanceTest, RejectsMalformedBindAddress) {
 }
 
 TEST(TcpEchoAcceptanceTest, RejectsMalformedClientAddress) {
-    EXPECT_THROW(connect_tcp("not-an-ip", 8080U), std::invalid_argument);
+    EXPECT_THROW((void)connect_tcp("not-an-ip", 8080U), std::invalid_argument);
 }
 
 TEST(TcpEchoAcceptanceTest, RejectsNegativeSendDescriptor) {

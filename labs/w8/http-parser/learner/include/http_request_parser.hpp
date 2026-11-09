@@ -8,11 +8,7 @@
 
 namespace cppapplab::http {
 
-enum class ParseStatus {
-    NeedMoreData,
-    Complete,
-    Error
-};
+enum class ParseStatus { NeedMoreData, Complete, Error };
 
 struct ParseResult {
     ParseStatus status{ParseStatus::NeedMoreData};

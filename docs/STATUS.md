@@ -1,6 +1,6 @@
 # Project Status
 
-**Current milestone:** P4-A — W7 TCP Echo Server and Client  
+**Current milestone:** P4-B — W7 Multi-client TCP Chat Server  
 **Release status:** no release has been declared.
 
 ## Merged P0 foundation
@@ -128,7 +128,7 @@ Hosted Ubuntu 24.04 CI on final PR head `0b9a453c1ab21e62ad81723ecb4618bce17a045
 ## P4-A — W7 TCP Echo Server and Client
 
 **Branch:** `feat/p4-w7-tcp-networking`  
-**Status:** implementation in progress; hosted CI pending.
+**Status:** merged into `main` via PR #10.
 
 - IPv4 TCP listener and client using Linux socket APIs
 - blocking accept/recv/echo loop and complete send handling
@@ -136,6 +136,19 @@ Hosted Ubuntu 24.04 CI on final PR head `0b9a453c1ab21e62ad81723ecb4618bce17a045
 - learner/reference separation and platform-owned acceptance fixture
 - 20 platform-owned tests, 10 learner tests and one CLI smoke test (31 total)
 - W7-A depends on a current W6 Thread Pool PASS
+
+Hosted Ubuntu 24.04 CI on final PR head `c20c60665d891edd54106779f99e84fbc3f58127` passed: GCC build/tests, ASan/UBSan, clang-format, clang-tidy-enabled build/tests, CLI smoke and environment acceptance. The W7-A fixture passed 21/21 platform tests, 10/10 learner tests and the CLI smoke test. Local Windows 11 + WSL2 acceptance remains separate.
+
+## P4-B — W7 Multi-client TCP Chat Server
+
+**Branch:** `feat/p4-w7-epoll-chat`  
+**Status:** next development stage.
+
+- thread-per-connection server to expose connection lifecycle and ownership
+- non-blocking sockets and EAGAIN/EWOULDBLOCK handling
+- select/poll progression, then epoll event loop
+- per-client input framing and output buffering for partial I/O
+- final multi-client chat server with bounded input, disconnect handling and tests
 
 ## Remaining work
 

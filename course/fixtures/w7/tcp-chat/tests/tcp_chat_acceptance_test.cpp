@@ -309,7 +309,7 @@ TEST(TcpChatAcceptanceTest, EnforcesMaximumClientCount) {
     Client first(server.port());
     register_nickname(first, "first");
     Client second(server.port());
-    EXPECT_EQ(second.read_line(), "ERR server full\\n");
+    EXPECT_EQ(second.read_line(), "ERR server full\n");
 }
 TEST(TcpChatAcceptanceTest, DisconnectsClientWhenPendingOutputLimitIsExceeded) {
     net::ChatServerConfig config;

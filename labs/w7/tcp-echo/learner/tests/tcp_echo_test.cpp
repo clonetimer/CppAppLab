@@ -62,7 +62,7 @@ TEST(TcpEchoLearnerTest, RejectsInvalidIPv4Address) {
 }
 
 TEST(TcpEchoLearnerTest, ClientRejectsInvalidIPv4Address) {
-    EXPECT_THROW(connect_tcp("not-an-ip", 8080U), std::invalid_argument);
+    EXPECT_THROW((void)connect_tcp("not-an-ip", 8080U), std::invalid_argument);
 }
 
 TEST(TcpEchoLearnerTest, ServerReportsBoundPort) {

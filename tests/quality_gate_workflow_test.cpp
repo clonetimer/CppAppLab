@@ -115,11 +115,9 @@ void copy_reference_sources(const std::filesystem::path& workspace_root) {
         std::filesystem::copy_file(reference_root / source, workspace_root / "src" / source,
                                    std::filesystem::copy_options::overwrite_existing);
     }
-    std::filesystem::copy_file(
-        reference_root / "task_manager_test.cpp",
-        workspace_root / "tests/task_manager_test.cpp",
-        std::filesystem::copy_options::overwrite_existing
-    );
+    std::filesystem::copy_file(reference_root / "task_manager_test.cpp",
+                               workspace_root / "tests/task_manager_test.cpp",
+                               std::filesystem::copy_options::overwrite_existing);
 }
 
 CheckOutcome run_platform_check(const std::filesystem::path& workspace_root) {

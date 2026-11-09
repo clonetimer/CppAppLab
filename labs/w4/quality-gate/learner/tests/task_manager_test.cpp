@@ -12,7 +12,7 @@
 namespace {
 
 class TemporaryDirectory {
-public:
+   public:
     TemporaryDirectory() {
         const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
         path_ = std::filesystem::temp_directory_path() /
@@ -29,7 +29,7 @@ public:
         return path_;
     }
 
-private:
+   private:
     std::filesystem::path path_;
 };
 
@@ -86,11 +86,9 @@ TEST(TaskManagerLearnerTest, SnapshotReturnsOrderedCopies) {
 TEST(TaskManagerLearnerTest, PersistencePreservesW2FormatAndRejectsMalformedData) {
     TemporaryDirectory temporary;
     const auto path = temporary.path() / "w2-todos.tsv";
-    write_file(
-        path,
-        "CPPAPPLAB_TODO_V1\n"
-        "1\t0\tcreated by W2\n"
-    );
+    write_file(path,
+               "CPPAPPLAB_TODO_V1\n"
+               "1\t0\tcreated by W2\n");
 
     FAIL() << "TODO(W4-TEST-10): test W2 compatibility and transactional load failure.";
 }

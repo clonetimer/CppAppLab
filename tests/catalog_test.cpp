@@ -52,7 +52,6 @@ TEST(TaskCatalogTest, ExposesTaskManagerRefactorExercise) {
     EXPECT_EQ(task->prerequisites.front(), "w2.todo-cli");
 }
 
-
 TEST(TaskCatalogTest, ExposesTaskManagerQualityGateExercise) {
     const cppapplab::Task* task = cppapplab::find_task("w4.quality-gate");
 

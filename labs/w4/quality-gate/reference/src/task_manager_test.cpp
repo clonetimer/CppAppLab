@@ -15,7 +15,7 @@
 namespace {
 
 class TemporaryDirectory {
-public:
+   public:
     TemporaryDirectory() {
         const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
         path_ = std::filesystem::temp_directory_path() /
@@ -32,7 +32,7 @@ public:
         return path_;
     }
 
-private:
+   private:
     std::filesystem::path path_;
 };
 
@@ -184,12 +184,10 @@ TEST(TaskManagerLearnerTest, PersistencePreservesW2FormatAndRejectsMalformedData
     EXPECT_TRUE(loaded.find(3U)->completed());
 
     const auto malformed = temporary.path() / "malformed.tsv";
-    write_file(
-        malformed,
-        "CPPAPPLAB_TODO_V1\n"
-        "7\t0\tvalid first row\n"
-        "not-a-valid-record\n"
-    );
+    write_file(malformed,
+               "CPPAPPLAB_TODO_V1\n"
+               "7\t0\tvalid first row\n"
+               "not-a-valid-record\n");
     const auto result = loaded.load(malformed);
 
     EXPECT_EQ(result.error, cppapplab::tasks::Error::InvalidFormat);

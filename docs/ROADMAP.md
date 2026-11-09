@@ -31,7 +31,7 @@ Hosted Ubuntu CI passed 15/15 tests in both ordinary and ASan/UBSan builds, plus
 
 ### P1-B — W1 multi-file Calculator
 
-**Status: implementation in progress on `feat/p1b-calculator`.**
+**Status: implemented on `feat/p1b-calculator`; final hosted CI passed; PR pending review and merge.**
 
 - second registered learning task
 - separate interface, implementation, and command-line front end

@@ -476,8 +476,8 @@ int show_next(const std::filesystem::path& workspace_path) {
             return 0;
         }
 
-        std::cout << "Next task is locked: " << candidate.id
-                  << " requires a current PASS for " << missing_prerequisite << ".\n";
+        std::cout << "Next task is locked: " << candidate.id << " requires a current PASS for "
+                  << missing_prerequisite << ".\n";
     }
 
     std::cout << "No later task is currently available.\n";
@@ -541,7 +541,8 @@ int resume_task(std::string_view task_id) {
     } catch (const std::exception& error) {
         std::cout << "Saved workspace is unavailable: " << record->workspace_root.string() << '\n'
                   << "Reason: " << error.what() << '\n'
-                  << "Create a new workspace with cppapplab start if the original was moved or deleted.\n";
+                  << "Create a new workspace with cppapplab start if the original was moved or "
+                     "deleted.\n";
         return 2;
     }
 }
@@ -555,15 +556,14 @@ int show_history(std::string_view task_id) {
 
     std::cout << "Check history: " << task_id << '\n';
     for (const ProgressRecord& record : records) {
-        std::cout << record.evidence.timestamp << "  "
-                  << (record.evidence.passed ? "PASS" : "FAIL") << "  "
-                  << record.evidence.tests_passed << '/' << record.evidence.tests_total << '\n'
+        std::cout << record.evidence.timestamp << "  " << (record.evidence.passed ? "PASS" : "FAIL")
+                  << "  " << record.evidence.tests_passed << '/' << record.evidence.tests_total
+                  << '\n'
                   << "  Workspace: " << record.workspace_root.string() << '\n'
                   << "  Fingerprint: " << record.evidence.fingerprint << '\n';
     }
     return 0;
 }
-
 
 void print_help() {
     std::cout << usage();
@@ -629,10 +629,8 @@ int run_cli(int argc, char* argv[]) {
 
             std::string missing_prerequisite;
             if (!prerequisites_satisfied(*task, &missing_prerequisite)) {
-                throw std::invalid_argument(
-                    "Task is locked: complete " + missing_prerequisite +
-                    " and pass its current acceptance check first."
-                );
+                throw std::invalid_argument("Task is locked: complete " + missing_prerequisite +
+                                            " and pass its current acceptance check first.");
             }
 
             const Workspace workspace = create_workspace(*task, argv[3]);

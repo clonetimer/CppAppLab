@@ -27,10 +27,9 @@ bool valid_task_id(std::string_view task_id) {
         return false;
     }
     for (const char character : task_id) {
-        const bool valid =
-            (character >= 'a' && character <= 'z') ||
-            (character >= '0' && character <= '9') ||
-            character == '.' || character == '-' || character == '_';
+        const bool valid = (character >= 'a' && character <= 'z') ||
+                           (character >= '0' && character <= '9') || character == '.' ||
+                           character == '-' || character == '_';
         if (!valid) {
             return false;
         }
@@ -127,10 +126,7 @@ std::string unescape_value(const std::string& value) {
     return result;
 }
 
-std::filesystem::path required_path(
-    const std::string& value,
-    const std::string& field
-) {
+std::filesystem::path required_path(const std::string& value, const std::string& field) {
     const auto paths = parse_paths(value);
     if (paths.size() != 1U) {
         throw std::runtime_error("Task catalog requires exactly one path for field: " + field);
@@ -165,13 +161,12 @@ Task parse_task(const std::vector<std::string>& fields) {
     if (!fields[10].empty()) {
         task.acceptance_fixture = required_path(fields[10], "acceptance_fixture");
     }
-    task.expected_unit_test_count = fields[11].empty()
-                                        ? 0U
-                                        : parse_unsigned(fields[11], "expected_unit_test_count");
+    task.expected_unit_test_count =
+        fields[11].empty() ? 0U : parse_unsigned(fields[11], "expected_unit_test_count");
     task.prerequisites = parse_ids(fields[12]);
 
-    if (!valid_task_id(task.id) || task.title.empty() ||
-        task.week == 0U || task.order == 0U || task.source_files.empty()) {
+    if (!valid_task_id(task.id) || task.title.empty() || task.week == 0U || task.order == 0U ||
+        task.source_files.empty()) {
         throw std::runtime_error("Task catalog row is missing or contains invalid task metadata.");
     }
 
@@ -192,11 +187,9 @@ std::vector<Task> load_catalog() {
     const auto path = data_root() / "course" / "tasks.tsv";
     std::error_code error;
     const auto status = std::filesystem::symlink_status(path, error);
-    if (error || !std::filesystem::is_regular_file(status) ||
-        std::filesystem::is_symlink(status)) {
-        throw std::runtime_error(
-            "Task catalog must be a regular non-symlink file: " + path.string()
-        );
+    if (error || !std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
+        throw std::runtime_error("Task catalog must be a regular non-symlink file: " +
+                                 path.string());
     }
 
     if (std::filesystem::file_size(path) > kMaxCatalogBytes) {
@@ -244,15 +237,12 @@ std::vector<Task> load_catalog() {
     for (const Task& task : tasks) {
         for (const std::string& prerequisite : task.prerequisites) {
             if (task_ids.find(prerequisite) == task_ids.end()) {
-                throw std::runtime_error(
-                    "Task prerequisite does not exist: " + task.id + " -> " + prerequisite
-                );
+                throw std::runtime_error("Task prerequisite does not exist: " + task.id + " -> " +
+                                         prerequisite);
             }
             if (seen.find(prerequisite) == seen.end()) {
-                throw std::runtime_error(
-                    "Task prerequisite must appear earlier in course order: " +
-                    task.id + " -> " + prerequisite
-                );
+                throw std::runtime_error("Task prerequisite must appear earlier in course order: " +
+                                         task.id + " -> " + prerequisite);
             }
         }
         seen.insert(task.id);

@@ -21,21 +21,14 @@ struct ProgressRecord {
 
 [[nodiscard]] std::vector<ProgressRecord> read_progress_history(std::string_view task_id);
 
-void register_workspace(
-    const std::filesystem::path& workspace_root
-);
+void register_workspace(const std::filesystem::path& workspace_root);
 
-void write_progress(
-    const std::filesystem::path& workspace_root,
-    const Evidence& evidence
-);
+void write_progress(const std::filesystem::path& workspace_root, const Evidence& evidence);
 
 [[nodiscard]] bool has_current_pass(std::string_view task_id);
 
-[[nodiscard]] bool prerequisites_satisfied(
-    const Task& task,
-    std::string* missing_prerequisite = nullptr
-);
+[[nodiscard]] bool prerequisites_satisfied(const Task& task,
+                                           std::string* missing_prerequisite = nullptr);
 
 [[nodiscard]] std::filesystem::path progress_directory();
 

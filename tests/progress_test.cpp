@@ -20,7 +20,7 @@
 namespace {
 
 class TemporaryDirectory {
-public:
+   public:
     TemporaryDirectory() {
         const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
         path_ = std::filesystem::temp_directory_path() /
@@ -37,12 +37,12 @@ public:
         return path_;
     }
 
-private:
+   private:
     std::filesystem::path path_;
 };
 
 class ScopedStateDirectory {
-public:
+   public:
     explicit ScopedStateDirectory(const std::filesystem::path& path) {
         if (const char* previous = std::getenv("CPPAPPLAB_STATE_DIR")) {
             previous_ = previous;
@@ -61,19 +61,13 @@ public:
         }
     }
 
-private:
+   private:
     std::string previous_;
     bool had_previous_{false};
 };
 
-void write_hello_source(
-    const std::filesystem::path& workspace,
-    const std::string& suffix = ""
-) {
-    std::ofstream output(
-        workspace / "src/main.cpp",
-        std::ios::binary | std::ios::trunc
-    );
+void write_hello_source(const std::filesystem::path& workspace, const std::string& suffix = "") {
+    std::ofstream output(workspace / "src/main.cpp", std::ios::binary | std::ios::trunc);
     if (!output) {
         throw std::runtime_error("Cannot open learner source.");
     }
@@ -89,9 +83,7 @@ void write_hello_source(
     }
 }
 
-cppapplab::Workspace create_hello_workspace(
-    const std::filesystem::path& parent
-) {
+cppapplab::Workspace create_hello_workspace(const std::filesystem::path& parent) {
     const cppapplab::Task* task = cppapplab::find_task("w1.hello-world");
     if (task == nullptr) {
         throw std::runtime_error("Hello World task is missing from the catalog.");
@@ -99,14 +91,10 @@ cppapplab::Workspace create_hello_workspace(
     return cppapplab::create_workspace(*task, parent / "hello");
 }
 
-cppapplab::Evidence save_result(
-    const cppapplab::Workspace& workspace,
-    bool passed
-) {
+cppapplab::Evidence save_result(const cppapplab::Workspace& workspace, bool passed) {
     cppapplab::Evidence evidence;
     evidence.task_id = workspace.task->id;
-    evidence.fingerprint =
-        cppapplab::source_fingerprint(*workspace.task, workspace.root);
+    evidence.fingerprint = cppapplab::source_fingerprint(*workspace.task, workspace.root);
     evidence.passed = passed;
     evidence.tests_passed = passed ? 1U : 0U;
     evidence.tests_total = 1U;
@@ -123,12 +111,8 @@ TEST(ProgressTest, StartingWorkspaceRegistersRecoverableInProgressState) {
     TemporaryDirectory temporary;
     ScopedStateDirectory state(temporary.path() / "state");
 
-    const std::vector<std::string> arguments{
-        "cppapplab",
-        "start",
-        "w1.hello-world",
-        (temporary.path() / "hello-started").string()
-    };
+    const std::vector<std::string> arguments{"cppapplab", "start", "w1.hello-world",
+                                             (temporary.path() / "hello-started").string()};
     std::vector<char*> argv;
     for (const std::string& argument : arguments) {
         argv.push_back(const_cast<char*>(argument.c_str()));
@@ -152,12 +136,8 @@ TEST(ProgressTest, StartBlocksCalculatorBeforeItsPrerequisitePasses) {
     TemporaryDirectory temporary;
     ScopedStateDirectory state(temporary.path() / "state");
 
-    const std::vector<std::string> arguments{
-        "cppapplab",
-        "start",
-        "w1.calculator",
-        (temporary.path() / "calculator").string()
-    };
+    const std::vector<std::string> arguments{"cppapplab", "start", "w1.calculator",
+                                             (temporary.path() / "calculator").string()};
     std::vector<char*> argv;
     for (const std::string& argument : arguments) {
         argv.push_back(const_cast<char*>(argument.c_str()));
@@ -174,11 +154,7 @@ TEST(ProgressTest, ResumeFindsWorkspaceBeforeFirstCheck) {
     const auto workspace = create_hello_workspace(temporary.path());
     cppapplab::register_workspace(workspace.root);
 
-    const std::vector<std::string> arguments{
-        "cppapplab",
-        "resume",
-        "w1.hello-world"
-    };
+    const std::vector<std::string> arguments{"cppapplab", "resume", "w1.hello-world"};
     std::vector<char*> argv;
     for (const std::string& argument : arguments) {
         argv.push_back(const_cast<char*>(argument.c_str()));

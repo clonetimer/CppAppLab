@@ -167,13 +167,15 @@ Hosted Ubuntu 24.04 CI on final PR head `c20c60665d891edd54106779f99e84fbc3f5812
 ## P5-A — W8 HTTP Protocol Foundations
 
 **Branch:** `feat/p5-w8-http-protocol`  
-**Status:** next implementation stage.
+**Status:** W8-D1 implementation and fixed acceptance fixture added; hosted CI pending.
 
 - HTTP/1.1 request and response message structure
 - request-line parsing: method, target and version
 - response serialization with byte-accurate Content-Length
 - status line, headers and CRLF framing
 - W8-D1 protocol foundation precedes the incremental request parser in W8-D2
+- 22 platform-owned tests, 10 learner tests and one CLI smoke test (33 total)
+- W8-D1 depends on a current W7-B TCP chat PASS
 
 ## Remaining work
 

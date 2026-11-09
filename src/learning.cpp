@@ -217,7 +217,11 @@ std::filesystem::path stage_declared_cpp_sources(const Task& task,
 
     std::size_t staged_count = 0;
     for (const auto& relative_path : task.source_files) {
-        if (relative_path.extension() != ".cpp") {
+        // Stage declared implementation and interface files only. In particular,
+        // W6's templated submit() must compile from the learner's own header.
+        // Platform-owned dependencies such as W5 BoundedQueue are deliberately
+        // omitted from the W6 task catalog and remain supplied by the fixture.
+        if (relative_path.extension() != ".cpp" && relative_path.extension() != ".hpp") {
             continue;
         }
 

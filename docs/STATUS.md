@@ -45,7 +45,7 @@ Hosted Ubuntu 24.04 CI passed 15/15 tests in both ordinary GCC and ASan/UBSan bu
 - seven platform-owned unit tests plus two CLI smoke checks
 - learner-provided CMakeLists.txt and tests are not the acceptance authority
 
-The latest hosted Ubuntu 24.04 workflow on commit `ed2aa17a7ec530c164d78a6450418befc92bd473` passed 17/17 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks.
+The latest hosted Ubuntu 24.04 workflow on commit `f0343cd9b7e0e61a39e14553fe4841d9eebb3e11` passed 17/17 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks. The environment checker reported zero failures; its single WSL2 warning is expected on the GitHub-hosted non-WSL runner.
 
 ## Not yet implemented
 

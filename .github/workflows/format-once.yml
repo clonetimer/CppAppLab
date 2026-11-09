@@ -1,0 +1,31 @@
+name: One-time W3 test formatter
+
+on:
+  push:
+    branches:
+      - feat/p2-w3-task-manager
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+      - name: Format workflow test
+        run: clang-format -i tests/task_manager_workflow_test.cpp
+      - name: Commit formatted test
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add tests/task_manager_workflow_test.cpp
+            git commit -m "style: format TaskManager workflow test"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi

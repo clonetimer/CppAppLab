@@ -3,8 +3,8 @@
 #include <charconv>
 #include <cctype>
 #include <limits>
-#include <sstream>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace cppapplab::http {
@@ -12,15 +12,38 @@ namespace {
 
 constexpr std::size_t kMaxHeaderSize = 16U * 1024U;
 constexpr std::size_t kMaxBodySize = 1024U * 1024U;
+constexpr std::string_view kTokenPunctuation = "!#$%&'*+-.^_`|~";
 
-[[nodiscard]] std::string trim(std::string_view value) {
+[[nodiscard]] bool is_token_character(unsigned char character) {
+    const bool alpha_numeric = (character >= 'a' && character <= 'z') ||
+                               (character >= 'A' && character <= 'Z') ||
+                               (character >= '0' && character <= '9');
+    return alpha_numeric ||
+           kTokenPunctuation.find(static_cast<char>(character)) != std::string_view::npos;
+}
+
+[[nodiscard]] bool valid_method(std::string_view method) {
+    return !method.empty() &&
+           std::all_of(method.begin(), method.end(), [](unsigned char character) {
+               return is_token_character(character);
+           });
+}
+
+[[nodiscard]] bool valid_target(std::string_view target) {
+    return !target.empty() &&
+           std::all_of(target.begin(), target.end(), [](unsigned char character) {
+               return character > 0x20U && character < 0x7fU;
+           });
+}
+
+[[nodiscard]] std::string trim_ows(std::string_view value) {
     std::size_t begin = 0U;
-    while (begin < value.size() && std::isspace(static_cast<unsigned char>(value[begin])) != 0) {
+    while (begin < value.size() && (value[begin] == ' ' || value[begin] == '\t')) {
         ++begin;
     }
 
     std::size_t end = value.size();
-    while (end > begin && std::isspace(static_cast<unsigned char>(value[end - 1U])) != 0) {
+    while (end > begin && (value[end - 1U] == ' ' || value[end - 1U] == '\t')) {
         --end;
     }
     return std::string(value.substr(begin, end - begin));
@@ -39,25 +62,43 @@ constexpr std::size_t kMaxBodySize = 1024U * 1024U;
     return result;
 }
 
+[[nodiscard]] bool valid_field_value(std::string_view value) {
+    return std::all_of(value.begin(), value.end(), [](unsigned char character) {
+        return character == '\t' || character == ' ' ||
+               (character >= 0x21U && character <= 0x7eU) || character >= 0x80U;
+    });
+}
+
 [[nodiscard]] bool parse_request_line_fields(std::string_view line, HttpRequest& request) {
-    std::istringstream input{std::string(line)};
-    std::string method;
-    std::string target;
-    std::string version;
-    std::string extra;
-    if (!(input >> method >> target >> version) || (input >> extra)) {
+    const std::size_t first_space = line.find(' ');
+    if (first_space == std::string_view::npos || first_space == 0U) {
         return false;
     }
-    if (method.empty() || target.empty()) {
+    const std::size_t second_space = line.find(' ', first_space + 1U);
+    if (second_space == std::string_view::npos || second_space == first_space + 1U ||
+        second_space + 1U >= line.size()) {
+        return false;
+    }
+    if (line.find(' ', second_space + 1U) != std::string_view::npos ||
+        line.find('\t') != std::string_view::npos) {
+        return false;
+    }
+
+    const std::string_view method = line.substr(0U, first_space);
+    const std::string_view target =
+        line.substr(first_space + 1U, second_space - first_space - 1U);
+    const std::string_view version = line.substr(second_space + 1U);
+
+    if (!valid_method(method) || !valid_target(target)) {
         return false;
     }
     if (version != "HTTP/1.1" && version != "HTTP/1.0") {
         return false;
     }
 
-    request.method = std::move(method);
-    request.target = std::move(target);
-    request.version = std::move(version);
+    request.method = std::string(method);
+    request.target = std::string(target);
+    request.version = std::string(version);
     return true;
 }
 
@@ -67,9 +108,21 @@ constexpr std::size_t kMaxBodySize = 1024U * 1024U;
         return false;
     }
 
-    std::string name = to_lower(trim(line.substr(0U, colon)));
-    std::string value = trim(line.substr(colon + 1U));
-    if (name.empty() || request.headers.find(name) != request.headers.end()) {
+    const std::string_view raw_name = line.substr(0U, colon);
+    if (!std::all_of(raw_name.begin(), raw_name.end(), [](unsigned char character) {
+            return is_token_character(character);
+        })) {
+        return false;
+    }
+
+    const std::string_view raw_value = line.substr(colon + 1U);
+    if (!valid_field_value(raw_value)) {
+        return false;
+    }
+
+    std::string name = to_lower(raw_name);
+    std::string value = trim_ows(raw_value);
+    if (request.headers.find(name) != request.headers.end()) {
         return false;
     }
 
@@ -137,10 +190,7 @@ ParseResult HttpRequestParser::parse(std::string_view buffer) const {
         }
 
         const std::string_view line = buffer.substr(position, line_end - position);
-        if (line.empty()) {
-            return make_error("unexpected empty header", std::move(result.request));
-        }
-        if (!parse_header_line(line, result.request)) {
+        if (line.empty() || !parse_header_line(line, result.request)) {
             return make_error("invalid or duplicate header", std::move(result.request));
         }
         position = line_end + 2U;

@@ -123,6 +123,7 @@ if(BUILD_TESTING)
         tests/catalog_test.cpp
         tests/process_test.cpp
         tests/workspace_test.cpp
+        tests/learning_workflow_test.cpp
     )
     target_link_libraries(cppapplab_tests PRIVATE cppapplab_core GTest::gtest_main)
 

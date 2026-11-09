@@ -1,5 +1,6 @@
 #include "http_request_parser.hpp"
 
+#include <algorithm>
 #include <charconv>
 #include <cctype>
 #include <limits>

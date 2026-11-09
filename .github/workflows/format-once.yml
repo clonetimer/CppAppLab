@@ -1,7 +1,9 @@
 name: One-time C++ formatter
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - feat/p2-w2-todo-cli
 
 permissions:
   contents: write

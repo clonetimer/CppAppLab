@@ -6,37 +6,37 @@ This is the complete acceptance environment for CppAppLab v1.
 
 Open PowerShell:
 
-\`\`\`powershell
+```powershell
 wsl --status
 wsl -l -v
-\`\`\`
+```
 
-The Ubuntu distribution must show \`VERSION 2\`. If it shows version 1, convert it from an elevated or normal PowerShell session as appropriate:
+The Ubuntu distribution must show `VERSION 2`. If it shows version 1, convert it from an elevated or normal PowerShell session as appropriate:
 
-\`\`\`powershell
+```powershell
 wsl --set-version Ubuntu 2
-\`\`\`
+```
 
 Start Ubuntu:
 
-\`\`\`powershell
+```powershell
 wsl -d Ubuntu
-\`\`\`
+```
 
 ## 2. Verify Ubuntu
 
 Inside Ubuntu:
 
-\`\`\`bash
+```bash
 cat /etc/os-release
 uname -r
-\`\`\`
+```
 
 The target distribution is Ubuntu 24.04 LTS and the kernel should identify the WSL2 environment.
 
 ## 3. Install the toolchain
 
-\`\`\`bash
+```bash
 sudo apt update
 sudo apt install -y \\
   build-essential \\
@@ -46,66 +46,66 @@ sudo apt install -y \\
   clang-format \\
   clang-tidy \\
   libgtest-dev
-\`\`\`
+```
 
 The required compiler is GCC/g++. The course baseline is C++17. CMake must be at least 3.18.
 
 ## 4. Verify tool versions
 
-\`\`\`bash
+```bash
 g++ --version
 cmake --version
 git --version
 gdb --version
 clang-format --version
 clang-tidy --version
-\`\`\`
+```
 
 ## 5. Run the environment checker
 
 From a CppAppLab checkout:
 
-\`\`\`bash
+```bash
 bash scripts/check_environment.sh
-\`\`\`
+```
 
 For a strict WSL2 check:
 
-\`\`\`bash
+```bash
 bash scripts/check_environment.sh --strict-wsl
-\`\`\`
+```
 
-The checker compiles and runs a small C++17 program and asks GDB to stop at \`main\`. It also checks the distribution and required tools.
+The checker compiles and runs a small C++17 program and asks GDB to stop at `main`. It also checks the distribution and required tools.
 
 ## 6. Build CppAppLab
 
-\`\`\`bash
+```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCPPAPPLAB_FETCH_GTEST=OFF
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ./build/cppapplab --version
 ./build/cppapplab --help
-\`\`\`
+```
 
-If the system GoogleTest package is unavailable, omit \`-DCPPAPPLAB_FETCH_GTEST=OFF\` and allow CMake to fetch the pinned dependency. The first fetch requires network access.
+If the system GoogleTest package is unavailable, omit `-DCPPAPPLAB_FETCH_GTEST=OFF` and allow CMake to fetch the pinned dependency. The first fetch requires network access.
 
 ## 7. VS Code
 
 Install VS Code on Windows and the WSL extension. From the Ubuntu project directory run:
 
-\`\`\`bash
+```bash
 code .
-\`\`\`
+```
 
-The VS Code status bar should indicate a WSL: Ubuntu remote session. Keep active C++ work in the Linux filesystem (for example, \`~/work/CppAppLab\`) rather than under \`/mnt/c\` unless Windows-file interoperability is specifically needed.
+The VS Code status bar should indicate a WSL: Ubuntu remote session. Keep active C++ work in the Linux filesystem (for example, `~/work/CppAppLab`) rather than under `/mnt/c` unless Windows-file interoperability is specifically needed.
 
 ## 8. Environment acceptance checklist
 
 - [ ] PowerShell reports Ubuntu distribution version 2.
 - [ ] Ubuntu reports version 24.04.
-- [ ] \`g++\`, \`cmake\`, \`git\`, and \`gdb\` are available.
+- [ ] `g++`, `cmake`, `git`, and `gdb` are available.
 - [ ] The environment checker passes.
 - [ ] CMake configure and build pass.
 - [ ] CTest passes.
-- [ ] GDB can break at \`main\`.
+- [ ] GDB can break at `main`.
 - [ ] VS Code opens the project in WSL: Ubuntu.

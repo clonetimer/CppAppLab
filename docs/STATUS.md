@@ -150,6 +150,20 @@ Hosted Ubuntu 24.04 CI on final PR head `c20c60665d891edd54106779f99e84fbc3f5812
 - per-client input framing and output buffering for partial I/O
 - final multi-client chat server with bounded input, disconnect handling and tests
 
+## P4-B — W7 Multi-client TCP Chat Server
+
+**Branch:** `feat/p4-w7-epoll-chat`  
+**Status:** implementation and fixed acceptance fixture added; hosted CI pending.
+
+- Linux non-blocking IPv4 listener and level-triggered epoll event loop
+- single-thread ownership of client state
+- nickname registration and newline-delimited chat commands
+- fragmented/coalesced input parsing and per-client output buffering
+- bounded client count, line length and pending output
+- eventfd stop wakeup and deterministic event-loop cleanup
+- 26 platform-owned tests, 10 learner tests and one CLI smoke test (37 total)
+- W7-B depends on a current W7-A TCP Echo PASS
+
 ## Remaining work
 
 - additional W1–W8 learner/reference task packs

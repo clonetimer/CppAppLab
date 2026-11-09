@@ -113,8 +113,8 @@ The first-version language baseline is C++17. WSL2 Ubuntu 24.04 is the full acce
 - multi-client chat protocol, input limits and disconnect handling
 
 **Work products:**
-1. `w7.tcp-echo` — blocking TCP echo server/client, complete writes and RAII descriptor ownership. This task is implemented first and depends on W6.
-2. `w7.tcp-chat` — a multi-client Linux `epoll` chat server with non-blocking sockets, connection state, nickname registration, newline framing, buffered partial writes and graceful disconnects. This task follows the echo exercise and is the W7 completion target.
+1. `w7.tcp-echo` — blocking TCP echo server/client, complete writes and RAII descriptor ownership. This task depends on W6 and is merged into `main`.
+2. `w7.tcp-chat` — a multi-client Linux `epoll` chat server with non-blocking sockets, connection state, nickname registration, newline framing, buffered partial writes and graceful disconnects. This is the W7 completion target and depends on a current W7-A PASS.
 
 ## W8 — HTTP server engineering
 

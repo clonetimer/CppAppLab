@@ -153,6 +153,17 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - final work product: multi-client TCP chat with connection state, newline framing, read/write buffers and input limits
 - W7-A acceptance: 21 fixed tests + 10 learner tests + CLI smoke (32 total); hosted GCC, ASan/UBSan, clang-format and clang-tidy CI passed
 
+### P5-B — W7 Multi-client TCP Chat with epoll
+
+**Status: implementation in progress on `feat/p4-w7-epoll-chat`; hosted CI pending.**
+
+- thread-per-connection, non-blocking I/O, select/poll and epoll comparison
+- final level-triggered epoll chat server with single-owner connection state
+- nickname protocol, message broadcast and newline framing
+- bounded input/output buffers, slow-client handling and eventfd stop wakeup
+- acceptance: 26 platform tests + 10 learner tests + CLI smoke (37 total)
+- prerequisite: current PASS for W7-A TCP Echo
+
 ## P6 — W8: HTTP server engineering
 
 - TCP/IP and Linux socket API

@@ -2,7 +2,7 @@
 
 ## P0 — Foundation
 
-**Goal:** establish a reproducible project baseline and freeze the first-version boundary.
+**Status: merged into \`main\`.**
 
 - Repository layout and engineering conventions
 - WSL2 + Ubuntu 24.04 + GCC + CMake + GDB environment contract
@@ -12,11 +12,11 @@
 - GitHub Actions build, test, sanitizer, and quality jobs
 - Course map and learning/acceptance contract
 
-**Exit criteria:** clean configure/build/test on the target environment; CI green; architecture and curriculum boundaries documented.
+P0 PR #1 passed hosted Ubuntu CI and was merged. Local WSL2 verification remains separate.
 
 ## P1 — Learning engine
 
-**Current increment: P1-A, W1 Hello World vertical slice.**
+**Current increment: P1-A, W1 Hello World vertical slice. Implemented on the feature branch; PR #2 is pending merge.**
 
 - CLI commands: \`list\`, \`start\`, \`lesson\`, \`hint\`, \`check\`, \`status\`, \`next\`
 - Course/task registry and learner workspace marker
@@ -24,14 +24,18 @@
 - Explicit-only execution; navigation commands do not execute learner code
 - Fixed GCC compile + exact-output acceptance for the first task
 - Source fingerprint and stale local evidence handling
-- Process timeout, output cap, and process-group termination
+- Symlink/path-traversal rejection for declared learner source paths
+- Process timeout, output cap, stdin isolation, and process-group termination
+- 15/15 GoogleTest cases in both ordinary and ASan/UBSan builds
+- clang-format and clang-tidy checks passed
 
 **Remaining P1 work:**
-- Multi-file W1 Calculator task and platform-owned CMake/GoogleTest fixture
-- Prerequisite graph and cross-workspace progress
-- More complete diagnostics and task-specific acceptance runners
-- Workspace recovery and evidence history
-- Task catalog externalization
+
+- P1-B: multi-file W1 Calculator task and platform-owned CMake/GoogleTest fixture
+- prerequisite graph and cross-workspace progress
+- more complete diagnostics and task-specific acceptance runners
+- workspace recovery and evidence history
+- task catalog externalization
 
 **P1 exit criteria:** a learner can start a task, read it, request hints, implement it, run fixed platform-owned checks, inspect failures, and resume without losing work. A local evidence record is navigation data, not a certificate.
 
@@ -77,4 +81,4 @@
 - version tag and release notes
 - known limitations and evidence archive
 
-The roadmap is intentionally outcome-based. Additional lessons are added only when they improve a demonstrated learning or engineering outcome.
+The roadmap is outcome-based. Additional lessons are added only when they improve a demonstrated learning or engineering outcome.

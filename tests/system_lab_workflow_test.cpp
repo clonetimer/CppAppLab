@@ -97,7 +97,9 @@ TEST(SystemLabWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImplementat
     std::string diagnostic;
     if (result != 0) {
         std::ifstream log(workspace.root / ".cppapplab/last-check.log", std::ios::binary);
-        if (log) diagnostic.assign(std::istreambuf_iterator<char>(log), std::istreambuf_iterator<char>());
+        if (log)
+            diagnostic.assign(std::istreambuf_iterator<char>(log),
+                              std::istreambuf_iterator<char>());
     }
     EXPECT_EQ(result, 0) << diagnostic;
     const auto evidence = cppapplab::read_evidence(workspace.root);

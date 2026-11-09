@@ -155,7 +155,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ### P5-B — W7 Multi-client TCP Chat with epoll
 
-**Status: implementation in progress on `feat/p4-w7-epoll-chat`; hosted CI pending.**
+**Status: merged into `main` via PR #11; hosted Ubuntu 24.04 CI passed.**
 
 - thread-per-connection, non-blocking I/O, select/poll and epoll comparison
 - final level-triggered epoll chat server with single-owner connection state
@@ -165,6 +165,12 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - prerequisite: current PASS for W7-A TCP Echo
 
 ## P6 — W8: HTTP server engineering
+
+**Status: W8-D1 HTTP Protocol Foundations is next on `feat/p5-w8-http-protocol`.**
+
+- D1: HTTP/1.1 request/response structure, request-line parser and response serializer
+- D2: incremental request parser, headers, Content-Length and complete-message detection
+- D3: response serialization and static file serving
 
 - TCP/IP and Linux socket API
 - blocking and nonblocking I/O

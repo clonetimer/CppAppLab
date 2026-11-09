@@ -133,9 +133,21 @@ TEST(TaskCatalogTest, ExposesIncrementalHttpRequestParserExercise) {
     EXPECT_EQ(task->order, 2U);
     EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
     EXPECT_EQ(task->source_files.size(), 5U);
-    EXPECT_EQ(task->expected_test_count, 39U);
+    EXPECT_EQ(task->expected_test_count, 37U);
     ASSERT_EQ(task->prerequisites.size(), 1U);
     EXPECT_EQ(task->prerequisites.front(), "w8.http-protocol");
+}
+
+TEST(TaskCatalogTest, ExposesHttpStaticFilesExercise) {
+    const cppapplab::Task* task = cppapplab::find_task("w8.static-files");
+    ASSERT_NE(task, nullptr);
+    EXPECT_EQ(task->week, 8U);
+    EXPECT_EQ(task->order, 3U);
+    EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
+    EXPECT_EQ(task->source_files.size(), 6U);
+    EXPECT_EQ(task->expected_test_count, 31U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w8.http-parser");
 }
 
 TEST(TaskCatalogTest, UnknownTaskDoesNotResolve) {

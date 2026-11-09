@@ -309,6 +309,19 @@ TEST(TcpChatAcceptanceTest, EnforcesMaximumClientCount) {
     Client second(server.port());
     EXPECT_EQ(second.read_line(), std::nullopt);
 }
+TEST(TcpChatAcceptanceTest, DisconnectsClientWhenPendingOutputLimitIsExceeded) {
+    net::ChatServerConfig config;
+    config.max_pending_bytes = 16U;
+    RunningServer server(config);
+    Client bob(server.port());
+    Client alice(server.port());
+    register_nickname(bob, "bob");
+    register_nickname(alice, "alice");
+    EXPECT_EQ(bob.read_line(), "* alice joined\n");
+    ASSERT_TRUE(alice.send_text("MSG 012345678901234567890123456789\n"));
+    EXPECT_EQ(bob.read_line(), std::nullopt);
+}
+
 TEST(TcpChatAcceptanceTest, StopRequestWakesEpollWait) {
     net::ChatServer server;
     auto finished = std::async(std::launch::async, [&server] { server.run(); });

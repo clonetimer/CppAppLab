@@ -106,8 +106,8 @@ std::string serialize_response(const HttpResponse& response) {
         }
     }
 
-    std::string output = "HTTP/1.1 " + std::to_string(response.status_code) + " " +
-                         response.reason_phrase + "\r\n";
+    std::string output =
+        "HTTP/1.1 " + std::to_string(response.status_code) + " " + response.reason_phrase + "\r\n";
     for (const auto& entry : headers) {
         output += entry.first + ": " + entry.second + "\r\n";
     }

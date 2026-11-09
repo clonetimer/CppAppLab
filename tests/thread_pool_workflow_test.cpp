@@ -71,13 +71,12 @@ TEST(ThreadPoolWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImplementa
     ScopedEnvironment state_directory("CPPAPPLAB_STATE_DIR", temporary.path() / "state");
     const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "thread-pool");
     const auto reference = cppapplab::data_root() / "labs/w6/thread-pool/reference";
-    for (const auto& relative_path : {
-             std::filesystem::path("include/thread_pool.hpp"),
-             std::filesystem::path("src/thread_pool.cpp"),
-             std::filesystem::path("src/main.cpp"),
-             std::filesystem::path("tests/thread_pool_test.cpp")}) {
-        std::filesystem::copy_file(reference / relative_path,
-                                   workspace.root / relative_path,
+    for (const auto& relative_path :
+         {std::filesystem::path("include/thread_pool.hpp"),
+          std::filesystem::path("src/thread_pool.cpp"),
+          std::filesystem::path("src/main.cpp"),
+          std::filesystem::path("tests/thread_pool_test.cpp")}) {
+        std::filesystem::copy_file(reference / relative_path, workspace.root / relative_path,
                                    std::filesystem::copy_options::overwrite_existing);
     }
     write_file(workspace.root / "CMakeLists.txt",

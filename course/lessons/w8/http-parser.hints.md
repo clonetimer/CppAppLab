@@ -8,7 +8,7 @@ Search for `\r\n\r\n`. If absent and the buffer is within the 16 KiB limit, retu
 
 ## Hint 3 — Header parsing
 
-Split each header line at the first colon. Trim the name and value, lowercase the name, and reject empty names or duplicate normalized names.
+Split each header line at the first colon. Validate the field name as an HTTP token (no whitespace before the colon). Trim optional whitespace around the value, lowercase the name, and reject duplicates.
 
 ## Hint 4 — Content-Length
 

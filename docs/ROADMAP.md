@@ -2,7 +2,7 @@
 
 ## P0 — Foundation
 
-**Status: merged into \`main\`.**
+**Status: merged into `main`.**
 
 - Repository layout and engineering conventions
 - WSL2 + Ubuntu 24.04 + GCC + CMake + GDB environment contract
@@ -16,9 +16,9 @@
 
 ### P1-A — W1 Hello World
 
-**Status: merged into \`main\`.**
+**Status: merged into `main`.**
 
-- CLI: \`list/start/lesson/hint/check/status/next\`
+- CLI: `list/start/lesson/hint/check/status/next`
 - task registry and learner workspace marker
 - reference and learner source separation
 - explicit-only execution; navigation commands do not execute learner code
@@ -31,13 +31,14 @@ Hosted Ubuntu CI passed 15/15 tests in both ordinary and ASan/UBSan builds, plus
 
 ### P1-B — W1 multi-file Calculator
 
-**Status: implementation in progress on \`feat/p1b-calculator\`.**
+**Status: implementation in progress on `feat/p1b-calculator`.**
 
 - second registered learning task
 - separate interface, implementation, and command-line front end
 - platform-owned CMake/GoogleTest acceptance fixture
-- six fixed arithmetic/error-path tests
+- seven fixed arithmetic/error-path tests
 - CLI smoke checks for normal arithmetic and division by zero
+- 17/17 hosted GoogleTest cases in both ordinary and ASan/UBSan builds
 - source staging so learner-controlled build files and headers cannot replace the platform fixture
 
 ### Remaining P1 work

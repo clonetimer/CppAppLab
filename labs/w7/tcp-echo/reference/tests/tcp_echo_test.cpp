@@ -14,21 +14,19 @@
 
 using namespace std::chrono_literals;
 
-using cppapplab::net::TcpEchoServer;
-using cppapplab::net::connect_tcp;
-using cppapplab::net::send_all;
+namespace net = cppapplab::net;
 
 TEST(TcpEchoLearnerTest, ServerBindsAnEphemeralPort) {
-    TcpEchoServer server(0U);
+    net::TcpEchoServer server(0U);
     EXPECT_NE(server.port(), 0U);
 }
 
 TEST(TcpEchoLearnerTest, EchoesOneClientPayload) {
     TcpEchoServer server(0U);
     auto finished = std::async(std::launch::async, [&] { server.serve_one(); });
-    const int client = connect_tcp("127.0.0.1", server.port());
+    const int client = net::connect_tcp("127.0.0.1", server.port());
     const std::string message = "hello tcp";
-    ASSERT_TRUE(send_all(client, message.data(), message.size()));
+    ASSERT_TRUE(net::send_all(client, message.data(), message.size()));
     (void)::shutdown(client, SHUT_WR);
     std::string response;
     std::array<char, 64> buffer{};

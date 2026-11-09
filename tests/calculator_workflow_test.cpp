@@ -124,11 +124,11 @@ TEST(CalculatorWorkflowTest, FixedCMakeAndGoogleTestFixtureChecksLearnerImplemen
 
     EXPECT_EQ(check_result, 0) << check_output;
     EXPECT_NE(check_output.find("Result: PASS"), std::string::npos);
-    EXPECT_NE(check_output.find("Acceptance: 8/8"), std::string::npos);
+    EXPECT_NE(check_output.find("Acceptance: 9/9"), std::string::npos);
 
     const auto evidence = cppapplab::read_evidence(workspace.root);
     ASSERT_TRUE(evidence.has_value());
     EXPECT_TRUE(evidence->passed);
-    EXPECT_EQ(evidence->tests_passed, 8U);
-    EXPECT_EQ(evidence->tests_total, 8U);
+    EXPECT_EQ(evidence->tests_passed, 9U);
+    EXPECT_EQ(evidence->tests_total, 9U);
 }

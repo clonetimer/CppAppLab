@@ -104,7 +104,7 @@ Hosted Ubuntu 24.04 CI on commit `01325e756b70f951bda2dfc58ed6d48acbad80fd` pass
 - bounded thread-safe producer/consumer queue with close/drain semantics
 - POSIX descriptor write helper and child process runner using pipe/fork/dup2/execvp/waitpid
 - bounded output capture, exit/signal status and timeout kill/reap
-- 20 platform-owned tests, 10 learner tests and one CLI smoke test (31 total)
+- 21 platform-owned tests, 10 learner tests and one CLI smoke test (32 total)
 - W5 depends on a current W4 quality-gate PASS
 
 Hosted Ubuntu 24.04 CI on final PR head `88d43e8425467e5f4b7cb0d181c625aa66199475` passed: GCC root tests 36/36, ASan/UBSan 36/36, W5 fixed fixture 31/31, CLI smoke, environment acceptance, clang-format and clang-tidy-enabled build/tests.

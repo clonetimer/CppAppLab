@@ -41,10 +41,10 @@ std::string read_regular_file(
         throw std::runtime_error("Cannot open file: " + path.string());
     }
 
-    std::string content(
+    std::string content{
         std::istreambuf_iterator<char>(input),
         std::istreambuf_iterator<char>()
-    );
+    };
     if (!input.eof() && input.fail()) {
         throw std::runtime_error("Failed while reading file: " + path.string());
     }

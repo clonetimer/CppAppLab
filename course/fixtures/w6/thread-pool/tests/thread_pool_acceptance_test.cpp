@@ -131,12 +131,25 @@ TEST(ThreadPoolAcceptanceTest, FutureCanBeWaitedBeforeGet) {
 }
 TEST(ThreadPoolAcceptanceTest, ReportsPendingQueueSize) {
     ThreadPool pool(1U, 2U);
-    std::promise<void> gate;
-    auto ready = gate.get_future().share();
-    auto first = pool.submit([ready] { ready.wait(); });
+    std::promise<void> release_worker;
+    auto gate = release_worker.get_future().share();
+    std::promise<void> worker_entered;
+    auto entered = worker_entered.get_future();
+
+    auto first = pool.submit([&] {
+        worker_entered.set_value();
+        gate.wait();
+    });
+    const auto worker_status = entered.wait_for(1s);
+    if (worker_status != std::future_status::ready) {
+        release_worker.set_value();
+        FAIL() << "worker did not start the first task";
+        return;
+    }
+
     auto second = pool.submit([] { return 2; });
-    EXPECT_LE(pool.pending(), 1U);
-    gate.set_value();
+    EXPECT_EQ(pool.pending(), 1U);
+    release_worker.set_value();
     first.get();
     EXPECT_EQ(second.get(), 2);
 }

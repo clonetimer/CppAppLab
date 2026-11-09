@@ -18,6 +18,9 @@ class BoundedQueue {
     BoundedQueue& operator=(const BoundedQueue&) = delete;
 
     [[nodiscard]] bool push(T value) {
+        if (capacity_ == 0U) {
+            return false;
+        }
         std::unique_lock<std::mutex> lock(mutex_);
         not_full_.wait(lock, [this] { return closed_ || queue_.size() < capacity_; });
         if (closed_) {
@@ -29,6 +32,9 @@ class BoundedQueue {
     }
 
     [[nodiscard]] std::optional<T> pop() {
+        if (capacity_ == 0U) {
+            return std::nullopt;
+        }
         std::unique_lock<std::mutex> lock(mutex_);
         not_empty_.wait(lock, [this] { return closed_ || !queue_.empty(); });
         if (queue_.empty()) {

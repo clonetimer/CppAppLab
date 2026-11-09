@@ -148,6 +148,38 @@ std::map<std::string, std::string> parse_key_values(const std::string& content) 
     return values;
 }
 
+void validate_relative_source_path(
+    const std::filesystem::path& relative_path,
+    const std::filesystem::path& workspace_root
+) {
+    if (relative_path.empty() || relative_path.is_absolute()) {
+        throw std::runtime_error("Task source path must be relative to the workspace.");
+    }
+
+    std::filesystem::path current = workspace_root;
+    std::size_t component_index = 0;
+    const std::size_t component_count =
+        static_cast<std::size_t>(std::distance(relative_path.begin(), relative_path.end()));
+
+    for (const auto& component : relative_path) {
+        if (component == "." || component == "..") {
+            throw std::runtime_error("Task source path contains an unsafe component.");
+        }
+
+        current /= component;
+        const auto status = std::filesystem::symlink_status(current);
+        if (std::filesystem::is_symlink(status)) {
+            throw std::runtime_error("Learner source path contains a symlink: " + current.string());
+        }
+
+        ++component_index;
+        if (component_index < component_count &&
+            !std::filesystem::is_directory(status)) {
+            throw std::runtime_error("Learner source parent is not a directory: " + current.string());
+        }
+    }
+}
+
 unsigned parse_unsigned(
     const std::map<std::string, std::string>& values,
     const std::string& key
@@ -250,6 +282,7 @@ std::string source_fingerprint(
     std::uint64_t hash = 14695981039346656037ULL;
 
     for (const auto& relative_path : task.source_files) {
+        validate_relative_source_path(relative_path, workspace_root);
         const auto path = workspace_root / relative_path;
         const auto status = std::filesystem::symlink_status(path);
 

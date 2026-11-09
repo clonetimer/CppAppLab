@@ -79,7 +79,9 @@ The first-version language baseline is C++17. WSL2 Ubuntu 24.04 is the full acce
 - `std::condition_variable`
 - producer/consumer model and thread-safe queue
 
-**Work product:** a thread-safe queue and producer/consumer demonstration using real Linux process/file interfaces where specified.
+**Work product:** a bounded thread-safe queue and a POSIX child-process runner that captures output, enforces a timeout, and reports process termination.
+
+**Implemented task:** `w5.system-lab`. The learner implements queue synchronization and the process runner. The platform fixture covers 20 fixed tests, 10 learner-authored tests and one CLI smoke test (31 total).
 
 ## W6 — Concurrency engineering
 

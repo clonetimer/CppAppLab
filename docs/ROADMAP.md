@@ -116,6 +116,16 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - compiler warnings, clang-format, clang-tidy
 - GitHub Actions, versioning, release notes
 
+### P3-B — W5 Linux System Programming Lab
+
+**Status: implementation in progress on `feat/p3-w5-linux-systems`; hosted CI pending.**
+
+- bounded thread-safe queue and producer/consumer coordination
+- POSIX pipe, fork, dup2, execvp, poll, read/write and waitpid
+- output capture limits and child timeout termination
+- platform fixture: 20 fixed tests + 10 learner tests + CLI smoke test (31 total)
+- prerequisite: current PASS for W4 quality gate
+
 ## P4 — W5 to W6: Linux and concurrency
 
 - POSIX file descriptors and system calls

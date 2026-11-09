@@ -127,6 +127,16 @@ The fixed platform fixture supplies its own headers and CMake project. It runs 3
 
 The lesson distinguishes test evidence from static-analysis diagnostics: a passing test suite does not imply zero clang-tidy warnings, and a clean sanitizer run covers only the executed test paths. GDB and Valgrind are taught as reproducible diagnostic tools; Valgrind is optional when unavailable in the target environment.
 
+## W5 Linux system programming contract
+
+Task ID: `w5.system-lab`; prerequisite: a current PASS for `w4.quality-gate`.
+
+The learner implements a bounded producer/consumer queue and a POSIX child-process runner. The queue uses a mutex, condition variables, a deque, predicate waits and an explicit close/drain lifecycle. The process runner uses pipe/fork/dup2/execvp/poll/waitpid, captures stdout and stderr into a bounded buffer, and kills/reaps a child after its deadline.
+
+The platform fixture runs 20 platform-owned behavior tests, ten learner-authored tests and one CLI smoke test (31 total). Tests cover queue capacity/FIFO/close/wakeup/multiple producers-consumers, process output and exit status, argv safety, argument validation, output bounds, timeout termination, and descriptor write completion.
+
+The task is intentionally Linux/POSIX-specific and is accepted on WSL2 Ubuntu 24.04. It does not claim Windows-native compatibility. The CLI passes an argument vector directly; it does not implicitly interpret a shell command string.
+
 ## Evidence semantics
 
 The local evidence and log are navigation records, not certificates. They are user-editable files and must never be represented as tamper-proof proof of learning.

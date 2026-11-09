@@ -27,7 +27,9 @@ class TemporaryDirectory {
         std::error_code ignored;
         std::filesystem::remove_all(path_, ignored);
     }
-    const std::filesystem::path& path() const noexcept { return path_; }
+    const std::filesystem::path& path() const noexcept {
+        return path_;
+    }
 
    private:
     std::filesystem::path path_;

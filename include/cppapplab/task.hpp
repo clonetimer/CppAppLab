@@ -7,9 +7,7 @@
 
 namespace cppapplab {
 
-enum class AcceptanceKind {
-    ExactStdout
-};
+enum class AcceptanceKind { ExactStdout };
 
 struct Task {
     std::string id;

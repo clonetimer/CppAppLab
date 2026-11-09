@@ -25,13 +25,9 @@ constexpr std::size_t kMaxHintBytes = 32U * 1024U;
 constexpr std::size_t kMaxCompilerOutput = 128U * 1024U;
 constexpr std::size_t kMaxProgramOutput = 16U * 1024U;
 
-std::string read_lesson_file(
-    const std::filesystem::path& path,
-    std::size_t max_bytes
-) {
+std::string read_lesson_file(const std::filesystem::path& path, std::size_t max_bytes) {
     const auto status = std::filesystem::symlink_status(path);
-    if (!std::filesystem::is_regular_file(status) ||
-        std::filesystem::is_symlink(status)) {
+    if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
         throw std::runtime_error("Course material must be a regular file: " + path.string());
     }
 
@@ -45,10 +41,7 @@ std::string read_lesson_file(
         throw std::runtime_error("Cannot open course material: " + path.string());
     }
 
-    std::string content{
-        std::istreambuf_iterator<char>(input),
-        std::istreambuf_iterator<char>()
-    };
+    std::string content{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
     if (!input.eof() && input.fail()) {
         throw std::runtime_error("Failed while reading course material.");
     }
@@ -68,8 +61,7 @@ std::string extract_hint(const std::string& content, unsigned level) {
     }
 
     const std::size_t next_heading = content.find("\n## Hint ", body_start + 1);
-    const std::size_t body_end =
-        next_heading == std::string::npos ? content.size() : next_heading;
+    const std::size_t body_end = next_heading == std::string::npos ? content.size() : next_heading;
     return content.substr(body_start + 1, body_end - body_start - 1);
 }
 
@@ -84,8 +76,7 @@ void print_task_catalog() {
 void ensure_real_directory(const std::filesystem::path& path) {
     if (std::filesystem::exists(path) || std::filesystem::is_symlink(path)) {
         const auto status = std::filesystem::symlink_status(path);
-        if (!std::filesystem::is_directory(status) ||
-            std::filesystem::is_symlink(status)) {
+        if (!std::filesystem::is_directory(status) || std::filesystem::is_symlink(status)) {
             throw std::runtime_error("Refusing to use a non-directory or symlink: " +
                                      path.string());
         }
@@ -98,13 +89,11 @@ int check_workspace(const std::filesystem::path& workspace_path) {
     const Workspace workspace = open_workspace(workspace_path);
     const Task& task = *workspace.task;
 
-    if (task.acceptance_kind != AcceptanceKind::ExactStdout ||
-        task.source_files.size() != 1) {
+    if (task.acceptance_kind != AcceptanceKind::ExactStdout || task.source_files.size() != 1) {
         throw std::runtime_error("This task's acceptance runner is not implemented yet.");
     }
 
-    const std::string fingerprint_before =
-        source_fingerprint(task, workspace.root);
+    const std::string fingerprint_before = source_fingerprint(task, workspace.root);
 
     const auto state_directory = workspace.root / ".cppapplab";
     ensure_real_directory(state_directory);
@@ -115,8 +104,7 @@ int check_workspace(const std::filesystem::path& workspace_path) {
     const auto executable = build_directory / "learner_app";
     if (std::filesystem::exists(executable) || std::filesystem::is_symlink(executable)) {
         const auto status = std::filesystem::symlink_status(executable);
-        if (!std::filesystem::is_regular_file(status) ||
-            std::filesystem::is_symlink(status)) {
+        if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
             throw std::runtime_error("Refusing to replace a non-regular build output.");
         }
         std::filesystem::remove(executable);
@@ -124,29 +112,15 @@ int check_workspace(const std::filesystem::path& workspace_path) {
 
     const auto source = workspace.root / task.source_files.front();
     const std::vector<std::string> compile_arguments{
-        "g++",
-        "-std=c++17",
-        "-Wall",
-        "-Wextra",
-        "-Wpedantic",
-        "-Werror",
-        "-g",
-        source.string(),
-        "-o",
-        executable.string()
-    };
+        "g++",     "-std=c++17", "-Wall",         "-Wextra", "-Wpedantic",
+        "-Werror", "-g",         source.string(), "-o",      executable.string()};
 
     std::ostringstream log;
     log << "$ g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -g "
-        << task.source_files.front().generic_string()
-        << " -o .cppapplab/build/learner_app\n";
+        << task.source_files.front().generic_string() << " -o .cppapplab/build/learner_app\n";
 
-    const ProcessResult compilation = run_process(
-        compile_arguments,
-        workspace.root,
-        std::chrono::seconds(30),
-        kMaxCompilerOutput
-    );
+    const ProcessResult compilation = run_process(compile_arguments, workspace.root,
+                                                  std::chrono::seconds(30), kMaxCompilerOutput);
     log << compilation.output;
 
     bool passed = false;
@@ -155,16 +129,11 @@ int check_workspace(const std::filesystem::path& workspace_path) {
     } else if (compilation.output_truncated) {
         log << "\n[CppAppLab] Compiler output exceeded the capture limit.\n";
     } else if (compilation.exit_code != 0) {
-        log << "\n[CppAppLab] Compilation failed with exit code "
-            << compilation.exit_code << ".\n";
+        log << "\n[CppAppLab] Compilation failed with exit code " << compilation.exit_code << ".\n";
     } else {
         log << "\n$ .cppapplab/build/learner_app\n";
-        const ProcessResult execution = run_process(
-            {executable.string()},
-            workspace.root,
-            std::chrono::seconds(5),
-            kMaxProgramOutput
-        );
+        const ProcessResult execution = run_process({executable.string()}, workspace.root,
+                                                    std::chrono::seconds(5), kMaxProgramOutput);
         log << execution.output;
 
         if (execution.timed_out) {
@@ -172,8 +141,7 @@ int check_workspace(const std::filesystem::path& workspace_path) {
         } else if (execution.output_truncated) {
             log << "\n[CppAppLab] Program output exceeded the capture limit.\n";
         } else if (execution.exit_code != 0) {
-            log << "\n[CppAppLab] Program exited with code "
-                << execution.exit_code << ".\n";
+            log << "\n[CppAppLab] Program exited with code " << execution.exit_code << ".\n";
         } else if (execution.output != task.expected_stdout) {
             log << "\n[CppAppLab] Output did not match the task contract.\n"
                 << "Expected bytes: " << task.expected_stdout.size() << '\n'
@@ -183,8 +151,7 @@ int check_workspace(const std::filesystem::path& workspace_path) {
         }
     }
 
-    const std::string fingerprint_after =
-        source_fingerprint(task, workspace.root);
+    const std::string fingerprint_after = source_fingerprint(task, workspace.root);
     if (fingerprint_after != fingerprint_before) {
         passed = false;
         log << "\n[CppAppLab] Learner source changed while the check was running; "
@@ -215,13 +182,10 @@ int check_workspace(const std::filesystem::path& workspace_path) {
 
     std::cout << "Task: " << task.id << '\n'
               << "Result: " << (passed ? "PASS" : "FAIL") << '\n'
-              << "Acceptance: " << evidence.tests_passed << '/'
-              << evidence.tests_total << '\n'
+              << "Acceptance: " << evidence.tests_passed << '/' << evidence.tests_total << '\n'
               << "Source fingerprint: " << evidence.fingerprint << '\n'
-              << "Evidence: " << (workspace.root / ".cppapplab/evidence.txt").string()
-              << '\n'
-              << "Log: " << (workspace.root / ".cppapplab/last-check.log").string()
-              << '\n';
+              << "Evidence: " << (workspace.root / ".cppapplab/evidence.txt").string() << '\n'
+              << "Log: " << (workspace.root / ".cppapplab/last-check.log").string() << '\n';
 
     return passed ? 0 : 1;
 }
@@ -239,8 +203,7 @@ int show_status(const std::filesystem::path& workspace_path) {
         return 0;
     }
 
-    const std::string current_fingerprint =
-        source_fingerprint(*workspace.task, workspace.root);
+    const std::string current_fingerprint = source_fingerprint(*workspace.task, workspace.root);
 
     if (evidence->task_id != workspace.task->id) {
         throw std::runtime_error("Evidence task ID does not match this workspace.");
@@ -256,8 +219,7 @@ int show_status(const std::filesystem::path& workspace_path) {
     }
 
     std::cout << "Last recorded result: " << (evidence->passed ? "PASS" : "FAIL") << '\n'
-              << "Acceptance: " << evidence->tests_passed << '/'
-              << evidence->tests_total << '\n'
+              << "Acceptance: " << evidence->tests_passed << '/' << evidence->tests_total << '\n'
               << "Checked at: " << evidence->timestamp << '\n'
               << "Source fingerprint: " << evidence->fingerprint << '\n'
               << "Note: local evidence is a navigation record, not a certificate; "
@@ -276,9 +238,10 @@ int show_next(const std::filesystem::path& workspace_path) {
         return 1;
     }
 
-    std::cout << "Current task has a recorded PASS: " << workspace.task->id << "\n"
-              << "Next planned work product: W1 Calculator (not yet available as a learner task).\n"
-              << "This is learning navigation only; local evidence is not a completion certificate.\n";
+    std::cout
+        << "Current task has a recorded PASS: " << workspace.task->id << "\n"
+        << "Next planned work product: W1 Calculator (not yet available as a learner task).\n"
+        << "This is learning navigation only; local evidence is not a completion certificate.\n";
     return 0;
 }
 
@@ -312,8 +275,7 @@ int run_cli(int argc, char* argv[]) {
         if (command == "start") {
             if (argc != 4) {
                 throw std::invalid_argument(
-                    "Usage: cppapplab start <task-id> <workspace-directory>"
-                );
+                    "Usage: cppapplab start <task-id> <workspace-directory>");
             }
 
             const Task* task = find_task(argv[2]);

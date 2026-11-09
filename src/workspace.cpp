@@ -18,10 +18,7 @@ constexpr std::uintmax_t kMaxEvidenceBytes = 16U * 1024U;
 constexpr std::size_t kMaxLogBytes = 256U * 1024U;
 constexpr const char* kWorkspaceMarker = "CppAppLab Workspace v1";
 
-std::string read_regular_file(
-    const std::filesystem::path& path,
-    std::uintmax_t max_bytes
-) {
+std::string read_regular_file(const std::filesystem::path& path, std::uintmax_t max_bytes) {
     std::error_code error;
     const auto status = std::filesystem::symlink_status(path, error);
     if (error) {
@@ -41,20 +38,14 @@ std::string read_regular_file(
         throw std::runtime_error("Cannot open file: " + path.string());
     }
 
-    std::string content{
-        std::istreambuf_iterator<char>(input),
-        std::istreambuf_iterator<char>()
-    };
+    std::string content{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
     if (!input.eof() && input.fail()) {
         throw std::runtime_error("Failed while reading file: " + path.string());
     }
     return content;
 }
 
-void atomic_write(
-    const std::filesystem::path& path,
-    const std::string& content
-) {
+void atomic_write(const std::filesystem::path& path, const std::string& content) {
     if (std::filesystem::is_symlink(path)) {
         throw std::runtime_error("Refusing to replace a symlink: " + path.string());
     }
@@ -85,11 +76,9 @@ void atomic_write(
     }
 }
 
-void copy_tree_without_symlinks(
-    const std::filesystem::path& source,
-    const std::filesystem::path& destination,
-    bool create_destination = true
-) {
+void copy_tree_without_symlinks(const std::filesystem::path& source,
+                                const std::filesystem::path& destination,
+                                bool create_destination = true) {
     std::error_code error;
     const auto source_status = std::filesystem::symlink_status(source, error);
     if (error || !std::filesystem::is_directory(source_status) ||
@@ -148,10 +137,8 @@ std::map<std::string, std::string> parse_key_values(const std::string& content) 
     return values;
 }
 
-void validate_relative_source_path(
-    const std::filesystem::path& relative_path,
-    const std::filesystem::path& workspace_root
-) {
+void validate_relative_source_path(const std::filesystem::path& relative_path,
+                                   const std::filesystem::path& workspace_root) {
     if (relative_path.empty() || relative_path.is_absolute()) {
         throw std::runtime_error("Task source path must be relative to the workspace.");
     }
@@ -173,17 +160,14 @@ void validate_relative_source_path(
         }
 
         ++component_index;
-        if (component_index < component_count &&
-            !std::filesystem::is_directory(status)) {
-            throw std::runtime_error("Learner source parent is not a directory: " + current.string());
+        if (component_index < component_count && !std::filesystem::is_directory(status)) {
+            throw std::runtime_error("Learner source parent is not a directory: " +
+                                     current.string());
         }
     }
 }
 
-unsigned parse_unsigned(
-    const std::map<std::string, std::string>& values,
-    const std::string& key
-) {
+unsigned parse_unsigned(const std::map<std::string, std::string>& values, const std::string& key) {
     const auto found = values.find(key);
     if (found == values.end()) {
         throw std::runtime_error("Evidence is missing field: " + key);
@@ -202,35 +186,26 @@ unsigned parse_unsigned(
 
 }  // namespace
 
-Workspace create_workspace(
-    const Task& task,
-    const std::filesystem::path& destination
-) {
-    const auto absolute_destination =
-        std::filesystem::absolute(destination).lexically_normal();
+Workspace create_workspace(const Task& task, const std::filesystem::path& destination) {
+    const auto absolute_destination = std::filesystem::absolute(destination).lexically_normal();
 
     if (std::filesystem::exists(absolute_destination) ||
         std::filesystem::is_symlink(absolute_destination)) {
-        throw std::runtime_error(
-            "Workspace already exists; start never overwrites learner work: " +
-            absolute_destination.string()
-        );
+        throw std::runtime_error("Workspace already exists; start never overwrites learner work: " +
+                                 absolute_destination.string());
     }
 
     const auto template_path = data_root() / task.learner_template;
     std::filesystem::create_directories(absolute_destination.parent_path());
     if (!std::filesystem::create_directory(absolute_destination)) {
-        throw std::runtime_error(
-            "Workspace already exists; start never overwrites learner work: " +
-            absolute_destination.string()
-        );
+        throw std::runtime_error("Workspace already exists; start never overwrites learner work: " +
+                                 absolute_destination.string());
     }
 
     try {
         copy_tree_without_symlinks(template_path, absolute_destination, false);
 
-        const std::string marker =
-            std::string(kWorkspaceMarker) + "\ntask_id=" + task.id + "\n";
+        const std::string marker = std::string(kWorkspaceMarker) + "\ntask_id=" + task.id + "\n";
         atomic_write(absolute_destination / ".cppapplab-workspace", marker);
     } catch (...) {
         std::error_code ignored;
@@ -250,8 +225,7 @@ Workspace open_workspace(const std::filesystem::path& root) {
         throw std::runtime_error("Workspace must be a real directory: " + absolute_root.string());
     }
 
-    const std::string marker =
-        read_regular_file(absolute_root / ".cppapplab-workspace", 512U);
+    const std::string marker = read_regular_file(absolute_root / ".cppapplab-workspace", 512U);
     std::istringstream input(marker);
     std::string header;
     std::string task_line;
@@ -275,10 +249,7 @@ Workspace open_workspace(const std::filesystem::path& root) {
     return Workspace{absolute_root, task};
 }
 
-std::string source_fingerprint(
-    const Task& task,
-    const std::filesystem::path& workspace_root
-) {
+std::string source_fingerprint(const Task& task, const std::filesystem::path& workspace_root) {
     std::uint64_t hash = 14695981039346656037ULL;
 
     for (const auto& relative_path : task.source_files) {
@@ -286,8 +257,7 @@ std::string source_fingerprint(
         const auto path = workspace_root / relative_path;
         const auto status = std::filesystem::symlink_status(path);
 
-        if (!std::filesystem::is_regular_file(status) ||
-            std::filesystem::is_symlink(status)) {
+        if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
             throw std::runtime_error("Expected learner source file: " + path.string());
         }
 
@@ -336,8 +306,7 @@ std::optional<Evidence> read_evidence(const std::filesystem::path& workspace_roo
     }
 
     const auto evidence_path = state_directory / "evidence.txt";
-    if (!std::filesystem::exists(evidence_path) &&
-        !std::filesystem::is_symlink(evidence_path)) {
+    if (!std::filesystem::exists(evidence_path) && !std::filesystem::is_symlink(evidence_path)) {
         return std::nullopt;
     }
 
@@ -347,8 +316,8 @@ std::optional<Evidence> read_evidence(const std::filesystem::path& workspace_roo
     const auto result = values.find("result");
     const auto timestamp = values.find("timestamp");
 
-    if (task == values.end() || fingerprint == values.end() ||
-        result == values.end() || timestamp == values.end()) {
+    if (task == values.end() || fingerprint == values.end() || result == values.end() ||
+        timestamp == values.end()) {
         throw std::runtime_error("Evidence file is incomplete.");
     }
     if (result->second != "PASS" && result->second != "FAIL") {
@@ -365,18 +334,14 @@ std::optional<Evidence> read_evidence(const std::filesystem::path& workspace_roo
     return evidence;
 }
 
-void write_evidence(
-    const std::filesystem::path& workspace_root,
-    const Evidence& evidence,
-    const std::string& log
-) {
+void write_evidence(const std::filesystem::path& workspace_root, const Evidence& evidence,
+                    const std::string& log) {
     const auto state_directory = workspace_root / ".cppapplab";
-    if (std::filesystem::exists(state_directory) ||
-        std::filesystem::is_symlink(state_directory)) {
+    if (std::filesystem::exists(state_directory) || std::filesystem::is_symlink(state_directory)) {
         const auto status = std::filesystem::symlink_status(state_directory);
-        if (!std::filesystem::is_directory(status) ||
-            std::filesystem::is_symlink(status)) {
-            throw std::runtime_error("Refusing to write through a non-directory workspace state path.");
+        if (!std::filesystem::is_directory(status) || std::filesystem::is_symlink(status)) {
+            throw std::runtime_error(
+                "Refusing to write through a non-directory workspace state path.");
         }
     } else {
         std::filesystem::create_directory(state_directory);
@@ -393,8 +358,7 @@ void write_evidence(
 
     atomic_write(state_directory / "evidence.txt", content.str());
 
-    const std::string bounded_log =
-        log.size() > kMaxLogBytes ? log.substr(0, kMaxLogBytes) : log;
+    const std::string bounded_log = log.size() > kMaxLogBytes ? log.substr(0, kMaxLogBytes) : log;
     atomic_write(state_directory / "last-check.log", bounded_log);
 }
 

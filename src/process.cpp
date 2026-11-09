@@ -19,14 +19,8 @@ namespace {
     throw std::system_error(errno, std::generic_category(), operation);
 }
 
-void append_limited(
-    ProcessResult& result,
-    const char* data,
-    std::size_t size,
-    std::size_t limit
-) {
-    const std::size_t available =
-        result.output.size() < limit ? limit - result.output.size() : 0;
+void append_limited(ProcessResult& result, const char* data, std::size_t size, std::size_t limit) {
+    const std::size_t available = result.output.size() < limit ? limit - result.output.size() : 0;
     const std::size_t keep = size < available ? size : available;
 
     if (keep > 0) {
@@ -39,12 +33,9 @@ void append_limited(
 
 }  // namespace
 
-ProcessResult run_process(
-    const std::vector<std::string>& arguments,
-    const std::filesystem::path& working_directory,
-    std::chrono::milliseconds timeout,
-    std::size_t max_output_bytes
-) {
+ProcessResult run_process(const std::vector<std::string>& arguments,
+                          const std::filesystem::path& working_directory,
+                          std::chrono::milliseconds timeout, std::size_t max_output_bytes) {
     if (arguments.empty() || arguments.front().empty()) {
         throw std::invalid_argument("run_process requires a non-empty executable");
     }
@@ -78,10 +69,8 @@ ProcessResult run_process(
         ::close(pipe_fds[0]);
 
         const int null_input = ::open("/dev/null", O_RDONLY);
-        if (null_input < 0 ||
-            ::dup2(null_input, STDIN_FILENO) < 0 ||
-            ::dup2(pipe_fds[1], STDOUT_FILENO) < 0 ||
-            ::dup2(pipe_fds[1], STDERR_FILENO) < 0) {
+        if (null_input < 0 || ::dup2(null_input, STDIN_FILENO) < 0 ||
+            ::dup2(pipe_fds[1], STDOUT_FILENO) < 0 || ::dup2(pipe_fds[1], STDERR_FILENO) < 0) {
             _exit(126);
         }
         ::close(null_input);
@@ -119,8 +108,7 @@ ProcessResult run_process(
     const auto deadline = std::chrono::steady_clock::now() + timeout;
 
     while (!child_finished || !pipe_closed) {
-        if (std::chrono::steady_clock::now() >= deadline &&
-            (!child_finished || !pipe_closed)) {
+        if (std::chrono::steady_clock::now() >= deadline && (!child_finished || !pipe_closed)) {
             result.timed_out = true;
             (void)::kill(-child, SIGKILL);
             (void)::kill(child, SIGKILL);
@@ -143,19 +131,14 @@ ProcessResult run_process(
             throw_system_error("poll");
         }
 
-        if (poll_result > 0 &&
-            (descriptor.revents & (POLLIN | POLLHUP | POLLERR)) != 0) {
+        if (poll_result > 0 && (descriptor.revents & (POLLIN | POLLHUP | POLLERR)) != 0) {
             while (true) {
                 char buffer[4096];
                 const ssize_t count = ::read(pipe_fds[0], buffer, sizeof(buffer));
 
                 if (count > 0) {
-                    append_limited(
-                        result,
-                        buffer,
-                        static_cast<std::size_t>(count),
-                        max_output_bytes
-                    );
+                    append_limited(result, buffer, static_cast<std::size_t>(count),
+                                   max_output_bytes);
                     continue;
                 }
                 if (count == 0) {

@@ -22,26 +22,17 @@ struct Evidence {
     std::string timestamp;
 };
 
-[[nodiscard]] Workspace create_workspace(
-    const Task& task,
-    const std::filesystem::path& destination
-);
+[[nodiscard]] Workspace create_workspace(const Task& task,
+                                         const std::filesystem::path& destination);
 
 [[nodiscard]] Workspace open_workspace(const std::filesystem::path& root);
 
-[[nodiscard]] std::string source_fingerprint(
-    const Task& task,
-    const std::filesystem::path& workspace_root
-);
+[[nodiscard]] std::string source_fingerprint(const Task& task,
+                                             const std::filesystem::path& workspace_root);
 
-[[nodiscard]] std::optional<Evidence> read_evidence(
-    const std::filesystem::path& workspace_root
-);
+[[nodiscard]] std::optional<Evidence> read_evidence(const std::filesystem::path& workspace_root);
 
-void write_evidence(
-    const std::filesystem::path& workspace_root,
-    const Evidence& evidence,
-    const std::string& log
-);
+void write_evidence(const std::filesystem::path& workspace_root, const Evidence& evidence,
+                    const std::string& log);
 
 }  // namespace cppapplab

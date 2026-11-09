@@ -12,11 +12,11 @@
 namespace {
 
 class TemporaryDirectory {
-public:
+   public:
     TemporaryDirectory() {
         const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
-        path_ = std::filesystem::temp_directory_path() /
-                ("cppapplab-test-" + std::to_string(stamp));
+        path_ =
+            std::filesystem::temp_directory_path() / ("cppapplab-test-" + std::to_string(stamp));
         std::filesystem::create_directories(path_);
     }
 
@@ -29,7 +29,7 @@ public:
         return path_;
     }
 
-private:
+   private:
     std::filesystem::path path_;
 };
 
@@ -61,10 +61,7 @@ TEST(WorkspaceTest, RefusesToOverwriteExistingWorkspace) {
         marker << "keep";
     }
 
-    EXPECT_THROW(
-        cppapplab::create_workspace(*task, destination),
-        std::runtime_error
-    );
+    EXPECT_THROW(cppapplab::create_workspace(*task, destination), std::runtime_error);
     EXPECT_TRUE(std::filesystem::is_regular_file(destination / "keep.txt"));
 }
 
@@ -74,15 +71,13 @@ TEST(WorkspaceTest, FingerprintChangesWhenLearnerSourceChanges) {
 
     TemporaryDirectory temporary;
     const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "learner");
-    const std::string before =
-        cppapplab::source_fingerprint(*task, workspace.root);
+    const std::string before = cppapplab::source_fingerprint(*task, workspace.root);
 
     {
         std::ofstream source(workspace.root / "src/main.cpp", std::ios::app);
         source << "\n// learner edit\n";
     }
 
-    const std::string after =
-        cppapplab::source_fingerprint(*task, workspace.root);
+    const std::string after = cppapplab::source_fingerprint(*task, workspace.root);
     EXPECT_NE(before, after);
 }

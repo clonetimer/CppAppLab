@@ -14,8 +14,7 @@ namespace {
 constexpr std::string_view kHeaderPunctuation = "!#$%&'*+-.^_`|~";
 
 [[nodiscard]] bool has_forbidden_line_break(std::string_view value) {
-    return value.find('\r') != std::string_view::npos ||
-           value.find('\n') != std::string_view::npos;
+    return value.find('\r') != std::string_view::npos || value.find('\n') != std::string_view::npos;
 }
 
 [[nodiscard]] bool valid_header_name(std::string_view name) {
@@ -44,7 +43,8 @@ constexpr std::string_view kHeaderPunctuation = "!#$%&'*+-.^_`|~";
 void validate_header_value(std::string_view value) {
     for (const unsigned char character : value) {
         if (character == '\r' || character == '\n' ||
-            (character < 0x20U && character != '\t') || character == 0x7fU) {
+            (character < 0x20U && character != '\t') ||
+            character == 0x7fU) {
             throw std::invalid_argument("HTTP header value contains a forbidden control byte");
         }
     }
@@ -101,7 +101,8 @@ std::string serialize_response(const HttpResponse& response) {
     });
     for (std::size_t index = 1U; index < headers.size(); ++index) {
         if (lowercase(headers[index - 1U].first) == lowercase(headers[index].first)) {
-            throw std::invalid_argument("HTTP header names are case-insensitive and must be unique");
+            throw std::invalid_argument(
+                "HTTP header names are case-insensitive and must be unique");
         }
     }
 

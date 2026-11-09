@@ -16,7 +16,7 @@
 namespace {
 
 class TemporaryDirectory {
-public:
+   public:
     TemporaryDirectory() {
         const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
         path_ = std::filesystem::temp_directory_path() /
@@ -33,12 +33,12 @@ public:
         return path_;
     }
 
-private:
+   private:
     std::filesystem::path path_;
 };
 
 class StdoutCapture {
-public:
+   public:
     StdoutCapture() : previous_(std::cout.rdbuf(stream_.rdbuf())) {}
 
     ~StdoutCapture() {
@@ -49,7 +49,7 @@ public:
         return stream_.str();
     }
 
-private:
+   private:
     std::ostringstream stream_;
     std::streambuf* previous_;
 };
@@ -64,10 +64,7 @@ int invoke(const std::vector<std::string>& arguments) {
     return cppapplab::run_cli(static_cast<int>(argv.size()), argv.data());
 }
 
-void write_source(
-    const std::filesystem::path& workspace,
-    const std::string& source
-) {
+void write_source(const std::filesystem::path& workspace, const std::string& source) {
     std::ofstream output(workspace / "src/main.cpp", std::ios::binary | std::ios::trunc);
     if (!output) {
         throw std::runtime_error("Cannot open learner source for the integration test.");
@@ -86,17 +83,14 @@ TEST(LearningWorkflowTest, FixedCheckPassesAndSourceEditsMakeEvidenceStale) {
     ASSERT_NE(task, nullptr);
 
     TemporaryDirectory temporary;
-    const auto workspace =
-        cppapplab::create_workspace(*task, temporary.path() / "learner");
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "learner");
 
-    write_source(
-        workspace.root,
-        "#include <iostream>\n"
-        "int main() {\n"
-        "    std::cout << \"Hello, CppAppLab!\\n\";\n"
-        "    return 0;\n"
-        "}\n"
-    );
+    write_source(workspace.root,
+                 "#include <iostream>\n"
+                 "int main() {\n"
+                 "    std::cout << \"Hello, CppAppLab!\\n\";\n"
+                 "    return 0;\n"
+                 "}\n");
 
     int check_result = -1;
     std::string check_output;
@@ -115,14 +109,12 @@ TEST(LearningWorkflowTest, FixedCheckPassesAndSourceEditsMakeEvidenceStale) {
     EXPECT_EQ(evidence->tests_passed, 1U);
     EXPECT_EQ(evidence->tests_total, 1U);
 
-    write_source(
-        workspace.root,
-        "#include <iostream>\n"
-        "int main() {\n"
-        "    std::cout << \"not the required output\\n\";\n"
-        "    return 0;\n"
-        "}\n"
-    );
+    write_source(workspace.root,
+                 "#include <iostream>\n"
+                 "int main() {\n"
+                 "    std::cout << \"not the required output\\n\";\n"
+                 "    return 0;\n"
+                 "}\n");
 
     int status_result = -1;
     std::string status_output;
@@ -141,15 +133,12 @@ TEST(LearningWorkflowTest, LessonAndProgressiveHintsAreReadOnlyCommands) {
     ASSERT_NE(task, nullptr);
 
     TemporaryDirectory temporary;
-    const auto workspace =
-        cppapplab::create_workspace(*task, temporary.path() / "learner");
-    const std::string before =
-        cppapplab::source_fingerprint(*task, workspace.root);
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "learner");
+    const std::string before = cppapplab::source_fingerprint(*task, workspace.root);
 
     for (const std::string level : {"1", "2", "3"}) {
         StdoutCapture capture;
-        const int result =
-            invoke({"cppapplab", "hint", workspace.root.string(), level});
+        const int result = invoke({"cppapplab", "hint", workspace.root.string(), level});
         EXPECT_EQ(result, 0);
         EXPECT_FALSE(capture.str().empty());
     }
@@ -161,7 +150,6 @@ TEST(LearningWorkflowTest, LessonAndProgressiveHintsAreReadOnlyCommands) {
         EXPECT_NE(capture.str().find("First C++ Program"), std::string::npos);
     }
 
-    const std::string after =
-        cppapplab::source_fingerprint(*task, workspace.root);
+    const std::string after = cppapplab::source_fingerprint(*task, workspace.root);
     EXPECT_EQ(before, after);
 }

@@ -194,15 +194,17 @@ Hosted Ubuntu 24.04 CI on final PR head `c20c60665d891edd54106779f99e84fbc3f5812
 ## P5-C — W8-D3 HTTP Responses and Static Files
 
 **Branch:** `feat/p5-w8-static-files`  
-**Status:** next implementation stage.
+**Status:** implementation in progress on `feat/p5-w8-static-files`; fixed acceptance fixture and workflow registration added.
 
 - response serialization integrated with request handling
 - binary static-file reads from a document root
 - MIME type selection for html/css/js/txt/json/png/jpeg/svg
 - GET-only static handler with 405 and Allow: GET
 - 404 for missing resources; 400 for unsafe target paths
-- query string removal before file lookup
+- query string removal before file lookup and path validation
 - conservative path traversal guard; production-grade canonical/symlink containment remains out of scope
+- 20 platform-owned tests, 10 learner tests and one CLI smoke test (31 total)
+- one-request CLI demonstration only; live TCP/epoll server integration is a later stage
 
 ## Remaining work
 

@@ -84,3 +84,27 @@ jobs:
         run: |
           cmake --build build-quality --parallel
           ctest --test-dir build-quality --output-on-failure
+
+
+  format-preview:
+    name: Temporary clang-format preview
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+      - name: Format C++ sources
+        run: |
+          find include src tests -type f \\( -name '*.cpp' -o -name '*.hpp' \\) -print0 \\
+            | xargs -0 clang-format -i
+      - name: Package formatted sources
+        run: tar -czf cppapplab-formatted-source.tar.gz include src tests
+      - name: Upload formatted sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppapplab-formatted-source
+          path: cppapplab-formatted-source.tar.gz
+          if-no-files-found: error

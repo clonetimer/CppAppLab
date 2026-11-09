@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -113,6 +114,17 @@ TEST(CalculatorWorkflowTest, FixedCMakeAndGoogleTestFixtureChecksLearnerImplemen
         StdoutCapture capture;
         check_result = invoke({"cppapplab", "check", workspace.root.string()});
         check_output = capture.str();
+    }
+
+    if (check_result != 0) {
+        std::ifstream log_file(workspace.root / ".cppapplab/last-check.log", std::ios::binary);
+        if (log_file) {
+            check_output += "\n--- acceptance log ---\n";
+            check_output.append(
+                std::istreambuf_iterator<char>(log_file),
+                std::istreambuf_iterator<char>()
+            );
+        }
     }
 
     EXPECT_EQ(check_result, 0) << check_output;

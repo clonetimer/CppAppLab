@@ -1,6 +1,6 @@
 # Project Status
 
-**Current milestone:** P3-C — W6 Concurrency and Thread Pool  
+**Current milestone:** P4-A — W7 TCP Echo Server and Client  
 **Release status:** no release has been declared.
 
 ## Merged P0 foundation
@@ -124,6 +124,18 @@ Hosted Ubuntu 24.04 CI on final PR head `88d43e8425467e5f4b7cb0d181c625aa6619947
 - W6 depends on a current W5 system-lab PASS
 
 Hosted Ubuntu 24.04 CI on final PR head `0b9a453c1ab21e62ad81723ecb4618bce17a045f` passed: GCC build and tests, ASan/UBSan, clang-format, clang-tidy-enabled build/tests, CLI smoke, environment acceptance, and the 34-case W6 fixed fixture. Local Windows 11 + WSL2 acceptance remains separate.
+
+## P4-A — W7 TCP Echo Server and Client
+
+**Branch:** `feat/p4-w7-tcp-networking`  
+**Status:** implementation in progress; hosted CI pending.
+
+- IPv4 TCP listener and client using Linux socket APIs
+- blocking accept/recv/echo loop and complete send handling
+- RAII descriptor ownership and EINTR handling
+- learner/reference separation and platform-owned acceptance fixture
+- 20 platform-owned tests, 10 learner tests and one CLI smoke test (31 total)
+- W7-A depends on a current W6 Thread Pool PASS
 
 ## Remaining work
 

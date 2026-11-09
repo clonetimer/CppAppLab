@@ -83,7 +83,18 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 - W1: toolchain, syntax, functions, multi-file compilation, CMake, GDB, calculator
 - W2: STL, algorithms, lambdas, file persistence, Todo CLI (P2-A)
-- W3: classes, RAII, smart pointers, copy/move, operators, TaskManager refactor
+- W3: classes, RAII, smart pointers, copy/move, operators, TaskManager refactor (**P2-B in progress on `feat/p2-w3-task-manager`**)
+
+### P2-B — W3 Task / TaskManager Refactor
+
+**Status: implementation in progress on `feat/p2-w3-task-manager`; hosted CI pending.**
+
+- `Task` value object with validated invariants and ID-based identity/order
+- `TaskManager` uses `std::vector<std::unique_ptr<Task>>` for exclusive ownership
+- deep-copy semantics, copy-and-swap assignment, and explicit move semantics
+- non-owning lookup and ordered value snapshots
+- W2 file-format compatibility and transactional load
+- platform-owned fixture: 30 unit tests plus one multi-process CLI workflow test
 
 ## P3 — W4: engineering quality
 

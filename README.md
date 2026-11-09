@@ -19,7 +19,7 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 ## Current learning tasks
 
-The learning engine provides W1 Hello World, W1 multi-file Calculator, and the W2 persistent Todo CLI task.
+The learning engine provides W1 Hello World, W1 multi-file Calculator, W2 persistent Todo CLI, and the W3 Task / TaskManager refactor.
 
 ```bash
 ./build/cppapplab list
@@ -38,6 +38,11 @@ The learning engine provides W1 Hello World, W1 multi-file Calculator, and the W
 ./build/cppapplab lesson "$HOME/cppapplab-work/todo"
 ./build/cppapplab hint "$HOME/cppapplab-work/todo" 1
 ./build/cppapplab check "$HOME/cppapplab-work/todo"
+
+./build/cppapplab start w3.task-manager "$HOME/cppapplab-work/task-manager"
+./build/cppapplab lesson "$HOME/cppapplab-work/task-manager"
+./build/cppapplab hint "$HOME/cppapplab-work/task-manager" 1
+./build/cppapplab check "$HOME/cppapplab-work/task-manager"
 
 ./build/cppapplab progress
 ./build/cppapplab resume w1.hello-world
@@ -90,7 +95,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-The repository is in P1 learning-engine development. See:
+The repository is in P2 C++ foundations development; W3 Task / TaskManager is being added on a feature branch. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)

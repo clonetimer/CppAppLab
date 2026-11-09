@@ -174,6 +174,38 @@ TEST(ThreadPoolAcceptanceTest, ConcurrentShutdownCallersAllWaitForJoin) {
     EXPECT_EQ(returned.load(), 2);
     EXPECT_TRUE(pool.is_shutdown());
 }
+TEST(ThreadPoolAcceptanceTest, BoundedSubmissionBlocksUntilCapacityIsAvailable) {
+    ThreadPool pool(1U, 1U);
+    std::promise<void> release_worker;
+    auto gate = release_worker.get_future().share();
+    std::promise<void> worker_entered;
+    auto entered = worker_entered.get_future();
+
+    auto first = pool.submit([&] {
+        worker_entered.set_value();
+        gate.wait();
+        return 1;
+    });
+    ASSERT_EQ(entered.wait_for(1s), std::future_status::ready);
+    auto second = pool.submit([] { return 2; });
+
+    std::promise<std::future<int>> third_submission;
+    auto third_ready = third_submission.get_future();
+    std::thread submitter([&] {
+        third_submission.set_value(pool.submit([] { return 3; }));
+    });
+
+    const auto blocked_status = third_ready.wait_for(20ms);
+    release_worker.set_value();
+    auto third = third_ready.get();
+    submitter.join();
+
+    EXPECT_EQ(blocked_status, std::future_status::timeout);
+    EXPECT_EQ(first.get(), 1);
+    EXPECT_EQ(second.get(), 2);
+    EXPECT_EQ(third.get(), 3);
+}
+
 TEST(ThreadPoolAcceptanceTest, SubmitRacingShutdownIsRejectedOrCompleted) {
     ThreadPool pool(2U, 4U);
     std::atomic<int> completed{0};

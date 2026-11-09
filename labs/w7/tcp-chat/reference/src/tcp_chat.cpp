@@ -54,12 +54,13 @@ class UniqueFd {
     if (name.empty() || name.size() > 24U) {
         return false;
     }
-    return std::all_of(name.begin(), name.end(), [](unsigned char character) {
-        return (character >= 'a' && character <= 'z') ||
-               (character >= 'A' && character <= 'Z') ||
-               (character >= '0' && character <= '9') || character == '_' ||
-               character == '-';
-    });
+    const auto is_allowed = [](unsigned char character) {
+        const bool lowercase = character >= 'a' && character <= 'z';
+        const bool uppercase = character >= 'A' && character <= 'Z';
+        const bool digit = character >= '0' && character <= '9';
+        return lowercase || uppercase || digit || character == '_' || character == '-';
+    };
+    return std::all_of(name.begin(), name.end(), is_allowed);
 }
 
 }  // namespace
@@ -194,10 +195,11 @@ struct ChatServer::Impl {
             if (!valid_nickname(nickname)) {
                 return queue_output(fd, "ERR invalid nickname\n");
             }
+            const auto has_nickname = [&nickname](const auto& entry) {
+                return entry.second.nickname == nickname;
+            };
             const bool duplicate =
-                std::any_of(clients.begin(), clients.end(), [&nickname](const auto& entry) {
-                    return entry.second.nickname == nickname;
-                });
+                std::any_of(clients.begin(), clients.end(), has_nickname);
             if (duplicate) {
                 return queue_output(fd, "ERR nickname unavailable\n");
             }

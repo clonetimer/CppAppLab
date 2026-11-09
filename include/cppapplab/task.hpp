@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -7,7 +8,7 @@
 
 namespace cppapplab {
 
-enum class AcceptanceKind { ExactStdout, CMakeGoogleTest };
+enum class AcceptanceKind : std::uint8_t { ExactStdout, CMakeGoogleTest };
 
 struct Task {
     std::string id;
@@ -26,7 +27,7 @@ struct Task {
 };
 
 [[nodiscard]] const std::vector<Task>& task_catalog();
-[[nodiscard]] const Task* find_task(std::string_view id);
+[[nodiscard]] const Task* find_task(std::string_view task_id);
 [[nodiscard]] std::filesystem::path data_root();
 
 }  // namespace cppapplab

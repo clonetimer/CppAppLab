@@ -114,6 +114,7 @@ TEST(ProgressTest, StartingWorkspaceRegistersRecoverableInProgressState) {
     const std::vector<std::string> arguments{"cppapplab", "start", "w1.hello-world",
                                              (temporary.path() / "hello-started").string()};
     std::vector<char*> argv;
+    argv.reserve(arguments.size());
     for (const std::string& argument : arguments) {
         argv.push_back(const_cast<char*>(argument.c_str()));
     }
@@ -168,6 +169,37 @@ TEST(ProgressTest, ResumeFindsWorkspaceBeforeFirstCheck) {
     EXPECT_EQ(result, 0);
     EXPECT_NE(output.str().find(workspace.root.string()), std::string::npos);
     EXPECT_NE(output.str().find("NOT CHECKED"), std::string::npos);
+}
+
+TEST(ProgressTest, StartAllowsCalculatorAfterPrerequisitePasses) {
+    TemporaryDirectory temporary;
+    ScopedStateDirectory state(temporary.path() / "state");
+    const auto hello_workspace = create_hello_workspace(temporary.path());
+
+    write_hello_source(hello_workspace.root);
+    (void)save_result(hello_workspace, true);
+
+    const std::vector<std::string> arguments{
+        "cppapplab",
+        "start",
+        "w1.calculator",
+        (temporary.path() / "calculator").string()
+    };
+    std::vector<char*> argv;
+    argv.reserve(arguments.size());
+    for (const std::string& argument : arguments) {
+        argv.push_back(const_cast<char*>(argument.c_str()));
+    }
+
+    const int result = cppapplab::run_cli(static_cast<int>(argv.size()), argv.data());
+    EXPECT_EQ(result, 0);
+    EXPECT_TRUE(std::filesystem::is_regular_file(
+        temporary.path() / "calculator" / ".cppapplab-workspace"
+    ));
+
+    const auto calculator_progress = cppapplab::read_progress("w1.calculator");
+    ASSERT_TRUE(calculator_progress.has_value());
+    EXPECT_FALSE(calculator_progress->checked);
 }
 
 TEST(ProgressTest, PersistsCurrentPassAndWorkspaceForResume) {

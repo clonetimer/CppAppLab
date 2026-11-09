@@ -267,9 +267,9 @@ const std::vector<Task>& task_catalog() {
     return tasks;
 }
 
-const Task* find_task(std::string_view id) {
+const Task* find_task(std::string_view task_id) {
     for (const Task& task : task_catalog()) {
-        if (task.id == id) {
+        if (task.id == task_id) {
             return &task;
         }
     }

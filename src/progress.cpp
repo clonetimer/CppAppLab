@@ -362,7 +362,7 @@ std::optional<ProgressRecord> read_progress(std::string_view task_id) {
         throw std::runtime_error("Unsupported progress record format.");
     }
 
-    const std::string& result = required_field(fields, "result");
+    const std::string result = required_field(fields, "result");
     if (result != "PASS" && result != "FAIL" && result != "STARTED") {
         throw std::runtime_error("Progress result must be PASS, FAIL, or STARTED.");
     }

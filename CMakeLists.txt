@@ -135,6 +135,7 @@ if(BUILD_TESTING)
         tests/tcp_echo_workflow_test.cpp
         tests/tcp_chat_workflow_test.cpp
         tests/http_protocol_workflow_test.cpp
+        tests/http_request_parser_workflow_test.cpp
     )
     target_link_libraries(cppapplab_tests PRIVATE cppapplab_core GTest::gtest_main)
 

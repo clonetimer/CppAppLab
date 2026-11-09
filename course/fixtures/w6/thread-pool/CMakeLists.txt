@@ -18,7 +18,12 @@ endforeach()
 find_package(GTest CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 add_library(thread_pool_under_test STATIC "${POOL_SOURCE}")
-target_include_directories(thread_pool_under_test PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(
+  thread_pool_under_test
+  PUBLIC
+    "${CPPAPPLAB_LEARNER_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
 target_link_libraries(thread_pool_under_test PUBLIC Threads::Threads)
 target_compile_options(thread_pool_under_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_executable(thread-pool "${MAIN_SOURCE}")

@@ -20,8 +20,8 @@ TEST(ThreadPoolLearnerTest, ExecutesTasksAndReturnsValues) {
 TEST(ThreadPoolLearnerTest, ForwardsArgumentsAndMoveOnlyValues) {
     ThreadPool pool(1U, 4U);
     auto value = std::make_unique<int>(9);
-    EXPECT_EQ(pool.submit([](std::unique_ptr<int> item) { return *item; },
-                          std::move(value)).get(), 9);
+    EXPECT_EQ(pool.submit([](std::unique_ptr<int> item) { return *item; }, std::move(value)).get(),
+              9);
     EXPECT_EQ(value, nullptr);
 }
 TEST(ThreadPoolLearnerTest, PropagatesExceptionsThroughFuture) {

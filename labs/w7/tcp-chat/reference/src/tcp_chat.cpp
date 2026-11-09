@@ -198,8 +198,7 @@ struct ChatServer::Impl {
             const auto has_nickname = [&nickname](const auto& entry) {
                 return entry.second.nickname == nickname;
             };
-            const bool duplicate =
-                std::any_of(clients.begin(), clients.end(), has_nickname);
+            const bool duplicate = std::any_of(clients.begin(), clients.end(), has_nickname);
             if (duplicate) {
                 return queue_output(fd, "ERR nickname unavailable\n");
             }

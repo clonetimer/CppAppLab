@@ -78,7 +78,7 @@ TEST(TaskAcceptanceTest, TaskEqualityUsesStableIdentity) {
     const cppapplab::tasks::Task different_id(8U, "first title");
 
     EXPECT_EQ(first, same_id);
-    EXPECT_NE(first, different_id);
+    EXPECT_FALSE(first == different_id);
 }
 
 TEST(TaskAcceptanceTest, TaskOrderingUsesId) {

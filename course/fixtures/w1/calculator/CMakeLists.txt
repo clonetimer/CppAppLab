@@ -74,4 +74,23 @@ if(BUILD_TESTING)
 
     include(GoogleTest)
     gtest_discover_tests(calculator_acceptance_tests)
+
+    add_test(
+        NAME calculator_cli_add
+        COMMAND calculator_cli add 2 3
+    )
+    set_tests_properties(
+        calculator_cli_add
+        PROPERTIES
+        PASS_REGULAR_EXPRESSION "5"
+        TIMEOUT 5
+    )
+
+    add_test(
+        NAME calculator_cli_divide_zero
+        COMMAND bash
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/divide_zero.sh"
+            "$<TARGET_FILE:calculator_cli>"
+    )
+    set_tests_properties(calculator_cli_divide_zero PROPERTIES TIMEOUT 5)
 endif()

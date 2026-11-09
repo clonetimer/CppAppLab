@@ -2,11 +2,7 @@
 
 namespace cppapplab::calculator {
 
-Result calculate(
-    Operation operation,
-    double left,
-    double right
-) noexcept {
+Result calculate(Operation operation, double left, double right) noexcept {
     switch (operation) {
         case Operation::Add:
             return {left + right, Error::None};

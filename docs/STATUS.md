@@ -1,6 +1,6 @@
 # Project Status
 
-**Current milestone:** P1-C — persistent course progress and workspace recovery  
+**Current milestone:** P2-A — W2 persistent Todo CLI  
 **Release status:** no release has been declared.
 
 ## Merged P0 foundation
@@ -46,7 +46,7 @@ Hosted Ubuntu 24.04 CI passed 17/17 tests in both ordinary GCC and ASan/UBSan bu
 ## P1-C — persistent progress and workspace recovery
 
 **Branch:** `feat/p1c-progress-state`  
-**Status:** implementation complete; hosted CI validation passed; PR preparation pending.
+**Status:** merged into `main`; PR #4 is closed.
 
 - task catalog externalized to `course/tasks.tsv`, with validation for paths, acceptance metadata, duplicate IDs, and prerequisite ordering
 - explicit prerequisite metadata; Calculator is locked until Hello World has a current PASS
@@ -64,7 +64,21 @@ Default state location:
 
 Override with `CPPAPPLAB_STATE_DIR`.
 
-Latest hosted Ubuntu 24.04 verification on commit `23981cd485de59efc656c9f348c62e8414a9d7ef` passed 28/28 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks. The environment checker reported zero failures and one expected WSL2 warning on the GitHub-hosted runner.
+Hosted Ubuntu 24.04 verification on the P1-C branch passed 28/28 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks. PR #4 was merged as `ff137ea16fed8293dca6ca7e8972d83c72a265e4`. The environment checker reported zero failures and one expected WSL2 warning on the GitHub-hosted runner.
+
+## P2-A — W2 persistent Todo CLI
+
+**Branch:** `feat/p2-w2-todo-cli`  
+**Status:** implementation complete on the feature branch; hosted CI passed; PR preparation pending.
+
+- task `w2.todo-cli`, dependent on a current W1 Calculator PASS
+- STL-backed Todo model using `std::vector`, algorithms, and `std::unordered_map`
+- add/list/done/remove command-line operations
+- versioned text persistence with escaped titles
+- transactional load behavior and atomic save publication
+- platform-owned interface and 18 unit tests plus one multi-process CLI workflow test
+
+Hosted Ubuntu 24.04 CI on commit `6e7b3f3b9f5c68f24e832afe33af3e9d0727ad5f` passed 30/30 root tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks. The W2 end-to-end acceptance test independently ran the 19-case Todo fixture and passed.
 
 ## Remaining work
 

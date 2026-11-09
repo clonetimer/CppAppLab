@@ -50,10 +50,8 @@ TEST(CalculatorAcceptanceTest, HandlesZeroAndNegativeOperands) {
 }
 
 TEST(CalculatorAcceptanceTest, RejectsAnInvalidOperationValue) {
-    const auto invalid_operation =
-        static_cast<cppapplab::calculator::Operation>(99);
-    const auto result =
-        cppapplab::calculator::calculate(invalid_operation, 1.0, 2.0);
+    const auto invalid_operation = static_cast<cppapplab::calculator::Operation>(99);
+    const auto result = cppapplab::calculator::calculate(invalid_operation, 1.0, 2.0);
 
     EXPECT_EQ(result.error, cppapplab::calculator::Error::InvalidOperation);
 }

@@ -84,6 +84,20 @@ The latest workspace pointer is maintained per task, while the check history ret
 
 These files are local navigation state and remain editable by the user; they are not tamper-proof certificates.
 
+## W2 Todo CLI check contract
+
+The W2 task uses the same platform-owned CMake acceptance mechanism as the Calculator, with a task-specific fixture.
+
+- task ID: `w2.todo-cli`
+- learner implementation files: `src/todo.cpp` and `src/main.cpp`
+- the platform supplies a fixed `todo.hpp` interface to the acceptance build
+- 18 GoogleTest cases cover ID allocation, validation, add/update/remove, escaped text round-trips, malformed files, duplicate IDs, and symbolic-link rejection
+- one CTest integration case executes add/list/done/remove across separate CLI process invocations using an isolated `CPPAPPLAB_TODO_FILE`
+- expected CTest count: 19
+- task prerequisite: a current PASS for `w1.calculator`
+
+The persistence format is versioned with a `CPPAPPLAB_TODO_V1` header. A record contains ID, completion flag, and escaped title. Loading parses into a temporary collection and replaces the current collection only after complete validation. Saving writes a temporary sibling file and publishes it by rename. The default data file is `~/.local/share/cppapplab/todos.tsv`; `CPPAPPLAB_TODO_FILE` overrides it for isolated workspaces and tests.
+
 ## Evidence semantics
 
 The local evidence and log are navigation records, not certificates. They are user-editable files and must never be represented as tamper-proof proof of learning.
@@ -98,4 +112,4 @@ The process runner uses direct `execvp` argument vectors (no shell interpolation
 
 ## Next vertical slice
 
-P1-C now provides external task metadata, prerequisite enforcement, persistent progress, workspace recovery, and per-task check history. The next course work product is W2 Todo CLI.
+P1-C now provides external task metadata, prerequisite enforcement, persistent progress, workspace recovery, and per-task check history. The next course work product after W2 Todo CLI is the W3 Task / TaskManager refactor, focusing on classes, RAII, and ownership semantics.

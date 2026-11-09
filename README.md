@@ -19,7 +19,7 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 ## Current learning tasks
 
-The P1 learning engine currently provides W1 Hello World and W1 multi-file Calculator.
+The learning engine provides W1 Hello World, W1 multi-file Calculator, and the W2 persistent Todo CLI task.
 
 ```bash
 ./build/cppapplab list
@@ -33,6 +33,11 @@ The P1 learning engine currently provides W1 Hello World and W1 multi-file Calcu
 ./build/cppapplab lesson "$HOME/cppapplab-work/calculator"
 ./build/cppapplab hint "$HOME/cppapplab-work/calculator" 1
 ./build/cppapplab check "$HOME/cppapplab-work/calculator"
+
+./build/cppapplab start w2.todo-cli "$HOME/cppapplab-work/todo"
+./build/cppapplab lesson "$HOME/cppapplab-work/todo"
+./build/cppapplab hint "$HOME/cppapplab-work/todo" 1
+./build/cppapplab check "$HOME/cppapplab-work/todo"
 
 ./build/cppapplab progress
 ./build/cppapplab resume w1.hello-world
@@ -70,7 +75,7 @@ Set `CPPAPPLAB_STATE_DIR` to move this state directory. The course catalog is ma
 | W7 | TCP/IP, sockets, nonblocking I/O, select/poll/epoll | Multi-client TCP chat |
 | W8 | HTTP/1.1, parser, response, routing, static files, event loop | Educational HTTP server |
 
-The detailed course map and acceptance boundaries live in [course/CURRICULUM.md](course/CURRICULUM.md).
+The detailed course map and acceptance boundaries live in [course/CURRICULUM.md](course/CURRICULUM.md). W2's Todo task exercises STL algorithms and durable file I/O through a cumulative command-line application.
 
 ## Project principles
 

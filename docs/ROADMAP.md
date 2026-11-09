@@ -43,7 +43,7 @@ Hosted Ubuntu CI passed 17/17 tests in both ordinary and ASan/UBSan builds.
 
 ### P1-C — persistent progress and workspace recovery
 
-**Status: implemented on `feat/p1c-progress-state`; hosted CI passed; PR preparation pending.**
+**Status: merged into `main` via PR #4.**
 
 - external task catalog in `course/tasks.tsv`
 - validated task metadata and prerequisite ordering
@@ -57,19 +57,32 @@ Hosted Ubuntu CI passed 17/17 tests in both ordinary and ASan/UBSan builds.
 
 Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks.
 
-### Remaining P1 work
+### P1 follow-up
 
 - additional W1–W8 learner/reference task packs
 - richer task-specific diagnostics and feedback
 - verified offline dependency package
 - local WSL2 acceptance and first release preparation
 
+### P2-A — W2 persistent Todo CLI
+
+**Status: implementation complete on `feat/p2-w2-todo-cli`; hosted CI passed; PR preparation pending.**
+
+- STL-backed Todo model with `std::vector`, standard algorithms, and `std::unordered_map`
+- add/list/done/remove CLI commands
+- versioned text persistence with escaped title fields
+- load validates into a temporary collection before replacing current data
+- save publishes a complete temporary file by rename
+- platform-owned CMake/GoogleTest fixture with 18 unit tests and one multi-process CLI workflow test
+- task depends on a current W1 Calculator PASS
+- hosted Ubuntu CI passed 30/30 root tests in GCC and ASan/UBSan; clang-format and clang-tidy-enabled checks passed
+
 **P1 exit criteria:** a learner can start a task, read it, request hints, implement it, run fixed platform-owned checks, inspect failures, and resume without losing work. A local evidence record is navigation data, not a certificate.
 
 ## P2 — W1 to W3: C++ foundations
 
 - W1: toolchain, syntax, functions, multi-file compilation, CMake, GDB, calculator
-- W2: STL, algorithms, lambdas, file persistence, Todo CLI
+- W2: STL, algorithms, lambdas, file persistence, Todo CLI (P2-A)
 - W3: classes, RAII, smart pointers, copy/move, operators, TaskManager refactor
 
 ## P3 — W4: engineering quality

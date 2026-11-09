@@ -6,11 +6,10 @@
 #include <chrono>
 #include <cstdint>
 #include <future>
-#include <string>
 #include <stdexcept>
+#include <string>
 #include <sys/socket.h>
 #include <thread>
-#include <sys/socket.h>
 #include <unistd.h>
 
 using namespace std::chrono_literals;

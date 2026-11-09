@@ -30,7 +30,7 @@ Provides the planned P1 interaction model: start a new project, read a lesson, r
 
 ## 3. Intended learning loop
 
-\`\`\`text
+```text
 course / task card
        |
        v
@@ -52,19 +52,19 @@ source fingerprint + evidence record
        |
        v
 next eligible task
-\`\`\`
+```
 
 A previous pass becomes historical evidence when the source fingerprint changes. It must not be presented as proof that the current source still passes.
 
 ## 4. Repository boundaries
 
-- \`course/\`: curriculum and instructional material.
-- \`labs/\`: focused concept exercises.
-- \`projects/\`: cumulative, independently runnable work products.
-- \`include/\`, \`src/\`: platform implementation.
-- \`tests/\`: platform-owned regression and acceptance tests.
-- \`scripts/\`: environment checks and maintainer workflows.
-- \`docs/\`: architecture, decisions, status, and contributor guidance.
+- `course/`: curriculum and instructional material.
+- `labs/`: focused concept exercises.
+- `projects/`: cumulative, independently runnable work products.
+- `include/`, `src/`: platform implementation.
+- `tests/`: platform-owned regression and acceptance tests.
+- `scripts/`: environment checks and maintainer workflows.
+- `docs/`: architecture, decisions, status, and contributor guidance.
 
 ## 5. Execution and safety boundary
 

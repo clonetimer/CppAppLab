@@ -57,7 +57,8 @@ class UniqueFd {
     return std::all_of(name.begin(), name.end(), [](unsigned char character) {
         return (character >= 'a' && character <= 'z') ||
                (character >= 'A' && character <= 'Z') ||
-               (character >= '0' && character <= '9') || character == '_' || character == '-';
+               (character >= '0' && character <= '9') || character == '_' ||
+               character == '-';
     });
 }
 
@@ -193,8 +194,8 @@ struct ChatServer::Impl {
             if (!valid_nickname(nickname)) {
                 return queue_output(fd, "ERR invalid nickname\n");
             }
-            const bool duplicate = std::any_of(
-                clients.begin(), clients.end(), [&nickname](const auto& entry) {
+            const bool duplicate =
+                std::any_of(clients.begin(), clients.end(), [&nickname](const auto& entry) {
                     return entry.second.nickname == nickname;
                 });
             if (duplicate) {

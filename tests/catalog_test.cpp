@@ -109,7 +109,7 @@ TEST(TaskCatalogTest, ExposesMultiClientEpollChatExercise) {
     EXPECT_EQ(task->order, 2U);
     EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
     EXPECT_EQ(task->source_files.size(), 4U);
-    EXPECT_EQ(task->expected_test_count, 36U);
+    EXPECT_EQ(task->expected_test_count, 37U);
     ASSERT_EQ(task->prerequisites.size(), 1U);
     EXPECT_EQ(task->prerequisites.front(), "w7.tcp-echo");
 }

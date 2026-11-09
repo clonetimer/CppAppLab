@@ -161,7 +161,7 @@ Hosted Ubuntu 24.04 CI on final PR head `c20c60665d891edd54106779f99e84fbc3f5812
 - fragmented/coalesced input parsing and per-client output buffering
 - bounded client count, line length and pending output
 - eventfd stop wakeup and deterministic event-loop cleanup
-- 25 platform-owned tests, 10 learner tests and one CLI smoke test (36 total)
+- 26 platform-owned tests, 10 learner tests and one CLI smoke test (37 total)
 - W7-B depends on a current W7-A TCP Echo PASS
 
 ## Remaining work

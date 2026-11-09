@@ -1,7 +1,8 @@
-#include <algorithm>
 #include "tcp_echo.hpp"
 
 #include <gtest/gtest.h>
+
+#include <algorithm>
 
 #include <array>
 #include <cerrno>

@@ -1,6 +1,6 @@
 # Project Status
 
-**Current milestone:** P3 — W4 TaskManager Quality Gate  
+**Current milestone:** P3-B — W5 Linux System Programming Lab  
 **Release status:** no release has been declared.
 
 ## Merged P0 foundation
@@ -95,6 +95,17 @@ Hosted Ubuntu 24.04 CI on commit `6e7b3f3b9f5c68f24e832afe33af3e9d0727ad5f` pass
 - W3 depends on a current W2 Todo CLI PASS
 
 Hosted Ubuntu 24.04 CI on commit `01325e756b70f951bda2dfc58ed6d48acbad80fd` passed 32/32 root tests in ordinary GCC and ASan/UBSan builds. The W3 platform-owned fixture passed 31/31; clang-format and clang-tidy-enabled checks passed. The environment checker reported zero failures and one expected WSL2 warning on the GitHub-hosted runner.
+
+## P3-B — W5 Linux System Programming Lab
+
+**Branch:** `feat/p3-w5-linux-systems`  
+**Status:** implementation committed; hosted CI pending.
+
+- bounded thread-safe producer/consumer queue with close/drain semantics
+- POSIX descriptor write helper and child process runner using pipe/fork/dup2/execvp/waitpid
+- bounded output capture, exit/signal status and timeout kill/reap
+- 20 platform-owned tests, 10 learner tests and one CLI smoke test (31 total)
+- W5 depends on a current W4 quality-gate PASS
 
 ## Remaining work
 

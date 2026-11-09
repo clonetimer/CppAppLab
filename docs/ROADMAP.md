@@ -166,9 +166,9 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ## P6 — W8: HTTP server engineering
 
-**Status: W8-D1 HTTP Protocol Foundations is next on `feat/p5-w8-http-protocol`.**
+**Status: W8-D1 HTTP Protocol Foundations is in development on `feat/p5-w8-http-protocol`; hosted CI pending.**
 
-- D1: HTTP/1.1 request/response structure, request-line parser and response serializer
+- D1: HTTP/1.1 request/response structure, request-line parser and response serializer; 22 fixed + 10 learner tests + CLI smoke (33 total)
 - D2: incremental request parser, headers, Content-Length and complete-message detection
 - D3: response serialization and static file serving
 

@@ -87,7 +87,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ### P2-B — W3 Task / TaskManager Refactor
 
-**Status: implementation complete on `feat/p2-w3-task-manager`; hosted CI passed; PR preparation pending.**
+**Status: merged into `main` via PR #6.**
 
 - `Task` value object with validated invariants and ID-based identity/order
 - `TaskManager` uses `std::vector<std::unique_ptr<Task>>` for exclusive ownership

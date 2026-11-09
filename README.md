@@ -95,7 +95,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-The repository is in P2 C++ foundations development; W3 Task / TaskManager is being added on a feature branch. See:
+The repository is in P2 C++ foundations development; W3 Task / TaskManager is merged into main. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)

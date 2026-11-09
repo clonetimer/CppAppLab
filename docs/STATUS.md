@@ -83,7 +83,7 @@ Hosted Ubuntu 24.04 CI on commit `6e7b3f3b9f5c68f24e832afe33af3e9d0727ad5f` pass
 ## P2-B — W3 Task / TaskManager Refactor
 
 **Branch:** `feat/p2-w3-task-manager`  
-**Status:** implementation complete on the feature branch; hosted CI passed; PR preparation pending.
+**Status:** merged into `main` via PR #6.
 
 - `Task` value object with constructor invariants and ID-based equality/order
 - `TaskManager` owns tasks through `std::unique_ptr<Task>`

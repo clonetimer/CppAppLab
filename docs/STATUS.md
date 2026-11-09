@@ -42,7 +42,7 @@ Hosted Ubuntu 24.04 CI passed 15/15 tests in both ordinary GCC and ASan/UBSan bu
 - separate reference implementation
 - platform-owned CMake/GoogleTest fixture
 - fixed interface header used by the acceptance build
-- six platform-owned unit tests plus two CLI smoke checks
+- seven platform-owned unit tests plus two CLI smoke checks
 - learner-provided CMakeLists.txt and tests are not the acceptance authority
 
 ## Not yet implemented

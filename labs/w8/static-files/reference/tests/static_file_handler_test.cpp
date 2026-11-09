@@ -107,13 +107,15 @@ TEST(StaticFileHandlerReferenceTest, SelectsSvgMimeType) {
 TEST(StaticFileHandlerReferenceTest, UsesBinaryMimeTypeForUnknownExtension) {
     TemporaryDocumentRoot root;
     root.write("payload.bin", "bytes");
-    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/payload.bin"));
+    const auto response = 
+    StaticFileHandler(root.path()).handle(make_request("GET", "/payload.bin"));
     EXPECT_EQ(response.headers.at("Content-Type"), "application/octet-stream");
 }
 
 TEST(StaticFileHandlerReferenceTest, ReturnsNotFoundForMissingFile) {
     TemporaryDocumentRoot root;
-    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/missing.txt"));
+    const auto response = 
+    StaticFileHandler(root.path()).handle(make_request("GET", "/missing.txt"));
     EXPECT_EQ(response.status_code, 404);
     EXPECT_EQ(response.reason_phrase, "Not Found");
 }
@@ -134,7 +136,8 @@ TEST(StaticFileHandlerReferenceTest, RejectsPathTraversal) {
 TEST(StaticFileHandlerReferenceTest, RemovesQueryBeforeFileLookup) {
     TemporaryDocumentRoot root;
     root.write("hello.txt", "hello");
-    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/hello.txt?x=1"));
+    const auto response = 
+    StaticFileHandler(root.path()).handle(make_request("GET", "/hello.txt?x=1"));
     EXPECT_EQ(response.status_code, 200);
     EXPECT_EQ(response.body, "hello");
 }
@@ -142,7 +145,8 @@ TEST(StaticFileHandlerReferenceTest, RemovesQueryBeforeFileLookup) {
 TEST(StaticFileHandlerReferenceTest, QueryTextDoesNotAffectPathTraversalCheck) {
     TemporaryDocumentRoot root;
     root.write("hello.txt", "hello");
-    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/hello.txt?next=.."));
+    const auto response = 
+    StaticFileHandler(root.path()).handle(make_request("GET", "/hello.txt?next=.."));
     EXPECT_EQ(response.status_code, 200);
     EXPECT_EQ(response.body, "hello");
 }

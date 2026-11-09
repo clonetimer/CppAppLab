@@ -121,7 +121,7 @@ TEST(TaskCatalogTest, ExposesHttpProtocolFoundationsExercise) {
     EXPECT_EQ(task->order, 1U);
     EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
     EXPECT_EQ(task->source_files.size(), 4U);
-    EXPECT_EQ(task->expected_test_count, 32U);
+    EXPECT_EQ(task->expected_test_count, 33U);
     ASSERT_EQ(task->prerequisites.size(), 1U);
     EXPECT_EQ(task->prerequisites.front(), "w7.tcp-chat");
 }

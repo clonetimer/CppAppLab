@@ -179,17 +179,19 @@ Hosted Ubuntu 24.04 CI on final PR head `c20c60665d891edd54106779f99e84fbc3f5812
 
 ## P5-B — W8-D2 Incremental HTTP Request Parser
 
-**Branch:** `feat/p5-w8-http-parser`  
-**Status:** W8-D2 merged into `main` via PR #13; hosted Ubuntu 24.04 CI passed.
+**Base implementation:** merged into `main` via PR #13; hosted Ubuntu 24.04 CI passed.  
+**Follow-up:** strict HTTP request-line and header-field validation on `feat/p5-w8-http-parser-hardening`.
 
 - incremental request parser over arbitrary TCP byte chunks
-- request line and case-insensitive headers
+- HTTP method token, request-target and version validation
+- case-insensitive header names stored lowercase
+- rejects whitespace before the header colon, invalid field-name tokens and control bytes in values
 - header terminator detection using CRLFCRLF
 - Content-Length body accumulation by bytes
-- NeedMoreData / Complete / Error parser states
-- duplicate and conflicting Content-Length handling
-- parser limits and malformed request diagnostics
-- 26 platform-owned tests, 10 learner tests and one CLI smoke test (37 total)
+- NeedMoreData / Complete / Error parser states and pipelined consumed-byte reporting
+- duplicate headers rejected as an explicit learning policy; Transfer-Encoding remains unsupported
+- parser limits: 16 KiB headers and 1 MiB bodies
+- 28 platform-owned tests, 10 learner tests and one CLI smoke test (39 total)
 
 ## P5-C — W8-D3 HTTP Responses and Static Files
 

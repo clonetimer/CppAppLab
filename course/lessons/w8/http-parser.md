@@ -55,7 +55,7 @@ public:
 1. Find `\r\n\r\n`. If missing, return NeedMoreData unless the header buffer exceeds 16 KiB.
 2. Enforce the 16 KiB header limit, including the terminator.
 3. Parse exactly three request-line tokens: method, target and version. Support HTTP/1.0 and HTTP/1.1 only.
-4. Parse each `Name: Value` header line, trim surrounding whitespace, lowercase the name and reject duplicates.
+4. Parse each `Name: Value` header line, validate the field name as an HTTP token with no whitespace before the colon, trim optional whitespace around the value, lowercase the name and reject duplicates.
 5. Require Host for HTTP/1.1.
 6. Reject Transfer-Encoding.
 7. Parse Content-Length with `std::from_chars`; require the entire value to be consumed.
@@ -103,4 +103,4 @@ The fixed fixture tests complete GET/POST requests, partial headers and bodies, 
 - [ ] Content-Length is strict and byte-based.
 - [ ] Header and body size limits are enforced.
 - [ ] consumed reports only the first request.
-- [ ] All 37 acceptance checks pass.
+- [ ] All 39 acceptance checks pass.

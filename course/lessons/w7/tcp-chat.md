@@ -68,7 +68,7 @@ Connect from multiple terminals using `nc 127.0.0.1 9000`, then enter `NICK alic
 
 ## What the platform checks
 
-The fixed acceptance fixture validates the learner implementation, not learner-controlled build files or tests. It covers nickname validation and uniqueness, registration requirements, message broadcast, fragmented input, multiple clients, partial output, disconnect cleanup, bounded resources, stop wakeup and event-loop lifecycle.
+The fixed acceptance fixture validates the learner implementation, not learner-controlled build files or tests. It covers nickname validation and uniqueness, registration requirements, message broadcast, fragmented input, multiple clients, disconnect cleanup, bounded input and output, stop wakeup and event-loop lifecycle.
 
 ## Explain your design
 

@@ -123,7 +123,7 @@ TEST(StaticFileAcceptanceTest, UsesBinaryMimeTypeForUnknownExtension) {
 
 TEST(StaticFileAcceptanceTest, Returns404ForMissingFile) {
     TemporaryDocumentRoot root;
-    const auto response = 
+    const auto response =
     StaticFileHandler(root.path()).handle(make_request("GET", "/missing.txt"));
     EXPECT_EQ(response.status_code, 404);
     EXPECT_EQ(response.reason_phrase, "Not Found");
@@ -158,7 +158,7 @@ TEST(StaticFileAcceptanceTest, RejectsBackslashTarget) {
 TEST(StaticFileAcceptanceTest, RemovesQueryStringBeforeLookup) {
     TemporaryDocumentRoot root;
     root.write("hello.txt", "hello");
-    const auto response = 
+    const auto response =
     StaticFileHandler(root.path()).handle(make_request("GET", "/hello.txt?x=1"));
     EXPECT_EQ(response.status_code, 200);
     EXPECT_EQ(response.body, "hello");
@@ -167,7 +167,7 @@ TEST(StaticFileAcceptanceTest, RemovesQueryStringBeforeLookup) {
 TEST(StaticFileAcceptanceTest, QueryValueDoesNotTriggerPathTraversalRejection) {
     TemporaryDocumentRoot root;
     root.write("hello.txt", "hello");
-    const auto response = 
+    const auto response =
     StaticFileHandler(root.path()).handle(make_request("GET", "/hello.txt?next=.."));
     EXPECT_EQ(response.status_code, 200);
     EXPECT_EQ(response.body, "hello");

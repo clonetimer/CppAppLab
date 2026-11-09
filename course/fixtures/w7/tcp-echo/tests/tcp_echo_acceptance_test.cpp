@@ -18,19 +18,17 @@
 
 using namespace std::chrono_literals;
 
-using cppapplab::net::TcpEchoServer;
-using cppapplab::net::connect_tcp;
-using cppapplab::net::send_all;
+namespace net = cppapplab::net;
 
 namespace {
 
 std::string echo_round_trip(const std::string& payload, std::size_t chunk_size = 0U) {
-    TcpEchoServer server(0U);
+    net::TcpEchoServer server(0U);
     auto server_done = std::async(std::launch::async, [&server] { server.serve_one(); });
-    const int client = connect_tcp("127.0.0.1", server.port());
+    const int client = net::connect_tcp("127.0.0.1", server.port());
 
     if (chunk_size == 0U) {
-        EXPECT_TRUE(send_all(client, payload.data(), payload.size()));
+        EXPECT_TRUE(net::send_all(client, payload.data(), payload.size()));
     } else {
         for (std::size_t offset = 0; offset < payload.size(); offset += chunk_size) {
             const std::size_t count = std::min(chunk_size, payload.size() - offset);

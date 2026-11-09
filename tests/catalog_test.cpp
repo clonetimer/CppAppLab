@@ -20,7 +20,7 @@ TEST(TaskCatalogTest, ExposesMultiFileCalculatorExercise) {
     EXPECT_EQ(task->order, 2U);
     EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
     EXPECT_EQ(task->source_files.size(), 3U);
-    EXPECT_EQ(task->expected_unit_test_count, 6U);
+    EXPECT_EQ(task->expected_unit_test_count, 7U);
 }
 
 TEST(TaskCatalogTest, UnknownTaskDoesNotResolve) {

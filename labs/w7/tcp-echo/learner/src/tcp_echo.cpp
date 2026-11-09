@@ -23,7 +23,9 @@ class UniqueFd {
             ::close(value_);
         }
     }
-    [[nodiscard]] int get() const noexcept { return value_; }
+    [[nodiscard]] int get() const noexcept {
+        return value_;
+    }
     [[nodiscard]] int release() noexcept {
         const int value = value_;
         value_ = -1;
@@ -146,8 +148,7 @@ bool send_all(int file_descriptor, const char* data, std::size_t size) {
 
     std::size_t offset = 0;
     while (offset < size) {
-        const ssize_t sent =
-            ::send(file_descriptor, data + offset, size - offset, MSG_NOSIGNAL);
+        const ssize_t sent = ::send(file_descriptor, data + offset, size - offset, MSG_NOSIGNAL);
         if (sent < 0) {
             if (errno == EINTR) {
                 continue;

@@ -128,6 +128,15 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ## P4 — W6: concurrency and thread pool
 
+**Status: implementation in progress on `feat/p3-w6-thread-pool`; hosted CI pending.**
+
+- fixed worker pool with bounded queue backpressure
+- futures/promises, move-only callable/argument support and exception propagation
+- linearizable submit/shutdown boundary and once-only concurrent joining
+- platform fixture: 22 fixed tests + 10 learner tests + CLI smoke (33 total)
+- prerequisite: current PASS for W5 system programming lab
+
+
 - POSIX file descriptors and system calls
 - processes and lifecycle
 - std::thread, mutex, condition_variable

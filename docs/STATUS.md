@@ -118,6 +118,20 @@ Hosted Ubuntu 24.04 CI on final PR head `88d43e8425467e5f4b7cb0d181c625aa6619947
 - graceful shutdown and worker lifecycle
 - race/deadlock tests and sanitizer validation
 
+## P3-C — W6 Thread Pool and Futures
+
+**Branch:** `feat/p3-w6-thread-pool`  
+**Status:** implementation committed; hosted CI pending.
+
+- fixed-size worker pool built on the W5 bounded queue
+- templated submit with move-aware callable/argument storage and std::future results
+- task exceptions transported through futures
+- lifecycle mutex serializes submit acceptance with shutdown
+- std::call_once ensures concurrent shutdown callers wait for worker joins
+- shutdown drains accepted work and rejects later submissions
+- 22 platform-owned tests, 10 learner tests and one CLI smoke test (33 total)
+- W6 depends on a current W5 system-lab PASS
+
 ## Remaining work
 
 - complete W3 hosted GCC, ASan/UBSan, clang-format, and clang-tidy CI

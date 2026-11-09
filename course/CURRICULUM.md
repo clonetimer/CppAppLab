@@ -103,13 +103,18 @@ The first-version language baseline is C++17. WSL2 Ubuntu 24.04 is the full acce
 
 **Topics**
 
-- TCP/IP layers and Linux socket API
-- blocking TCP server
+- TCP/IP layers, IPv4 addresses, ports and network byte order
+- Linux socket API: `socket/bind/listen/accept/connect/send/recv`
+- blocking TCP echo server and client
+- thread-per-connection and connection ownership
 - nonblocking sockets and `EAGAIN/EWOULDBLOCK`
 - `select`, `poll`, and `epoll`
-- multiple clients, connection lifecycle, framing and error handling
+- connection state, read/write buffering, partial I/O and TCP stream framing
+- multi-client chat protocol, input limits and disconnect handling
 
-**Work product:** a multi-client TCP chat server.
+**Work products:**
+1. `w7.tcp-echo` — blocking TCP echo server/client, complete writes and RAII descriptor ownership. This task is implemented first and depends on W6.
+2. `w7.tcp-chat` — a multi-client Linux `epoll` chat server with non-blocking sockets, connection state, nickname registration, newline framing, buffered partial writes and graceful disconnects. This task follows the echo exercise and is the W7 completion target.
 
 ## W8 — HTTP server engineering
 

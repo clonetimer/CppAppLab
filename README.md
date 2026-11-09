@@ -100,7 +100,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-W1–W6 are merged into `main`; W7 TCP/IP and Socket Programming is the next development milestone. No release has been declared. See:
+W1–W6 are merged into `main`; W7 TCP/IP and Socket Programming is under development on `feat/p4-w7-tcp-networking`. No release has been declared. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)

@@ -144,7 +144,16 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - thread pool, futures, templates, exception and shutdown semantics
 - atomics, tests, benchmarks, logging
 
-## P5 — W7 to W8: network engineering
+## P5 — W7: TCP/IP and socket programming
+
+**Status: W7-A TCP Echo Server is in development on `feat/p4-w7-tcp-networking`; W7-B epoll chat server remains next.**
+
+- W7-A: IPv4 socket API, blocking TCP echo server/client, partial sends, descriptor lifetime
+- W7-B: thread-per-connection learning path, non-blocking sockets, select/poll, epoll
+- final work product: multi-client TCP chat with connection state, newline framing, read/write buffers and input limits
+- W7-A acceptance: 21 fixed tests + 10 learner tests + CLI smoke (32 total)
+
+## P6 — W8: HTTP server engineering
 
 - TCP/IP and Linux socket API
 - blocking and nonblocking I/O
@@ -154,7 +163,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - router, static files, event loop + worker pool
 - keep-alive, limits, error handling, logging, benchmark, release
 
-## P6 — Delivery and stabilization
+## P7 — Delivery and stabilization
 
 - source package and learner package
 - offline dependency strategy and reproducible checks

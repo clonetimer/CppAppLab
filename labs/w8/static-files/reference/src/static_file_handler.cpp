@@ -89,14 +89,14 @@ HttpResponse StaticFileHandler::handle(const HttpRequest& request) const {
         return response;
     }
 
-    if (!is_safe_target(request.target)) {
-        return text_response(400, "Bad Request", "400 Bad Request\n");
-    }
-
     std::string target = request.target;
     const std::size_t query = target.find('?');
     if (query != std::string::npos) {
         target.erase(query);
+    }
+
+    if (!is_safe_target(target)) {
+        return text_response(400, "Bad Request", "400 Bad Request\n");
     }
     if (target == "/") {
         target = "/index.html";

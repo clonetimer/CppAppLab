@@ -130,11 +130,21 @@ TEST(HttpRequestParserAcceptanceTest, RejectsExtraRequestLineToken) {
     EXPECT_EQ(HttpRequestParser{}.parse(wire).status, ParseStatus::Error);
 }
 
-TEST(HttpRequestParserAcceptanceTest, TrimsHeaderNameAndValue) {
-    const std::string wire = "GET / HTTP/1.1\r\n Host :   localhost  \r\n\r\n";
-    const ParseResult result = HttpRequestParser{}.parse(wire);
-    ASSERT_EQ(result.status, ParseStatus::Complete);
-    EXPECT_EQ(result.request.headers.at("host"), "localhost");
+TEST(HttpRequestParserAcceptanceTest, RejectsWhitespaceBeforeHeaderColon) {
+    const std::string wire = "GET / HTTP/1.1\r\nHost : localhost\r\n\r\n";
+    EXPECT_EQ(HttpRequestParser{}.parse(wire).status, ParseStatus::Error);
+}
+
+TEST(HttpRequestParserAcceptanceTest, RejectsInvalidHeaderFieldNameCharacters) {
+    const std::string wire = "GET / HTTP/1.1\r\nHost: localhost\r\nBad@Name: value\r\n\r\n";
+    EXPECT_EQ(HttpRequestParser{}.parse(wire).status, ParseStatus::Error);
+}
+
+TEST(HttpRequestParserAcceptanceTest, RejectsControlBytesInHeaderValues) {
+    std::string wire = "GET / HTTP/1.1\r\nHost: localhost\r\nX-Test: safe";
+    wire.push_back('\x01');
+    wire += "value\r\n\r\n";
+    EXPECT_EQ(HttpRequestParser{}.parse(wire).status, ParseStatus::Error);
 }
 
 TEST(HttpRequestParserAcceptanceTest, LowercasesHeaderNames) {

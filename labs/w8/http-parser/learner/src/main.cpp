@@ -25,8 +25,7 @@ int main(int argc, char** argv) {
 
     const std::string input(std::istreambuf_iterator<char>(std::cin),
                             std::istreambuf_iterator<char>());
-    const cppapplab::http::ParseResult result =
-        cppapplab::http::HttpRequestParser{}.parse(input);
+    const auto result = cppapplab::http::HttpRequestParser{}.parse(input);
     if (result.status == cppapplab::http::ParseStatus::NeedMoreData) {
         std::cout << "NeedMoreData\n";
         return 0;

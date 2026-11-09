@@ -501,9 +501,8 @@ int show_progress() {
             }
         } else if (has_current_pass(task.id)) {
             state = "PASSED";
-            detail = record->checked
-                         ? record->evidence.timestamp
-                         : "another workspace has a current PASS";
+            detail = record->checked ? record->evidence.timestamp
+                                     : "another workspace has a current PASS";
         } else if (!record->checked) {
             state = "IN PROGRESS";
             detail = record->workspace_root.string();

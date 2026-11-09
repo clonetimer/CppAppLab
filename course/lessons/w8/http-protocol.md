@@ -125,4 +125,4 @@ The fixed fixture checks request-line parsing, malformed input, preservation of 
 - [ ] Connection: close is emitted.
 - [ ] Header names are handled case-insensitively.
 - [ ] Header and reason-phrase injection is rejected.
-- [ ] All 32 acceptance checks pass.
+- [ ] All 33 acceptance checks pass.

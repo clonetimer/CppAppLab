@@ -190,15 +190,11 @@ int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
     return passed ? 0 : 1;
 }
 
-
-std::filesystem::path stage_calculator_sources(
-    const Task& task,
-    const std::filesystem::path& workspace_root,
-    const std::filesystem::path& build_directory
-) {
+std::filesystem::path stage_calculator_sources(const Task& task,
+                                               const std::filesystem::path& workspace_root,
+                                               const std::filesystem::path& build_directory) {
     const auto stage_directory = build_directory / "learner-source";
-    if (std::filesystem::exists(stage_directory) ||
-        std::filesystem::is_symlink(stage_directory)) {
+    if (std::filesystem::exists(stage_directory) || std::filesystem::is_symlink(stage_directory)) {
         const auto status = std::filesystem::symlink_status(stage_directory);
         if (std::filesystem::is_symlink(status) || !std::filesystem::is_directory(status)) {
             throw std::runtime_error("Refusing to replace an unsafe learner staging path.");
@@ -241,7 +237,8 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
     const Task& task = *workspace.task;
     if (task.acceptance_kind != AcceptanceKind::CMakeGoogleTest ||
         task.expected_unit_test_count == 0) {
-        throw std::runtime_error("This task has no configured CMake/GoogleTest acceptance contract.");
+        throw std::runtime_error(
+            "This task has no configured CMake/GoogleTest acceptance contract.");
     }
 
     const std::string fingerprint_before = source_fingerprint(task, workspace.root);
@@ -262,8 +259,7 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
         throw std::runtime_error("Platform acceptance fixture is missing or unsafe.");
     }
 
-    const auto staged_sources =
-        stage_calculator_sources(task, workspace.root, build_directory);
+    const auto staged_sources = stage_calculator_sources(task, workspace.root, build_directory);
 
     const std::vector<std::string> configure_arguments{
         "cmake",
@@ -272,17 +268,12 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
         "-B",
         build_directory.string(),
         "-DCMAKE_BUILD_TYPE=Debug",
-        "-DCPPAPPLAB_LEARNER_SOURCE_DIR=" + staged_sources.string()
-    };
+        "-DCPPAPPLAB_LEARNER_SOURCE_DIR=" + staged_sources.string()};
     log << "$ cmake -S " << fixture.string() << " -B " << build_directory.string()
         << " -DCPPAPPLAB_LEARNER_SOURCE_DIR=" << staged_sources.string() << '\n';
 
-    const ProcessResult configure = run_process(
-        configure_arguments,
-        workspace.root,
-        std::chrono::seconds(30),
-        kMaxCompilerOutput
-    );
+    const ProcessResult configure = run_process(configure_arguments, workspace.root,
+                                                std::chrono::seconds(30), kMaxCompilerOutput);
     log << configure.output;
 
     bool configured = process_succeeded(configure);
@@ -292,43 +283,36 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
 
     bool built = false;
     if (configured) {
-        const ProcessResult build = run_process(
-            {"cmake", "--build", build_directory.string(), "--parallel", "2"},
-            workspace.root,
-            std::chrono::seconds(60),
-            kMaxCompilerOutput
-        );
+        const ProcessResult build =
+            run_process({"cmake", "--build", build_directory.string(), "--parallel", "2"},
+                        workspace.root, std::chrono::seconds(60), kMaxCompilerOutput);
         log << "\n$ cmake --build " << build_directory.string() << " --parallel 2\n"
             << build.output;
         built = process_succeeded(build);
         if (!built) {
-            log << "\n[CppAppLab] Platform-owned fixture build failed or exceeded its resource limit.\n";
+            log << "\n[CppAppLab] Platform-owned fixture build failed or exceeded its resource "
+                   "limit.\n";
         }
     }
 
     bool unit_tests_passed = false;
     if (built) {
-        const ProcessResult ctest = run_process(
-            {"ctest", "--test-dir", build_directory.string(), "--output-on-failure"},
-            workspace.root,
-            std::chrono::seconds(30),
-            kMaxCompilerOutput
-        );
-        log << "\n$ ctest --test-dir " << build_directory.string()
-            << " --output-on-failure\n"
+        const ProcessResult ctest =
+            run_process({"ctest", "--test-dir", build_directory.string(), "--output-on-failure"},
+                        workspace.root, std::chrono::seconds(30), kMaxCompilerOutput);
+        log << "\n$ ctest --test-dir " << build_directory.string() << " --output-on-failure\n"
             << ctest.output;
 
-        const std::string expected_summary =
-            "100% tests passed, 0 tests failed out of " +
-            std::to_string(task.expected_unit_test_count);
+        const std::string expected_summary = "100% tests passed, 0 tests failed out of " +
+                                             std::to_string(task.expected_unit_test_count);
         unit_tests_passed =
-            process_succeeded(ctest) &&
-            ctest.output.find(expected_summary) != std::string::npos;
+            process_succeeded(ctest) && ctest.output.find(expected_summary) != std::string::npos;
 
         if (unit_tests_passed) {
             tests_passed += task.expected_unit_test_count;
         } else {
-            log << "\n[CppAppLab] The fixed unit-test count/result did not match the task contract.\n";
+            log << "\n[CppAppLab] The fixed unit-test count/result did not match the task "
+                   "contract.\n";
         }
     }
 
@@ -336,33 +320,25 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
     bool cli_divide_zero_passed = false;
     const auto executable = build_directory / "calculator_cli";
     if (unit_tests_passed) {
-        const ProcessResult addition = run_process(
-            {executable.string(), "add", "2", "3"},
-            workspace.root,
-            std::chrono::seconds(5),
-            kMaxProgramOutput
-        );
+        const ProcessResult addition =
+            run_process({executable.string(), "add", "2", "3"}, workspace.root,
+                        std::chrono::seconds(5), kMaxProgramOutput);
         log << "\n$ calculator_cli add 2 3\n" << addition.output;
-        cli_add_passed =
-            process_succeeded(addition) && addition.output == "5\n";
+        cli_add_passed = process_succeeded(addition) && addition.output == "5\n";
         if (cli_add_passed) {
             ++tests_passed;
         } else {
             log << "\n[CppAppLab] Calculator CLI addition smoke test failed.\n";
         }
 
-        const ProcessResult division_by_zero = run_process(
-            {executable.string(), "divide", "1", "0"},
-            workspace.root,
-            std::chrono::seconds(5),
-            kMaxProgramOutput
-        );
+        const ProcessResult division_by_zero =
+            run_process({executable.string(), "divide", "1", "0"}, workspace.root,
+                        std::chrono::seconds(5), kMaxProgramOutput);
         log << "\n$ calculator_cli divide 1 0\n" << division_by_zero.output;
-        cli_divide_zero_passed =
-            !division_by_zero.timed_out &&
-            !division_by_zero.output_truncated &&
-            division_by_zero.exit_code == 3 &&
-            division_by_zero.output == "error: division by zero\n";
+        cli_divide_zero_passed = !division_by_zero.timed_out &&
+                                 !division_by_zero.output_truncated &&
+                                 division_by_zero.exit_code == 3 &&
+                                 division_by_zero.output == "error: division by zero\n";
         if (cli_divide_zero_passed) {
             ++tests_passed;
         } else {
@@ -375,9 +351,8 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
         log << "\n[CppAppLab] Learner source changed while the check was running; "
                "the result is not accepted.\n";
     } else {
-        passed = configured && built && unit_tests_passed &&
-                 cli_add_passed && cli_divide_zero_passed &&
-                 tests_passed == tests_total;
+        passed = configured && built && unit_tests_passed && cli_add_passed &&
+                 cli_divide_zero_passed && tests_passed == tests_total;
     }
 
     Evidence evidence;
@@ -489,9 +464,11 @@ int show_next(const std::filesystem::path& workspace_path) {
                   << "Start it with: cppapplab start " << next_task->id
                   << " <new-workspace-directory>\n";
     } else {
-        std::cout << "No later task is available yet; continue with the next planned course work.\n";
+        std::cout
+            << "No later task is available yet; continue with the next planned course work.\n";
     }
-    std::cout << "This is learning navigation only; local evidence is not a completion certificate.\n";
+    std::cout
+        << "This is learning navigation only; local evidence is not a completion certificate.\n";
     return 0;
 }
 

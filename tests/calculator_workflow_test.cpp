@@ -16,7 +16,7 @@
 namespace {
 
 class TemporaryDirectory {
-public:
+   public:
     TemporaryDirectory() {
         const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
         path_ = std::filesystem::temp_directory_path() /
@@ -33,12 +33,12 @@ public:
         return path_;
     }
 
-private:
+   private:
     std::filesystem::path path_;
 };
 
 class StdoutCapture {
-public:
+   public:
     StdoutCapture() : previous_(std::cout.rdbuf(stream_.rdbuf())) {}
 
     ~StdoutCapture() {
@@ -49,7 +49,7 @@ public:
         return stream_.str();
     }
 
-private:
+   private:
     std::ostringstream stream_;
     std::streambuf* previous_;
 };
@@ -64,10 +64,7 @@ int invoke(const std::vector<std::string>& arguments) {
     return cppapplab::run_cli(static_cast<int>(argv.size()), argv.data());
 }
 
-void write_file(
-    const std::filesystem::path& path,
-    const std::string& content
-) {
+void write_file(const std::filesystem::path& path, const std::string& content) {
     std::ofstream output(path, std::ios::binary | std::ios::trunc);
     if (!output) {
         throw std::runtime_error("Cannot open test file: " + path.string());
@@ -86,33 +83,29 @@ TEST(CalculatorWorkflowTest, FixedCMakeAndGoogleTestFixtureChecksLearnerImplemen
     ASSERT_NE(task, nullptr);
 
     TemporaryDirectory temporary;
-    const auto workspace =
-        cppapplab::create_workspace(*task, temporary.path() / "calculator");
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "calculator");
 
-    write_file(
-        workspace.root / "src/calculator.cpp",
-        "#include \"calculator.hpp\"\n"
-        "namespace cppapplab::calculator {\n"
-        "Result calculate(Operation operation, double left, double right) noexcept {\n"
-        "    switch (operation) {\n"
-        "        case Operation::Add: return {left + right, Error::None};\n"
-        "        case Operation::Subtract: return {left - right, Error::None};\n"
-        "        case Operation::Multiply: return {left * right, Error::None};\n"
-        "        case Operation::Divide:\n"
-        "            if (right == 0.0) return {0.0, Error::DivisionByZero};\n"
-        "            return {left / right, Error::None};\n"
-        "    }\n"
-        "    return {0.0, Error::InvalidOperation};\n"
-        "}\n"
-        "}\n"
-    );
+    write_file(workspace.root / "src/calculator.cpp",
+               "#include \"calculator.hpp\"\n"
+               "namespace cppapplab::calculator {\n"
+               "Result calculate(Operation operation, double left, double right) noexcept {\n"
+               "    switch (operation) {\n"
+               "        case Operation::Add: return {left + right, Error::None};\n"
+               "        case Operation::Subtract: return {left - right, Error::None};\n"
+               "        case Operation::Multiply: return {left * right, Error::None};\n"
+               "        case Operation::Divide:\n"
+               "            if (right == 0.0) return {0.0, Error::DivisionByZero};\n"
+               "            return {left / right, Error::None};\n"
+               "    }\n"
+               "    return {0.0, Error::InvalidOperation};\n"
+               "}\n"
+               "}\n");
 
     // This file is intentionally invalid: the platform must use its own fixture,
     // not a learner-controlled CMakeLists.txt.
-    write_file(
-        workspace.root / "CMakeLists.txt",
-        "message(FATAL_ERROR \"Learner CMakeLists must not be executed by platform acceptance\")\n"
-    );
+    write_file(workspace.root / "CMakeLists.txt",
+               "message(FATAL_ERROR \"Learner CMakeLists must not be executed by platform "
+               "acceptance\")\n");
 
     int check_result = -1;
     std::string check_output;

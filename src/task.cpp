@@ -10,35 +10,30 @@ namespace cppapplab {
 
 const std::vector<Task>& task_catalog() {
     static const std::vector<Task> tasks{
-        {
-            "w1.hello-world",
-            "W1 · First C++ Program",
-            1,
-            1,
-            "course/lessons/w1/hello-world.md",
-            "course/lessons/w1/hello-world.hints.md",
-            "labs/w1/hello-world/learner",
-            {"src/main.cpp"},
-            AcceptanceKind::ExactStdout,
-            "Hello, CppAppLab!\n",
-            {},
-            0
-        },
-        {
-            "w1.calculator",
-            "W1 · Multi-file Calculator",
-            1,
-            2,
-            "course/lessons/w1/calculator.md",
-            "course/lessons/w1/calculator.hints.md",
-            "labs/w1/calculator/learner",
-            {"include/calculator.hpp", "src/calculator.cpp", "src/main.cpp"},
-            AcceptanceKind::CMakeGoogleTest,
-            {},
-            "course/fixtures/w1/calculator",
-            7
-        }
-    };
+        {"w1.hello-world",
+         "W1 · First C++ Program",
+         1,
+         1,
+         "course/lessons/w1/hello-world.md",
+         "course/lessons/w1/hello-world.hints.md",
+         "labs/w1/hello-world/learner",
+         {"src/main.cpp"},
+         AcceptanceKind::ExactStdout,
+         "Hello, CppAppLab!\n",
+         {},
+         0},
+        {"w1.calculator",
+         "W1 · Multi-file Calculator",
+         1,
+         2,
+         "course/lessons/w1/calculator.md",
+         "course/lessons/w1/calculator.hints.md",
+         "labs/w1/calculator/learner",
+         {"include/calculator.hpp", "src/calculator.cpp", "src/main.cpp"},
+         AcceptanceKind::CMakeGoogleTest,
+         {},
+         "course/fixtures/w1/calculator",
+         7}};
 
     return tasks;
 }

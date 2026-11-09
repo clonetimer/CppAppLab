@@ -7,10 +7,7 @@
 
 namespace cppapplab {
 
-enum class AcceptanceKind {
-    ExactStdout,
-    CMakeGoogleTest
-};
+enum class AcceptanceKind { ExactStdout, CMakeGoogleTest };
 
 struct Task {
     std::string id;

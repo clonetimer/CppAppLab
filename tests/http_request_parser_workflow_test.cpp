@@ -113,6 +113,6 @@ TEST(HttpRequestParserWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImp
     const auto evidence = cppapplab::read_evidence(workspace.root);
     ASSERT_TRUE(evidence.has_value()) << diagnostic;
     EXPECT_TRUE(evidence->passed) << diagnostic;
-    EXPECT_EQ(evidence->tests_passed, 37U) << diagnostic;
-    EXPECT_EQ(evidence->tests_total, 37U) << diagnostic;
+    EXPECT_EQ(evidence->tests_passed, 39U) << diagnostic;
+    EXPECT_EQ(evidence->tests_total, 39U) << diagnostic;
 }

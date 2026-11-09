@@ -66,7 +66,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ### P2-A — W2 persistent Todo CLI
 
-**Status: implementation in progress on `feat/p2-w2-todo-cli`; hosted CI pending.**
+**Status: implementation complete on `feat/p2-w2-todo-cli`; hosted CI passed; PR preparation pending.**
 
 - STL-backed Todo model with `std::vector`, standard algorithms, and `std::unordered_map`
 - add/list/done/remove CLI commands
@@ -75,6 +75,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - save publishes a complete temporary file by rename
 - platform-owned CMake/GoogleTest fixture with 18 unit tests and one multi-process CLI workflow test
 - task depends on a current W1 Calculator PASS
+- hosted Ubuntu CI passed 30/30 root tests in GCC and ASan/UBSan; clang-format and clang-tidy-enabled checks passed
 
 **P1 exit criteria:** a learner can start a task, read it, request hints, implement it, run fixed platform-owned checks, inspect failures, and resume without losing work. A local evidence record is navigation data, not a certificate.
 

@@ -69,7 +69,7 @@ Hosted Ubuntu 24.04 verification on the P1-C branch passed 28/28 tests in both o
 ## P2-A — W2 persistent Todo CLI
 
 **Branch:** `feat/p2-w2-todo-cli`  
-**Status:** implementation in progress; hosted CI not yet run on the complete W2 task.
+**Status:** implementation complete on the feature branch; hosted CI passed; PR preparation pending.
 
 - task `w2.todo-cli`, dependent on a current W1 Calculator PASS
 - STL-backed Todo model using `std::vector`, algorithms, and `std::unordered_map`
@@ -78,9 +78,10 @@ Hosted Ubuntu 24.04 verification on the P1-C branch passed 28/28 tests in both o
 - transactional load behavior and atomic save publication
 - platform-owned interface and 18 unit tests plus one multi-process CLI workflow test
 
+Hosted Ubuntu 24.04 CI on commit `6e7b3f3b9f5c68f24e832afe33af3e9d0727ad5f` passed 30/30 root tests in both ordinary GCC and ASan/UBSan builds, plus clang-format and clang-tidy-enabled checks. The W2 end-to-end acceptance test independently ran the 19-case Todo fixture and passed.
+
 ## Remaining work
 
-- finish W2 acceptance and merge after CI passes
 - additional W1–W8 learner/reference task packs
 - richer task-specific diagnostics and feedback
 - verified offline dependency package

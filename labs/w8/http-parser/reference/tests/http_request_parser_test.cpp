@@ -26,8 +26,7 @@ TEST(HttpRequestParserReferenceTest, ParsesPostBodyUsingContentLength) {
 }
 
 TEST(HttpRequestParserReferenceTest, NeedsMoreDataForPartialHeader) {
-    const ParseResult result =
-        HttpRequestParser{}.parse("GET /hello HTTP/1.1\r\nHost: local");
+    const ParseResult result = HttpRequestParser{}.parse("GET /hello HTTP/1.1\r\nHost: local");
     EXPECT_EQ(result.status, ParseStatus::NeedMoreData);
 }
 
@@ -62,8 +61,7 @@ TEST(HttpRequestParserReferenceTest, AcceptsHttp10WithoutHost) {
 }
 
 TEST(HttpRequestParserReferenceTest, RejectsInvalidContentLength) {
-    const std::string wire =
-        "POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: abc\r\n\r\n";
+    const std::string wire = "POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: abc\r\n\r\n";
     const ParseResult result = HttpRequestParser{}.parse(wire);
     EXPECT_EQ(result.status, ParseStatus::Error);
     EXPECT_EQ(result.error, "invalid Content-Length");

@@ -61,87 +61,76 @@ TEST(StaticFileAcceptanceTest, MapsRootToIndexHtml) {
 TEST(StaticFileAcceptanceTest, ReadsHtmlFileBytes) {
     TemporaryDocumentRoot root;
     root.write("page.html", "<p>hello</p>");
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("GET", "/page.html"));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/page.html"));
     EXPECT_EQ(response.body, "<p>hello</p>");
 }
 
 TEST(StaticFileAcceptanceTest, SelectsCssMimeType) {
     TemporaryDocumentRoot root;
     root.write("style.css", "body{}");
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("GET", "/style.css"));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/style.css"));
     EXPECT_EQ(response.headers.at("Content-Type"), "text/css; charset=utf-8");
 }
 
 TEST(StaticFileAcceptanceTest, SelectsJavaScriptMimeType) {
     TemporaryDocumentRoot root;
     root.write("app.js", "console.log(1)");
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("GET", "/app.js"));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/app.js"));
     EXPECT_EQ(response.headers.at("Content-Type"), "application/javascript");
 }
 
 TEST(StaticFileAcceptanceTest, SelectsPlainTextMimeType) {
     TemporaryDocumentRoot root;
     root.write("hello.txt", "hello");
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("GET", "/hello.txt"));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/hello.txt"));
     EXPECT_EQ(response.headers.at("Content-Type"), "text/plain; charset=utf-8");
 }
 
 TEST(StaticFileAcceptanceTest, SelectsJsonMimeType) {
     TemporaryDocumentRoot root;
     root.write("data.json", "{}");
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("GET", "/data.json"));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/data.json"));
     EXPECT_EQ(response.headers.at("Content-Type"), "application/json");
 }
 
 TEST(StaticFileAcceptanceTest, SelectsPngMimeType) {
     TemporaryDocumentRoot root;
     root.write("pixel.png", "png");
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("GET", "/pixel.png"));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/pixel.png"));
     EXPECT_EQ(response.headers.at("Content-Type"), "image/png");
 }
 
 TEST(StaticFileAcceptanceTest, SelectsJpegMimeType) {
     TemporaryDocumentRoot root;
     root.write("photo.jpg", "jpeg");
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("GET", "/photo.jpg"));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/photo.jpg"));
     EXPECT_EQ(response.headers.at("Content-Type"), "image/jpeg");
 }
 
 TEST(StaticFileAcceptanceTest, SelectsSvgMimeType) {
     TemporaryDocumentRoot root;
     root.write("icon.svg", "<svg/>");
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("GET", "/icon.svg"));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/icon.svg"));
     EXPECT_EQ(response.headers.at("Content-Type"), "image/svg+xml");
 }
 
 TEST(StaticFileAcceptanceTest, UsesBinaryMimeTypeForUnknownExtension) {
     TemporaryDocumentRoot root;
     root.write("asset.bin", "bytes");
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("GET", "/asset.bin"));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/asset.bin"));
     EXPECT_EQ(response.headers.at("Content-Type"), "application/octet-stream");
 }
 
 TEST(StaticFileAcceptanceTest, Returns404ForMissingFile) {
     TemporaryDocumentRoot root;
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("GET", "/missing.txt"));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/missing.txt"));
     EXPECT_EQ(response.status_code, 404);
     EXPECT_EQ(response.reason_phrase, "Not Found");
 }
 
 TEST(StaticFileAcceptanceTest, Returns405AndAllowForNonGet) {
     TemporaryDocumentRoot root;
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("POST", "/"));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("POST", "/"));
     EXPECT_EQ(response.status_code, 405);
     EXPECT_EQ(response.reason_phrase, "Method Not Allowed");
     EXPECT_EQ(response.headers.at("Allow"), "GET");
@@ -149,30 +138,26 @@ TEST(StaticFileAcceptanceTest, Returns405AndAllowForNonGet) {
 
 TEST(StaticFileAcceptanceTest, RejectsRelativeTarget) {
     TemporaryDocumentRoot root;
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("GET", "index.html"));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "index.html"));
     EXPECT_EQ(response.status_code, 400);
 }
 
 TEST(StaticFileAcceptanceTest, RejectsDotDotTraversal) {
     TemporaryDocumentRoot root;
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("GET", "/../secret"));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/../secret"));
     EXPECT_EQ(response.status_code, 400);
 }
 
 TEST(StaticFileAcceptanceTest, RejectsBackslashTarget) {
     TemporaryDocumentRoot root;
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("GET", "/..\\secret"));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/..\\secret"));
     EXPECT_EQ(response.status_code, 400);
 }
 
 TEST(StaticFileAcceptanceTest, RemovesQueryStringBeforeLookup) {
     TemporaryDocumentRoot root;
     root.write("hello.txt", "hello");
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("GET", "/hello.txt?x=1"));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/hello.txt?x=1"));
     EXPECT_EQ(response.status_code, 200);
     EXPECT_EQ(response.body, "hello");
 }
@@ -180,8 +165,7 @@ TEST(StaticFileAcceptanceTest, RemovesQueryStringBeforeLookup) {
 TEST(StaticFileAcceptanceTest, QueryValueDoesNotTriggerPathTraversalRejection) {
     TemporaryDocumentRoot root;
     root.write("hello.txt", "hello");
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("GET", "/hello.txt?next=.."));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/hello.txt?next=.."));
     EXPECT_EQ(response.status_code, 200);
     EXPECT_EQ(response.body, "hello");
 }
@@ -190,8 +174,7 @@ TEST(StaticFileAcceptanceTest, PreservesBinaryFileBytes) {
     TemporaryDocumentRoot root;
     const std::string binary("\0\x01\x7f\xff", 4U);
     root.write("asset.bin", binary);
-    const auto response = StaticFileHandler(root.path()).handle(
-        make_request("GET", "/asset.bin"));
+    const auto response = StaticFileHandler(root.path()).handle(make_request("GET", "/asset.bin"));
     EXPECT_EQ(response.body, binary);
 }
 

@@ -14,11 +14,11 @@
 - architecture, development, environment, learning contract, roadmap, and decision documents
 - eight-week curriculum map
 
-P0 PR #1 is merged into \`main\`. Its GCC build, GoogleTest, ASan/UBSan, clang-format, and clang-tidy checks passed. Local WSL2 acceptance remains a separate maintainer-machine verification item.
+P0 PR #1 is merged into `main`. Its GCC build, GoogleTest, ASan/UBSan, clang-format, and clang-tidy checks passed. Local WSL2 acceptance remains a separate maintainer-machine verification item.
 
 ## P1-A implementation
 
-Implemented on \`feat/p1-learning-engine\`; PR #2 is awaiting review and merge.
+Implemented on `feat/p1-learning-engine`; PR #2 is awaiting review and merge.
 
 - task registry for W1 Hello World
 - learner workspace creation that reserves the destination and refuses to overwrite existing work
@@ -29,13 +29,13 @@ Implemented on \`feat/p1-learning-engine\`; PR #2 is awaiting review and merge.
 - process-group termination on timeout
 - source fingerprint and stale local evidence detection
 - rejection of symlinked or path-traversing learner source paths
-- CLI: \`list\`, \`start\`, \`lesson\`, \`hint\`, \`check\`, \`status\`, \`next\`
+- CLI: `list`, `start`, `lesson`, `hint`, `check`, `status`, `next`
 
-Only the explicit \`check\` command compiles and executes learner code. Navigation commands remain read-only.
+Only the explicit `check` command compiles and executes learner code. Navigation commands remain read-only.
 
 ## Latest automated evidence — 2026-11-09
 
-Verified commit: \`b0405f8b5db04aeaa96ecf290afac9a1a7bb3621\`
+Verified commit: `b0405f8b5db04aeaa96ecf290afac9a1a7bb3621`
 
 - GCC Build and GoogleTest: PASS, 15/15 tests
 - GCC ASan and UBSan: PASS, 15/15 tests
@@ -59,7 +59,7 @@ The local evidence file remains editable navigation data, not a tamper-proof cer
 
 ## Remaining acceptance
 
-- Run \`bash scripts/check_environment.sh --strict-wsl\` on the maintainer's Windows 11 + WSL2 + Ubuntu 24.04 machine.
+- Run `bash scripts/check_environment.sh --strict-wsl` on the maintainer's Windows 11 + WSL2 + Ubuntu 24.04 machine.
 - Complete the PR #2 review and merge after the final branch checks pass.
 - Exercise the workflow manually in the target environment.
 

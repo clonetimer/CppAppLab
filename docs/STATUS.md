@@ -1,6 +1,6 @@
 # Project Status
 
-**Current milestone:** P5-A — W8 HTTP Protocol Foundations  
+**Current milestone:** P5-B — W8 Incremental HTTP Request Parser  
 **Release status:** no release has been declared.
 
 ## Merged P0 foundation
@@ -167,7 +167,7 @@ Hosted Ubuntu 24.04 CI on final PR head `c20c60665d891edd54106779f99e84fbc3f5812
 ## P5-A — W8 HTTP Protocol Foundations
 
 **Branch:** `feat/p5-w8-http-protocol`  
-**Status:** W8-D1 implementation and fixed acceptance fixture added; hosted CI pending.
+**Status:** W8-D1 merged into `main` via PR #12; hosted Ubuntu 24.04 CI passed.
 
 - HTTP/1.1 request and response message structure
 - request-line parsing: method, target and version
@@ -176,6 +176,19 @@ Hosted Ubuntu 24.04 CI on final PR head `c20c60665d891edd54106779f99e84fbc3f5812
 - W8-D1 protocol foundation precedes the incremental request parser in W8-D2
 - 22 platform-owned tests, 10 learner tests and one CLI smoke test (33 total)
 - W8-D1 depends on a current W7-B TCP chat PASS
+
+## P5-B — W8-D2 Incremental HTTP Request Parser
+
+**Branch:** `feat/p5-w8-http-parser`  
+**Status:** next implementation stage.
+
+- incremental request parser over arbitrary TCP byte chunks
+- request line and case-insensitive headers
+- header terminator detection using CRLFCRLF
+- Content-Length body accumulation by bytes
+- NeedMoreData / Complete / Error parser states
+- duplicate and conflicting Content-Length handling
+- parser limits and malformed request diagnostics
 
 ## Remaining work
 

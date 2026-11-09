@@ -70,14 +70,16 @@ TEST(ThreadPoolWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImplementa
     TemporaryDirectory temporary;
     ScopedEnvironment state_directory("CPPAPPLAB_STATE_DIR", temporary.path() / "state");
     const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "thread-pool");
-    const auto reference = cppapplab::data_root() / "labs/w6/thread-pool/reference/src";
-    for (const char* source : {"thread_pool.cpp", "main.cpp"}) {
-        std::filesystem::copy_file(reference / source, workspace.root / "src" / source,
+    const auto reference = cppapplab::data_root() / "labs/w6/thread-pool/reference";
+    for (const auto& relative_path : {
+             std::filesystem::path("include/thread_pool.hpp"),
+             std::filesystem::path("src/thread_pool.cpp"),
+             std::filesystem::path("src/main.cpp"),
+             std::filesystem::path("tests/thread_pool_test.cpp")}) {
+        std::filesystem::copy_file(reference / relative_path,
+                                   workspace.root / relative_path,
                                    std::filesystem::copy_options::overwrite_existing);
     }
-    std::filesystem::copy_file(reference / "thread_pool_test.cpp",
-                               workspace.root / "tests/thread_pool_test.cpp",
-                               std::filesystem::copy_options::overwrite_existing);
     write_file(workspace.root / "CMakeLists.txt",
                "message(FATAL_ERROR \"Learner CMakeLists must not run\")\n");
     std::vector<std::string> arguments{"cppapplab", "check", workspace.root.string()};
@@ -96,6 +98,6 @@ TEST(ThreadPoolWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImplementa
     const auto evidence = cppapplab::read_evidence(workspace.root);
     ASSERT_TRUE(evidence.has_value()) << diagnostic;
     EXPECT_TRUE(evidence->passed) << diagnostic;
-    EXPECT_EQ(evidence->tests_passed, 33U) << diagnostic;
-    EXPECT_EQ(evidence->tests_total, 33U) << diagnostic;
+    EXPECT_EQ(evidence->tests_passed, 34U) << diagnostic;
+    EXPECT_EQ(evidence->tests_total, 34U) << diagnostic;
 }

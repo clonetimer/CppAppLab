@@ -1,6 +1,6 @@
 # Project Status
 
-**Current milestone:** P5-B — W8 Incremental HTTP Request Parser  
+**Current milestone:** P5-C — W8 Static File Handler and HTTP Responses  
 **Release status:** no release has been declared.
 
 ## Merged P0 foundation
@@ -180,7 +180,7 @@ Hosted Ubuntu 24.04 CI on final PR head `c20c60665d891edd54106779f99e84fbc3f5812
 ## P5-B — W8-D2 Incremental HTTP Request Parser
 
 **Branch:** `feat/p5-w8-http-parser`  
-**Status:** W8-D2 implementation and fixed acceptance fixture added; hosted CI pending.
+**Status:** W8-D2 merged into `main` via PR #13; hosted Ubuntu 24.04 CI passed.
 
 - incremental request parser over arbitrary TCP byte chunks
 - request line and case-insensitive headers
@@ -190,6 +190,19 @@ Hosted Ubuntu 24.04 CI on final PR head `c20c60665d891edd54106779f99e84fbc3f5812
 - duplicate and conflicting Content-Length handling
 - parser limits and malformed request diagnostics
 - 26 platform-owned tests, 10 learner tests and one CLI smoke test (37 total)
+
+## P5-C — W8-D3 HTTP Responses and Static Files
+
+**Branch:** `feat/p5-w8-static-files`  
+**Status:** next implementation stage.
+
+- response serialization integrated with request handling
+- binary static-file reads from a document root
+- MIME type selection for html/css/js/txt/json/png/jpeg/svg
+- GET-only static handler with 405 and Allow: GET
+- 404 for missing resources; 400 for unsafe target paths
+- query string removal before file lookup
+- conservative path traversal guard; production-grade canonical/symlink containment remains out of scope
 
 ## Remaining work
 

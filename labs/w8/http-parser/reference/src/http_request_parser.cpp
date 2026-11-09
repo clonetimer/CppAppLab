@@ -96,8 +96,9 @@ constexpr std::string_view kTokenPunctuation = "!#$%&'*+-.^_`|~";
     }
 
     const std::string_view method = line.substr(0U, first_space);
-    const std::string_view target =
-        line.substr(first_space + 1U, second_space - first_space - 1U);
+    const std::size_t target_start = first_space + 1U;
+    const std::size_t target_length = second_space - target_start;
+    const std::string_view target = line.substr(target_start, target_length);
     const std::string_view version = line.substr(second_space + 1U);
 
     if (!valid_method(method) || !valid_target(target)) {

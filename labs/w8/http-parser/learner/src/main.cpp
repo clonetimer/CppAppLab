@@ -23,8 +23,8 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    const std::string input{std::istreambuf_iterator<char>(std::cin),
-                             std::istreambuf_iterator<char>()};
+    const std::string input(std::istreambuf_iterator<char>(std::cin),
+                            std::istreambuf_iterator<char>());
     const cppapplab::http::ParseResult result =
         cppapplab::http::HttpRequestParser{}.parse(input);
     if (result.status == cppapplab::http::ParseStatus::NeedMoreData) {

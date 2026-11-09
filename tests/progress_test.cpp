@@ -179,12 +179,8 @@ TEST(ProgressTest, StartAllowsCalculatorAfterPrerequisitePasses) {
     write_hello_source(hello_workspace.root);
     (void)save_result(hello_workspace, true);
 
-    const std::vector<std::string> arguments{
-        "cppapplab",
-        "start",
-        "w1.calculator",
-        (temporary.path() / "calculator").string()
-    };
+    const std::vector<std::string> arguments{"cppapplab", "start", "w1.calculator",
+                                             (temporary.path() / "calculator").string()};
     std::vector<char*> argv;
     argv.reserve(arguments.size());
     for (const std::string& argument : arguments) {
@@ -193,9 +189,8 @@ TEST(ProgressTest, StartAllowsCalculatorAfterPrerequisitePasses) {
 
     const int result = cppapplab::run_cli(static_cast<int>(argv.size()), argv.data());
     EXPECT_EQ(result, 0);
-    EXPECT_TRUE(std::filesystem::is_regular_file(
-        temporary.path() / "calculator" / ".cppapplab-workspace"
-    ));
+    EXPECT_TRUE(
+        std::filesystem::is_regular_file(temporary.path() / "calculator" / ".cppapplab-workspace"));
 
     const auto calculator_progress = cppapplab::read_progress("w1.calculator");
     ASSERT_TRUE(calculator_progress.has_value());

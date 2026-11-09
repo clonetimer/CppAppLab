@@ -127,6 +127,7 @@ if(BUILD_TESTING)
         tests/workspace_test.cpp
         tests/learning_workflow_test.cpp
         tests/calculator_workflow_test.cpp
+        tests/todo_workflow_test.cpp
     )
     target_link_libraries(cppapplab_tests PRIVATE cppapplab_core GTest::gtest_main)
 

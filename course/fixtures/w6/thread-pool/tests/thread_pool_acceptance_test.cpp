@@ -191,9 +191,8 @@ TEST(ThreadPoolAcceptanceTest, BoundedSubmissionBlocksUntilCapacityIsAvailable) 
 
     std::promise<std::future<int>> third_submission;
     auto third_ready = third_submission.get_future();
-    std::thread submitter([&] {
-        third_submission.set_value(pool.submit([] { return 3; }));
-    });
+    std::thread submitter(
+        [&] { third_submission.set_value(pool.submit([] { return 3; })); });
 
     const auto blocked_status = third_ready.wait_for(20ms);
     release_worker.set_value();

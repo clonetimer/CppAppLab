@@ -1,6 +1,6 @@
 # Project Status
 
-**Current milestone:** P3-B — W5 Linux System Programming Lab  
+**Current milestone:** P3-C — W6 Concurrency and Thread Pool  
 **Release status:** no release has been declared.
 
 ## Merged P0 foundation
@@ -99,13 +99,24 @@ Hosted Ubuntu 24.04 CI on commit `01325e756b70f951bda2dfc58ed6d48acbad80fd` pass
 ## P3-B — W5 Linux System Programming Lab
 
 **Branch:** `feat/p3-w5-linux-systems`  
-**Status:** implementation committed; hosted CI pending.
+**Status:** merged into `main` via PR #8.
 
 - bounded thread-safe producer/consumer queue with close/drain semantics
 - POSIX descriptor write helper and child process runner using pipe/fork/dup2/execvp/waitpid
 - bounded output capture, exit/signal status and timeout kill/reap
 - 20 platform-owned tests, 10 learner tests and one CLI smoke test (31 total)
 - W5 depends on a current W4 quality-gate PASS
+
+Hosted Ubuntu 24.04 CI on final PR head `88d43e8425467e5f4b7cb0d181c625aa66199475` passed: GCC root tests 36/36, ASan/UBSan 36/36, W5 fixed fixture 31/31, CLI smoke, environment acceptance, clang-format and clang-tidy-enabled build/tests.
+
+## P3-C — W6 Concurrency and Thread Pool
+
+**Status:** next development stage; implementation follows W5.
+
+- thread pool with bounded task submission
+- futures/promises and exception propagation
+- graceful shutdown and worker lifecycle
+- race/deadlock tests and sanitizer validation
 
 ## Remaining work
 

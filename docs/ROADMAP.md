@@ -126,7 +126,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - platform fixture: 20 fixed tests + 10 learner tests + CLI smoke test (31 total)
 - prerequisite: current PASS for W4 quality gate
 
-## P4 — W5 to W6: Linux and concurrency
+## P4 — W6: concurrency and thread pool
 
 - POSIX file descriptors and system calls
 - processes and lifecycle

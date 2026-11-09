@@ -21,7 +21,7 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 The P1 learning engine currently provides W1 Hello World and W1 multi-file Calculator.
 
-\`\`\`bash
+```bash
 ./build/cppapplab list
 
 ./build/cppapplab start w1.hello-world "$HOME/cppapplab-work/hello-world"
@@ -33,7 +33,7 @@ The P1 learning engine currently provides W1 Hello World and W1 multi-file Calcu
 ./build/cppapplab lesson "$HOME/cppapplab-work/calculator"
 ./build/cppapplab hint "$HOME/cppapplab-work/calculator" 1
 ./build/cppapplab check "$HOME/cppapplab-work/calculator"
-\`\`\`
+```
 
 The Calculator acceptance runner uses a platform-owned CMake/GoogleTest fixture. It does not trust learner-provided CMakeLists.txt or tests.
 
@@ -74,7 +74,7 @@ The repository is in P1 learning-engine development. See:
 
 ## Quick start
 
-\`\`\`bash
+```bash
 git clone https://github.com/clonetimer/CppAppLab.git
 cd CppAppLab
 
@@ -83,7 +83,7 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 
 ./build/cppapplab --help
-\`\`\`
+```
 
 ## Scope boundary
 

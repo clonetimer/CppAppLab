@@ -1,6 +1,6 @@
 # Project Status
 
-**Current milestone:** P2-B — W3 Task / TaskManager Refactor  
+**Current milestone:** P3 — W4 TaskManager Quality Gate  
 **Release status:** no release has been declared.
 
 ## Merged P0 foundation

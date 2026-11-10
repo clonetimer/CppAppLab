@@ -15,7 +15,7 @@ namespace cppapplab::http {
 
 struct HttpServerConfig {
     std::string bind_address{"127.0.0.1"};
-    std::uint16_t port{8080U};
+    std::uint16_t port{0U};
     int backlog{128};
     std::filesystem::path document_root{"www"};
     std::size_t worker_count{4U};

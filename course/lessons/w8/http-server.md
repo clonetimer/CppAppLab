@@ -18,7 +18,7 @@ The event loop transfers an owned HttpRequest value to a worker. The worker retu
 
 ## Architecture
 
-\`\`\`text
+```text
 TCP clients
     |
     v
@@ -45,7 +45,7 @@ event-loop thread
     |
     v
 serialize_response -> writeBuffer -> EPOLLOUT -> send
-\`\`\`
+```
 
 ## Connection and stale-result safety
 
@@ -60,17 +60,15 @@ The event loop is the only thread that mutates the connection maps. Workers own 
 
 ## Bounded concurrency and overload
 
-The existing W6 ThreadPool uses a blocking bounded submission queue. To guarantee that submitting a request never waits for queue space on the event-loop thread, this task enforces:
+The existing W6 ThreadPool uses a blocking bounded submission queue. Connection count alone is not a sufficient bound: a disconnected client may leave a worker running while a new client connects.
 
-\`max_connections <= task_queue_capacity\`
+The event loop therefore maintains an `outstanding_jobs` counter covering queued jobs, running jobs and completions not yet drained. It checks the counter before submission, returns 503 at `task_queue_capacity`, increments before submit and decrements for every drained completion, including stale completions. Thus the event loop never blocks waiting for queue space. `max_connections` remains an independent socket/resource limit.
 
-Each connection may have at most one in-flight request, and the server accepts no more than max_connections. Therefore the number of submitted-but-not-yet-popped jobs can never exceed queue capacity. Worker count and queue capacity remain independent resource controls.
-
-When the active connection limit is reached, newly accepted clients receive a best-effort 503 Service Unavailable response and are closed. Request and response buffers are also bounded.
+When the active connection limit is reached, newly accepted clients receive a best-effort 503 Service Unavailable response and are closed. When the worker outstanding-job limit is reached, the request receives 503. Request and response buffers are also bounded.
 
 ## D5 protocol boundary
 
-D3's response serializer deliberately emits \`Connection: close\`. D5 preserves that contract and serves one request per TCP connection, closing only after the full response has been sent. Keep-Alive and HTTP pipelining are D6 work; they must not be silently enabled while the serializer still forces close.
+D3's response serializer deliberately emits `Connection: close`. D5 preserves that contract and serves one request per TCP connection, closing only after the full response has been sent. Keep-Alive and HTTP pipelining are D6 work; they must not be silently enabled while the serializer still forces close.
 
 Chunked Transfer-Encoding, TLS, URL decoding, query parameter parsing, route patterns and production-grade canonical/symlink containment remain out of scope.
 
@@ -87,23 +85,23 @@ A response larger than the configured response limit is replaced with a bounded 
 
 ## Build and run
 
-\`\`\`bash
+```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ./build/http-server server 8080
-\`\`\`
+```
 
 Try the actual network server:
 
-\`\`\`bash
+```bash
 curl -i http://127.0.0.1:8080/hello
 curl -i http://127.0.0.1:8080/health
 curl -i http://127.0.0.1:8080/
 curl -i -X POST --data-binary 'hello' http://127.0.0.1:8080/echo
-\`\`\`
+```
 
-Use Ctrl+C to stop the demonstration process. The library API also exposes thread-safe \`request_stop()\`, which writes eventfd and wakes a blocked epoll_wait. The caller must join the thread running \`run()\` before destroying the server.
+Use Ctrl+C to stop the demonstration process. The library API also exposes thread-safe `request_stop()`, which writes eventfd and wakes a blocked epoll_wait. The caller must join the thread running `run()` before destroying the server.
 
 ## What the platform checks
 
@@ -119,7 +117,7 @@ The fixed fixture uses real loopback TCP sockets and the real parser → dispatc
 - [ ] Incremental parser and bounded read/write buffers.
 - [ ] Partial writes resumed through EPOLLOUT only when needed.
 - [ ] 400 / 413 / 500 / 503 mapping and clean shutdown.
-- [ ] All 28 fixed acceptance checks pass.
+- [ ] All 29 fixed acceptance checks pass.
 
 ## Explain your design
 

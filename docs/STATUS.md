@@ -39,9 +39,9 @@ The CI now also compiles and tests the Router fixed fixture directly with ASan/U
 - Workers receive owned HttpRequest values and publish HttpResponse completions; they never touch sockets or Connection objects.
 - Generation tokens identify connections and prevent stale completions from being applied after fd reuse.
 - eventfd wakes the event loop after worker completion.
-- W6 ThreadPool is reused unchanged. Since its submit queue blocks, max_connections is constrained to be no greater than task_queue_capacity, ensuring the event loop never blocks waiting for queue space.
+- W6 ThreadPool is reused unchanged. Since its submit queue blocks, an event-loop-owned outstanding_jobs counter includes queued, running and undrained completions. The server returns 503 before submit at task_queue_capacity, including after disconnected clients, so the event loop never waits for queue space.
 - D5 preserves the existing serializer's Connection: close behavior: one request per TCP connection. Keep-Alive/pipelining is deferred to D6.
-- Fixed acceptance is planned as 17 platform-owned tests + 10 reference tests + one real loopback CLI smoke (28 total).
+- Fixed acceptance is planned as 18 platform-owned tests + 10 reference tests + one real loopback CLI smoke (29 total).
 - No merge, hosted CI PASS, release, or local WSL2 acceptance is claimed yet.
 
 ## Source and scope

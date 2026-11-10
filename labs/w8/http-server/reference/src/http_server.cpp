@@ -56,10 +56,8 @@ class UniqueFd {
 [[nodiscard]] HttpServerConfig validate_config(HttpServerConfig config) {
     if (config.backlog <= 0 || config.worker_count == 0U ||
         config.task_queue_capacity == 0U || config.max_connections == 0U ||
-        config.max_connections > config.task_queue_capacity ||
         config.max_request_bytes == 0U || config.max_response_bytes < 512U) {
-        throw std::invalid_argument("invalid HTTP server limits; max_connections must not exceed "
-                                    "task_queue_capacity");
+        throw std::invalid_argument("HTTP server limits must be positive");
     }
     in_addr parsed{};
     if (::inet_pton(AF_INET, config.bind_address.c_str(), &parsed) != 1) {
@@ -193,6 +191,7 @@ struct HttpServer::Impl {
     std::unordered_map<int, std::uint64_t> token_by_fd;
     std::mutex completion_mutex;
     std::deque<Completion> completions;
+    std::size_t outstanding_jobs{0U};
     cppapplab::concurrency::ThreadPool pool;
 
     [[nodiscard]] std::uint64_t allocate_token() {
@@ -239,12 +238,12 @@ struct HttpServer::Impl {
             wire = serialize_response(response);
         } catch (...) {
             response = error_response(500, "Internal Server Error",
-                                      "500 Internal Server Error\\n");
+                                      "500 Internal Server Error\n");
             wire = serialize_response(response);
         }
         if (wire.size() > config.max_response_bytes) {
             response = error_response(500, "Internal Server Error",
-                                      "500 Internal Server Error\\n");
+                                      "500 Internal Server Error\n");
             wire = serialize_response(response);
         }
         connection.write_buffer = std::move(wire);
@@ -303,11 +302,19 @@ struct HttpServer::Impl {
     void submit_request(Connection& connection, HttpRequest request) {
         const std::uint64_t token = connection.token;
         const int fd = connection.fd;
+        if (outstanding_jobs >= config.task_queue_capacity) {
+            queue_error(connection, 503, "Service Unavailable",
+                        "503 Service Unavailable\n");
+            return;
+        }
+
         connection.processing = true;
         if (!update_interest(connection)) {
             close_connection(token);
             return;
         }
+
+        ++outstanding_jobs;
         try {
             (void)pool.submit([this, fd, token, request = std::move(request)]() mutable {
                 HttpResponse response;
@@ -320,6 +327,7 @@ struct HttpServer::Impl {
                 publish_completion(Completion{fd, token, std::move(response)});
             });
         } catch (...) {
+            --outstanding_jobs;
             const auto current = connections.find(token);
             if (current != connections.end()) {
                 queue_error(current->second, 503, "Service Unavailable",
@@ -340,7 +348,7 @@ struct HttpServer::Impl {
             return;
         }
 
-        const ParseResult parsed = HttpRequestParser{}.parse(connection.read_buffer);
+        ParseResult parsed = HttpRequestParser{}.parse(connection.read_buffer);
         if (parsed.status == ParseStatus::NeedMoreData) {
             if (connection.peer_closed) {
                 queue_error(connection, 400, "Bad Request", "400 Bad Request\n");
@@ -364,7 +372,7 @@ struct HttpServer::Impl {
                         "413 Content Too Large\n");
             return;
         }
-        submit_request(connection, parsed.request);
+        submit_request(connection, std::move(parsed.request));
     }
 
     [[nodiscard]] bool read_client(Connection& connection) {
@@ -457,8 +465,13 @@ struct HttpServer::Impl {
             ready.swap(completions);
         }
         for (auto& completion : ready) {
+            if (outstanding_jobs > 0U) {
+                --outstanding_jobs;
+            }
             const auto found = connections.find(completion.token);
-            if (found == connections.end() || found->second.fd != completion.fd) {
+            const auto current_fd = token_by_fd.find(completion.fd);
+            if (found == connections.end() || current_fd == token_by_fd.end() ||
+                current_fd->second != completion.token || found->second.fd != completion.fd) {
                 continue;
             }
             queue_response(found->second, std::move(completion.response));

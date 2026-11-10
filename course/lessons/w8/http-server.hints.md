@@ -16,7 +16,7 @@ Push the completion under a mutex, then write uint64_t{1} to a non-blocking even
 
 ## Hint 5 — Avoid blocking ThreadPool submission
 
-The existing W6 submit waits for bounded queue capacity. Allow only one in-flight request per connection and enforce max_connections <= task_queue_capacity. Since active connections bound outstanding requests, the event loop's submit call cannot wait for queue space.
+The existing W6 submit waits for bounded queue capacity. Allow only one in-flight request per connection and maintain outstanding_jobs across queued, running and undrained completions. Before calling submit, return 503 when outstanding_jobs reaches task_queue_capacity; decrement only when the matching completion is drained, even if its connection is stale.
 
 ## Hint 6 — Incremental receive and bounded buffers
 

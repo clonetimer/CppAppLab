@@ -22,11 +22,12 @@ TEST(HttpServerLearnerTest, RejectsZeroQueueCapacity) {
     config.task_queue_capacity = 0U;
     EXPECT_THROW(HttpServer(config), std::invalid_argument);
 }
-TEST(HttpServerLearnerTest, RequiresQueueCapacityForEveryConnection) {
+TEST(HttpServerLearnerTest, AllowsMoreConnectionsThanOutstandingWorkerJobs) {
     HttpServerConfig config;
+    config.port = 0U;
     config.max_connections = 4U;
-    config.task_queue_capacity = 3U;
-    EXPECT_THROW(HttpServer(config), std::invalid_argument);
+    config.task_queue_capacity = 1U;
+    EXPECT_NO_THROW(HttpServer(config));
 }
 TEST(HttpServerLearnerTest, RejectsInvalidBindAddress) {
     HttpServerConfig config;

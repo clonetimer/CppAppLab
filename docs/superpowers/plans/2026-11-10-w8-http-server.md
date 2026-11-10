@@ -22,7 +22,7 @@
 
 - File-descriptor reuse and stale epoll/completion events: generation-token regression.
 - Worker/event-loop data races: worker receives values only; no Connection/socket references.
-- Event-loop blocking under worker queue pressure: validate max_connections <= workers + queue capacity and bounded overload behavior.
+- Event-loop blocking under worker queue pressure: maintain an outstanding-job counter that includes queued, running and undrained completions; reject with 503 before submit when it reaches task_queue_capacity.
 - Partial TCP reads/writes and binary request bodies: fragmented input and large response tests.
 - Shutdown/lifetime ordering: eventfd wake, drain/close connections, join workers before destroying shared state.
 

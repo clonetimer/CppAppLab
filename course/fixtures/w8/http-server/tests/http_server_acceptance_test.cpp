@@ -3,7 +3,9 @@
 #include <gtest/gtest.h>
 
 #include <arpa/inet.h>
+#include <cerrno>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include <atomic>
@@ -225,7 +227,7 @@ TEST(HttpServerAcceptanceTest, HandlesFragmentedRequestLineAndHeaders) {
 }
 TEST(HttpServerAcceptanceTest, ResumesPartialWritesForLargeResponse) {
     Router router = make_default_router();
-    const std::string payload(768U * 1024U, 'x');
+    const std::string payload(4U * 1024U * 1024U, 'x');
     router.add_route("GET", "/large", [payload](const HttpRequest&) {
         HttpResponse response;
         response.body = payload;
@@ -233,7 +235,7 @@ TEST(HttpServerAcceptanceTest, ResumesPartialWritesForLargeResponse) {
         return response;
     });
     HttpServerConfig config;
-    config.max_response_bytes = 1024U * 1024U;
+    config.max_response_bytes = 5U * 1024U * 1024U;
     TestServer server(config, std::move(router));
     EXPECT_EQ(body_of(exchange(server.port(), request("GET", "/large"))).size(),
               payload.size());
@@ -273,6 +275,33 @@ TEST(HttpServerAcceptanceTest, Returns400ForIncompleteRequestAtEof) {
     client.shutdown_write();
     EXPECT_NE(client.read_all().find("HTTP/1.1 400 Bad Request\r\n"), std::string::npos);
 }
+TEST(HttpServerAcceptanceTest, Returns503WhenWorkerQueueIsSaturated) {
+    std::atomic<bool> entered{false};
+    Router router = make_default_router();
+    router.add_route("GET", "/slow", [&entered](const HttpRequest&) {
+        entered.store(true);
+        std::this_thread::sleep_for(400ms);
+        HttpResponse response;
+        response.body = "finished";
+        return response;
+    });
+    HttpServerConfig config;
+    config.worker_count = 1U;
+    config.task_queue_capacity = 1U;
+    config.max_connections = 4U;
+    TestServer server(config, std::move(router));
+    TestClient slow(server.port());
+    ASSERT_TRUE(slow.send_all(request("GET", "/slow")));
+    const auto deadline = std::chrono::steady_clock::now() + 1s;
+    while (!entered.load() && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::yield();
+    }
+    ASSERT_TRUE(entered.load());
+    const auto overloaded = exchange(server.port(), request("GET", "/health"));
+    EXPECT_NE(overloaded.find("HTTP/1.1 503 Service Unavailable\r\n"), std::string::npos);
+    EXPECT_EQ(body_of(slow.read_all()), "finished");
+}
+
 TEST(HttpServerAcceptanceTest, RejectsStaleWorkerCompletionAfterDisconnect) {
     std::atomic<bool> entered{false};
     Router router = make_default_router();
@@ -298,7 +327,9 @@ TEST(HttpServerAcceptanceTest, RejectsStaleWorkerCompletionAfterDisconnect) {
               "Hello from C++ HTTP Server!\n");
 }
 TEST(HttpServerAcceptanceTest, EventFdStopsBlockedEventLoop) {
-    HttpServer server;
+    HttpServerConfig config;
+    config.port = 0U;
+    HttpServer server(config);
     auto finished = std::async(std::launch::async, [&server] { server.run(); });
     const auto deadline = std::chrono::steady_clock::now() + 1s;
     while (!server.running() && std::chrono::steady_clock::now() < deadline) {

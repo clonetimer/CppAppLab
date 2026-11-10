@@ -19,7 +19,7 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 ## Current learning tasks
 
-The learning engine provides W1 Hello World and Calculator, W2 persistent Todo CLI, W3 TaskManager refactor, W4 quality gate, W5 Linux systems, W6 thread pool, W7 TCP Echo and epoll chat, and W8 HTTP protocol, incremental parser, static files and Router/dynamic handlers. The catalog is the authoritative task list.
+The learning engine provides W1 Hello World and Calculator, W2 persistent Todo CLI, W3 TaskManager refactor, W4 quality gate, W5 Linux systems, W6 thread pool, W7 TCP Echo and epoll chat, and W8 HTTP protocol, incremental parser, static files and Router/dynamic handlers; W8-D5 TCP/epoll server integration is under implementation. The catalog is the authoritative task list.
 
 ```bash
 ./build/cppapplab list
@@ -108,6 +108,7 @@ W1–W7 and W8-D1–D4 are merged into `main`; W8-D5 is under implementation on 
 - [Environment setup](docs/ENVIRONMENT_WSL2_UBUNTU.md)
 - [Current project status](docs/STATUS.md)
 - [Router lesson and exact task boundary](course/lessons/w8/router.md)
+- [HTTP TCP server lesson](course/lessons/w8/http-server.md)
 - [HTTP TCP server lesson](course/lessons/w8/http-server.md)
 
 ## Quick start

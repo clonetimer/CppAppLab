@@ -19,7 +19,7 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 ## Current learning tasks
 
-The learning engine provides W1 Hello World, W1 multi-file Calculator, W2 persistent Todo CLI, W3 Task / TaskManager refactor, W4 TaskManager quality gate, and W5 Linux System Programming Lab, plus W6 Thread Pool and Futures.
+The learning engine provides W1 Hello World and Calculator, W2 persistent Todo CLI, W3 TaskManager refactor, W4 quality gate, W5 Linux systems, W6 thread pool, W7 TCP Echo and epoll chat, and W8 HTTP protocol, incremental parser, static files and Router/dynamic handlers. The catalog is the authoritative task list.
 
 ```bash
 ./build/cppapplab list
@@ -100,13 +100,14 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-W1–W7 and W8-D1–D2 are merged into `main`; W8-D3 static-file handling is under development on `feat/p5-w8-static-files`. No release has been declared. See:
+W1–W7 and W8-D1–D3 are merged into `main`; the W8-D4 Router task adds the complete stdin/parser/dispatch/serializer application pipeline. Its final-head PR/Actions evidence is recorded with the change. The next implementation stage is W8-D5 TCP/epoll and worker-pool integration, not another parser rewrite. No release has been declared. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Development and acceptance](docs/DEVELOPMENT.md)
 - [Environment setup](docs/ENVIRONMENT_WSL2_UBUNTU.md)
-- [Project status](docs/STATUS.md)
+- [Current project status](docs/STATUS.md)
+- [Router lesson and exact task boundary](course/lessons/w8/router.md)
 
 ## Quick start
 
@@ -120,6 +121,16 @@ ctest --test-dir build --output-on-failure
 
 ./build/cppapplab --help
 ```
+
+After satisfying the static-files prerequisite, start `w8.router` like any other learning task. For a reference-only demonstration:
+
+```bash
+cmake -S labs/w8/router/reference -B build-router
+cmake --build build-router --parallel
+printf 'GET /health HTTP/1.1\r\nHost: localhost\r\n\r\n' | ./build-router/http-router parse-stdin
+```
+
+This demonstration does not bind a TCP port; the live HTTP server is still a subsequent work product.
 
 ## Scope boundary
 

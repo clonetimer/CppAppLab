@@ -137,6 +137,7 @@ if(BUILD_TESTING)
         tests/http_protocol_workflow_test.cpp
         tests/http_request_parser_workflow_test.cpp
         tests/static_files_workflow_test.cpp
+        tests/router_workflow_test.cpp
     )
     target_link_libraries(cppapplab_tests PRIVATE cppapplab_core GTest::gtest_main)
 

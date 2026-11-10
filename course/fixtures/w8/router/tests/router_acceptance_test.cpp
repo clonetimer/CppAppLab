@@ -272,8 +272,7 @@ TEST_F(RouterAcceptanceTest, StaticTraversalStillRejected) {
 
 TEST_F(RouterAcceptanceTest, ParserDispatcherSerializerPreserveBinaryEcho) {
     const std::string bytes("A\0B\nC", 5U);
-    const std::string head =
-        "POST /echo HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\n";
+    const std::string head = "POST /echo HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\n";
     const auto parsed = HttpRequestParser{}.parse(head + bytes);
     ASSERT_EQ(parsed.status, ParseStatus::Complete);
     const std::string wire = serialize_response(dispatch(parsed.request, make_default_router()));
@@ -283,8 +282,7 @@ TEST_F(RouterAcceptanceTest, ParserDispatcherSerializerPreserveBinaryEcho) {
 }
 
 TEST_F(RouterAcceptanceTest, PartialBodyIsCompletedBeforeDynamicDispatch) {
-    const std::string head =
-        "POST /echo HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\n";
+    const std::string head = "POST /echo HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\n";
     EXPECT_EQ(HttpRequestParser{}.parse(head + "ab").status, ParseStatus::NeedMoreData);
     const auto parsed = HttpRequestParser{}.parse(head + "abcde");
     ASSERT_EQ(parsed.status, ParseStatus::Complete);

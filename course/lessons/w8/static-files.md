@@ -82,4 +82,4 @@ The fixed fixture covers root-to-index mapping, binary file reads, MIME types, u
 - [ ] Unsafe targets return 400.
 - [ ] Query strings do not affect file lookup.
 - [ ] Content-Length counts body bytes and Connection: close is emitted.
-- [ ] All 32 acceptance checks pass.
+- [ ] All 31 acceptance checks pass.

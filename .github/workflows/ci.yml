@@ -61,6 +61,18 @@ jobs:
         env:
           ASAN_OPTIONS: detect_leaks=1
         run: ctest --test-dir build-sanitize --output-on-failure
+      - name: Direct Router fixture sanitizer coverage
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1
+        run: |
+          cmake -S course/fixtures/w8/router -B build-router-sanitize \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/router/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-router-sanitize --parallel
+          ctest --test-dir build-router-sanitize --output-on-failure --timeout 15
 
   code-quality:
     name: Formatting and clang-tidy
@@ -72,10 +84,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential cmake libgtest-dev clang-format clang-tidy
-      - name: Check formatting
+      - name: Check formatting and show exact diff
         run: |
           find include src tests course/fixtures labs -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
-            | xargs -0 clang-format --dry-run --Werror
+            | xargs -0 clang-format -i
+          git diff --exit-code -- include src tests course/fixtures labs
       - name: Configure with clang-tidy
         run: |
           cmake -S . -B build-quality \
@@ -86,3 +99,11 @@ jobs:
         run: |
           cmake --build build-quality --parallel
           ctest --test-dir build-quality --output-on-failure
+      - name: Direct Router fixture clang-tidy coverage
+        run: |
+          cmake -S course/fixtures/w8/router -B build-router-quality \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/router/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_CLANG_TIDY=clang-tidy
+          cmake --build build-router-quality --parallel
+          ctest --test-dir build-router-quality --output-on-failure --timeout 15

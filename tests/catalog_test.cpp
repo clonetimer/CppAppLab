@@ -150,6 +150,18 @@ TEST(TaskCatalogTest, ExposesHttpStaticFilesExercise) {
     EXPECT_EQ(task->prerequisites.front(), "w8.http-parser");
 }
 
+TEST(TaskCatalogTest, ExposesHttpTcpServerExercise) {
+    const cppapplab::Task* task = cppapplab::find_task("w8.http-server");
+    ASSERT_NE(task, nullptr);
+    EXPECT_EQ(task->week, 8U);
+    EXPECT_EQ(task->order, 5U);
+    EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
+    EXPECT_EQ(task->source_files.size(), 4U);
+    EXPECT_EQ(task->expected_test_count, 28U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w8.router");
+}
+
 TEST(TaskCatalogTest, UnknownTaskDoesNotResolve) {
     EXPECT_EQ(cppapplab::find_task("w99.unknown"), nullptr);
 }

@@ -73,6 +73,18 @@ jobs:
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
           cmake --build build-router-sanitize --parallel
           ctest --test-dir build-router-sanitize --output-on-failure --timeout 15
+      - name: Direct HTTP server fixture sanitizer coverage
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1
+        run: |
+          cmake -S course/fixtures/w8/http-server -B build-http-server-sanitize \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-http-server-sanitize --parallel
+          ctest --test-dir build-http-server-sanitize --output-on-failure --timeout 20
 
   code-quality:
     name: Formatting and clang-tidy
@@ -107,3 +119,11 @@ jobs:
             -DCMAKE_CXX_CLANG_TIDY=clang-tidy
           cmake --build build-router-quality --parallel
           ctest --test-dir build-router-quality --output-on-failure --timeout 15
+      - name: Direct HTTP server fixture clang-tidy coverage
+        run: |
+          cmake -S course/fixtures/w8/http-server -B build-http-server-quality \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_CLANG_TIDY=clang-tidy
+          cmake --build build-http-server-quality --parallel
+          ctest --test-dir build-http-server-quality --output-on-failure --timeout 20

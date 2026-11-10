@@ -112,6 +112,6 @@ TEST(HttpServerWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImplementa
     const auto evidence = cppapplab::read_evidence(workspace.root);
     ASSERT_TRUE(evidence.has_value()) << diagnostic;
     EXPECT_TRUE(evidence->passed) << diagnostic;
-    EXPECT_EQ(evidence->tests_passed, 28U) << diagnostic;
-    EXPECT_EQ(evidence->tests_total, 28U) << diagnostic;
+    EXPECT_EQ(evidence->tests_passed, 29U) << diagnostic;
+    EXPECT_EQ(evidence->tests_total, 29U) << diagnostic;
 }

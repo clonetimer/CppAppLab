@@ -100,7 +100,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-W1–W7 and W8-D1–D2 are merged into `main`; W8-D3 static-file handling is the next development milestone. No release has been declared. See:
+W1–W7 and W8-D1–D2 are merged into `main`; W8-D3 static-file handling is under development on `feat/p5-w8-static-files`. No release has been declared. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)

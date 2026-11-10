@@ -27,8 +27,7 @@ struct HttpServerConfig {
 
 class HttpServer {
    public:
-    explicit HttpServer(HttpServerConfig config = {},
-                        Router router = make_default_router());
+    explicit HttpServer(HttpServerConfig config = {}, Router router = make_default_router());
     HttpServer(const HttpServer&) = delete;
     HttpServer& operator=(const HttpServer&) = delete;
     ~HttpServer();

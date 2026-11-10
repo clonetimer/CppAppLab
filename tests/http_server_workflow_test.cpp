@@ -27,7 +27,9 @@ class TemporaryDirectory {
         std::error_code ignored;
         std::filesystem::remove_all(path_, ignored);
     }
-    const std::filesystem::path& path() const noexcept { return path_; }
+    const std::filesystem::path& path() const noexcept {
+        return path_;
+    }
 
    private:
     std::filesystem::path path_;
@@ -79,8 +81,7 @@ TEST(HttpServerWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImplementa
 
     TemporaryDirectory temporary;
     ScopedEnvironment state_directory("CPPAPPLAB_STATE_DIR", temporary.path() / "state");
-    const auto workspace =
-        cppapplab::create_workspace(*task, temporary.path() / "http-server");
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "http-server");
     const auto reference = cppapplab::data_root() / "labs/w8/http-server/reference";
     for (const auto& relative_path : task->source_files) {
         std::filesystem::copy_file(reference / relative_path, workspace.root / relative_path,

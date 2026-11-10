@@ -17,9 +17,15 @@ HttpServer::HttpServer(HttpServerConfig, Router) {
     throw std::logic_error("TODO: implement the W8-D5 HTTP TCP server");
 }
 HttpServer::~HttpServer() = default;
-std::uint16_t HttpServer::port() const noexcept { return 0U; }
-bool HttpServer::running() const noexcept { return false; }
-void HttpServer::run() { throw std::logic_error("TODO: implement HttpServer::run"); }
+std::uint16_t HttpServer::port() const noexcept {
+    return 0U;
+}
+bool HttpServer::running() const noexcept {
+    return false;
+}
+void HttpServer::run() {
+    throw std::logic_error("TODO: implement HttpServer::run");
+}
 void HttpServer::request_stop() noexcept {}
 
 }  // namespace cppapplab::http

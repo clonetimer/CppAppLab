@@ -38,7 +38,9 @@ class UniqueFd {
             (void)::close(fd_);
         }
     }
-    [[nodiscard]] int get() const noexcept { return fd_; }
+    [[nodiscard]] int get() const noexcept {
+        return fd_;
+    }
     [[nodiscard]] int release() noexcept {
         const int value = fd_;
         fd_ = -1;
@@ -54,9 +56,9 @@ class UniqueFd {
 }
 
 [[nodiscard]] HttpServerConfig validate_config(HttpServerConfig config) {
-    if (config.backlog <= 0 || config.worker_count == 0U ||
-        config.task_queue_capacity == 0U || config.max_connections == 0U ||
-        config.max_request_bytes == 0U || config.max_response_bytes < 512U) {
+    if (config.backlog <= 0 || config.worker_count == 0U || config.task_queue_capacity == 0U ||
+        config.max_connections == 0U || config.max_request_bytes == 0U ||
+        config.max_response_bytes < 512U) {
         throw std::invalid_argument("HTTP server limits must be positive");
     }
     in_addr parsed{};
@@ -203,8 +205,7 @@ struct HttpServer::Impl {
 
     [[nodiscard]] bool update_interest(const Connection& connection) const {
         epoll_event event{};
-        if (!connection.processing && !connection.peer_closed &&
-            !connection.close_after_write) {
+        if (!connection.processing && !connection.peer_closed && !connection.close_after_write) {
             event.events |= EPOLLIN;
         }
         if (connection.write_offset < connection.write_buffer.size()) {
@@ -237,8 +238,7 @@ struct HttpServer::Impl {
         try {
             wire = serialize_response(response);
         } catch (...) {
-            response = error_response(500, "Internal Server Error",
-                                      "500 Internal Server Error\n");
+            response = error_response(500, "Internal Server Error", "500 Internal Server Error\n");
             wire = serialize_response(response);
         }
         if (wire.size() > config.max_response_bytes) {
@@ -288,8 +288,7 @@ struct HttpServer::Impl {
         const std::uint64_t one = 1U;
         for (;;) {
             const ssize_t written = ::write(wake_fd, &one, sizeof(one));
-            if (written == static_cast<ssize_t>(sizeof(one)) ||
-                (written < 0 && errno == EAGAIN)) {
+            if (written == static_cast<ssize_t>(sizeof(one)) || (written < 0 && errno == EAGAIN)) {
                 return;
             }
             if (written < 0 && errno == EINTR) {
@@ -303,8 +302,7 @@ struct HttpServer::Impl {
         const std::uint64_t token = connection.token;
         const int fd = connection.fd;
         if (outstanding_jobs >= config.task_queue_capacity) {
-            queue_error(connection, 503, "Service Unavailable",
-                        "503 Service Unavailable\n");
+            queue_error(connection, 503, "Service Unavailable", "503 Service Unavailable\n");
             return;
         }
 
@@ -321,8 +319,8 @@ struct HttpServer::Impl {
                 try {
                     response = dispatch_request(request, router, static_files);
                 } catch (...) {
-                    response = error_response(500, "Internal Server Error",
-                                              "500 Internal Server Error\n");
+                    response =
+                        error_response(500, "Internal Server Error", "500 Internal Server Error\n");
                 }
                 publish_completion(Completion{fd, token, std::move(response)});
             });
@@ -353,8 +351,7 @@ struct HttpServer::Impl {
             if (connection.peer_closed) {
                 queue_error(connection, 400, "Bad Request", "400 Bad Request\n");
             } else if (connection.read_buffer.size() > config.max_request_bytes) {
-                queue_error(connection, 413, "Content Too Large",
-                            "413 Content Too Large\n");
+                queue_error(connection, 413, "Content Too Large", "413 Content Too Large\n");
             }
             return;
         }
@@ -368,8 +365,7 @@ struct HttpServer::Impl {
             return;
         }
         if (parsed.consumed > config.max_request_bytes) {
-            queue_error(connection, 413, "Content Too Large",
-                        "413 Content Too Large\n");
+            queue_error(connection, 413, "Content Too Large", "413 Content Too Large\n");
             return;
         }
         submit_request(connection, std::move(parsed.request));
@@ -383,8 +379,7 @@ struct HttpServer::Impl {
             if (received > 0) {
                 connection.read_buffer.append(buffer, static_cast<std::size_t>(received));
                 if (connection.read_buffer.size() > config.max_request_bytes) {
-                    queue_error(connection, 413, "Content Too Large",
-                                "413 Content Too Large\n");
+                    queue_error(connection, 413, "Content Too Large", "413 Content Too Large\n");
                     return connections.find(token) != connections.end();
                 }
                 continue;
@@ -407,8 +402,7 @@ struct HttpServer::Impl {
 
     void accept_clients() {
         for (;;) {
-            const int fd =
-                ::accept4(listen_fd, nullptr, nullptr, SOCK_NONBLOCK | SOCK_CLOEXEC);
+            const int fd = ::accept4(listen_fd, nullptr, nullptr, SOCK_NONBLOCK | SOCK_CLOEXEC);
             if (fd < 0) {
                 if (errno == EINTR) {
                     continue;
@@ -533,8 +527,7 @@ struct HttpServer::Impl {
         const std::uint64_t one = 1U;
         for (;;) {
             const ssize_t written = ::write(wake_fd, &one, sizeof(one));
-            if (written == static_cast<ssize_t>(sizeof(one)) ||
-                (written < 0 && errno == EAGAIN)) {
+            if (written == static_cast<ssize_t>(sizeof(one)) || (written < 0 && errno == EAGAIN)) {
                 return;
             }
             if (written < 0 && errno == EINTR) {
@@ -554,8 +547,12 @@ HttpServer::~HttpServer() {
     }
 }
 
-std::uint16_t HttpServer::port() const noexcept { return impl_->bound_port; }
-bool HttpServer::running() const noexcept { return impl_->is_running.load(); }
+std::uint16_t HttpServer::port() const noexcept {
+    return impl_->bound_port;
+}
+bool HttpServer::running() const noexcept {
+    return impl_->is_running.load();
+}
 
 void HttpServer::run() {
     if (impl_->has_run) {
@@ -573,6 +570,8 @@ void HttpServer::run() {
     impl_->is_running.store(false);
 }
 
-void HttpServer::request_stop() noexcept { impl_->request_stop(); }
+void HttpServer::request_stop() noexcept {
+    impl_->request_stop();
+}
 
 }  // namespace cppapplab::http

@@ -35,13 +35,18 @@ class TemporaryRoot {
         std::error_code ignored;
         std::filesystem::remove_all(path_, ignored);
     }
-    const std::filesystem::path& path() const noexcept { return path_; }
+    const std::filesystem::path& path() const noexcept {
+        return path_;
+    }
     void write(const std::string& name, const std::string& bytes) const {
         std::ofstream output(path_ / name, std::ios::binary | std::ios::trunc);
-        if (!output) throw std::runtime_error("cannot create test document");
+        if (!output)
+            throw std::runtime_error("cannot create test document");
         output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
-        if (!output) throw std::runtime_error("cannot write test document");
+        if (!output)
+            throw std::runtime_error("cannot write test document");
     }
+
    private:
     std::filesystem::path path_;
 };
@@ -70,7 +75,10 @@ class TestServer {
             runner_.join();
         }
     }
-    std::uint16_t port() const noexcept { return server_.port(); }
+    std::uint16_t port() const noexcept {
+        return server_.port();
+    }
+
    private:
     HttpServer server_;
     std::thread runner_;
@@ -80,7 +88,8 @@ class TestClient {
    public:
     explicit TestClient(std::uint16_t port) {
         fd_ = ::socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
-        if (fd_ < 0) throw std::runtime_error("socket failed");
+        if (fd_ < 0)
+            throw std::runtime_error("socket failed");
         timeval timeout{};
         timeout.tv_sec = 4;
         (void)::setsockopt(fd_, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
@@ -96,29 +105,40 @@ class TestClient {
     }
     TestClient(const TestClient&) = delete;
     TestClient& operator=(const TestClient&) = delete;
-    ~TestClient() { if (fd_ >= 0) (void)::close(fd_); }
+    ~TestClient() {
+        if (fd_ >= 0)
+            (void)::close(fd_);
+    }
     bool send_all(const std::string& bytes) const {
         std::size_t offset = 0U;
         while (offset < bytes.size()) {
             const ssize_t sent =
                 ::send(fd_, bytes.data() + offset, bytes.size() - offset, MSG_NOSIGNAL);
-            if (sent > 0) offset += static_cast<std::size_t>(sent);
-            else if (sent < 0 && errno == EINTR) continue;
-            else return false;
+            if (sent > 0)
+                offset += static_cast<std::size_t>(sent);
+            else if (sent < 0 && errno == EINTR)
+                continue;
+            else
+                return false;
         }
         return true;
     }
-    void shutdown_write() const { (void)::shutdown(fd_, SHUT_WR); }
+    void shutdown_write() const {
+        (void)::shutdown(fd_, SHUT_WR);
+    }
     std::string read_all() const {
         std::string result;
         char buffer[8192];
         for (;;) {
             const ssize_t received = ::recv(fd_, buffer, sizeof(buffer), 0);
-            if (received > 0) result.append(buffer, static_cast<std::size_t>(received));
-            else if (received < 0 && errno == EINTR) continue;
+            if (received > 0)
+                result.append(buffer, static_cast<std::size_t>(received));
+            else if (received < 0 && errno == EINTR)
+                continue;
             else if (received < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
                 throw std::runtime_error("timed out waiting for HTTP response");
-            else break;
+            else
+                break;
         }
         return result;
     }
@@ -128,6 +148,7 @@ class TestClient {
             fd_ = -1;
         }
     }
+
    private:
     int fd_{-1};
 };
@@ -135,14 +156,16 @@ class TestClient {
 std::string request(const std::string& method, const std::string& target,
                     const std::string& body = {}) {
     std::string wire = method + " " + target + " HTTP/1.1\r\nHost: localhost\r\n";
-    if (!body.empty()) wire += "Content-Length: " + std::to_string(body.size()) + "\r\n";
+    if (!body.empty())
+        wire += "Content-Length: " + std::to_string(body.size()) + "\r\n";
     wire += "\r\n";
     wire += body;
     return wire;
 }
 std::string exchange(std::uint16_t port, const std::string& wire) {
     TestClient client(port);
-    if (!client.send_all(wire)) throw std::runtime_error("send failed");
+    if (!client.send_all(wire))
+        throw std::runtime_error("send failed");
     return client.read_all();
 }
 std::string body_of(const std::string& response) {
@@ -186,8 +209,9 @@ TEST(HttpServerAcceptanceTest, ServesStaticIndexFallback) {
 }
 TEST(HttpServerAcceptanceTest, Returns404ForMissingStaticFile) {
     TestServer server;
-    EXPECT_NE(exchange(server.port(), request("GET", "/absent.html"))
-                  .find("HTTP/1.1 404 Not Found\r\n"), std::string::npos);
+    EXPECT_NE(
+        exchange(server.port(), request("GET", "/absent.html")).find("HTTP/1.1 404 Not Found\r\n"),
+        std::string::npos);
 }
 TEST(HttpServerAcceptanceTest, Returns405ForKnownDynamicPathWrongMethod) {
     TestServer server;
@@ -197,8 +221,7 @@ TEST(HttpServerAcceptanceTest, Returns405ForKnownDynamicPathWrongMethod) {
 }
 TEST(HttpServerAcceptanceTest, RejectsWhitespaceBeforeHeaderColon) {
     TestServer server;
-    const auto response =
-        exchange(server.port(), "GET / HTTP/1.1\r\nHost : localhost\r\n\r\n");
+    const auto response = exchange(server.port(), "GET / HTTP/1.1\r\nHost : localhost\r\n\r\n");
     EXPECT_NE(response.find("HTTP/1.1 400 Bad Request\r\n"), std::string::npos);
 }
 TEST(HttpServerAcceptanceTest, Returns413ForRequestBufferLimit) {
@@ -215,7 +238,8 @@ TEST(HttpServerAcceptanceTest, ConvertsHandlerExceptionTo500) {
     });
     TestServer server({}, std::move(router));
     EXPECT_NE(exchange(server.port(), request("GET", "/explode"))
-                  .find("HTTP/1.1 500 Internal Server Error\r\n"), std::string::npos);
+                  .find("HTTP/1.1 500 Internal Server Error\r\n"),
+              std::string::npos);
 }
 TEST(HttpServerAcceptanceTest, HandlesFragmentedRequestLineAndHeaders) {
     TestServer server;
@@ -237,8 +261,7 @@ TEST(HttpServerAcceptanceTest, ResumesPartialWritesForLargeResponse) {
     HttpServerConfig config;
     config.max_response_bytes = 5U * 1024U * 1024U;
     TestServer server(config, std::move(router));
-    EXPECT_EQ(body_of(exchange(server.port(), request("GET", "/large"))).size(),
-              payload.size());
+    EXPECT_EQ(body_of(exchange(server.port(), request("GET", "/large"))).size(), payload.size());
 }
 TEST(HttpServerAcceptanceTest, RejectsConnectionsAboveConfiguredLimit) {
     HttpServerConfig config;
@@ -247,8 +270,7 @@ TEST(HttpServerAcceptanceTest, RejectsConnectionsAboveConfiguredLimit) {
     TestServer server(config);
     TestClient first(server.port());
     TestClient second(server.port());
-    EXPECT_NE(second.read_all().find("HTTP/1.1 503 Service Unavailable\r\n"),
-              std::string::npos);
+    EXPECT_NE(second.read_all().find("HTTP/1.1 503 Service Unavailable\r\n"), std::string::npos);
 }
 TEST(HttpServerAcceptanceTest, HandlesConcurrentClients) {
     TestServer server;
@@ -265,7 +287,8 @@ TEST(HttpServerAcceptanceTest, HandlesConcurrentClients) {
             }
         });
     }
-    for (auto& client : clients) client.join();
+    for (auto& client : clients)
+        client.join();
     EXPECT_EQ(passed.load(), 8);
 }
 TEST(HttpServerAcceptanceTest, Returns400ForIncompleteRequestAtEof) {

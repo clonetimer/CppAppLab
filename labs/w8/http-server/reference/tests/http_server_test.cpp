@@ -15,29 +15,29 @@ TEST(HttpServerLearnerTest, BindsAnEphemeralPort) {
 TEST(HttpServerLearnerTest, RejectsZeroWorkerCount) {
     HttpServerConfig config;
     config.worker_count = 0U;
-    EXPECT_THROW(HttpServer(config), std::invalid_argument);
+    EXPECT_THROW(HttpServer{config}, std::invalid_argument);
 }
 TEST(HttpServerLearnerTest, RejectsZeroQueueCapacity) {
     HttpServerConfig config;
     config.task_queue_capacity = 0U;
-    EXPECT_THROW(HttpServer(config), std::invalid_argument);
+    EXPECT_THROW(HttpServer{config}, std::invalid_argument);
 }
 TEST(HttpServerLearnerTest, AllowsMoreConnectionsThanOutstandingWorkerJobs) {
     HttpServerConfig config;
     config.port = 0U;
     config.max_connections = 4U;
     config.task_queue_capacity = 1U;
-    EXPECT_NO_THROW(HttpServer(config));
+    EXPECT_NO_THROW(HttpServer{config});
 }
 TEST(HttpServerLearnerTest, RejectsInvalidBindAddress) {
     HttpServerConfig config;
     config.bind_address = "not-an-ip";
-    EXPECT_THROW(HttpServer(config), std::invalid_argument);
+    EXPECT_THROW(HttpServer{config}, std::invalid_argument);
 }
 TEST(HttpServerLearnerTest, RejectsTooSmallResponseLimit) {
     HttpServerConfig config;
     config.max_response_bytes = 128U;
-    EXPECT_THROW(HttpServer(config), std::invalid_argument);
+    EXPECT_THROW(HttpServer{config}, std::invalid_argument);
 }
 TEST(HttpServerLearnerTest, ExposesNotRunningBeforeRun) {
     HttpServer server;

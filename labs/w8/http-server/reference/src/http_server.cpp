@@ -242,8 +242,7 @@ struct HttpServer::Impl {
             wire = serialize_response(response);
         }
         if (wire.size() > config.max_response_bytes) {
-            response = error_response(500, "Internal Server Error",
-                                      "500 Internal Server Error\n");
+            response = error_response(500, "Internal Server Error", "500 Internal Server Error\n");
             wire = serialize_response(response);
         }
         connection.write_buffer = std::move(wire);
@@ -357,8 +356,7 @@ struct HttpServer::Impl {
         }
         if (parsed.status == ParseStatus::Error) {
             if (is_too_large_error(parsed.error)) {
-                queue_error(connection, 413, "Content Too Large",
-                            "413 Content Too Large\n");
+                queue_error(connection, 413, "Content Too Large", "413 Content Too Large\n");
             } else {
                 queue_error(connection, 400, "Bad Request", "400 Bad Request\n");
             }

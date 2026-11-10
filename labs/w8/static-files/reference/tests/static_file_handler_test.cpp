@@ -85,8 +85,8 @@ TEST(StaticFileHandlerReferenceTest, SelectsJsonMimeType) {
 
 TEST(StaticFileHandlerReferenceTest, ReturnsNotFoundForMissingFile) {
     TemporaryDocumentRoot root;
-    const auto response = StaticFileHandler(root.path()).handle(
-    make_request("GET", "/missing.txt"));
+    const StaticFileHandler handler(root.path());
+    const auto response = handler.handle(make_request("GET", "/missing.txt"));
     EXPECT_EQ(response.status_code, 404);
     EXPECT_EQ(response.reason_phrase, "Not Found");
 }
@@ -107,8 +107,8 @@ TEST(StaticFileHandlerReferenceTest, RejectsPathTraversal) {
 TEST(StaticFileHandlerReferenceTest, RemovesQueryBeforeFileLookup) {
     TemporaryDocumentRoot root;
     root.write("hello.txt", "hello");
-    const auto response = StaticFileHandler(root.path()).handle(
-    make_request("GET", "/hello.txt?x=1"));
+    const StaticFileHandler handler(root.path());
+    const auto response = handler.handle(make_request("GET", "/hello.txt?x=1"));
     EXPECT_EQ(response.status_code, 200);
     EXPECT_EQ(response.body, "hello");
 }

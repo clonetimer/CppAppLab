@@ -399,7 +399,8 @@ TEST(HttpServerAcceptanceTest, RejectsStaleWorkerCompletionAfterDisconnect) {
     ASSERT_TRUE(completed.load());
     std::this_thread::sleep_for(20ms);
 
-    ASSERT_TRUE(replacement.send_all("lo HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"));
+    ASSERT_TRUE(
+        replacement.send_all("lo HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"));
     const auto response = replacement.read_all();
     EXPECT_EQ(body_of(response), "Hello from C++ HTTP Server!\n");
     (void)::close(reserved_fd);

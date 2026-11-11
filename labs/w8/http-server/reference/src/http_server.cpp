@@ -351,8 +351,7 @@ struct HttpServer::Impl {
         return output;
     }
 
-    [[nodiscard]] static std::string log_prefix(std::string_view level,
-                                                std::string_view event) {
+    [[nodiscard]] static std::string log_prefix(std::string_view level, std::string_view event) {
         const auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
                                    std::chrono::system_clock::now().time_since_epoch())
                                    .count();
@@ -459,7 +458,8 @@ struct HttpServer::Impl {
                                  ? std::chrono::milliseconds::zero()
                                  : std::chrono::duration_cast<std::chrono::milliseconds>(
                                        Clock::now() - connection.request_started_at);
-        const auto duration_ms = static_cast<std::uint64_t>(std::max<std::int64_t>(0, elapsed.count()));
+        const auto duration_ms =
+            static_cast<std::uint64_t>(std::max<std::int64_t>(0, elapsed.count()));
 
         metric_counters.responses_completed.fetch_add(1U, std::memory_order_relaxed);
         metric_counters.response_bytes.fetch_add(static_cast<std::uint64_t>(bytes),
@@ -619,8 +619,8 @@ struct HttpServer::Impl {
         if (shutting_down && !shutdown_deadline_expired && shutdown_deadline <= now) {
             shutdown_deadline_expired = true;
             const auto forced_connections = static_cast<std::uint64_t>(connections.size());
-            metric_counters.forced_shutdown_connections.fetch_add(
-                forced_connections, std::memory_order_relaxed);
+            metric_counters.forced_shutdown_connections.fetch_add(forced_connections,
+                                                                  std::memory_order_relaxed);
             log_server_event("shutdown_deadline_expired", "connection_drain_timeout",
                              forced_connections);
             cleanup_connections();
@@ -662,7 +662,7 @@ struct HttpServer::Impl {
         if (found->second.persistent_slot_reserved && persistent_connections > 0U) {
             --persistent_connections;
             metric_counters.persistent_connections.store(persistent_connections,
-                                                          std::memory_order_relaxed);
+                                                         std::memory_order_relaxed);
         }
         if (fd >= 0) {
             (void)::epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, nullptr);
@@ -820,8 +820,7 @@ struct HttpServer::Impl {
                     response =
                         error_response(500, "Internal Server Error", "500 Internal Server Error\n");
                 }
-                publish_completion(
-                    Completion{fd, token, std::move(response), handler_failed});
+                publish_completion(Completion{fd, token, std::move(response), handler_failed});
             });
         } catch (...) {
             --outstanding_jobs;
@@ -905,7 +904,7 @@ struct HttpServer::Impl {
                 connection.persistent_slot_reserved = true;
                 ++persistent_connections;
                 metric_counters.persistent_connections.store(persistent_connections,
-                                                              std::memory_order_relaxed);
+                                                             std::memory_order_relaxed);
             }
         }
         connection.read_buffer.erase(0U, parsed.consumed);

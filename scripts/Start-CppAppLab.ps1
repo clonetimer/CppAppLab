@@ -117,8 +117,22 @@ fi
 if ! git -C "$repo_path" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     mkdir -p "$(dirname "$repo_path")"
     echo "[INFO] Cloning the private CppAppLab repository into $repo_path"
-    git clone https://github.com/clonetimer/CppAppLab.git "$repo_path"
+    if ! git clone https://github.com/clonetimer/CppAppLab.git "$repo_path"; then
+        echo "[FAIL] Git clone failed. Authenticate Git inside WSL (for example, with 'gh auth login') and retry." >&2
+        exit 5
+    fi
 fi
+
+remote_url="$(git -C "$repo_path" remote get-url origin 2>/dev/null | tr '[:upper:]' '[:lower:]' || true)"
+case "$remote_url" in
+    https://github.com/clonetimer/cppapplab.git|https://github.com/clonetimer/cppapplab|git@github.com:clonetimer/cppapplab.git|ssh://git@github.com/clonetimer/cppapplab.git)
+        ;;
+    *)
+        echo "[FAIL] The checkout at $repo_path is not the clonetimer/CppAppLab repository." >&2
+        echo "No files were changed. Set -RepoPath to the correct Linux checkout." >&2
+        exit 6
+        ;;
+esac
 
 cd "$repo_path"
 if [[ "__FORCE_SETUP__" == "1" || ! -x build/cppapplab ]]; then

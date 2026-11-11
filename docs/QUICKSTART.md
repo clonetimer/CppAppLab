@@ -4,11 +4,14 @@ This guide is for a learner using Windows 11 + WSL2 + Ubuntu 24.04. You do not n
 
 ## 1. Open Ubuntu and get the project
 
-In PowerShell, start Ubuntu:
+In PowerShell, list installed distributions and start the exact Ubuntu 24.04 name shown in the first column:
 
 ```powershell
-wsl -d Ubuntu
+wsl -l -v
+wsl -d <distribution-name>
 ```
+
+The distribution must report WSL version 2. Common names include `Ubuntu` and `Ubuntu-24.04`.
 
 Inside Ubuntu:
 
@@ -34,6 +37,24 @@ The script:
 5. Opens the interactive learning home, where you can continue, search for a task or review progress.
 
 The script does not delete or replace learner workspaces. It uses the default CppAppLab build directory and may reuse its build cache.
+
+### Windows one-click launcher
+
+From the repository root in Windows Explorer, double-click `Start-CppAppLab.cmd`, or run it from PowerShell:
+
+```powershell
+.\Start-CppAppLab.cmd
+```
+
+The launcher detects installed Ubuntu distributions, verifies WSL2 and Ubuntu 24.04, and then opens the existing Linux checkout. If `~/work/CppAppLab` does not exist inside WSL, it clones the private repository there and runs the first-time setup. If more than one Ubuntu distribution is installed, it asks you to choose one.
+
+After pulling project updates inside WSL, rebuild and rerun acceptance checks with:
+
+```powershell
+.\Start-CppAppLab.cmd -Setup
+```
+
+The launcher deliberately does not run `git pull`; local changes are preserved. It can also be pointed at another Linux checkout with `-RepoPath "~/projects/CppAppLab"` or a specific distro with `-Distro Ubuntu-24.04`.
 
 ## 3. Start learning
 

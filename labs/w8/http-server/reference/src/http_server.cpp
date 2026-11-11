@@ -260,22 +260,19 @@ struct HttpServer::Impl {
 
     void queue_response(Connection& connection, HttpResponse response) {
         if (response.body.size() > config.max_response_bytes) {
-            response = error_response(500, "Internal Server Error",
-                                      "500 Internal Server Error\n");
+            response = error_response(500, "Internal Server Error", "500 Internal Server Error\n");
         }
 
         std::string wire;
         try {
             wire = serialize_response(response);
         } catch (...) {
-            response = error_response(500, "Internal Server Error",
-                                      "500 Internal Server Error\n");
+            response = error_response(500, "Internal Server Error", "500 Internal Server Error\n");
             wire = serialize_response(response);
         }
 
         if (wire.size() > config.max_response_bytes) {
-            response = error_response(500, "Internal Server Error",
-                                      "500 Internal Server Error\n");
+            response = error_response(500, "Internal Server Error", "500 Internal Server Error\n");
             wire = serialize_response(response);
         }
 
@@ -353,8 +350,8 @@ struct HttpServer::Impl {
                 try {
                     response = dispatch_request(request, router, static_files);
                 } catch (...) {
-                    response = error_response(500, "Internal Server Error",
-                                              "500 Internal Server Error\n");
+                    response =
+                        error_response(500, "Internal Server Error", "500 Internal Server Error\n");
                 }
                 publish_completion(Completion{fd, token, std::move(response)});
             });
@@ -419,8 +416,7 @@ struct HttpServer::Impl {
             if (received > 0) {
                 const std::size_t received_bytes = static_cast<std::size_t>(received);
                 if (received_bytes > remaining) {
-                    queue_error(connection, 413, "Content Too Large",
-                                "413 Content Too Large\n");
+                    queue_error(connection, 413, "Content Too Large", "413 Content Too Large\n");
                     return connections.find(token) != connections.end();
                 }
                 connection.read_buffer.append(buffer, received_bytes);

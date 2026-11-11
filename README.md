@@ -100,7 +100,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-W1–W7 and W8-D1–D6-A are merged into `main`. W8-D5 adds a real TCP listener and epoll/worker-pool handoff. D6-B sequential Keep-Alive has passed hosted CI and is awaiting merge; D6-C deadlines/limits and D6-D graceful shutdown/logging remain. No release or target WSL2 acceptance has been declared. See:
+W1–W7 and W8-D1–D6-B are merged into `main`. W8-D5 adds a real TCP listener and epoll/worker-pool handoff; D6-A defines connection policy and D6-B implements sequential Keep-Alive. D6-C deadlines/connection quotas are in progress; D6-D graceful shutdown/logging remains. No release or target WSL2 acceptance has been declared. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)
@@ -111,6 +111,7 @@ W1–W7 and W8-D1–D6-A are merged into `main`. W8-D5 adds a real TCP listener 
 - [HTTP TCP server lesson](course/lessons/w8/http-server.md)
 - [HTTP connection policy lesson](course/lessons/w8/connection-policy.md)
 - [HTTP Keep-Alive lifecycle lesson](course/lessons/w8/keep-alive.md)
+- [HTTP connection guards lesson](course/lessons/w8/connection-guards.md)
 
 ## Quick start
 

@@ -736,14 +736,12 @@ std::string normalize_task_query(std::string_view value) {
 
 std::string trim_task_query(std::string_view value) {
     std::size_t first = 0U;
-    while (first < value.size() &&
-           std::isspace(static_cast<unsigned char>(value[first])) != 0) {
+    while (first < value.size() && std::isspace(static_cast<unsigned char>(value[first])) != 0) {
         ++first;
     }
 
     std::size_t last = value.size();
-    while (last > first &&
-           std::isspace(static_cast<unsigned char>(value[last - 1U])) != 0) {
+    while (last > first && std::isspace(static_cast<unsigned char>(value[last - 1U])) != 0) {
         --last;
     }
     return std::string(value.substr(first, last - first));
@@ -770,8 +768,8 @@ int choose_task_interactively() {
     std::cout << "\nChoose a task by number, task ID, or title keyword (0 to return):\n";
     for (std::size_t index = 0; index < tasks.size(); ++index) {
         const Task& task = tasks[index];
-        std::cout << "  " << (index + 1U) << ". [" << task_state_label(task) << "] "
-                  << task.id << " · " << task.title << '\n';
+        std::cout << "  " << (index + 1U) << ". [" << task_state_label(task) << "] " << task.id
+                  << " · " << task.title << '\n';
     }
 
     std::string selection;
@@ -805,8 +803,8 @@ int choose_task_interactively() {
         if (matches.size() > 1U) {
             std::cout << "Several tasks match \"" << selection << "\":\n";
             for (const std::size_t index : matches) {
-                std::cout << "  " << (index + 1U) << ". [" << task_state_label(tasks[index])
-                          << "] " << tasks[index].id << " · " << tasks[index].title << '\n';
+                std::cout << "  " << (index + 1U) << ". [" << task_state_label(tasks[index]) << "] "
+                          << tasks[index].id << " · " << tasks[index].title << '\n';
             }
             std::cout << "Enter one of these numbers or a more specific keyword.\n";
         } else {
@@ -845,10 +843,8 @@ int interactive_menu() {
 
         std::cout << "\nCppAppLab · Learning home\n"
                   << "Course: " << passed << '/' << tasks.size() << " passed"
-                  << " · in progress: " << in_progress
-                  << " · needs work: " << needs_work
-                  << " · stale: " << stale
-                  << " · available: " << available
+                  << " · in progress: " << in_progress << " · needs work: " << needs_work
+                  << " · stale: " << stale << " · available: " << available
                   << " · locked: " << locked << "\n\n"
                   << "  1. Continue learning\n"
                   << "  2. Choose or search a task\n"

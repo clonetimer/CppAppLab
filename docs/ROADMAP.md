@@ -192,6 +192,8 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - router, static files, event loop + worker pool
 - keep-alive, limits, error handling, logging, benchmark, release
 
+**Learner usability milestones merged:** PR #30 (`917b45c`) introduced the guided `learn` workflow and one-command Ubuntu setup; PR #31 (`89ea327`) added the interactive home and actionable check feedback; PR #32 (`991007e`) added task-title search and granular task-state visibility. Final PR #32 CI run `43024884781` passed all three jobs, including root 75/75 under GCC and ASan/UBSan and the configured clang-format/clang-tidy and W8/W9 fixture gates.
+
 ## P7 — Delivery and stabilization
 
 - source package and learner package

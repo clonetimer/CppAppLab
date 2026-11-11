@@ -155,7 +155,6 @@ TEST(HttpRequestParserWorkflowTest, W9ChunkedTaskUsesLearnerSourcesInFixedAccept
     EXPECT_EQ(evidence->tests_total, 35U) << diagnostic;
 }
 
-
 TEST(HttpRequestParserWorkflowTest, W9RequestTargetTaskUsesLearnerSourcesInFixedAcceptance) {
     const cppapplab::Task* task = cppapplab::find_task("w9.request-target");
     ASSERT_NE(task, nullptr);

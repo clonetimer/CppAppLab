@@ -204,7 +204,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ## Next curriculum expansion — W9 to W12
 
-**W9-A1 is in implementation on `feat/w9-http-protocol-security`.** The first task, `w9.http-chunked`, extends the W8 parser with bounded incremental HTTP/1.1 chunked decoding, trailer validation, anti-ambiguity framing and pipeline-safe consumed-byte reporting. Its learner template, reference parser, 35-case fixed fixture, lesson and progressive hints are staged. Hosted CI and the end-to-end learning-engine check are pending.
+**W9-A1 merged into `main` via PR #27 (`bfb3f3f`).** The task, `w9.http-chunked`, extends the W8 parser with bounded incremental HTTP/1.1 chunked decoding, trailer validation, anti-ambiguity framing and pipeline-safe consumed-byte reporting. Final PR-head run `43006252261` passed all three jobs: root 62/62 and W9 fixture 35/35 under GCC, ASan/UBSan and clang-tidy. The end-to-end learning-engine check passed. W9-A2–A5 remain roadmap stages until their learner workspaces and fixed fixtures are implemented.
 
 The rest of W9 is planned as a cumulative secure-protocol sequence:
 

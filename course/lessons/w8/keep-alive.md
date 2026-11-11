@@ -58,3 +58,23 @@ Final-head CI run `42971176071` passed all three jobs. The eight loopback cases 
 ## Deliberate D6-C boundary
 
 This stage does not yet add idle/header/body deadlines, a per-connection request-count cap, or global persistent-connection quotas. Those controls are D6-C. Until then, the current max-connections and bounded read/write/worker limits remain the resource controls.
+
+## Learner task — `w8.http-keep-alive`
+
+**Workspace files**
+
+- `include/http_server.hpp`
+- `src/http_server.cpp`
+
+The workspace includes the D5 Reactor baseline. Implement the D6-A policy integration and sequential persistent-connection lifecycle: preserve request policy/version, retain pipelined bytes, finish each response before dispatching the next request, and drain complete requests after a peer half-close.
+
+**Fixed acceptance:** 8 platform-owned loopback GoogleTests in `course/fixtures/w8/http-keep-alive`. They cover sequential reuse, pipelining, close semantics, fragmented requests, HTTP/1.0 behavior, half-close draining and response ordering.
+
+The Router/protocol and ThreadPool dependencies are supplied by the platform fixture; the learner's server header and implementation are the only staged implementation files. The D6-A policy is a known prerequisite baseline for this task.
+
+```bash
+./build/cppapplab start w8.http-keep-alive "$HOME/cppapplab-work/w8-keep-alive"
+./build/cppapplab lesson "$HOME/cppapplab-work/w8-keep-alive"
+./build/cppapplab hint "$HOME/cppapplab-work/w8-keep-alive" 1
+./build/cppapplab check "$HOME/cppapplab-work/w8-keep-alive"
+```

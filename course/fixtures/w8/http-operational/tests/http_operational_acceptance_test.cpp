@@ -24,6 +24,12 @@ using namespace cppapplab::http;
 
 namespace {
 
+constexpr std::size_t kBytesPerKiB = 1024U;
+constexpr std::size_t kBytesPerMiB = kBytesPerKiB * kBytesPerKiB;
+constexpr std::size_t kSlowReaderPayloadMiB = 8U;
+constexpr std::size_t kSlowReaderResponseLimitMiB = 10U;
+constexpr int kSlowReaderReceiveBufferBytes = 64 * static_cast<int>(kBytesPerKiB);
+
 class TestServer {
    public:
     explicit TestServer(HttpServerConfig config = {}, Router router = make_default_router())
@@ -279,6 +285,9 @@ void wait_until(Predicate predicate) {
 TEST(HttpOperationalAcceptanceTest, ServesConcurrentClientsWithinWorkerAndQueueBounds) {
     constexpr int kClientCount = 16;
     constexpr int kWorkerCount = 4;
+    constexpr int kMinimumConcurrentHandlers = 2;
+    constexpr std::size_t kTaskQueueCapacity = 32U;
+    constexpr std::size_t kMaximumConnections = 32U;
     std::atomic<int> active_handlers{0};
     std::atomic<int> maximum_active_handlers{0};
 
@@ -298,33 +307,31 @@ TEST(HttpOperationalAcceptanceTest, ServesConcurrentClientsWithinWorkerAndQueueB
                      });
 
     HttpServerConfig config;
-    config.worker_count = kWorkerCount;
-    config.task_queue_capacity = 32U;
-    config.max_connections = 32U;
+    config.worker_count = static_cast<std::size_t>(kWorkerCount);
+    config.task_queue_capacity = kTaskQueueCapacity;
+    config.max_connections = kMaximumConnections;
     config.access_log_enabled = false;
     config.error_log_enabled = false;
     TestServer server(config, std::move(router));
 
     std::atomic<bool> start{false};
     std::atomic<int> succeeded{0};
+    std::atomic<int> failed{0};
     std::vector<std::thread> clients;
-    clients.reserve(kClientCount);
+    clients.reserve(static_cast<std::size_t>(kClientCount));
     for (int index = 0; index < kClientCount; ++index) {
         clients.emplace_back([&] {
             while (!start.load()) {
                 std::this_thread::yield();
             }
             try {
-                TestClient client(server.port());
-                if (!client.send_all(make_request("/work"))) {
-                    return;
-                }
-                const std::string response = client.read_response();
-                if (response.find("HTTP/1.1 200 OK\r\n") != std::string::npos &&
-                    response_body(response) == "worked" && client.read_until_eof().empty()) {
+                if (perform_concurrent_work_request(server.port())) {
                     succeeded.fetch_add(1);
+                } else {
+                    failed.fetch_add(1);
                 }
-            } catch (...) {
+            } catch (const std::exception&) {
+                failed.fetch_add(1);
             }
         });
     }
@@ -335,22 +342,28 @@ TEST(HttpOperationalAcceptanceTest, ServesConcurrentClientsWithinWorkerAndQueueB
     }
 
     EXPECT_EQ(succeeded.load(), kClientCount);
-    EXPECT_GE(maximum_active_handlers.load(), 2);
+    EXPECT_EQ(failed.load(), 0);
+    EXPECT_GE(maximum_active_handlers.load(), kMinimumConcurrentHandlers);
     EXPECT_LE(maximum_active_handlers.load(), kWorkerCount);
-    wait_until([&] { return server.metrics().responses_completed == kClientCount; });
+    wait_until([&] {
+        return server.metrics().responses_completed == static_cast<std::uint64_t>(kClientCount);
+    });
 
     const HttpServerMetrics metrics = server.metrics();
-    EXPECT_EQ(metrics.accepted_connections, static_cast<std::uint64_t>(kClientCount));
-    EXPECT_EQ(metrics.closed_connections, static_cast<std::uint64_t>(kClientCount));
-    EXPECT_EQ(metrics.requests_received, static_cast<std::uint64_t>(kClientCount));
-    EXPECT_EQ(metrics.responses_completed, static_cast<std::uint64_t>(kClientCount));
+    const auto expected_clients = static_cast<std::uint64_t>(kClientCount);
+    EXPECT_EQ(metrics.accepted_connections, expected_clients);
+    EXPECT_EQ(metrics.closed_connections, expected_clients);
+    EXPECT_EQ(metrics.requests_received, expected_clients);
+    EXPECT_EQ(metrics.responses_completed, expected_clients);
     EXPECT_EQ(metrics.queue_rejections, 0U);
     EXPECT_EQ(metrics.active_connections, 0U);
     EXPECT_EQ(metrics.active_jobs, 0U);
 }
 
 TEST(HttpOperationalAcceptanceTest, SlowReaderBackpressureResumesAndCompletesLargeResponse) {
-    constexpr std::size_t kPayloadSize = 8U * 1024U * 1024U;
+    constexpr std::size_t kPayloadSize = kSlowReaderPayloadMiB * kBytesPerMiB;
+    constexpr std::size_t kMaximumResponseSize =
+        kSlowReaderResponseLimitMiB * kBytesPerMiB;
     const auto payload = std::make_shared<const std::string>(kPayloadSize, 'x');
 
     Router router = make_default_router();
@@ -362,12 +375,12 @@ TEST(HttpOperationalAcceptanceTest, SlowReaderBackpressureResumesAndCompletesLar
     });
 
     HttpServerConfig config;
-    config.max_response_bytes = 10U * 1024U * 1024U;
+    config.max_response_bytes = kMaximumResponseSize;
     config.access_log_enabled = false;
     config.error_log_enabled = false;
     TestServer server(config, std::move(router));
     TestClient client(server.port());
-    client.set_receive_buffer(65536);
+    client.set_receive_buffer(kSlowReaderReceiveBufferBytes);
 
     ASSERT_TRUE(client.send_all(make_request("/large")));
     std::this_thread::sleep_for(150ms);
@@ -392,45 +405,39 @@ TEST(HttpOperationalAcceptanceTest, SlowReaderBackpressureResumesAndCompletesLar
 TEST(HttpOperationalAcceptanceTest, SustainsConcurrentKeepAliveSoakWithoutLeakingResources) {
     constexpr int kClientCount = 8;
     constexpr int kRequestsPerClient = 40;
+    constexpr std::size_t kWorkerCount = 4U;
+    constexpr std::size_t kTaskQueueCapacity = 32U;
+    constexpr std::size_t kMaximumConnections = 16U;
+    constexpr std::size_t kMaximumPersistentConnections = 16U;
+    constexpr std::size_t kMaximumRequestsPerConnection = 100U;
     constexpr std::uint64_t kExpectedRequests =
-        static_cast<std::uint64_t>(kClientCount * kRequestsPerClient);
+        static_cast<std::uint64_t>(kClientCount) *
+        static_cast<std::uint64_t>(kRequestsPerClient);
 
     HttpServerConfig config;
-    config.worker_count = 4U;
-    config.task_queue_capacity = 32U;
-    config.max_connections = 16U;
-    config.max_persistent_connections = 16U;
-    config.max_requests_per_connection = 100U;
+    config.worker_count = kWorkerCount;
+    config.task_queue_capacity = kTaskQueueCapacity;
+    config.max_connections = kMaximumConnections;
+    config.max_persistent_connections = kMaximumPersistentConnections;
+    config.max_requests_per_connection = kMaximumRequestsPerConnection;
     config.access_log_enabled = false;
     config.error_log_enabled = false;
     TestServer server(config);
 
     std::atomic<int> succeeded{0};
+    std::atomic<int> failed{0};
     std::vector<std::thread> clients;
-    clients.reserve(kClientCount);
+    clients.reserve(static_cast<std::size_t>(kClientCount));
     for (int index = 0; index < kClientCount; ++index) {
         clients.emplace_back([&] {
             try {
-                TestClient client(server.port());
-                bool client_succeeded = true;
-                for (int request_index = 0; request_index < kRequestsPerClient; ++request_index) {
-                    const std::string policy =
-                        request_index + 1 == kRequestsPerClient ? "close" : "keep-alive";
-                    if (!client.send_all(make_request("/health", policy))) {
-                        client_succeeded = false;
-                        break;
-                    }
-                    const std::string response = client.read_response();
-                    if (response.find("HTTP/1.1 200 OK\r\n") == std::string::npos ||
-                        response_body(response) != "{\"status\":\"ok\"}") {
-                        client_succeeded = false;
-                        break;
-                    }
-                }
-                if (client_succeeded && client.read_until_eof().empty()) {
+                if (perform_keep_alive_soak_client(server.port(), kRequestsPerClient)) {
                     succeeded.fetch_add(1);
+                } else {
+                    failed.fetch_add(1);
                 }
-            } catch (...) {
+            } catch (const std::exception&) {
+                failed.fetch_add(1);
             }
         });
     }
@@ -439,6 +446,7 @@ TEST(HttpOperationalAcceptanceTest, SustainsConcurrentKeepAliveSoakWithoutLeakin
     }
 
     EXPECT_EQ(succeeded.load(), kClientCount);
+    EXPECT_EQ(failed.load(), 0);
     wait_until([&] {
         const HttpServerMetrics metrics = server.metrics();
         return metrics.responses_completed == kExpectedRequests &&
@@ -446,8 +454,9 @@ TEST(HttpOperationalAcceptanceTest, SustainsConcurrentKeepAliveSoakWithoutLeakin
     });
 
     const HttpServerMetrics metrics = server.metrics();
-    EXPECT_EQ(metrics.accepted_connections, static_cast<std::uint64_t>(kClientCount));
-    EXPECT_EQ(metrics.closed_connections, static_cast<std::uint64_t>(kClientCount));
+    const auto expected_clients = static_cast<std::uint64_t>(kClientCount);
+    EXPECT_EQ(metrics.accepted_connections, expected_clients);
+    EXPECT_EQ(metrics.closed_connections, expected_clients);
     EXPECT_EQ(metrics.requests_received, kExpectedRequests);
     EXPECT_EQ(metrics.responses_completed, kExpectedRequests);
     EXPECT_EQ(metrics.persistent_connections, 0U);
@@ -459,23 +468,6 @@ TEST(HttpOperationalAcceptanceTest, SustainsConcurrentKeepAliveSoakWithoutLeakin
 TEST(HttpOperationalAcceptanceTest, RepeatedRunStopCyclesReleaseConnectionsAndWorkerJobs) {
     constexpr int kCycles = 8;
     for (int cycle = 0; cycle < kCycles; ++cycle) {
-        TestServer server;
-        TestClient client(server.port());
-        ASSERT_TRUE(client.send_all(make_request("/health")));
-        const std::string response = client.read_response();
-        ASSERT_NE(response.find("HTTP/1.1 200 OK\r\n"), std::string::npos);
-        EXPECT_EQ(response_body(response), "{\"status\":\"ok\"}");
-        EXPECT_TRUE(client.read_until_eof().empty());
-
-        server.request_stop();
-        server.request_stop();
-        server.join();
-
-        const HttpServerMetrics metrics = server.metrics();
-        EXPECT_EQ(metrics.graceful_shutdowns, 1U);
-        EXPECT_EQ(metrics.active_connections, 0U);
-        EXPECT_EQ(metrics.active_jobs, 0U);
-        EXPECT_EQ(metrics.responses_completed, 1U);
-        EXPECT_EQ(metrics.closed_connections, 1U);
+        EXPECT_TRUE(perform_server_lifecycle_cycle()) << "cycle " << cycle;
     }
 }

@@ -546,3 +546,27 @@ jobs:
             -DCMAKE_CXX_CLANG_TIDY=clang-tidy
           cmake --build build-w9-static-root-quality --parallel
           ctest --test-dir build-w9-static-root-quality --output-on-failure --timeout 10
+
+  windows-launcher-syntax:
+    name: Windows launcher syntax
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Parse PowerShell launcher
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/Start-CppAppLab.ps1').Path,
+            [ref]$tokens,
+            [ref]$errors
+          )
+          if ($errors.Count -gt 0) {
+            $errors | Format-List
+            exit 1
+          }
+          if (-not (Test-Path 'Start-CppAppLab.cmd')) {
+            throw 'The double-click launcher file is missing.'
+          }

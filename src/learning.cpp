@@ -638,7 +638,8 @@ int guided_learn(std::string_view requested_task_id) {
               << "4. After PASS, continue with the next available task:\n"
               << "   ./build/cppapplab learn\n\n"
               << "Your workspace and progress are saved between sessions. "
-                 "Running 'learn' again resumes an incomplete task; after PASS it advances to the next task.\n";
+                 "Running 'learn' again resumes an incomplete task; after PASS it advances to the "
+                 "next task.\n";
     return 0;
 }
 

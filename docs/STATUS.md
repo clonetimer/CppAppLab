@@ -70,11 +70,32 @@ The tasks form a strict prerequisite chain from D6-A through D6-D3. D6-B through
 
 Task-mode CI configures each fixed fixture with `CPPAPPLAB_LEARNER_SOURCE_DIR` pointing to the corresponding reference implementation. This validates the same CMake path used by `cppapplab check` without pre-filling learner workspaces. Final PR-head run `42998617546` passed the learner-mode 49/49 checks under GCC, ASan/UBSan and clang-tidy. The root workflow test also created each learner workspace, copied its known-good stage implementation, invoked `cppapplab check`, and verified a current PASS for all six tasks.
 
+## W9-A1 — HTTP/1.1 chunked transfer decoding (implementation in progress)
+
+**Branch:** `feat/w9-http-protocol-security`.  
+**Task ID:** `w9.http-chunked`.  
+**Prerequisite:** current PASS for `w8.http-operational-load`.
+
+The feature branch adds the first W9 task to the catalog (21 tasks on this branch; 20 remain on main until merge). The learner source boundary is the W8 HTTP message model and incremental request parser. The learner template retains the working W8 Content-Length parser and marks the Transfer-Encoding branch as the implementation TODO.
+
+The W9-A1 reference parser implements:
+
+- HTTP/1.1-only, single-coding chunked request framing.
+- Rejection of Content-Length + Transfer-Encoding ambiguity and unsupported coding chains.
+- Incremental chunk-size, payload, CRLF and trailer parsing.
+- Binary-safe body assembly and exact consumed-byte reporting for pipelined requests.
+- 1 MiB decoded-body, 1 KiB chunk-size-line and 16 KiB trailer-section limits.
+- Trailer syntax validation, duplicate rejection and forbidden framing/routing field rejection.
+
+The fixed fixture currently contains 35 platform-owned GoogleTests. A root learning-engine workflow test creates the W9 workspace, copies the known-good reference source, replaces learner CMake with a fatal error and invokes the real `cppapplab check` path. GCC, ASan/UBSan and clang-tidy CI gates have been added but have not yet completed for this branch.
+
+W9-A1 is not yet merged or claimed as passing. The current branch also adds the W9–W12 curriculum map. W9-A2–A5 are planned but are not registered tasks yet.
+ 
 ## Remaining work
 
 1. Complete Windows 11 + WSL2 target acceptance.
 2. Finish reproducible/offline dependency delivery, first-use guidance and release qualification.
 
-Chunked Transfer-Encoding, TLS, URL decoding, query parameter parsing, route patterns and production-grade canonical/symlink containment remain outside the current scope.
+W9-A1 is the first chunked-transfer implementation. URL target/query parsing, production-grade document-root confinement, HTTP hardening and parser fuzzing are the next W9 stages; TLS/WebSocket, performance engineering and production operations are planned for W10–W12. They are not complete or release-qualified.
 
 A repository commit is not passing evidence. Record exact tested SHA, workflow result, test counts and target environment. CI does not certify human understanding or target-machine compatibility.

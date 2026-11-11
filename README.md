@@ -19,7 +19,7 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 ## Current learning tasks
 
-The learning engine registers 20 hands-on tasks across W1–W8: W1 Hello World and Calculator; W2 persistent Todo CLI; W3 TaskManager refactor; W4 quality gate; W5 Linux systems; W6 thread pool; W7 TCP Echo and epoll chat; and W8 HTTP protocol, incremental parser, static files, Router/dynamic handlers, the D5 TCP/epoll server, and six advanced D6 tasks covering connection policy, Keep-Alive, connection guards, graceful shutdown, observability and an HTTP load probe. `course/tasks.tsv` is the authoritative task catalog.
+The main branch contains 20 hands-on tasks across W1–W8. This W9 development branch adds `w9.http-chunked`, bringing its task catalog to 21. W1–W7 cover C++ fundamentals, Linux systems, concurrency and TCP; W8 builds the HTTP server and its six D6 engineering tasks; W9 begins HTTP/1.1 protocol completeness and security. `course/tasks.tsv` is the authoritative task catalog.
 
 ```bash
 ./build/cppapplab list
@@ -84,6 +84,7 @@ Set `CPPAPPLAB_STATE_DIR` to move this state directory. The course catalog is ma
 | W6 | Thread pools, futures, templates, atomics, benchmarking | Reusable thread pool |
 | W7 | TCP/IP, sockets, nonblocking I/O, select/poll/epoll | Multi-client TCP chat |
 | W8 | HTTP/1.1, parser, response, routing, static files, event loop | Educational HTTP server |
+| W9 | Chunked transfer, framing safety, URL and filesystem security, parser fuzzing | Hardened HTTP protocol stack |
 
 The detailed course map and acceptance boundaries live in [course/CURRICULUM.md](course/CURRICULUM.md). W2's Todo task exercises STL algorithms and durable file I/O through a cumulative command-line application.
 
@@ -100,7 +101,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-W1–W7 and W8-D1–D6-D3 are merged into `main`. The HTTP reference server includes sequential Keep-Alive, connection deadlines and quotas, graceful shutdown, structured JSONL logs, runtime metrics, and operational load/soak regression coverage. PR #25 merged as `597a8a0`; final-head CI run `42991542424` passed all three jobs. The six D6 learner tasks were merged via PR #26 (`c8f8e03`). Final PR-head CI run `42998617546` passed GCC, ASan/UBSan and clang-tidy. The 49 task-mode acceptance checks passed in all three configurations, and the root learning-engine suite passed 60/60. Windows 11 + WSL2 target acceptance, offline dependency packaging, and release qualification remain separate. See:
+W1–W7 and W8-D1–D6-D3 are merged into `main`. The HTTP reference server includes sequential Keep-Alive, connection deadlines and quotas, graceful shutdown, structured JSONL logs, runtime metrics, and operational load/soak regression coverage. PR #25 merged as `597a8a0`; final-head CI run `42991542424` passed all three jobs. The six D6 learner tasks were merged via PR #26 (`c8f8e03`). Final PR-head CI run `42998617546` passed GCC, ASan/UBSan and clang-tidy. The 49 task-mode acceptance checks passed in all three configurations, and the root learning-engine suite passed 60/60. Windows 11 + WSL2 target acceptance, offline dependency packaging, and release qualification remain separate. W9-A1 (`w9.http-chunked`) is under development on `feat/w9-http-protocol-security`; the first chunked parser reference, learner template, lesson and 35-case fixture are staged, with CI validation pending. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)
@@ -115,6 +116,8 @@ W1–W7 and W8-D1–D6-D3 are merged into `main`. The HTTP reference server incl
 - [HTTP graceful shutdown lesson](course/lessons/w8/graceful-shutdown.md)
 - [HTTP observability lesson](course/lessons/w8/observability.md)
 - [HTTP operational load lesson](course/lessons/w8/operational-load.md)
+- [W9–W12 advanced curriculum overview](course/lessons/w9/overview.md)
+- [W9-A1 chunked transfer lesson](course/lessons/w9/http-chunked.md)
 
 ## Quick start
 

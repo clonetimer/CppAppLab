@@ -201,4 +201,24 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - version tag and release notes
 - known limitations and evidence archive
 
+
+## Next curriculum expansion — W9 to W12
+
+**W9-A1 is in implementation on `feat/w9-http-protocol-security`.** The first task, `w9.http-chunked`, extends the W8 parser with bounded incremental HTTP/1.1 chunked decoding, trailer validation, anti-ambiguity framing and pipeline-safe consumed-byte reporting. Its learner template, reference parser, 35-case fixed fixture, lesson and progressive hints are staged. Hosted CI and the end-to-end learning-engine check are pending.
+
+The rest of W9 is planned as a cumulative secure-protocol sequence:
+
+- **A2 — Request target and query parsing:** origin-form parsing, strict percent decoding, malformed-escape and control-byte rejection, query multimap.
+- **A3 — Secure static root:** directory-fd confinement, openat component traversal, O_NOFOLLOW, regular-file verification and symlink escape tests.
+- **A4 — HTTP hardening:** message-framing policy, request-smuggling regressions, resource limits and deterministic protocol errors.
+- **A5 — Parser fuzzing:** sanitizer-backed fuzz target, seed corpus, regression cases and minimized reproductions.
+
+Beyond W9:
+
+- **W10 — TLS and WebSocket:** OpenSSL lifecycle, non-blocking TLS in epoll, WANT_READ/WANT_WRITE state transitions, HTTP Upgrade, WebSocket frame parsing and close/ping/pong.
+- **W11 — High-performance C++ services:** profiling, std::pmr, buffer reuse, scatter/gather I/O, sendfile, batching, backpressure, cache locality and latency percentiles.
+- **W12 — Production operations:** typed configuration, signal-driven shutdown/reload, health endpoints, correlation IDs, systemd deployment, recovery and release runbooks.
+
+These are curriculum targets, not yet registered learner tasks. Each stage will be added to the task catalog only after its learner source boundary, reference implementation and platform-owned acceptance fixture are ready.
+
 The roadmap is outcome-based. Additional lessons are added only when they improve a demonstrated learning or engineering outcome.

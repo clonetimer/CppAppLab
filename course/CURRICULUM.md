@@ -160,6 +160,48 @@ These extensions are now formal learner tasks in `course/tasks.tsv`, following `
 
 D6-B through D6-D2 learner templates include a known completed baseline for the preceding stage, allowing each workspace to focus on one engineering delta while retaining a working server foundation. D6-D3's new load-probe task complements, rather than replaces, the existing four-case server-level operational regression fixture. The D6 task-mode CI uses the reference implementations only as known-good submissions to verify the learner acceptance contract; the learner templates themselves remain incomplete by design.
 
+## W9 — HTTP protocol completeness and security
+
+**Topics**
+
+- HTTP/1.1 message framing and Transfer-Encoding
+- incremental chunked request-body decoding
+- chunk extensions, trailers and pipelined consumed-byte accounting
+- request-target parsing, percent decoding and query parameters
+- filesystem document-root confinement and symlink/path traversal defense
+- request-smuggling regression cases and parser fuzzing
+
+**Current implementation:** W9-A1, task `w9.http-chunked`, is being added on branch `feat/w9-http-protocol-security`. It extends the W8 parser with a bounded HTTP/1.1 chunked profile, rejects ambiguous Content-Length + Transfer-Encoding framing, validates trailers and preserves pipelined bytes. The learner workspace contains the W8 parser baseline with an explicit implementation TODO; the platform fixture compiles the learner's declared source files and contains 35 fixed GoogleTests.
+
+**Remaining W9 stages:** request-target and query parsing; secure static-file access using directory file descriptors and no-follow semantics; HTTP framing/security hardening; parser fuzzing with a regression corpus. These stages will be registered only when their learner source boundaries and fixed acceptance fixtures are implemented.
+
+## W10 — TLS and WebSocket services (planned)
+
+- OpenSSL context/certificate/key lifecycle
+- non-blocking TLS handshake and epoll integration
+- SSL_read/SSL_write retry states, WANT_READ/WANT_WRITE and shutdown
+- HTTP Upgrade handshake and WebSocket frame parsing
+- masking, fragmentation, ping/pong, close semantics and bounded frame sizes
+- TLS WebSocket loopback integration tests
+
+## W11 — High-performance C++ service engineering (planned)
+
+- profiling and reproducible performance baselines
+- std::pmr, allocator-aware buffers and buffer reuse
+- scatter/gather I/O and sendfile
+- batching, backpressure and bounded queue behavior
+- cache locality, false sharing and atomic contention
+- throughput and p50/p95/p99 latency comparisons with environment metadata
+
+## W12 — Production service operations and reliability (planned)
+
+- typed configuration, validation and controlled reload
+- signal handling through the Reactor wakeup path
+- readiness/liveness and dependency-independent health checks
+- correlation IDs and trace propagation
+- systemd service, least-privilege runtime and restart policy
+- graceful rolling restart, failure recovery and release runbook
+
 ## Learning evidence
 
 For every work product, the future task catalog must define:

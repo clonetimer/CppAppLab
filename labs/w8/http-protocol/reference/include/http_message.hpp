@@ -33,5 +33,8 @@ struct HttpResponse {
 [[nodiscard]] std::string serialize_response(const HttpResponse& response);
 [[nodiscard]] std::string serialize_response(const HttpResponse& response,
                                              ConnectionPolicy connection_policy);
+[[nodiscard]] std::string serialize_response(const HttpResponse& response,
+                                             ConnectionPolicy connection_policy,
+                                             std::string_view response_version);
 
 }  // namespace cppapplab::http

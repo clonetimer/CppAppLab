@@ -56,7 +56,7 @@ A file descriptor is not a stable connection identity because Linux can reuse it
 - A completion is applied only if the generation still exists and the fd matches.
 - A stale completion for a disconnected client is discarded.
 
-The event loop is the only thread that mutates the connection maps. Workers own request/response values only.
+The event loop is the only thread that mutates the connection maps. Workers own request/response values only. Because handlers can execute concurrently, custom Router callbacks must be thread-safe and must not mutate shared state without synchronization.
 
 ## Bounded concurrency and overload
 
@@ -64,7 +64,7 @@ The existing W6 ThreadPool uses a blocking bounded submission queue. Connection 
 
 The event loop therefore maintains an `outstanding_jobs` counter covering queued jobs, running jobs and completions not yet drained. It checks the counter before submission, returns 503 at `task_queue_capacity`, increments before submit and decrements for every drained completion, including stale completions. Thus the event loop never blocks waiting for queue space. `max_connections` remains an independent socket/resource limit.
 
-When the active connection limit is reached, newly accepted clients receive a best-effort 503 Service Unavailable response and are closed. When the worker outstanding-job limit is reached, the request receives 503. Request and response buffers are also bounded.
+When the active connection limit is reached, newly accepted clients receive a best-effort 503 Service Unavailable response and are closed. When the worker outstanding-job limit is reached, the request receives 503. Request and response buffers are also bounded. Static-file reads are capped before the complete file is allocated; custom dynamic handlers must still enforce their own internal allocation limits.
 
 ## D5 protocol boundary
 
@@ -117,7 +117,7 @@ The fixed fixture uses real loopback TCP sockets and the real parser → dispatc
 - [ ] Incremental parser and bounded read/write buffers.
 - [ ] Partial writes resumed through EPOLLOUT only when needed.
 - [ ] 400 / 413 / 500 / 503 mapping and clean shutdown.
-- [ ] All 32 acceptance checks pass.
+- [ ] All 34 acceptance checks pass.
 
 ## Explain your design
 

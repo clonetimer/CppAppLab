@@ -187,13 +187,13 @@ class TestClient {
                                        std::string_view version = "HTTP/1.1",
                                        std::string_view connection = {}) {
     std::string wire = "GET ";
-    wire += target;
+    wire.append(target.data(), target.size());
     wire += " ";
-    wire += version;
+    wire.append(version.data(), version.size());
     wire += "\r\nHost: localhost\r\n";
     if (!connection.empty()) {
         wire += "Connection: ";
-        wire += connection;
+        wire.append(connection.data(), connection.size());
         wire += "\r\n";
     }
     wire += "\r\n";

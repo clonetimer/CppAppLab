@@ -2,6 +2,8 @@
 
 This is the complete acceptance environment for CppAppLab v1.
 
+For the shortest first-use path, clone the repository in Ubuntu and run `bash scripts/quickstart.sh`. The script checks required packages, offers to install missing dependencies, builds the platform, runs its tests, and starts the guided first task. The detailed manual setup remains below.
+
 ## 1. Verify WSL2 from Windows
 
 Open PowerShell:

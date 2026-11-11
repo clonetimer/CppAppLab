@@ -64,3 +64,23 @@ ctest --test-dir build-http-connection-policy --output-on-failure
 3. Why does close take precedence when both close and keep-alive appear?
 4. Why should the serializer own Connection and Content-Length rather than trusting handler-provided values?
 5. Why does adding a Keep-Alive response header not by itself make a server safe to reuse a socket?
+
+## Learner task — `w8.http-connection-policy`
+
+**Workspace files**
+
+- `include/http_message.hpp`
+- `src/http_message.cpp`
+
+Implement the `ConnectionPolicy` enum, `request_connection_policy(const HttpRequest&)`, and the two policy-aware `serialize_response` overloads described above. Keep the existing one-argument serializer compatible with W8-D5.
+
+**Fixed acceptance:** 14 platform-owned GoogleTests in `course/fixtures/w8/http-connection-policy`. They exercise defaults, HTTP/1.0 opt-in, exact token matching, case/whitespace handling, close precedence, authoritative headers and backward compatibility.
+
+Start after `w8.http-server` has a current PASS. The task workspace starts from the D5 protocol baseline; the D6-A reference copy is not staged into learner work.
+
+```bash
+./build/cppapplab start w8.http-connection-policy "$HOME/cppapplab-work/w8-connection-policy"
+./build/cppapplab lesson "$HOME/cppapplab-work/w8-connection-policy"
+./build/cppapplab hint "$HOME/cppapplab-work/w8-connection-policy" 1
+./build/cppapplab check "$HOME/cppapplab-work/w8-connection-policy"
+```

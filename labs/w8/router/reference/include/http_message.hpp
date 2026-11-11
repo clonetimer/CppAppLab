@@ -6,6 +6,11 @@
 
 namespace cppapplab::http {
 
+enum class ConnectionPolicy {
+    Close,
+    KeepAlive,
+};
+
 struct HttpRequest {
     std::string method;
     std::string target;
@@ -22,6 +27,11 @@ struct HttpResponse {
 };
 
 [[nodiscard]] bool parse_request_line(std::string_view line, HttpRequest& request);
+[[nodiscard]] ConnectionPolicy request_connection_policy(const HttpRequest& request) noexcept;
+
+// The one-argument overload preserves the original close-after-response contract.
 [[nodiscard]] std::string serialize_response(const HttpResponse& response);
+[[nodiscard]] std::string serialize_response(const HttpResponse& response,
+                                             ConnectionPolicy connection_policy);
 
 }  // namespace cppapplab::http

@@ -1,0 +1,7 @@
+build-essential
+cmake
+git
+gdb
+libgtest-dev
+clang-format
+clang-tidy

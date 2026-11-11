@@ -233,19 +233,19 @@ TEST(HttpOperationalAcceptanceTest, ServesConcurrentClientsWithinWorkerAndQueueB
     std::atomic<int> maximum_active_handlers{0};
 
     Router router = make_default_router();
-    router.add_route("GET", "/work", [&active_handlers, &maximum_active_handlers](
-                                        const HttpRequest&) {
-        const int active = active_handlers.fetch_add(1) + 1;
-        int observed = maximum_active_handlers.load();
-        while (observed < active &&
-               !maximum_active_handlers.compare_exchange_weak(observed, active)) {
-        }
-        std::this_thread::sleep_for(40ms);
-        active_handlers.fetch_sub(1);
-        HttpResponse response;
-        response.body = "worked";
-        return response;
-    });
+    router.add_route("GET", "/work",
+                     [&active_handlers, &maximum_active_handlers](const HttpRequest&) {
+                         const int active = active_handlers.fetch_add(1) + 1;
+                         int observed = maximum_active_handlers.load();
+                         while (observed < active &&
+                                !maximum_active_handlers.compare_exchange_weak(observed, active)) {
+                         }
+                         std::this_thread::sleep_for(40ms);
+                         active_handlers.fetch_sub(1);
+                         HttpResponse response;
+                         response.body = "worked";
+                         return response;
+                     });
 
     HttpServerConfig config;
     config.worker_count = kWorkerCount;

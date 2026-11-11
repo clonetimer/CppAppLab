@@ -70,10 +70,11 @@ The fixed loopback fixture covers:
 1. JSONL access record fields and completed response counters.
 2. Active/persistent connection gauges across two requests on one Keep-Alive socket.
 3. Handler exception event, 500 counter and exclusion of raw exception text.
-4. Independent error-log disabling while access logs remain enabled.
-5. Idle and incomplete-header timeout counters.
-6. Maximum-connection rejection counter.
-7. Worker-queue rejection counter and active-job recovery.
+4. Independent error-log disabling and query-string redaction.
+5. Log-sink exceptions are contained and counted without interrupting request processing.
+6. Idle and incomplete-header timeout counters.
+7. Maximum-connection rejection counter.
+8. Worker-queue rejection counter and active-job recovery.
 
 The fixture runs under GCC, ASan/UBSan and clang-tidy. D5, D6-B, D6-C and D6-D1 fixed fixtures remain independent regression gates.
 

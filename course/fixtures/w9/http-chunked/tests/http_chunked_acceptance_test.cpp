@@ -141,8 +141,7 @@ TEST(HttpChunkedParserAcceptanceTest, RejectsChunkedBodyLargerThanOneMiB) {
 }
 
 TEST(HttpChunkedParserAcceptanceTest, RejectsTransferEncodingOnHttp10) {
-    const std::string wire =
-        "POST / HTTP/1.0\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n";
+    const std::string wire = "POST / HTTP/1.0\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n";
     const ParseResult result = HttpRequestParser{}.parse(wire);
     EXPECT_EQ(result.status, ParseStatus::Error);
     EXPECT_EQ(result.error, "Transfer-Encoding requires HTTP/1.1");
@@ -193,8 +192,7 @@ TEST(HttpChunkedParserAcceptanceTest, RejectsTransferEncodingTrailer) {
 }
 
 TEST(HttpChunkedParserAcceptanceTest, RejectsDuplicateTrailerFieldsCaseInsensitively) {
-    const ParseResult result =
-        parse_chunked("0\r\nX-Trace: first\r\nx-trace: second\r\n\r\n");
+    const ParseResult result = parse_chunked("0\r\nX-Trace: first\r\nx-trace: second\r\n\r\n");
     EXPECT_EQ(result.status, ParseStatus::Error);
     EXPECT_EQ(result.error, "duplicate HTTP trailer field");
 }

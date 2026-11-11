@@ -1,7 +1,7 @@
 #include "static_file_handler.hpp"
 
+#include <cstdint>
 #include <fstream>
-#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>

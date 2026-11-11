@@ -274,7 +274,6 @@ TEST(LearningWorkflowTest, FailedCheckShowsCompilerDiagnosticsAndNextSteps) {
     EXPECT_NE(output.find("Request a hint:"), std::string::npos);
 }
 
-
 TEST(MenuWorkflowTest, ShowsInProgressAndLockedStatesWithAProgressSummary) {
     TemporaryDirectory temporary;
     const auto home = temporary.path() / "home";

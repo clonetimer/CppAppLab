@@ -23,12 +23,25 @@ mkdir -p "$HOME"
 
 VERSION_OUTPUT="$("$PACKAGE_ROOT/cppapplab" --version)"
 LIST_OUTPUT="$("$PACKAGE_ROOT/cppapplab" list)"
-grep -Fq "CppAppLab" <<< "$VERSION_OUTPUT"
-grep -Fq "w1.hello-world" <<< "$LIST_OUTPUT"
-grep -Fq "w8.http-operational-load" <<< "$LIST_OUTPUT"
-grep -Fq "w9.static-root" <<< "$LIST_OUTPUT"
+if [[ -z "$VERSION_OUTPUT" ]] || ! grep -Fq "Version: $VERSION_OUTPUT" "$PACKAGE_ROOT/BUILD-INFO.txt"; then
+    echo "[FAIL] CLI version does not match the packaged build metadata." >&2
+    echo "CLI version: $VERSION_OUTPUT" >&2
+    cat "$PACKAGE_ROOT/BUILD-INFO.txt" >&2
+    exit 1
+fi
+for task_id in w1.hello-world w8.http-operational-load w9.static-root; do
+    if ! grep -Fq "$task_id" <<< "$LIST_OUTPUT"; then
+        echo "[FAIL] Relocated package catalog is missing $task_id." >&2
+        printf '%s\n' "$LIST_OUTPUT" >&2
+        exit 1
+    fi
+done
 
-"$PACKAGE_ROOT/cppapplab" learn w1.hello-world > "$TEMP_ROOT/learn.log"
+if ! "$PACKAGE_ROOT/cppapplab" learn w1.hello-world > "$TEMP_ROOT/learn.log"; then
+    echo "[FAIL] The relocated package could not open the W1 learner task." >&2
+    cat "$TEMP_ROOT/learn.log" >&2
+    exit 1
+fi
 WORKSPACE="$HOME/cppapplab-work/w1.hello-world"
 if [[ ! -f "$WORKSPACE/.cppapplab-workspace" || ! -f "$WORKSPACE/src/main.cpp" ]]; then
     echo "[FAIL] Relocated learner package did not create the expected workspace." >&2
@@ -45,8 +58,16 @@ int main() {
 }
 CPP
 
-"$PACKAGE_ROOT/cppapplab" check "$WORKSPACE" > "$TEMP_ROOT/check.log"
-grep -Fq "Result: PASS" "$TEMP_ROOT/check.log"
+if ! "$PACKAGE_ROOT/cppapplab" check "$WORKSPACE" > "$TEMP_ROOT/check.log"; then
+    echo "[FAIL] Packaged W1 acceptance check returned a failure code." >&2
+    cat "$TEMP_ROOT/check.log" >&2
+    exit 1
+fi
+if ! grep -Fq "Result: PASS" "$TEMP_ROOT/check.log"; then
+    echo "[FAIL] Packaged W1 acceptance output did not report PASS." >&2
+    cat "$TEMP_ROOT/check.log" >&2
+    exit 1
+fi
 
 echo "[PASS] Relocated learner package smoke test."
 echo "  CLI version: $VERSION_OUTPUT"

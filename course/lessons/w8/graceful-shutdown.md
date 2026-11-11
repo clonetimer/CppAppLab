@@ -47,3 +47,23 @@ The fixture runs under GCC, ASan/UBSan and clang-tidy. Existing D5, D6-B and D6-
 3. Why is the shutdown deadline tracked by the same monotonic timerfd as connection deadlines?
 4. Why can the server bound socket drain time but not forcibly cancel an arbitrary C++ handler?
 5. Why must the server continue draining worker completions after closing a timed-out connection?
+
+## Learner task — `w8.http-graceful-shutdown`
+
+**Workspace files**
+
+- `include/http_server.hpp`
+- `src/http_server.cpp`
+
+Starting from D6-C, implement an explicit shutdown deadline and a Reactor-owned shutdown state transition. Stop accepting new clients, close idle sockets, return 503 for incomplete requests, drain in-flight work with Connection: close, and close remaining sockets when the monotonic deadline expires. Continue draining worker completions before `run()` returns.
+
+**Fixed acceptance:** 5 platform-owned loopback GoogleTests in `course/fixtures/w8/http-graceful-shutdown`.
+
+The shutdown deadline bounds socket draining; it cannot forcibly cancel an arbitrary C++ handler. The worker pool must still be joined safely.
+
+```bash
+./build/cppapplab start w8.http-graceful-shutdown "$HOME/cppapplab-work/w8-graceful-shutdown"
+./build/cppapplab lesson "$HOME/cppapplab-work/w8-graceful-shutdown"
+./build/cppapplab hint "$HOME/cppapplab-work/w8-graceful-shutdown" 1
+./build/cppapplab check "$HOME/cppapplab-work/w8-graceful-shutdown"
+```

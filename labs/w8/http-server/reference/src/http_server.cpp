@@ -876,8 +876,7 @@ struct HttpServer::Impl {
 
             if (!connection.read_buffer.empty()) {
                 connection.read_buffer.clear();
-                queue_error(connection, 503, "Service Unavailable",
-                            "503 Service Unavailable\n");
+                queue_error(connection, 503, "Service Unavailable", "503 Service Unavailable\n");
                 continue;
             }
 

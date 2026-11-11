@@ -231,8 +231,7 @@ struct HttpServer::Impl {
 
     [[nodiscard]] bool update_interest(const Connection& connection) const {
         epoll_event event{};
-        if (!connection.processing &&
-            connection.write_offset >= connection.write_buffer.size() &&
+        if (!connection.processing && connection.write_offset >= connection.write_buffer.size() &&
             !connection.peer_closed && !connection.close_after_write) {
             event.events |= EPOLLIN | EPOLLRDHUP;
         }
@@ -462,8 +461,7 @@ struct HttpServer::Impl {
         for (;;) {
             if (connection.read_buffer.size() > config.max_request_bytes) {
                 if (connection.peer_closed) {
-                    queue_error(connection, 413, "Content Too Large",
-                                "413 Content Too Large\n");
+                    queue_error(connection, 413, "Content Too Large", "413 Content Too Large\n");
                     return connections.find(token) != connections.end();
                 }
                 try_dispatch(connection);
@@ -475,8 +473,7 @@ struct HttpServer::Impl {
                     current->second.write_offset < current->second.write_buffer.size()) {
                     return true;
                 }
-                queue_error(current->second, 413, "Content Too Large",
-                            "413 Content Too Large\n");
+                queue_error(current->second, 413, "Content Too Large", "413 Content Too Large\n");
                 return connections.find(token) != connections.end();
             }
 

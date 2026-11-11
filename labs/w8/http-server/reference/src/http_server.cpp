@@ -76,7 +76,8 @@ class UniqueFd {
         config.max_connections == 0U || config.max_request_bytes == 0U ||
         config.max_response_bytes < 512U || config.max_requests_per_connection == 0U ||
         config.max_persistent_connections == 0U || !valid_timeout(config.idle_timeout) ||
-        !valid_timeout(config.header_timeout) || !valid_timeout(config.body_timeout)) {
+        !valid_timeout(config.header_timeout) || !valid_timeout(config.body_timeout) ||
+        !valid_timeout(config.shutdown_timeout)) {
         throw std::invalid_argument("HTTP server limits and timeouts must be positive and bounded");
     }
 
@@ -274,6 +275,9 @@ struct HttpServer::Impl {
     std::size_t outstanding_jobs{0U};
     std::size_t persistent_connections{0U};
     std::priority_queue<DeadlineEntry, std::vector<DeadlineEntry>, DeadlineLater> deadlines;
+    bool shutting_down{false};
+    bool shutdown_deadline_expired{false};
+    Clock::time_point shutdown_deadline{};
     cppapplab::concurrency::ThreadPool pool;
 
     void discard_stale_deadlines() {
@@ -310,10 +314,22 @@ struct HttpServer::Impl {
     void schedule_timer() {
         discard_stale_deadlines();
 
-        itimerspec timer_spec{};
+        bool has_deadline = false;
+        Clock::time_point next_deadline{};
         if (!deadlines.empty()) {
+            next_deadline = deadlines.top().when;
+            has_deadline = true;
+        }
+        if (shutting_down && !shutdown_deadline_expired &&
+            (!has_deadline || shutdown_deadline < next_deadline)) {
+            next_deadline = shutdown_deadline;
+            has_deadline = true;
+        }
+
+        itimerspec timer_spec{};
+        if (has_deadline) {
             auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                   deadlines.top().when.time_since_epoch())
+                                   next_deadline.time_since_epoch())
                                    .count();
             if (nanoseconds <= 0) {
                 nanoseconds = 1;
@@ -395,6 +411,10 @@ struct HttpServer::Impl {
 
             connection.read_buffer.clear();
             queue_error(connection, 408, "Request Timeout", "408 Request Timeout\n");
+        }
+        if (shutting_down && !shutdown_deadline_expired && shutdown_deadline <= now) {
+            shutdown_deadline_expired = true;
+            cleanup_connections();
         }
         schedule_timer();
     }
@@ -723,6 +743,9 @@ struct HttpServer::Impl {
 
     void accept_clients() {
         for (;;) {
+            if (stop_requested.load()) {
+                return;
+            }
             const int accepted =
                 ::accept4(listen_fd, nullptr, nullptr, SOCK_NONBLOCK | SOCK_CLOEXEC);
             if (accepted < 0) {
@@ -803,9 +826,81 @@ struct HttpServer::Impl {
         }
     }
 
+    void begin_shutdown() {
+        if (shutting_down) {
+            return;
+        }
+        shutting_down = true;
+        shutdown_deadline = Clock::now() + config.shutdown_timeout;
+
+        if (listen_fd >= 0) {
+            (void)::epoll_ctl(epoll_fd, EPOLL_CTL_DEL, listen_fd, nullptr);
+            (void)::close(listen_fd);
+            listen_fd = -1;
+        }
+
+        std::vector<std::uint64_t> tokens;
+        tokens.reserve(connections.size());
+        for (const auto& item : connections) {
+            tokens.push_back(item.first);
+        }
+
+        for (const std::uint64_t token : tokens) {
+            const auto found = connections.find(token);
+            if (found == connections.end()) {
+                continue;
+            }
+
+            Connection& connection = found->second;
+            if (connection.processing) {
+                // The worker completion will be serialized with Connection: close.
+                connection.pending_policy = ConnectionPolicy::Close;
+                continue;
+            }
+
+            if (connection.write_offset < connection.write_buffer.size()) {
+                connection.close_after_write = true;
+                if (connection.write_offset == 0U) {
+                    const std::string keep_alive = "Connection: keep-alive\\r\\n";
+                    const std::size_t position = connection.write_buffer.find(keep_alive);
+                    if (position != std::string::npos) {
+                        connection.write_buffer.replace(position, keep_alive.size(),
+                                                        "Connection: close\\r\\n");
+                    }
+                }
+                if (!update_interest(connection)) {
+                    close_connection(token);
+                }
+                continue;
+            }
+
+            if (!connection.read_buffer.empty()) {
+                connection.read_buffer.clear();
+                queue_error(connection, 503, "Service Unavailable",
+                            "503 Service Unavailable\\n");
+                continue;
+            }
+
+            close_connection(token);
+        }
+
+        schedule_timer();
+    }
+
+    [[nodiscard]] bool shutdown_complete() const noexcept {
+        return shutting_down && connections.empty() && outstanding_jobs == 0U;
+    }
+
     void run_loop() {
         epoll_event events[64]{};
-        while (!stop_requested.load()) {
+        for (;;) {
+            if (stop_requested.load() && !shutting_down) {
+                begin_shutdown();
+            }
+            if (shutdown_complete()) {
+                break;
+            }
+
             const int count = ::epoll_wait(epoll_fd, events, 64, -1);
             if (count < 0) {
                 if (errno == EINTR) {
@@ -815,9 +910,10 @@ struct HttpServer::Impl {
             }
 
             for (int index = 0; index < count; ++index) {
-                if (stop_requested.load()) {
-                    break;
+                if (stop_requested.load() && !shutting_down) {
+                    begin_shutdown();
                 }
+
                 const std::uint64_t token = events[index].data.u64;
                 const std::uint32_t flags = events[index].events;
 
@@ -832,7 +928,9 @@ struct HttpServer::Impl {
                     continue;
                 }
                 if (token == kListenerToken) {
-                    accept_clients();
+                    if (!shutting_down) {
+                        accept_clients();
+                    }
                     continue;
                 }
 

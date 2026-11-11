@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STRICT_WSL=0
 if [[ "${1:-}" == "--strict-wsl" ]]; then
     STRICT_WSL=1
@@ -45,7 +46,7 @@ else
     fi
 fi
 
-for tool in g++ cmake git gdb; do
+for tool in g++ cmake git gdb ctest dpkg dpkg-query; do
     if command -v "$tool" >/dev/null 2>&1; then
         pass "$tool: $(command -v "$tool")"
     else
@@ -56,25 +57,38 @@ done
 for tool in clang-format clang-tidy; do
     if command -v "$tool" >/dev/null 2>&1; then
         pass "$tool: $(command -v "$tool")"
+    elif [[ "$STRICT_WSL" -eq 1 ]]; then
+        fail "$tool is required for full WSL2 acceptance"
     else
         warn "$tool is optional for the initial build but required by the full quality workflow"
     fi
 done
 
-
-if dpkg-query -W -f='${Status}' libgtest-dev 2>/dev/null | grep -q 'install ok installed'; then
-    pass "GoogleTest development package is installed"
-else
-    fail "libgtest-dev is required for platform acceptance tests; install it with: sudo apt install libgtest-dev"
+if command -v g++ >/dev/null 2>&1 && command -v dpkg >/dev/null 2>&1; then
+    gcc_version="$(g++ -dumpfullversion -dumpversion)"
+    if dpkg --compare-versions "$gcc_version" ge "11"; then
+        pass "GCC $gcc_version meets the GCC 11 minimum"
+    else
+        fail "GCC $gcc_version is older than the GCC 11 minimum"
+    fi
 fi
 
-if command -v cmake >/dev/null 2>&1; then
+if command -v cmake >/dev/null 2>&1 && command -v dpkg >/dev/null 2>&1; then
     cmake_version="$(cmake --version | awk 'NR == 1 {print $3}')"
     if dpkg --compare-versions "$cmake_version" ge "3.18"; then
         pass "CMake $cmake_version meets the 3.18 minimum"
     else
         fail "CMake $cmake_version is older than 3.18"
     fi
+fi
+
+if command -v dpkg-query >/dev/null 2>&1 &&
+    dpkg-query -W -f='${Status}' libgtest-dev 2>/dev/null | grep -q 'install ok installed'; then
+    pass "GoogleTest development package is installed"
+elif [[ -f "$ROOT_DIR/third_party/googletest/CMakeLists.txt" ]]; then
+    pass "Bundled GoogleTest source is available for offline builds"
+else
+    fail "GoogleTest is unavailable; install libgtest-dev or extract the CppAppLab offline source bundle"
 fi
 
 if command -v g++ >/dev/null 2>&1 && command -v gdb >/dev/null 2>&1; then

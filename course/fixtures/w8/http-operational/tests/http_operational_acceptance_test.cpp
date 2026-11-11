@@ -243,8 +243,7 @@ void wait_until(Predicate predicate) {
 [[nodiscard]] bool perform_keep_alive_soak_client(std::uint16_t port, int request_count) {
     TestClient client(port);
     for (int request_index = 0; request_index < request_count; ++request_index) {
-        const std::string policy =
-            request_index + 1 == request_count ? "close" : "keep-alive";
+        const std::string policy = request_index + 1 == request_count ? "close" : "keep-alive";
         if (!client.send_all(make_request("/health", policy))) {
             return false;
         }
@@ -265,8 +264,7 @@ void wait_until(Predicate predicate) {
     }
     const std::string response = client.read_response();
     if (response.find("HTTP/1.1 200 OK\r\n") == std::string::npos ||
-        response_body(response) != "{\"status\":\"ok\"}" ||
-        !client.read_until_eof().empty()) {
+        response_body(response) != "{\"status\":\"ok\"}" || !client.read_until_eof().empty()) {
         return false;
     }
 
@@ -362,8 +360,7 @@ TEST(HttpOperationalAcceptanceTest, ServesConcurrentClientsWithinWorkerAndQueueB
 
 TEST(HttpOperationalAcceptanceTest, SlowReaderBackpressureResumesAndCompletesLargeResponse) {
     constexpr std::size_t kPayloadSize = kSlowReaderPayloadMiB * kBytesPerMiB;
-    constexpr std::size_t kMaximumResponseSize =
-        kSlowReaderResponseLimitMiB * kBytesPerMiB;
+    constexpr std::size_t kMaximumResponseSize = kSlowReaderResponseLimitMiB * kBytesPerMiB;
     const auto payload = std::make_shared<const std::string>(kPayloadSize, 'x');
 
     Router router = make_default_router();
@@ -411,8 +408,7 @@ TEST(HttpOperationalAcceptanceTest, SustainsConcurrentKeepAliveSoakWithoutLeakin
     constexpr std::size_t kMaximumPersistentConnections = 16U;
     constexpr std::size_t kMaximumRequestsPerConnection = 100U;
     constexpr std::uint64_t kExpectedRequests =
-        static_cast<std::uint64_t>(kClientCount) *
-        static_cast<std::uint64_t>(kRequestsPerClient);
+        static_cast<std::uint64_t>(kClientCount) * static_cast<std::uint64_t>(kRequestsPerClient);
 
     HttpServerConfig config;
     config.worker_count = kWorkerCount;

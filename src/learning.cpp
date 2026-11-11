@@ -7,8 +7,10 @@
 #include "cppapplab/workspace.hpp"
 
 #include <chrono>
+#include <cstdlib>
 #include <ctime>
 #include <filesystem>
+#include <optional>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -81,7 +83,8 @@ void print_task_catalog() {
         }
         std::cout << '\n';
     }
-    std::cout << "\nStart a task with: cppapplab start <task-id> <workspace-directory>\n";
+    std::cout << "\nStart or resume the next task with: cppapplab learn\n"
+              << "Choose a task explicitly with: cppapplab learn <task-id>\n";
 }
 
 void ensure_real_directory(const std::filesystem::path& path) {
@@ -436,8 +439,8 @@ int show_next(const std::filesystem::path& workspace_path) {
         std::string missing_prerequisite;
         if (prerequisites_satisfied(candidate, &missing_prerequisite)) {
             std::cout << "Next available task: " << candidate.id << " · " << candidate.title << '\n'
-                      << "Start it with: cppapplab start " << candidate.id
-                      << " <new-workspace-directory>\n";
+                      << "Continue with: cppapplab learn\n"
+                      << "Or choose it explicitly: cppapplab learn " << candidate.id << '\n';
             std::cout << "Course progress is saved independently of this workspace.\n";
             return 0;
         }
@@ -514,6 +517,131 @@ int resume_task(std::string_view task_id) {
     }
 }
 
+std::filesystem::path default_workspace_root(const Task& task) {
+    const char* home = std::getenv("HOME");
+    if (home == nullptr || home[0] == '\0') {
+        throw std::runtime_error(
+            "HOME is not set; use the explicit start command or set HOME before using learn.");
+    }
+    return std::filesystem::path(home) / "cppapplab-work" / task.id;
+}
+
+bool workspace_path_is_occupied(const std::filesystem::path& path) {
+    return std::filesystem::exists(path) || std::filesystem::is_symlink(path);
+}
+
+std::optional<Workspace> find_existing_workspace(const Task& task) {
+    const auto saved = read_progress(task.id);
+    if (saved.has_value()) {
+        try {
+            const Workspace workspace = open_workspace(saved->workspace_root);
+            if (workspace.task->id == task.id) {
+                return workspace;
+            }
+        } catch (const std::exception& error) {
+            std::cout << "Saved workspace could not be reopened; its files are left untouched.\n"
+                      << "Reason: " << error.what() << '\n';
+        }
+    }
+
+    const auto default_root = default_workspace_root(task);
+    if (workspace_path_is_occupied(default_root)) {
+        try {
+            const Workspace workspace = open_workspace(default_root);
+            if (workspace.task->id == task.id) {
+                return workspace;
+            }
+        } catch (const std::exception&) {
+            // An unrelated or invalid directory is never overwritten. A new suffix is used.
+        }
+    }
+    return std::nullopt;
+}
+
+std::filesystem::path next_available_workspace_root(const Task& task) {
+    const auto base = default_workspace_root(task);
+    if (!workspace_path_is_occupied(base)) {
+        return base;
+    }
+
+    for (unsigned suffix = 2U; suffix < 10000U; ++suffix) {
+        auto candidate = base;
+        candidate += "-" + std::to_string(suffix);
+        if (!workspace_path_is_occupied(candidate)) {
+            return candidate;
+        }
+    }
+    throw std::runtime_error("Cannot find an unused workspace directory for task " + task.id + ".");
+}
+
+int guided_learn(std::string_view requested_task_id) {
+    const Task* selected = nullptr;
+    if (!requested_task_id.empty()) {
+        selected = find_task(requested_task_id);
+        if (selected == nullptr) {
+            throw std::invalid_argument("Unknown task ID: " + std::string(requested_task_id));
+        }
+
+        std::string missing_prerequisite;
+        if (!prerequisites_satisfied(*selected, &missing_prerequisite)) {
+            throw std::invalid_argument("Task is locked: complete " + missing_prerequisite +
+                                        " and pass its current acceptance check first.");
+        }
+    } else {
+        for (const Task& task : task_catalog()) {
+            if (has_current_pass(task.id)) {
+                continue;
+            }
+            if (prerequisites_satisfied(task)) {
+                selected = &task;
+                break;
+            }
+        }
+        if (selected == nullptr) {
+            std::cout << "No unpassed task is currently available.\n"
+                      << "Run 'cppapplab progress' to review the course, or choose a task with "
+                         "'cppapplab learn <task-id>'.\n";
+            return 0;
+        }
+    }
+
+    std::optional<Workspace> existing = find_existing_workspace(*selected);
+    const bool resumed = existing.has_value();
+    Workspace workspace;
+    if (existing.has_value()) {
+        workspace = *existing;
+    } else {
+        workspace = create_workspace(*selected, next_available_workspace_root(*selected));
+        register_workspace(workspace.root);
+    }
+
+    std::cout << "CppAppLab · Guided learning\n\n"
+              << (resumed ? "Resuming your saved workspace\n" : "Created your learner workspace\n")
+              << "Task: " << selected->id << " · " << selected->title << '\n'
+              << "Workspace: " << workspace.root.string() << "\n\n"
+              << "Files in this task:\n";
+    for (const auto& source : selected->source_files) {
+        std::cout << "  - " << source.generic_string() << '\n';
+    }
+
+    std::cout << "\n--- Task guide ---\n";
+    const auto lesson = data_root() / selected->lesson_path;
+    std::cout << read_lesson_file(lesson, kMaxLessonBytes);
+    std::cout << "\n--- Your next steps ---\n"
+              << "1. Open the workspace in your editor. VS Code users can run:\n"
+              << "   code \"" << workspace.root.string() << "\"\n"
+              << "2. If you need help, request the first hint:\n"
+              << "   ./build/cppapplab hint \"" << workspace.root.string() << "\" 1\n"
+              << "3. When your implementation is ready, run the fixed acceptance check:\n"
+              << "   ./build/cppapplab check \"" << workspace.root.string() << "\"\n"
+              << "4. After PASS, continue with the next available task:\n"
+              << "   ./build/cppapplab learn\n\n"
+              << "Your workspace and progress are saved between sessions. "
+                 "Running 'learn' again resumes an incomplete task; after PASS it advances to the "
+                 "next task.\n";
+    return 0;
+}
+
 int show_history(std::string_view task_id) {
     const auto records = read_progress_history(task_id);
     if (records.empty()) {
@@ -554,6 +682,12 @@ int run_cli(int argc, char* argv[]) {
         if (command == "--version" || command == "-v") {
             std::cout << version() << '\n';
             return 0;
+        }
+        if (command == "learn") {
+            if (argc > 3) {
+                throw std::invalid_argument("Usage: cppapplab learn [task-id]");
+            }
+            return guided_learn(argc == 3 ? std::string_view(argv[2]) : std::string_view{});
         }
         if (command == "list") {
             print_task_catalog();

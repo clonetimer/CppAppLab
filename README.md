@@ -21,40 +21,30 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 The main branch contains 23 hands-on tasks across W1–W9. W1–W7 cover C++ fundamentals, Linux systems, concurrency and TCP; W8 builds the HTTP server and its six D6 engineering tasks; W9 adds chunked transfer decoding, strict request-target/query parsing and descriptor-confined static-file access. `course/tasks.tsv` is the authoritative task catalog.
 
+**Recommended learner entry point — one command:**
+
+```bash
+./build/cppapplab learn
+```
+
+CppAppLab automatically selects the next unlocked task, creates a workspace under `~/cppapplab-work/`, displays the task guide and prints the exact edit, hint and check commands. Running it again resumes an incomplete task; after PASS it advances to the next unlocked task. To choose a task explicitly:
+
+```bash
+./build/cppapplab learn w1.calculator
+```
+
+For learners who prefer the lower-level workflow, the original commands remain available:
+
 ```bash
 ./build/cppapplab list
-
+./build/cppapplab progress
 ./build/cppapplab start w1.hello-world "$HOME/cppapplab-work/hello-world"
 ./build/cppapplab lesson "$HOME/cppapplab-work/hello-world"
 ./build/cppapplab hint "$HOME/cppapplab-work/hello-world" 1
 ./build/cppapplab check "$HOME/cppapplab-work/hello-world"
-
-./build/cppapplab start w1.calculator "$HOME/cppapplab-work/calculator"
-./build/cppapplab lesson "$HOME/cppapplab-work/calculator"
-./build/cppapplab hint "$HOME/cppapplab-work/calculator" 1
-./build/cppapplab check "$HOME/cppapplab-work/calculator"
-
-./build/cppapplab start w2.todo-cli "$HOME/cppapplab-work/todo"
-./build/cppapplab lesson "$HOME/cppapplab-work/todo"
-./build/cppapplab hint "$HOME/cppapplab-work/todo" 1
-./build/cppapplab check "$HOME/cppapplab-work/todo"
-
-./build/cppapplab start w3.task-manager "$HOME/cppapplab-work/task-manager"
-./build/cppapplab lesson "$HOME/cppapplab-work/task-manager"
-./build/cppapplab hint "$HOME/cppapplab-work/task-manager" 1
-./build/cppapplab check "$HOME/cppapplab-work/task-manager"
-
-./build/cppapplab start w4.quality-gate "$HOME/cppapplab-work/quality-gate"
-./build/cppapplab lesson "$HOME/cppapplab-work/quality-gate"
-./build/cppapplab hint "$HOME/cppapplab-work/quality-gate" 1
-./build/cppapplab check "$HOME/cppapplab-work/quality-gate"
-
-./build/cppapplab progress
 ./build/cppapplab resume w1.hello-world
 ./build/cppapplab history w1.hello-world
 ```
-
-The Calculator acceptance runner uses a platform-owned CMake/GoogleTest fixture. It does not trust learner-provided CMakeLists.txt or tests.
 
 ## Course progress and workspace recovery
 
@@ -107,6 +97,7 @@ W1–W7 and W8-D1–D6-D3 are merged into `main`. The HTTP reference server incl
 - [Roadmap](docs/ROADMAP.md)
 - [Development and acceptance](docs/DEVELOPMENT.md)
 - [Environment setup](docs/ENVIRONMENT_WSL2_UBUNTU.md)
+- [First-use quick start](docs/QUICKSTART.md)
 - [Current project status](docs/STATUS.md)
 - [Router lesson and exact task boundary](course/lessons/w8/router.md)
 - [HTTP TCP server lesson](course/lessons/w8/http-server.md)
@@ -123,16 +114,13 @@ W1–W7 and W8-D1–D6-D3 are merged into `main`. The HTTP reference server incl
 
 ## Quick start
 
+After cloning the repository inside Ubuntu 24.04 (WSL2 is the target environment), run one command from the repository root:
+
 ```bash
-git clone https://github.com/clonetimer/CppAppLab.git
-cd CppAppLab
-
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
-cmake --build build --parallel
-ctest --test-dir build --output-on-failure
-
-./build/cppapplab --help
+bash scripts/quickstart.sh
 ```
+
+The script checks the environment, offers to install missing Ubuntu build dependencies, configures and builds the project, runs the platform tests, and opens the first guided task. It does not overwrite existing learner workspaces. For a manual setup path, see [Environment setup](docs/ENVIRONMENT_WSL2_UBUNTU.md).
 
 After satisfying the static-files prerequisite, start `w8.router` like any other learning task. For a reference-only demonstration:
 

@@ -130,10 +130,14 @@ Final acceptance evidence:
 
 All symlinks below the configured document root are rejected, including symlinks that point back inside the root. The configured root itself is trusted configuration; its final component must not be a symlink. This is an educational security boundary, not a claim of full production filesystem sandboxing.
 
+## Usability and first-use experience
+
+The platform now has a guided learner entry point (`cppapplab learn`) and a one-command Ubuntu setup path (`bash scripts/quickstart.sh`). The guided command selects the next unlocked task, resumes a saved workspace or creates a non-overwriting default workspace, displays the task guide and prints the exact next commands. The quick-start script checks the Ubuntu 24.04 toolchain, requests approval before installing missing packages, builds the project and runs CTest before entering the first task. These changes reduce first-use command and workspace-management overhead; they do not replace target-machine acceptance.
+
 ## Remaining work
 
 1. Complete Windows 11 + WSL2 target acceptance.
-2. Finish reproducible/offline dependency delivery, first-use guidance and release qualification.
+2. Finish reproducible/offline dependency delivery and release qualification.
 
 W9-A1 chunked-transfer decoding, W9-A2 request-target/query parsing and W9-A3 secure static-root confinement are merged and validated. W9-A4 HTTP hardening and W9-A5 parser fuzzing remain planned; TLS/WebSocket, performance engineering and production operations are planned for W10–W12. These later stages are not complete or release-qualified.
 

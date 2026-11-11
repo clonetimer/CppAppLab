@@ -114,6 +114,7 @@ W1–W7 and W8-D1–D6-D2 are merged into `main`. W8-D5 adds a real TCP listener
 - [HTTP connection guards lesson](course/lessons/w8/connection-guards.md)
 - [HTTP graceful shutdown lesson](course/lessons/w8/graceful-shutdown.md)
 - [HTTP observability lesson](course/lessons/w8/observability.md)
+- [HTTP operational load lesson](course/lessons/w8/operational-load.md)
 
 ## Quick start
 

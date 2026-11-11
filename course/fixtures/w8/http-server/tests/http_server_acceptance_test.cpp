@@ -355,13 +355,16 @@ TEST(HttpServerAcceptanceTest, RejectsStaleWorkerCompletionAfterDisconnect) {
     Router router = make_default_router();
     router.add_route("GET", "/slow", [&entered, &completed](const HttpRequest&) {
         entered.store(true);
-        std::this_thread::sleep_for(300ms);
+        std::this_thread::sleep_for(500ms);
         completed.store(true);
         HttpResponse response;
         response.body = "stale";
         return response;
     });
-    TestServer server({}, std::move(router));
+    HttpServerConfig config;
+    config.max_connections = 1U;
+    config.task_queue_capacity = 1U;
+    TestServer server(config, std::move(router));
     TestClient old_client(server.port());
     ASSERT_TRUE(old_client.send_all(request("GET", "/slow")));
     const auto entered_deadline = std::chrono::steady_clock::now() + 1s;
@@ -373,11 +376,11 @@ TEST(HttpServerAcceptanceTest, RejectsStaleWorkerCompletionAfterDisconnect) {
     // Keep the old client descriptor open while the server observes a full shutdown.
     // The next accepted server-side descriptor can then reuse the old server fd.
     old_client.shutdown_both();
-    std::this_thread::sleep_for(30ms);
+    std::this_thread::sleep_for(100ms);
 
     TestClient replacement(server.port());
     ASSERT_TRUE(replacement.send_all("GET /hel"));
-    std::this_thread::sleep_for(40ms);
+    std::this_thread::sleep_for(100ms);
 
     const auto completed_deadline = std::chrono::steady_clock::now() + 1s;
     while (!completed.load() && std::chrono::steady_clock::now() < completed_deadline) {

@@ -26,6 +26,12 @@ option(
     "Fetch the pinned GoogleTest version when no system package is available"
     ON
 )
+set(
+    CPPAPPLAB_GTEST_SOURCE_DIR
+    ""
+    CACHE PATH
+    "Optional local GoogleTest source tree for reproducible offline builds"
+)
 
 if(CPPAPPLAB_ENABLE_CLANG_TIDY)
     find_program(CPPAPPLAB_CLANG_TIDY NAMES clang-tidy REQUIRED)
@@ -104,12 +110,25 @@ if(BUILD_TESTING)
             include(FetchContent)
             set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
             set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-            FetchContent_Declare(
-                googletest
-                GIT_REPOSITORY https://github.com/google/googletest.git
-                GIT_TAG v1.18.0
-                GIT_SHALLOW TRUE
-            )
+
+            if(CPPAPPLAB_GTEST_SOURCE_DIR)
+                if(NOT EXISTS "${CPPAPPLAB_GTEST_SOURCE_DIR}/CMakeLists.txt")
+                    message(FATAL_ERROR
+                        "CPPAPPLAB_GTEST_SOURCE_DIR must point to a GoogleTest source tree."
+                    )
+                endif()
+                FetchContent_Declare(
+                    googletest
+                    SOURCE_DIR "${CPPAPPLAB_GTEST_SOURCE_DIR}"
+                )
+            else()
+                FetchContent_Declare(
+                    googletest
+                    GIT_REPOSITORY https://github.com/google/googletest.git
+                    GIT_TAG v1.18.0
+                    GIT_SHALLOW TRUE
+                )
+            endif()
             FetchContent_MakeAvailable(googletest)
         else()
             message(FATAL_ERROR

@@ -46,7 +46,7 @@ From the repository root in Windows Explorer, double-click `Start-CppAppLab.cmd`
 .\Start-CppAppLab.cmd
 ```
 
-The launcher detects installed Ubuntu distributions, verifies WSL2 and Ubuntu 24.04, and then opens the existing Linux checkout. If `~/work/CppAppLab` does not exist inside WSL, it clones the private repository there and runs the first-time setup. If more than one Ubuntu distribution is installed, it asks you to choose one. The first clone requires GitHub authentication inside WSL; if it fails, run `gh auth login` inside Ubuntu and retry. The launcher checks the checkout origin and refuses to run an unrelated repository.
+The launcher detects installed Ubuntu distributions, verifies WSL2 and Ubuntu 24.04, and then opens the existing Linux checkout. If `~/work/CppAppLab` does not exist inside WSL, it clones the private repository there and runs the first-time setup. If more than one Ubuntu distribution is installed, it asks you to choose one. The first clone requires GitHub authentication inside WSL. Configure Git credentials there; for example, install GitHub CLI and run `gh auth login` inside Ubuntu before retrying. The launcher checks the checkout origin and refuses to run an unrelated repository.
 
 After pulling project updates inside WSL, rebuild and rerun acceptance checks with:
 

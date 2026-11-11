@@ -637,9 +637,12 @@ struct HttpServer::Impl {
 
     [[nodiscard]] bool update_interest(const Connection& connection) const {
         epoll_event event{};
+        if (!connection.peer_closed) {
+            event.events |= EPOLLRDHUP;
+        }
         if (!connection.processing && connection.write_offset >= connection.write_buffer.size() &&
             !connection.peer_closed && !connection.close_after_write) {
-            event.events |= EPOLLIN | EPOLLRDHUP;
+            event.events |= EPOLLIN;
         }
         if (connection.write_offset < connection.write_buffer.size()) {
             event.events |= EPOLLOUT;
@@ -979,7 +982,11 @@ struct HttpServer::Impl {
         }
 
         try_dispatch(connection);
-        return connections.find(token) != connections.end();
+        const auto current = connections.find(token);
+        if (current == connections.end()) {
+            return false;
+        }
+        return update_interest(current->second);
     }
 
     void accept_clients() {

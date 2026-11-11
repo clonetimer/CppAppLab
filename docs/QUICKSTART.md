@@ -43,7 +43,7 @@ For an interactive home screen, run:
 ./build/cppapplab
 ```
 
-Choose **Continue learning**, browse tasks by number, or search by task ID or title keyword. The task list shows passed, in-progress, failed, stale, available and locked states. If you prefer to skip the menu, run the guided command directly:
+Choose **Continue learning**, browse tasks by number, or search by task ID or title keyword. The task list shows PASSED, IN PROGRESS, NEEDS WORK, STALE, AVAILABLE and LOCKED states. If you prefer to skip the menu, run the guided command directly:
 
 ```bash
 ./build/cppapplab learn

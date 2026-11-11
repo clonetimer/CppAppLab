@@ -2,7 +2,6 @@
 
 #include <fstream>
 #include <optional>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -10,18 +9,60 @@
 namespace cppapplab::http {
 namespace {
 
-[[nodiscard]] std::optional<std::string> read_file(const std::filesystem::path& path) {
-    std::ifstream file(path, std::ios::binary);
-    if (!file) {
-        return std::nullopt;
+struct FileReadResult {
+    enum class Status {
+        Success,
+        Unreadable,
+        TooLarge
+    };
+
+    Status status{Status::Unreadable};
+    std::string contents;
+};
+
+[[nodiscard]] FileReadResult read_file(const std::filesystem::path& path,
+                                       std::size_t max_file_bytes) {
+    std::error_code size_error;
+    const std::uintmax_t file_size = std::filesystem::file_size(path, size_error);
+    if (!size_error && file_size > max_file_bytes) {
+        return {FileReadResult::Status::TooLarge, {}};
     }
 
-    std::ostringstream buffer;
-    buffer << file.rdbuf();
-    if (file.bad()) {
-        return std::nullopt;
+    std::ifstream file(path, std::ios::binary);
+    if (!file) {
+        return {};
     }
-    return buffer.str();
+
+    std::string contents;
+    if (!size_error) {
+        contents.reserve(static_cast<std::size_t>(file_size));
+    }
+
+    char buffer[8192];
+    for (;;) {
+        file.read(buffer, static_cast<std::streamsize>(sizeof(buffer)));
+        const std::streamsize received = file.gcount();
+        if (received > 0) {
+            const std::size_t count = static_cast<std::size_t>(received);
+            if (contents.size() > max_file_bytes ||
+                count > max_file_bytes - contents.size()) {
+                return {FileReadResult::Status::TooLarge, {}};
+            }
+            contents.append(buffer, count);
+        }
+
+        if (file.bad()) {
+            return {};
+        }
+        if (file.eof()) {
+            break;
+        }
+        if (file.fail()) {
+            return {};
+        }
+    }
+
+    return {FileReadResult::Status::Success, std::move(contents)};
 }
 
 [[nodiscard]] std::string content_type(const std::filesystem::path& path) {
@@ -78,8 +119,9 @@ namespace {
 
 }  // namespace
 
-StaticFileHandler::StaticFileHandler(std::filesystem::path document_root)
-    : document_root_(std::move(document_root)) {}
+StaticFileHandler::StaticFileHandler(std::filesystem::path document_root,
+                                     std::size_t max_file_bytes)
+    : document_root_(std::move(document_root)), max_file_bytes_(max_file_bytes) {}
 
 HttpResponse StaticFileHandler::handle(const HttpRequest& request) const {
     if (request.method != "GET") {
@@ -104,8 +146,11 @@ HttpResponse StaticFileHandler::handle(const HttpRequest& request) const {
 
     const std::filesystem::path relative = std::filesystem::path(target).relative_path();
     const std::filesystem::path file_path = document_root_ / relative;
-    auto contents = read_file(file_path);
-    if (!contents.has_value()) {
+    FileReadResult contents = read_file(file_path, max_file_bytes_);
+    if (contents.status == FileReadResult::Status::TooLarge) {
+        return text_response(413, "Content Too Large", "413 Content Too Large\n");
+    }
+    if (contents.status != FileReadResult::Status::Success) {
         return text_response(404, "Not Found", "404 Not Found\n");
     }
 
@@ -114,7 +159,7 @@ HttpResponse StaticFileHandler::handle(const HttpRequest& request) const {
     response.reason_phrase = "OK";
     response.headers.emplace("Content-Type", content_type(file_path));
     response.headers.emplace("Connection", "close");
-    response.body = std::move(*contents);
+    response.body = std::move(contents.contents);
     return response;
 }
 

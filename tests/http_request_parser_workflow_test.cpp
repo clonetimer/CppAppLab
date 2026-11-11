@@ -152,6 +152,6 @@ TEST(HttpRequestParserWorkflowTest, W9ChunkedTaskUsesLearnerSourcesInFixedAccept
     const auto evidence = cppapplab::read_evidence(workspace.root);
     ASSERT_TRUE(evidence.has_value()) << diagnostic;
     EXPECT_TRUE(evidence->passed) << diagnostic;
-    EXPECT_EQ(evidence->tests_passed, 32U) << diagnostic;
-    EXPECT_EQ(evidence->tests_total, 32U) << diagnostic;
+    EXPECT_EQ(evidence->tests_passed, 35U) << diagnostic;
+    EXPECT_EQ(evidence->tests_total, 35U) << diagnostic;
 }

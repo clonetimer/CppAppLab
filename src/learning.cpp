@@ -20,6 +20,8 @@
 #include <string_view>
 #include <vector>
 
+#include <unistd.h>
+
 namespace cppapplab {
 namespace {
 
@@ -97,6 +99,70 @@ void ensure_real_directory(const std::filesystem::path& path) {
     } else {
         std::filesystem::create_directory(path);
     }
+}
+
+
+std::vector<std::string> diagnostic_excerpt(const std::string& output) {
+    std::vector<std::string> selected;
+    std::vector<std::string> recent;
+    std::istringstream input(output);
+    std::string line;
+
+    while (std::getline(input, line)) {
+        if (line.empty()) {
+            continue;
+        }
+        recent.push_back(line);
+        if (recent.size() > 6U) {
+            recent.erase(recent.begin());
+        }
+
+        const bool relevant = line.find("[CppAppLab]") != std::string::npos ||
+                              line.find("error") != std::string::npos ||
+                              line.find("Error") != std::string::npos ||
+                              line.find("warning:") != std::string::npos ||
+                              line.find("FAILED") != std::string::npos ||
+                              line.find("Failed") != std::string::npos ||
+                              line.find("failed") != std::string::npos ||
+                              line.find("undefined reference") != std::string::npos ||
+                              line.find("not found") != std::string::npos ||
+                              line.find("No such file") != std::string::npos ||
+                              line.find("Expected bytes") != std::string::npos ||
+                              line.find("Actual bytes") != std::string::npos;
+        if (relevant && selected.size() < 8U) {
+            if (line.size() > 220U) {
+                line = line.substr(0U, 217U) + "...";
+            }
+            selected.push_back(line);
+        }
+    }
+
+    return selected.empty() ? recent : selected;
+}
+
+void print_check_guidance(const Workspace& workspace, bool passed, const std::string& log_output) {
+    if (passed) {
+        std::cout << "Next step: ./build/cppapplab learn\n";
+        return;
+    }
+
+    const auto diagnostics = diagnostic_excerpt(log_output);
+    std::cout << "\nWhat needs attention:\n";
+    if (diagnostics.empty()) {
+        std::cout << "  The check did not pass. Open the full log for details.\n";
+    } else {
+        for (const auto& line : diagnostics) {
+            std::cout << "  " << line << '\n';
+        }
+    }
+
+    const auto log_path = workspace.root / ".cppapplab/last-check.log";
+    std::cout << "\nSuggested next steps:\n"
+              << "  1. Read the full log: cat \"" << log_path.string() << "\"\n"
+              << "  2. Request a hint: ./build/cppapplab hint \"" << workspace.root.string()
+              << "\" 1\n"
+              << "  3. Fix the listed source files and rerun: ./build/cppapplab check \""
+              << workspace.root.string() << "\"\n";
 }
 
 int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
@@ -202,6 +268,7 @@ int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
               << "Evidence: " << (workspace.root / ".cppapplab/evidence.txt").string() << '\n'
               << "Log: " << (workspace.root / ".cppapplab/last-check.log").string() << '\n';
 
+    print_check_guidance(workspace, passed, log.str());
     return passed ? 0 : 1;
 }
 
@@ -366,6 +433,7 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
               << "Evidence: " << (workspace.root / ".cppapplab/evidence.txt").string() << '\n'
               << "Log: " << (workspace.root / ".cppapplab/last-check.log").string() << '\n';
 
+    print_check_guidance(workspace, passed, log.str());
     return passed ? 0 : 1;
 }
 
@@ -642,6 +710,89 @@ int guided_learn(std::string_view requested_task_id) {
     return 0;
 }
 
+
+int choose_task_interactively() {
+    const auto& tasks = task_catalog();
+    std::cout << "\nChoose a task by number or task ID (0 to return):\n";
+    for (std::size_t index = 0; index < tasks.size(); ++index) {
+        const Task& task = tasks[index];
+        std::string state;
+        if (has_current_pass(task.id)) {
+            state = "PASSED";
+        } else if (prerequisites_satisfied(task)) {
+            state = "AVAILABLE";
+        } else {
+            state = "LOCKED";
+        }
+        std::cout << "  " << (index + 1U) << ". [" << state << "] " << task.id << " · "
+                  << task.title << '\n';
+    }
+
+    std::cout << "Task: " << std::flush;
+    std::string selection;
+    if (!std::getline(std::cin, selection) || selection == "0" || selection.empty()) {
+        return 0;
+    }
+
+    for (std::size_t index = 0; index < tasks.size(); ++index) {
+        if (selection == std::to_string(index + 1U) || selection == tasks[index].id) {
+            try {
+                return guided_learn(tasks[index].id);
+            } catch (const std::exception& error) {
+                std::cerr << "Cannot open this task: " << error.what() << '\n';
+                return 1;
+            }
+        }
+    }
+
+    std::cout << "Task selection not recognized. Enter a listed number or task ID.\n";
+    return 0;
+}
+
+int interactive_menu() {
+    while (true) {
+        std::size_t passed = 0U;
+        for (const Task& task : task_catalog()) {
+            if (has_current_pass(task.id)) {
+                ++passed;
+            }
+        }
+
+        std::cout << "\nCppAppLab · Learning home\n"
+                  << "Course progress: " << passed << '/' << task_catalog().size()
+                  << " tasks passed\n\n"
+                  << "  1. Continue learning\n"
+                  << "  2. Choose a task\n"
+                  << "  3. View course progress\n"
+                  << "  4. Help and commands\n"
+                  << "  0. Exit\n"
+                  << "Select [1]: " << std::flush;
+
+        std::string choice;
+        if (!std::getline(std::cin, choice)) {
+            return 0;
+        }
+
+        try {
+            if (choice.empty() || choice == "1") {
+                (void)guided_learn({});
+            } else if (choice == "2") {
+                (void)choose_task_interactively();
+            } else if (choice == "3") {
+                (void)show_progress();
+            } else if (choice == "4") {
+                std::cout << usage();
+            } else if (choice == "0" || choice == "q" || choice == "Q") {
+                return 0;
+            } else {
+                std::cout << "Please enter 1, 2, 3, 4 or 0.\n";
+            }
+        } catch (const std::exception& error) {
+            std::cerr << "CppAppLab: " << error.what() << '\n';
+        }
+    }
+}
+
 int show_history(std::string_view task_id) {
     const auto records = read_progress_history(task_id);
     if (records.empty()) {
@@ -668,6 +819,9 @@ void print_help() {
 
 int run_cli(int argc, char* argv[]) {
     if (argc <= 1) {
+        if (::isatty(STDIN_FILENO) != 0) {
+            return interactive_menu();
+        }
         print_help();
         return 0;
     }
@@ -682,6 +836,12 @@ int run_cli(int argc, char* argv[]) {
         if (command == "--version" || command == "-v") {
             std::cout << version() << '\n';
             return 0;
+        }
+        if (command == "menu") {
+            if (argc != 2) {
+                throw std::invalid_argument("Usage: cppapplab menu");
+            }
+            return interactive_menu();
         }
         if (command == "learn") {
             if (argc > 3) {

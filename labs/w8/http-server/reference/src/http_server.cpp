@@ -380,7 +380,7 @@ struct HttpServer::Impl {
     }
 
     void log_server_event(std::string_view event, std::string_view detail = {},
-                          std::uint64_t count = 0U) noexcept {
+                          std::uint64_t count = 0U) {
         std::string line = log_prefix("info", event);
         if (!detail.empty()) {
             line += ",\"detail\":" + json_quote(detail);
@@ -393,7 +393,7 @@ struct HttpServer::Impl {
     }
 
     void log_error_event(std::string_view event, std::string_view detail, int status_code = 0,
-                         std::uint64_t connection_id = 0U) noexcept {
+                         std::uint64_t connection_id = 0U) {
         std::string line = log_prefix("error", event);
         if (status_code != 0) {
             line += ",\"status\":" + std::to_string(status_code);
@@ -409,11 +409,18 @@ struct HttpServer::Impl {
     }
 
     void log_access(const Connection& connection, std::size_t response_bytes,
-                    std::uint64_t duration_ms) noexcept {
+                    std::uint64_t duration_ms) {
         std::string line = log_prefix("info", "http_access");
         line += ",\"connection_id\":" + std::to_string(connection.token);
         line += ",\"method\":" + json_quote(connection.request_method);
-        line += ",\"target\":" + json_quote(connection.request_target);
+        const std::size_t query_position = connection.request_target.find('?');
+        const std::string_view safe_target(connection.request_target.data(),
+                                           query_position == std::string::npos
+                                               ? connection.request_target.size()
+                                               : query_position);
+        line += ",\"target\":" + json_quote(safe_target);
+        line += std::string(",\"query_present\":") +
+                (query_position == std::string::npos ? "false" : "true");
         line += ",\"status\":" + std::to_string(connection.response_status_code);
         line += ",\"duration_ms\":" + std::to_string(duration_ms);
         line += ",\"response_bytes\":" + std::to_string(response_bytes);
@@ -446,7 +453,7 @@ struct HttpServer::Impl {
         return snapshot;
     }
 
-    void record_response(Connection& connection) noexcept {
+    void record_response(Connection& connection) {
         const std::size_t bytes = connection.write_buffer.size();
         const auto elapsed = connection.request_started_at == Clock::time_point{}
                                  ? std::chrono::milliseconds::zero()

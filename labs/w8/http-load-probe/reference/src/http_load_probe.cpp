@@ -149,8 +149,8 @@ void validate_config(const HttpLoadProbeConfig& config) {
             continue;
         }
         if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-            const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
-                deadline - Clock::now());
+            const auto remaining =
+                std::chrono::duration_cast<std::chrono::milliseconds>(deadline - Clock::now());
             if (remaining <= std::chrono::milliseconds::zero() ||
                 !wait_for_fd(fd, POLLOUT, remaining)) {
                 return false;

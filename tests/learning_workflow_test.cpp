@@ -1,4 +1,5 @@
 #include "cppapplab/learning.hpp"
+#include "cppapplab/progress.hpp"
 #include "cppapplab/task.hpp"
 #include "cppapplab/workspace.hpp"
 
@@ -38,7 +39,6 @@ class TemporaryDirectory {
    private:
     std::filesystem::path path_;
 };
-
 
 class EnvironmentOverride {
    public:
@@ -110,7 +110,6 @@ void write_source(const std::filesystem::path& workspace, const std::string& sou
 }
 
 }  // namespace
-
 
 TEST(GuidedLearningWorkflowTest, LearnCreatesAndThenResumesTheDefaultWorkspace) {
     TemporaryDirectory temporary;
@@ -207,8 +206,8 @@ TEST(GuidedLearningWorkflowTest, LearnMovesToTheNextUnlockedTaskAfterAcceptanceP
     }
     EXPECT_NE(next_output.find("w1.calculator"), std::string::npos);
     EXPECT_NE(next_output.find("Created your learner workspace"), std::string::npos);
-    EXPECT_TRUE(std::filesystem::is_regular_file(
-        home / "cppapplab-work" / "w1.calculator" / ".cppapplab-workspace"));
+    EXPECT_TRUE(std::filesystem::is_regular_file(home / "cppapplab-work" / "w1.calculator" /
+                                                 ".cppapplab-workspace"));
 }
 
 TEST(LearningWorkflowTest, FixedCheckPassesAndSourceEditsMakeEvidenceStale) {

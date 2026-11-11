@@ -166,7 +166,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ## P6 — W8: HTTP server engineering
 
-**Status: W8-D1–D6-D2 merged into `main`; D6-D3 is in progress.**
+**Status: W8-D1–D6-D3 merged into `main`; P7 delivery and stabilization is in progress.**
 
 - D1: HTTP/1.1 message model, request-line parser and response serializer; 33 fixed acceptance checks passed.
 - D2: incremental parser, NeedMoreData/Complete/Error states, strict header syntax, Content-Length and byte-accurate consumed length; 39 checks passed.
@@ -178,7 +178,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - D6-C: merged as `974b3d2` (PR #22); timerfd-backed absolute idle/header/body deadlines, HTTP 408 for incomplete requests, per-connection request cap and persistent-connection quota. Final-head run `42977367404` passed all three jobs; the nine-case loopback fixture passed under GCC, ASan/UBSan and clang-tidy.
 - D6-D1: merged as `d29d38e` (PR #23); stop accepting, close idle clients, return 503 for incomplete requests, drain in-flight handlers with Connection: close, and enforce a monotonic socket-drain deadline. Final-head run `42979170395` passed all three jobs; fixture 5/5 under GCC, ASan/UBSan and clang-tidy.
 - D6-D2: merged as `546f87c` (PR #24); JSONL access/error/lifecycle events, query redaction, custom log sink, atomic runtime metrics and operational gauges. Final-head run `42986255957` passed all three jobs; eight-case observability fixture passed under GCC, ASan/UBSan and clang-tidy.
-- D6-D3 (implemented on `feat/w8-d6-operational-load-tests`, PR #25 ready for merge): four-case fixed loopback fixture for 16-client concurrent load and worker bounds, 8 MiB slow-reader backpressure, 320-request Keep-Alive soak, and eight repeated server lifecycle cycles. Final tested head `42c2438`; run `42988902800` passed all three jobs; D6-D3 fixture 4/4 under GCC, ASan/UBSan and clang-tidy.
+- D6-D3: merged as `597a8a0` (PR #25); four-case fixed loopback fixture for 16-client concurrent load and worker bounds, 8 MiB slow-reader backpressure, 320-request Keep-Alive soak, and eight repeated server lifecycle cycles. Final-head run `42991542424` passed all three jobs; D6-D3 fixture 4/4 under GCC, ASan/UBSan and clang-tidy.
 
 - TCP/IP and Linux socket API
 - blocking and nonblocking I/O
@@ -190,11 +190,14 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ## P7 — Delivery and stabilization
 
-- source package and learner package
-- offline dependency strategy and reproducible checks
-- first-use guide and troubleshooting
-- Linux/WSL2 end-to-end verification
-- version tag and release notes
-- known limitations and evidence archive
+**Status: implementation in progress on `feat/p7-wsl2-release-qualification`.**
+
+- local GoogleTest source-tree option for offline CMake builds
+- reproducible source bundle with pinned GoogleTest v1.18.0, manifest and SHA-256 sidecar
+- network-disabled offline build entrypoint and CI verification
+- strict WSL2 + Ubuntu 24.04 + GCC/CMake/GDB environment checker
+- first-use guide, target acceptance checklist and known limitations
+- Windows 11 + WSL2 end-to-end verification remains pending on the target machine
+- version tag and release notes are gated on target acceptance
 
 The roadmap is outcome-based. Additional lessons are added only when they improve a demonstrated learning or engineering outcome.

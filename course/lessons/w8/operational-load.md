@@ -61,3 +61,27 @@ The fixture creates, runs, serves, stops and joins eight independent server inst
 4. Why does a Keep-Alive soak reveal resource-accounting defects that one-request-per-connection tests can miss?
 5. Why are fixed functional load tests not sufficient to claim a throughput or production-capacity SLA?
 6. Which metrics would you collect in a separate benchmark to report throughput, p50/p95/p99 latency, queue wait and error rate?
+
+## Learner task — `w8.http-operational-load`
+
+The integrated D6-D3 regression fixture above verifies the server's operational behavior. This learner task builds a reusable load-probe client so those checks can be reproduced and measured.
+
+**Workspace files**
+
+- `include/http_load_probe.hpp`
+- `src/http_load_probe.cpp`
+
+Implement `run_http_load_probe(const HttpLoadProbeConfig&)`. The configuration selects an IPv4 host, TCP port, request target, concurrent client count, sequential requests per client, per-operation timeout and expected HTTP status. Each client should reuse one TCP connection for its sequential requests and send Connection: close on its final request.
+
+The result must report attempted/succeeded/failed requests, elapsed microseconds, requests per second, and p50/p95/p99 response latency. Use a monotonic clock. Every attempted request must be accounted for, including connection failures and unexpected status codes.
+
+**Fixed acceptance:** 5 platform-owned GoogleTests in `course/fixtures/w8/http-load-probe`. They cover invalid configuration, single-client measurements, concurrent Keep-Alive resource recovery, unexpected status accounting and connection failures.
+
+```bash
+./build/cppapplab start w8.http-operational-load "$HOME/cppapplab-work/w8-operational-load"
+./build/cppapplab lesson "$HOME/cppapplab-work/w8-operational-load"
+./build/cppapplab hint "$HOME/cppapplab-work/w8-operational-load" 1
+./build/cppapplab check "$HOME/cppapplab-work/w8-operational-load"
+```
+
+The load probe is a measurement tool, not a promise of a particular throughput. Report the environment and workload alongside any performance number.

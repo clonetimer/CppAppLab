@@ -119,14 +119,14 @@ TEST(StaticFilesWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImplement
     EXPECT_EQ(evidence->tests_total, 31U) << diagnostic;
 }
 
-
 TEST(StaticFilesWorkflowTest, W9SecureStaticRootUsesLearnerSourcesInFixedAcceptance) {
     const cppapplab::Task* task = cppapplab::find_task("w9.static-root");
     ASSERT_NE(task, nullptr);
 
     TemporaryDirectory temporary;
     ScopedEnvironment state_directory("CPPAPPLAB_STATE_DIR", temporary.path() / "state");
-    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "secure-static-root");
+    const auto workspace =
+        cppapplab::create_workspace(*task, temporary.path() / "secure-static-root");
     const auto reference = cppapplab::data_root() / "labs/w9/static-root/reference";
     for (const auto& relative_path : task->source_files) {
         std::filesystem::copy_file(reference / relative_path, workspace.root / relative_path,

@@ -23,6 +23,7 @@ struct HttpServerConfig {
     std::size_t max_connections{64U};
     std::size_t max_request_bytes{16U * 1024U + 1024U * 1024U};
     std::size_t max_response_bytes{2U * 1024U * 1024U};
+    // TODO(student): add idle/header/body deadlines and connection quotas.
 };
 
 class HttpServer {

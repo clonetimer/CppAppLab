@@ -18,6 +18,7 @@ std::string_view usage() noexcept {
            "  cppapplab --version                               Show version\n"
            "  cppapplab list                                    List available tasks\n"
            "  cppapplab progress                                Show course progress\n"
+           "  cppapplab learn [task-id]                         Guided start or resume\n"
            "  cppapplab resume <task-id>                        Resume the saved workspace\n"
            "  cppapplab history <task-id>                       Show previous check attempts\n"
            "  cppapplab start <task-id> <workspace-directory>   Create learner workspace\n"

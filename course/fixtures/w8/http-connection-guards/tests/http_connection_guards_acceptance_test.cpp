@@ -175,8 +175,7 @@ class TestClient {
     std::string read_buffer_;
 };
 
-[[nodiscard]] std::string make_request(std::string_view target,
-                                       std::string_view connection = {}) {
+[[nodiscard]] std::string make_request(std::string_view target, std::string_view connection = {}) {
     std::string wire = "GET ";
     wire.append(target.data(), target.size());
     wire += " HTTP/1.1\r\nHost: localhost\r\n";
@@ -269,8 +268,8 @@ TEST(HttpConnectionGuardsAcceptanceTest, BodyDeadlineIsAbsoluteAndNotExtendedByT
     TestServer server(config);
     TestClient client(server.port());
 
-    ASSERT_TRUE(client.send_all(
-        "POST /echo HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\na"));
+    ASSERT_TRUE(
+        client.send_all("POST /echo HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\na"));
     std::this_thread::sleep_for(300ms);
     ASSERT_TRUE(client.send_all("b"));
     const auto started = std::chrono::steady_clock::now();

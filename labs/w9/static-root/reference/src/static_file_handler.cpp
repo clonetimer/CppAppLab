@@ -131,7 +131,7 @@ struct FileReadResult {
         const std::string component(segment);
         if (separator == std::string::npos) {
             return UniqueFd(::openat(current_fd, component.c_str(),
-                                    O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK));
+                                     O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK));
         }
 
         UniqueFd next_directory(::openat(current_fd, component.c_str(),

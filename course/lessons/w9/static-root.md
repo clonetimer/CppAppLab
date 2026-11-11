@@ -36,7 +36,7 @@ A lexical check can reject ../ in the request string but still be bypassed by sy
 
 The completed message and request-target components are staged as known-good baselines. Implement the static file handler's root descriptor ownership, safe component traversal, regular-file verification, bounded read and HTTP responses.
 
-**Fixed acceptance:** 33 platform-owned GoogleTests in course/fixtures/w9/static-root. They cover normal and binary files, URL decoding, query isolation, symlink escape, FIFO handling, size limits, descriptor lifetime and invalid request targets.
+**Fixed acceptance:** 34 platform-owned GoogleTests in course/fixtures/w9/static-root. They cover normal and binary files, URL decoding, query isolation, symlink escape, FIFO handling, size limits, descriptor lifetime and invalid request targets.
 
 \`\`\`bash
 ./build/cppapplab start w9.static-root "$HOME/cppapplab-work/w9-static-root"
@@ -68,4 +68,4 @@ The completed message and request-target components are staged as known-good bas
 - [ ] The maximum file size is enforced before and during reading.
 - [ ] The root descriptor remains valid after its directory is renamed.
 - [ ] Invalid targets return 400, missing/unsafe paths return 404, oversized files return 413 and non-GET methods return 405.
-- [ ] All 33 fixed checks pass.
+- [ ] All 34 fixed checks pass.

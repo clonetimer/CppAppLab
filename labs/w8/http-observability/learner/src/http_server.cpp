@@ -121,6 +121,7 @@ void send_best_effort(int fd, const std::string& bytes) noexcept {
 
 }  // namespace
 
+// TODO(student): add structured JSONL access/error events and atomic runtime counters.
 struct HttpServer::Impl {
     using Clock = std::chrono::steady_clock;
 

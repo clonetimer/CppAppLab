@@ -13,7 +13,7 @@ W1–W7 and W8-D1–D6-D1 are merged into `main`. The platform includes a real L
 **D6-C final-head CI:** run `42977367404`, all three jobs passed.  
 **D6-D1 merge:** `d29d38ec04d4d5a0765f4585c9c25d9df69ab8c2` (PR #23).  
 **D6-D1 final-head CI:** run `42979170395`, all three jobs passed.  
-**D6-D2 branch:** `feat/w8-d6-observability-metrics`; structured JSONL access/error events, query redaction, thread-safe runtime metrics and a seven-case fixed fixture are in progress.  
+**D6-D2 branch:** `feat/w8-d6-observability-metrics`; structured JSONL access/error events, query redaction, thread-safe runtime metrics and an eight-case fixed fixture are in progress.  
 **Target-machine status:** Windows 11 + WSL2 acceptance has not yet been performed or claimed. No Release is declared.
 
 ## Verified merged baseline

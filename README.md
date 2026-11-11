@@ -19,7 +19,7 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 ## Current learning tasks
 
-The learning engine provides W1 Hello World and Calculator, W2 persistent Todo CLI, W3 TaskManager refactor, W4 quality gate, W5 Linux systems, W6 thread pool, W7 TCP Echo and epoll chat, and W8 HTTP protocol, incremental parser, static files, Router/dynamic handlers, and the W8-D5 TCP/epoll HTTP server. W8-D6-A connection policy is merged; D6-B sequential Keep-Alive has passed hosted CI and is awaiting merge. The catalog is the authoritative task list.
+The learning engine provides W1 Hello World and Calculator, W2 persistent Todo CLI, W3 TaskManager refactor, W4 quality gate, W5 Linux systems, W6 thread pool, W7 TCP Echo and epoll chat, and W8 HTTP protocol, incremental parser, static files, Router/dynamic handlers and a real TCP/epoll HTTP server. W8-D6-A connection policy, D6-B Keep-Alive, D6-C connection guards, D6-D1 graceful shutdown, D6-D2 observability and D6-D3 operational load/soak validation are all merged. The catalog is the authoritative task list.
 
 ```bash
 ./build/cppapplab list
@@ -100,7 +100,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-W1–W7 and W8-D1–D6-D2 are merged into `main`. W8-D5 adds a real TCP listener and epoll/worker-pool handoff; D6-A defines connection policy, D6-B sequential Keep-Alive, D6-C deadlines/quotas, D6-D1 graceful shutdown and D6-D2 structured logs/runtime metrics. D6-D3 operational load/soak validation is in progress; Windows 11 + WSL2 target acceptance and release qualification remain separate. See:
+W1–W7 and W8-D1–D6-D3 are merged into `main`. The W8 HTTP server now includes TCP/epoll worker handoff, connection policy, sequential Keep-Alive, deadlines/quotas, graceful shutdown, structured JSONL logs, runtime metrics and operational load/soak validation. P7 offline source packaging and reproducible target-environment qualification are in progress. Windows 11 + WSL2 acceptance has not yet been performed or claimed; no Release is declared. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)
@@ -115,6 +115,8 @@ W1–W7 and W8-D1–D6-D2 are merged into `main`. W8-D5 adds a real TCP listener
 - [HTTP graceful shutdown lesson](course/lessons/w8/graceful-shutdown.md)
 - [HTTP observability lesson](course/lessons/w8/observability.md)
 - [HTTP operational load lesson](course/lessons/w8/operational-load.md)
+- [Offline source bundle and build](docs/OFFLINE_BUILD.md)
+- [Release qualification checklist](docs/RELEASE_QUALIFICATION.md)
 
 ## Quick start
 
@@ -128,6 +130,8 @@ ctest --test-dir build --output-on-failure
 
 ./build/cppapplab --help
 ```
+
+For a network-disconnected build, generate and verify the offline source bundle as described in [Offline Build](docs/OFFLINE_BUILD.md). The bundle includes the pinned GoogleTest source but not the Ubuntu/GCC/CMake system toolchain.
 
 After satisfying the static-files prerequisite, start `w8.router` like any other learning task. For a reference-only demonstration:
 

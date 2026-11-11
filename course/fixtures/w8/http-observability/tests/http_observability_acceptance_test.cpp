@@ -351,14 +351,16 @@ TEST(HttpObservabilityAcceptanceTest, ErrorLogCanBeDisabledWithoutDisablingAcces
     TestServer server(config);
     TestClient client(server.port());
 
-    ASSERT_TRUE(client.send_all(make_request("/missing")));
+    ASSERT_TRUE(client.send_all(make_request("/missing?token=private-value")));
     const std::string response = client.read_response();
     EXPECT_NE(response.find("HTTP/1.1 404 Not Found\r\n"), std::string::npos);
     EXPECT_TRUE(client.read_until_eof().empty());
 
     const std::lock_guard<std::mutex> lock(log_mutex);
     EXPECT_TRUE(std::any_of(logs.begin(), logs.end(), [](const std::string& line) {
-        return line.find("\"event\":\"http_access\"") != std::string::npos;
+        return line.find("\"event\":\"http_access\"") != std::string::npos &&
+               line.find("\"target\":\"/missing\"") != std::string::npos &&
+               line.find("\"query_present\":true") != std::string::npos;
     }));
     EXPECT_TRUE(std::none_of(logs.begin(), logs.end(), [](const std::string& line) {
         return line.find("\"event\":\"http_error\"") != std::string::npos;

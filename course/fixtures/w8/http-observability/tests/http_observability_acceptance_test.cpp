@@ -376,8 +376,8 @@ TEST(HttpObservabilityAcceptanceTest, LogSinkExceptionsDoNotBreakRequestProcessi
 
     ASSERT_TRUE(client.send_all(make_request("/hello")));
     const std::string response = client.read_response();
-    EXPECT_NE(response.find("HTTP/1.1 200 OK\\r\\n"), std::string::npos);
-    EXPECT_EQ(response_body(response), "Hello from C++ HTTP Server!\\n");
+    EXPECT_NE(response.find("HTTP/1.1 200 OK\r\n"), std::string::npos);
+    EXPECT_EQ(response_body(response), "Hello from C++ HTTP Server!\n");
     EXPECT_TRUE(client.read_until_eof().empty());
 
     const HttpServerMetrics metrics = server.metrics();

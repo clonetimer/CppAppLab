@@ -109,15 +109,15 @@ The fixed fixture uses real loopback TCP sockets and the real parser → dispatc
 
 ## Acceptance
 
-- [ ] Real non-blocking IPv4 listener and level-triggered epoll.
-- [ ] Event-loop-only ownership of sockets and Connection state.
-- [ ] Bounded W6 ThreadPool integration with owned request/response values.
-- [ ] Completion queue and eventfd wakeup.
-- [ ] Generation-safe stale event/completion rejection.
-- [ ] Incremental parser and bounded read/write buffers.
-- [ ] Partial writes resumed through EPOLLOUT only when needed.
-- [ ] 400 / 413 / 500 / 503 mapping and clean shutdown.
-- [ ] All 34 acceptance checks pass.
+- [x] Real non-blocking IPv4 listener and level-triggered epoll.
+- [x] Event-loop-only ownership of sockets and Connection state.
+- [x] Bounded W6 ThreadPool integration with owned request/response values.
+- [x] Completion queue and eventfd wakeup.
+- [x] Generation-safe stale event/completion rejection.
+- [x] Incremental parser and bounded read/write buffers.
+- [x] Partial writes resumed through EPOLLOUT only when needed.
+- [x] 400 / 413 / 500 / 503 mapping and clean shutdown.
+- [x] All 34 acceptance checks pass.
 
 ## Explain your design
 

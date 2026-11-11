@@ -288,7 +288,7 @@ void wait_until(Predicate predicate) {
 
 }  // namespace
 
-// NOLINTNEXTLINE(readability-function-cognitive-complexity) -- GTest macro expansion.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) -- GTest macros.
 TEST(HttpOperationalAcceptanceTest, ServesConcurrentClientsWithinWorkerAndQueueBounds) {
     constexpr int kClientCount = 16;
     constexpr int kWorkerCount = 4;
@@ -367,7 +367,7 @@ TEST(HttpOperationalAcceptanceTest, ServesConcurrentClientsWithinWorkerAndQueueB
     EXPECT_EQ(metrics.active_jobs, 0U);
 }
 
-// NOLINTNEXTLINE(readability-function-cognitive-complexity) -- GTest macro expansion.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) -- GTest macros.
 TEST(HttpOperationalAcceptanceTest, SlowReaderBackpressureResumesAndCompletesLargeResponse) {
     constexpr std::size_t kPayloadSize = kSlowReaderPayloadMiB * kBytesPerMiB;
     constexpr std::size_t kMaximumResponseSize = kSlowReaderResponseLimitMiB * kBytesPerMiB;
@@ -409,7 +409,7 @@ TEST(HttpOperationalAcceptanceTest, SlowReaderBackpressureResumesAndCompletesLar
     EXPECT_EQ(metrics.active_jobs, 0U);
 }
 
-// NOLINTNEXTLINE(readability-function-cognitive-complexity) -- GTest macro expansion.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) -- GTest macros.
 TEST(HttpOperationalAcceptanceTest, SustainsConcurrentKeepAliveSoakWithoutLeakingResources) {
     constexpr int kClientCount = 8;
     constexpr int kRequestsPerClient = 40;

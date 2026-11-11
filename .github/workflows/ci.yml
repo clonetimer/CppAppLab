@@ -37,6 +37,32 @@ jobs:
           ./build/cppapplab --version
           ./build/cppapplab --help
           timeout 5s ./build/cppapplab </dev/null
+          bash -n scripts/cppapplab-wsl-launcher.sh
+          launcher_home="/tmp/cppapplab-launcher-home"
+          test "$(HOME="$launcher_home" bash scripts/cppapplab-wsl-launcher.sh --test-normalize-path '~/work/CppAppLab')" = "$launcher_home/work/CppAppLab"
+          test "$(HOME="$launcher_home" bash scripts/cppapplab-wsl-launcher.sh --test-normalize-path '~')" = "$launcher_home"
+          test "$(HOME="$launcher_home" bash scripts/cppapplab-wsl-launcher.sh --test-normalize-path '/opt/CppAppLab')" = "/opt/CppAppLab"
+          test "$(HOME="$launcher_home" bash scripts/cppapplab-wsl-launcher.sh --test-normalize-path '~/work/Cpp App Lab')" = "$launcher_home/work/Cpp App Lab"
+          launcher_repo="$RUNNER_TEMP/cppapplab launcher checkout"
+          mkdir -p "$launcher_repo/build"
+          git -C "$launcher_repo" init -q
+          git -C "$launcher_repo" remote add origin https://github.com/clonetimer/CppAppLab.git
+          printf '#!/usr/bin/env bash\nprintf "CPPAPPLAB_LAUNCHER_SMOKE_OK\\n"\n' > "$launcher_repo/build/cppapplab"
+          chmod +x "$launcher_repo/build/cppapplab"
+          launcher_repo_base64="$(printf '%s' "$launcher_repo" | base64 -w0)"
+          bash scripts/cppapplab-wsl-launcher.sh "$launcher_repo_base64" 0 | grep -Fq "CPPAPPLAB_LAUNCHER_SMOKE_OK"
+          foreign_repo="$RUNNER_TEMP/cppapplab foreign checkout"
+          mkdir -p "$foreign_repo"
+          git -C "$foreign_repo" init -q
+          git -C "$foreign_repo" remote add origin https://github.com/example/not-cppapplab.git
+          foreign_repo_base64="$(printf '%s' "$foreign_repo" | base64 -w0)"
+          if bash scripts/cppapplab-wsl-launcher.sh "$foreign_repo_base64" 0; then
+            echo "[FAIL] Launcher accepted an unrelated Git checkout." >&2
+            exit 1
+          else
+            launcher_status=$?
+            test "$launcher_status" -eq 6
+          fi
       - name: Build and test HTTP server reference workspace
         run: |
           cmake -S labs/w8/http-server/reference -B build-http-server-reference \
@@ -546,3 +572,44 @@ jobs:
             -DCMAKE_CXX_CLANG_TIDY=clang-tidy
           cmake --build build-w9-static-root-quality --parallel
           ctest --test-dir build-w9-static-root-quality --output-on-failure --timeout 10
+
+  windows-launcher-syntax:
+    name: Windows launcher syntax
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Parse PowerShell launcher
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/Start-CppAppLab.ps1').Path,
+            [ref]$tokens,
+            [ref]$errors
+          )
+          if ($errors.Count -gt 0) {
+            $errors | Format-List
+            exit 1
+          }
+          if (-not (Test-Path 'Start-CppAppLab.cmd')) {
+            throw 'The double-click launcher file is missing.'
+          }
+          if (-not (Test-Path 'scripts/cppapplab-wsl-launcher.sh')) {
+            throw 'The WSL bootstrap script is missing.'
+          }
+      - name: Parse PowerShell launcher with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $tokens = $null
+          $errors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/Start-CppAppLab.ps1').Path,
+            [ref]$tokens,
+            [ref]$errors
+          )
+          if ($errors.Count -gt 0) {
+            $errors | Format-List
+            exit 1
+          }

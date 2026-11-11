@@ -4,11 +4,16 @@ This guide is for a learner using Windows 11 + WSL2 + Ubuntu 24.04. You do not n
 
 ## 1. Open Ubuntu and get the project
 
-In PowerShell, start Ubuntu:
+In PowerShell, list installed distributions and start the exact Ubuntu 24.04 name shown in the first column:
 
 ```powershell
+wsl -l -v
 wsl -d Ubuntu
+# If the listed name is Ubuntu-24.04 instead:
+wsl -d Ubuntu-24.04
 ```
+
+The distribution must report WSL version 2. Common names include `Ubuntu` and `Ubuntu-24.04`.
 
 Inside Ubuntu:
 
@@ -34,6 +39,66 @@ The script:
 5. Opens the interactive learning home, where you can continue, search for a task or review progress.
 
 The script does not delete or replace learner workspaces. It uses the default CppAppLab build directory and may reuse its build cache.
+
+### Windows one-click launcher
+
+The launcher files must be in a Windows-accessible checkout. If your only checkout is inside WSL, open it through the distribution's `\\wsl# First-use quick start
+
+This guide is for a learner using Windows 11 + WSL2 + Ubuntu 24.04. You do not need to know the task IDs or choose a workspace path to begin.
+
+## 1. Open Ubuntu and get the project
+
+In PowerShell, list installed distributions and start the exact Ubuntu 24.04 name shown in the first column:
+
+```powershell
+wsl -l -v
+wsl -d <distribution-name>
+```
+
+The distribution must report WSL version 2. Common names include `Ubuntu` and `Ubuntu-24.04`.
+
+Inside Ubuntu:
+
+```bash
+mkdir -p ~/work
+cd ~/work
+git clone https://github.com/clonetimer/CppAppLab.git
+cd CppAppLab
+```
+
+## 2. Run the one-command setup
+
+```bash
+bash scripts/quickstart.sh
+```
+
+The script:
+
+1. Checks that Ubuntu 24.04 and the required toolchain are available.
+2. Offers to install missing packages with `apt` (you approve before installation).
+3. Configures and builds CppAppLab.
+4. Runs the platform's CTest suite.
+5. Opens the interactive learning home, where you can continue, search for a task or review progress.
+
+The script does not delete or replace learner workspaces. It uses the default CppAppLab build directory and may reuse its build cache.
+
+### Windows one-click launcher
+
+ share in Explorer, or clone/download the private repository into a Windows folder once. From that Windows-accessible repository root, double-click `Start-CppAppLab.cmd`, or run it from PowerShell:
+
+```powershell
+.\Start-CppAppLab.cmd
+```
+
+The launcher detects installed Ubuntu distributions, verifies WSL2 and Ubuntu 24.04, and then opens the existing Linux checkout. If `~/work/CppAppLab` does not exist inside WSL, it clones the private repository there and runs the first-time setup. If more than one Ubuntu distribution is installed, it asks you to choose one. The first clone requires GitHub authentication inside WSL. Configure Git credentials there; for example, install GitHub CLI and run `gh auth login` inside Ubuntu before retrying. The launcher checks the checkout origin and refuses to run an unrelated repository.
+
+After pulling project updates inside WSL, rebuild and rerun acceptance checks with:
+
+```powershell
+.\Start-CppAppLab.cmd -Setup
+```
+
+The launcher deliberately does not run `git pull`; local changes are preserved. It can also be pointed at another Linux checkout with `-RepoPath "~/projects/CppAppLab"` or a specific distro with `-Distro Ubuntu-24.04`.
 
 ## 3. Start learning
 

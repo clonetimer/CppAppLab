@@ -126,7 +126,7 @@ After cloning the repository inside Ubuntu 24.04 (WSL2 is the target environment
 bash scripts/quickstart.sh
 ```
 
-The script checks the environment, offers to install missing Ubuntu build dependencies, configures and builds the project, runs the platform tests, and opens the interactive learning home. It does not overwrite existing learner workspaces. After setup, run `./build/cppapplab` for the interactive home or `./build/cppapplab learn` to continue directly. The task picker accepts a number, task ID or title keyword. Failed checks now show a short diagnostic excerpt and the next hint, log and retry commands. For a manual setup path, see [Environment setup](docs/ENVIRONMENT_WSL2_UBUNTU.md).
+The script checks the environment, offers to install missing Ubuntu build dependencies, configures and builds the project, runs the platform tests, and opens the interactive learning home. Windows users can also double-click `Start-CppAppLab.cmd` from a Windows-accessible checkout (including a checkout opened through the WSL share); it detects WSL2 Ubuntu 24.04, clones the private checkout into WSL on first launch when needed, and opens the learner home. It does not overwrite existing learner workspaces. After setup, run `./build/cppapplab` for the interactive home or `./build/cppapplab learn` to continue directly. The task picker accepts a number, task ID or title keyword. Failed checks now show a short diagnostic excerpt and the next hint, log and retry commands. For a manual setup path, see [Environment setup](docs/ENVIRONMENT_WSL2_UBUNTU.md).
 
 After satisfying the static-files prerequisite, start `w8.router` like any other learning task. For a reference-only demonstration:
 

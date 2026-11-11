@@ -17,13 +17,54 @@ The Ubuntu distribution must show `VERSION 2`. If it shows version 1, convert it
 
 ```powershell
 wsl --set-version Ubuntu 2
+# Or use the exact name shown by wsl -l -v:
+wsl --set-version Ubuntu-24.04 2
 ```
 
 Start Ubuntu:
 
 ```powershell
 wsl -d Ubuntu
+# Or, if that is the installed name:
+wsl -d Ubuntu-24.04
 ```
+
+Use the exact distribution name shown by `wsl -l -v` (for example, `Ubuntu` or `Ubuntu-24.04`).
+
+## Windows launcher
+
+When the repository is available in a Windows-accessible folder or through the distribution's `\\wsl# Development Environment: WSL2 + Ubuntu 24.04
+
+This is the complete acceptance environment for CppAppLab v1.
+
+For the shortest first-use path, clone the repository in Ubuntu and run `bash scripts/quickstart.sh`. The script checks required packages, offers to install missing dependencies, builds the platform, runs its tests, and starts the guided first task. The detailed manual setup remains below.
+
+## 1. Verify WSL2 from Windows
+
+Open PowerShell:
+
+```powershell
+wsl --status
+wsl -l -v
+```
+
+The Ubuntu distribution must show `VERSION 2`. If it shows version 1, convert it from an elevated or normal PowerShell session as appropriate:
+
+```powershell
+wsl --set-version <distribution-name> 2
+```
+
+Start Ubuntu:
+
+```powershell
+wsl -d <distribution-name>
+```
+
+Use the exact distribution name shown by `wsl -l -v` (for example, `Ubuntu` or `Ubuntu-24.04`).
+
+## Windows launcher
+
+ share in Explorer, `Start-CppAppLab.cmd` provides a direct Windows entry point. It detects the installed Ubuntu distribution, verifies WSL2 and Ubuntu 24.04, clones into `~/work/CppAppLab` only when that checkout is missing, and opens the interactive learning home. Use `Start-CppAppLab.cmd -Setup` after updating source code to rebuild and rerun CTest. The launcher does not update an existing Git checkout automatically.
 
 ## 2. Verify Ubuntu
 

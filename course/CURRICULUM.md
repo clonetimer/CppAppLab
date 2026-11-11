@@ -147,7 +147,18 @@ The D6 stages extend the same reference server beyond the five registered W8 lea
 5. **D6-D2 — Observability:** structured JSONL events, sensitive-query redaction and thread-safe runtime metrics. See [observability](lessons/w8/observability.md).
 6. **D6-D3 — Operational validation:** concurrent clients, slow-reader TCP backpressure, Keep-Alive soak and repeated server lifecycle tests. See [operational load](lessons/w8/operational-load.md).
 
-These extensions are implemented in the reference server and covered by separate platform-owned acceptance fixtures. They are currently advanced reading/design material, not independent entries in `course/tasks.tsv`; they do not yet provide separate learner workspaces, progressive hints and task-level `check` commands. The next curriculum iteration should convert them into staged learner tasks without weakening the existing D5/D6 regression gates.
+These extensions are now formal learner tasks in `course/tasks.tsv`, following `w8.http-server` in a strict prerequisite chain. Each task has its own learner workspace, three progressive hints and a platform-owned fixture that compiles the learner's declared source files.
+
+| Task ID | Learner implementation | Acceptance |
+|---|---|---:|
+| `w8.http-connection-policy` | `http_message.hpp/.cpp`: connection policy and serializer overloads | 14 tests |
+| `w8.http-keep-alive` | `http_server.hpp/.cpp`: sequential persistent-connection lifecycle | 8 tests |
+| `w8.http-connection-guards` | `http_server.hpp/.cpp`: deadlines, quotas and timerfd scheduler | 9 tests |
+| `w8.http-graceful-shutdown` | `http_server.hpp/.cpp`: bounded Reactor shutdown | 5 tests |
+| `w8.http-observability` | `http_server.hpp/.cpp`: structured logs and runtime metrics | 8 tests |
+| `w8.http-operational-load` | `http_load_probe.hpp/.cpp`: concurrent Keep-Alive probe and latency statistics | 5 tests |
+
+D6-B through D6-D2 learner templates include a known completed baseline for the preceding stage, allowing each workspace to focus on one engineering delta while retaining a working server foundation. D6-D3's new load-probe task complements, rather than replaces, the existing four-case server-level operational regression fixture. The D6 task-mode CI uses the reference implementations only as known-good submissions to verify the learner acceptance contract; the learner templates themselves remain incomplete by design.
 
 ## Learning evidence
 

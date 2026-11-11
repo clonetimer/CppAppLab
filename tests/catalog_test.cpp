@@ -162,6 +162,72 @@ TEST(TaskCatalogTest, ExposesHttpTcpServerExercise) {
     EXPECT_EQ(task->prerequisites.front(), "w8.router");
 }
 
+TEST(TaskCatalogTest, ExposesHttpConnectionPolicyExercise) {
+    const cppapplab::Task* task = cppapplab::find_task("w8.http-connection-policy");
+    ASSERT_NE(task, nullptr);
+    EXPECT_EQ(task->week, 8U);
+    EXPECT_EQ(task->order, 6U);
+    EXPECT_EQ(task->source_files.size(), 2U);
+    EXPECT_EQ(task->expected_test_count, 14U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w8.http-server");
+}
+
+TEST(TaskCatalogTest, ExposesHttpKeepAliveExercise) {
+    const cppapplab::Task* task = cppapplab::find_task("w8.http-keep-alive");
+    ASSERT_NE(task, nullptr);
+    EXPECT_EQ(task->week, 8U);
+    EXPECT_EQ(task->order, 7U);
+    EXPECT_EQ(task->source_files.size(), 2U);
+    EXPECT_EQ(task->expected_test_count, 8U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w8.http-connection-policy");
+}
+
+TEST(TaskCatalogTest, ExposesHttpConnectionGuardsExercise) {
+    const cppapplab::Task* task = cppapplab::find_task("w8.http-connection-guards");
+    ASSERT_NE(task, nullptr);
+    EXPECT_EQ(task->week, 8U);
+    EXPECT_EQ(task->order, 8U);
+    EXPECT_EQ(task->source_files.size(), 2U);
+    EXPECT_EQ(task->expected_test_count, 9U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w8.http-keep-alive");
+}
+
+TEST(TaskCatalogTest, ExposesHttpGracefulShutdownExercise) {
+    const cppapplab::Task* task = cppapplab::find_task("w8.http-graceful-shutdown");
+    ASSERT_NE(task, nullptr);
+    EXPECT_EQ(task->week, 8U);
+    EXPECT_EQ(task->order, 9U);
+    EXPECT_EQ(task->source_files.size(), 2U);
+    EXPECT_EQ(task->expected_test_count, 5U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w8.http-connection-guards");
+}
+
+TEST(TaskCatalogTest, ExposesHttpObservabilityExercise) {
+    const cppapplab::Task* task = cppapplab::find_task("w8.http-observability");
+    ASSERT_NE(task, nullptr);
+    EXPECT_EQ(task->week, 8U);
+    EXPECT_EQ(task->order, 10U);
+    EXPECT_EQ(task->source_files.size(), 2U);
+    EXPECT_EQ(task->expected_test_count, 8U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w8.http-graceful-shutdown");
+}
+
+TEST(TaskCatalogTest, ExposesHttpOperationalLoadProbeExercise) {
+    const cppapplab::Task* task = cppapplab::find_task("w8.http-operational-load");
+    ASSERT_NE(task, nullptr);
+    EXPECT_EQ(task->week, 8U);
+    EXPECT_EQ(task->order, 11U);
+    EXPECT_EQ(task->source_files.size(), 2U);
+    EXPECT_EQ(task->expected_test_count, 5U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w8.http-observability");
+}
+
 TEST(TaskCatalogTest, UnknownTaskDoesNotResolve) {
     EXPECT_EQ(cppapplab::find_task("w99.unknown"), nullptr);
 }

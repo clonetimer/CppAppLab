@@ -173,7 +173,9 @@ D6-B through D6-D2 learner templates include a known completed baseline for the 
 
 **Implemented task:** W9-A1, `w9.http-chunked`, is merged into `main`. It extends the W8 parser with a bounded HTTP/1.1 chunked profile, rejects ambiguous Content-Length + Transfer-Encoding framing, validates trailers and preserves pipelined bytes. The learner workspace contains the W8 parser baseline with an explicit implementation TODO; the platform fixture compiles the learner's declared source files and contains 35 fixed GoogleTests. Final PR-head CI passed GCC, ASan/UBSan and clang-tidy; the end-to-end learning-engine check verified a current PASS.
 
-**Remaining W9 stages:** request-target and query parsing; secure static-file access using directory file descriptors and no-follow semantics; HTTP framing/security hardening; parser fuzzing with a regression corpus. These stages will be registered only when their learner source boundaries and fixed acceptance fixtures are implemented.
+**W9-A2 implementation:** task `w9.request-target` is being added on branch `feat/w9-request-target-query`. It parses origin-form and OPTIONS asterisk-form targets, decodes percent escapes exactly once, preserves ordered duplicate query keys, rejects dot segments and encoded path separators, and enforces target/path/query/component limits. Its learner workspace and 39-case fixture are staged; CI validation is pending.
+
+**Remaining W9 stages:** secure static-file access using directory file descriptors and no-follow semantics; HTTP framing/security hardening; parser fuzzing with a regression corpus. These stages will be registered only when their learner source boundaries and fixed acceptance fixtures are implemented.
 
 ## W10 — TLS and WebSocket services (planned)
 

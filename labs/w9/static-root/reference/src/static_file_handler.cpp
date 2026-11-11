@@ -101,17 +101,23 @@ struct FileReadResult {
     return response;
 }
 
+[[nodiscard]] std::string resolve_document_path(std::string_view decoded_path) {
+    if (decoded_path == "/") {
+        return "/index.html";
+    }
+    std::string resolved(decoded_path);
+    if (resolved.back() == '/') {
+        resolved += "index.html";
+    }
+    return resolved;
+}
+
 [[nodiscard]] UniqueFd open_file_beneath(int root_fd, std::string_view decoded_path) {
     if (decoded_path.empty() || decoded_path.front() != '/') {
         return UniqueFd{};
     }
 
-    std::string relative_path(decoded_path);
-    if (relative_path == "/") {
-        relative_path = "/index.html";
-    } else if (relative_path.back() == '/') {
-        relative_path += "index.html";
-    }
+    const std::string relative_path = resolve_document_path(decoded_path);
 
     UniqueFd current_directory;
     int current_fd = root_fd;
@@ -238,7 +244,8 @@ HttpResponse StaticFileHandler::handle(const HttpRequest& request) const {
         return text_response(400, "Bad Request", "400 Bad Request\n");
     }
 
-    const UniqueFd file = open_file_beneath(root_->fd, parsed.target.path);
+    const std::string resolved_path = resolve_document_path(parsed.target.path);
+    const UniqueFd file = open_file_beneath(root_->fd, resolved_path);
     if (file.get() < 0) {
         return text_response(404, "Not Found", "404 Not Found\n");
     }
@@ -254,7 +261,7 @@ HttpResponse StaticFileHandler::handle(const HttpRequest& request) const {
     HttpResponse response;
     response.status_code = 200;
     response.reason_phrase = "OK";
-    response.headers.emplace("Content-Type", content_type(parsed.target.path));
+    response.headers.emplace("Content-Type", content_type(resolved_path));
     response.headers.emplace("Connection", "close");
     response.body = std::move(contents.contents);
     return response;

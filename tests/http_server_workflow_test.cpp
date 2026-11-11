@@ -115,3 +115,62 @@ TEST(HttpServerWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImplementa
     EXPECT_EQ(evidence->tests_passed, 34U) << diagnostic;
     EXPECT_EQ(evidence->tests_total, 34U) << diagnostic;
 }
+
+
+TEST(HttpServerWorkflowTest, D6AdvancedTasksUseLearnerSourcesInFixedAcceptance) {
+    const std::vector<std::string> task_ids{
+        "w8.http-connection-policy",
+        "w8.http-keep-alive",
+        "w8.http-connection-guards",
+        "w8.http-graceful-shutdown",
+        "w8.http-observability",
+        "w8.http-operational-load",
+    };
+
+    TemporaryDirectory temporary;
+    ScopedEnvironment state_directory("CPPAPPLAB_STATE_DIR", temporary.path() / "state");
+
+    for (const std::string& task_id : task_ids) {
+        const cppapplab::Task* task = cppapplab::find_task(task_id);
+        ASSERT_NE(task, nullptr) << task_id;
+
+        const auto workspace =
+            cppapplab::create_workspace(*task, temporary.path() / task_id);
+        std::filesystem::path reference;
+        if (task_id == "w8.http-connection-policy") {
+            reference = cppapplab::data_root() / "labs/w8/router/reference";
+        } else if (task_id == "w8.http-operational-load") {
+            reference = cppapplab::data_root() / "labs/w8/http-load-probe/reference";
+        } else {
+            reference = cppapplab::data_root() / "labs/w8/http-server/reference";
+        }
+
+        for (const auto& relative_path : task->source_files) {
+            std::filesystem::copy_file(reference / relative_path, workspace.root / relative_path,
+                                       std::filesystem::copy_options::overwrite_existing);
+        }
+
+        std::vector<std::string> arguments{
+            "cppapplab", "check", workspace.root.string()};
+        std::vector<char*> argv;
+        for (auto& argument : arguments) {
+            argv.push_back(argument.data());
+        }
+        const int result = cppapplab::run_cli(static_cast<int>(argv.size()), argv.data());
+
+        std::string diagnostic;
+        if (result != 0) {
+            std::ifstream log(workspace.root / ".cppapplab/last-check.log", std::ios::binary);
+            if (log) {
+                diagnostic.assign(std::istreambuf_iterator<char>(log),
+                                  std::istreambuf_iterator<char>());
+            }
+        }
+        EXPECT_EQ(result, 0) << task_id << '\n' << diagnostic;
+        const auto evidence = cppapplab::read_evidence(workspace.root);
+        ASSERT_TRUE(evidence.has_value()) << task_id << '\n' << diagnostic;
+        EXPECT_TRUE(evidence->passed) << task_id << '\n' << diagnostic;
+        EXPECT_EQ(evidence->tests_passed, task->expected_test_count) << task_id;
+        EXPECT_EQ(evidence->tests_total, task->expected_test_count) << task_id;
+    }
+}

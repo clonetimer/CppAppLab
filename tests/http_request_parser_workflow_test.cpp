@@ -117,7 +117,6 @@ TEST(HttpRequestParserWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImp
     EXPECT_EQ(evidence->tests_total, 39U) << diagnostic;
 }
 
-
 TEST(HttpRequestParserWorkflowTest, W9ChunkedTaskUsesLearnerSourcesInFixedAcceptance) {
     const cppapplab::Task* task = cppapplab::find_task("w9.http-chunked");
     ASSERT_NE(task, nullptr);

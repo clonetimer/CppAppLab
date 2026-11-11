@@ -22,13 +22,14 @@ namespace {
 
 class TestServer {
    public:
-    TestServer() : server_([] {
-        HttpServerConfig config;
-        config.port = 0U;
-        config.access_log_enabled = false;
-        config.error_log_enabled = false;
-        return HttpServer(config);
-    }()) {
+    TestServer()
+        : server_([] {
+              HttpServerConfig config;
+              config.port = 0U;
+              config.access_log_enabled = false;
+              config.error_log_enabled = false;
+              return HttpServer(config);
+          }()) {
         runner_ = std::thread([this] { server_.run(); });
         const auto deadline = std::chrono::steady_clock::now() + 2s;
         while (!server_.running() && std::chrono::steady_clock::now() < deadline) {
@@ -187,4 +188,3 @@ TEST(HttpLoadProbeAcceptanceTest, CountsConnectionFailuresWithoutThrowing) {
     EXPECT_EQ(result.requests_succeeded, 0U);
     EXPECT_EQ(result.requests_failed, 6U);
 }
-

@@ -43,7 +43,7 @@ A dedicated four-case loopback fixture is implemented in `course/fixtures/w8/htt
 3. Eight concurrent Keep-Alive clients × forty requests (320 total); verify no queue rejection, protocol errors or leaked connections/jobs.
 4. Eight repeated server construction/run/stop/join/destruction cycles with idempotent stop requests.
 
-The tests assert resource recovery and protocol correctness rather than a machine-specific throughput threshold. GCC, ASan/UBSan and clang-tidy gates have been added; final-head hosted results are pending.
+The tests assert resource recovery and protocol correctness rather than a machine-specific throughput threshold. Final tested head `42c2438f8f52ec204ce2ea0c3c903d9a6516fd69`; GitHub Actions run `42988902800` passed all three jobs. The four-case D6-D3 fixture passed 4/4 under GCC, ASan/UBSan and clang-tidy. The run also passed root GCC/CTest 53/53, root ASan/UBSan 53/53, HTTP Server reference workspace 10/10, D6-A 28/28, D6-B 8/8, D6-C 9/9, D6-D1 5/5 and D6-D2 8/8. PR #25 is ready for merge.
 
 The target is deterministic behavior and resource recovery, not a fragile machine-specific throughput threshold. Hosted GCC, ASan/UBSan, clang-format and clang-tidy results are required before merge.
 

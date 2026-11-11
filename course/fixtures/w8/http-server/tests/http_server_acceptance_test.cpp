@@ -349,6 +349,50 @@ TEST(HttpServerAcceptanceTest, RejectsStaleWorkerCompletionAfterDisconnect) {
     EXPECT_EQ(body_of(exchange(server.port(), request("GET", "/hello"))),
               "Hello from C++ HTTP Server!\n");
 }
+
+TEST(HttpServerAcceptanceTest, KeepsWorkerSlotUntilDisconnectedRequestCompletes) {
+    std::atomic<bool> entered{false};
+    Router router = make_default_router();
+    router.add_route("GET", "/slow", [&entered](const HttpRequest&) {
+        entered.store(true);
+        std::this_thread::sleep_for(500ms);
+        HttpResponse response;
+        response.body = "finished";
+        return response;
+    });
+
+    HttpServerConfig config;
+    config.worker_count = 1U;
+    config.task_queue_capacity = 1U;
+    config.max_connections = 4U;
+    TestServer server(config, std::move(router));
+
+    TestClient disconnected(server.port());
+    ASSERT_TRUE(disconnected.send_all(request("GET", "/slow")));
+    const auto entered_deadline = std::chrono::steady_clock::now() + 1s;
+    while (!entered.load() && std::chrono::steady_clock::now() < entered_deadline) {
+        std::this_thread::yield();
+    }
+    ASSERT_TRUE(entered.load());
+    disconnected.close_now();
+
+    const auto overloaded = exchange(server.port(), request("GET", "/health"));
+    EXPECT_NE(overloaded.find("HTTP/1.1 503 Service Unavailable\r\n"), std::string::npos);
+
+    const auto recovery_deadline = std::chrono::steady_clock::now() + 2s;
+    std::string recovered;
+    while (std::chrono::steady_clock::now() < recovery_deadline) {
+        recovered = exchange(server.port(), request("GET", "/health"));
+        if (recovered.find("HTTP/1.1 200 OK\r\n") != std::string::npos) {
+            break;
+        }
+        EXPECT_NE(recovered.find("HTTP/1.1 503 Service Unavailable\r\n"), std::string::npos);
+        std::this_thread::sleep_for(10ms);
+    }
+    EXPECT_NE(recovered.find("HTTP/1.1 200 OK\r\n"), std::string::npos);
+    EXPECT_EQ(body_of(recovered), "{\"status\":\"ok\"}");
+}
+
 TEST(HttpServerAcceptanceTest, EventFdStopsBlockedEventLoop) {
     HttpServerConfig config;
     config.port = 0U;

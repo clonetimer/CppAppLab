@@ -44,7 +44,7 @@
 - Prerequisite: w8.router; task id w8.http-server, week 8, order 5.
 
 - [ ] Add catalog and workflow regression tests first; observe the expected missing-task/fixture failure.
-- [ ] Add platform-owned fixed fixture and reference-as-learner tests plus loopback integration tests.
+- [ ] Add platform-owned fixed fixture and reference-as-learner tests plus loopback integration tests, including the outstanding-job slot lifetime after client disconnect.
 - [ ] Wire the root workflow to run the real cppapplab check with learner CMake disabled.
 - [ ] Verify root CTest and the fixed fixture expected count.
 

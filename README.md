@@ -109,7 +109,6 @@ W1–W7 and W8-D1–D4 are merged into `main`; W8-D5 is under implementation on 
 - [Current project status](docs/STATUS.md)
 - [Router lesson and exact task boundary](course/lessons/w8/router.md)
 - [HTTP TCP server lesson](course/lessons/w8/http-server.md)
-- [HTTP TCP server lesson](course/lessons/w8/http-server.md)
 
 ## Quick start
 

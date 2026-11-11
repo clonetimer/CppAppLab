@@ -117,7 +117,7 @@ The fixed fixture uses real loopback TCP sockets and the real parser → dispatc
 - [ ] Incremental parser and bounded read/write buffers.
 - [ ] Partial writes resumed through EPOLLOUT only when needed.
 - [ ] 400 / 413 / 500 / 503 mapping and clean shutdown.
-- [ ] All 29 fixed acceptance checks pass.
+- [ ] All 30 fixed acceptance checks pass.
 
 ## Explain your design
 
@@ -126,8 +126,8 @@ The fixed fixture uses real loopback TCP sockets and the real parser → dispatc
 3. Why is fd alone insufficient as a connection identity?
 4. What does the generation token protect against?
 5. Why does eventfd wake the event loop after a completion is queued?
-6. Why is the completion queue bounded by active connections?
-7. Why must max_connections not exceed task_queue_capacity when W6 submit blocks?
+6. Why is the completion queue bounded by outstanding worker jobs, including jobs whose clients disconnected?
+7. Why must the event loop check outstanding_jobs before calling the blocking W6 submit?
 8. Why is there only one in-flight request per connection in D5?
 9. Why does D5 close after one response, and what must change before Keep-Alive?
 10. Why should EPOLLOUT be enabled only while writeBuffer is non-empty?

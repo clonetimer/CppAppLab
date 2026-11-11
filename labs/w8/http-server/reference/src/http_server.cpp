@@ -14,6 +14,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <atomic>
 #include <deque>
 #include <mutex>
 #include <stdexcept>
@@ -33,14 +34,17 @@ class UniqueFd {
     explicit UniqueFd(int fd = -1) noexcept : fd_(fd) {}
     UniqueFd(const UniqueFd&) = delete;
     UniqueFd& operator=(const UniqueFd&) = delete;
+
     ~UniqueFd() {
         if (fd_ >= 0) {
             (void)::close(fd_);
         }
     }
+
     [[nodiscard]] int get() const noexcept {
         return fd_;
     }
+
     [[nodiscard]] int release() noexcept {
         const int value = fd_;
         fd_ = -1;
@@ -61,6 +65,7 @@ class UniqueFd {
         config.max_response_bytes < 512U) {
         throw std::invalid_argument("HTTP server limits must be positive");
     }
+
     in_addr parsed{};
     if (::inet_pton(AF_INET, config.bind_address.c_str(), &parsed) != 1) {
         throw std::invalid_argument("bind_address must be an IPv4 literal");
@@ -79,7 +84,24 @@ class UniqueFd {
 
 [[nodiscard]] bool is_too_large_error(const std::string& message) {
     return message.find("too large") != std::string::npos ||
-           message.find("limit") != std::string::npos;
+           message.find("limit") != std::string::npos ||
+           message.find("message size") != std::string::npos;
+}
+
+void send_best_effort(int fd, const std::string& bytes) noexcept {
+    std::size_t offset = 0U;
+    while (offset < bytes.size()) {
+        const ssize_t sent =
+            ::send(fd, bytes.data() + offset, bytes.size() - offset, MSG_NOSIGNAL | MSG_DONTWAIT);
+        if (sent > 0) {
+            offset += static_cast<std::size_t>(sent);
+            continue;
+        }
+        if (sent < 0 && errno == EINTR) {
+            continue;
+        }
+        return;
+    }
 }
 
 }  // namespace
@@ -111,6 +133,7 @@ struct HttpServer::Impl {
         if (listener.get() < 0) {
             throw_system_error("socket");
         }
+
         const int reuse = 1;
         if (::setsockopt(listener.get(), SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
             throw_system_error("setsockopt(SO_REUSEADDR)");
@@ -151,6 +174,7 @@ struct HttpServer::Impl {
         if (::epoll_ctl(poller.get(), EPOLL_CTL_ADD, listener.get(), &listener_event) < 0) {
             throw_system_error("epoll_ctl(listener)");
         }
+
         epoll_event wake_event{};
         wake_event.events = EPOLLIN;
         wake_event.data.u64 = kWakeToken;
@@ -187,10 +211,9 @@ struct HttpServer::Impl {
     std::uint16_t bound_port{0U};
     std::atomic<bool> is_running{false};
     std::atomic<bool> stop_requested{false};
-    bool has_run{false};
+    std::atomic<bool> has_run{false};
     std::uint64_t next_token{kFirstConnectionToken};
     std::unordered_map<std::uint64_t, Connection> connections;
-    std::unordered_map<int, std::uint64_t> token_by_fd;
     std::mutex completion_mutex;
     std::deque<Completion> completions;
     std::size_t outstanding_jobs{0U};
@@ -206,7 +229,7 @@ struct HttpServer::Impl {
     [[nodiscard]] bool update_interest(const Connection& connection) const {
         epoll_event event{};
         if (!connection.processing && !connection.peer_closed && !connection.close_after_write) {
-            event.events |= EPOLLIN;
+            event.events |= EPOLLIN | EPOLLRDHUP;
         }
         if (connection.write_offset < connection.write_buffer.size()) {
             event.events |= EPOLLOUT;
@@ -220,10 +243,12 @@ struct HttpServer::Impl {
         if (found == connections.end()) {
             return;
         }
+
         const int fd = found->second.fd;
-        (void)::epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, nullptr);
-        (void)::close(fd);
-        token_by_fd.erase(fd);
+        if (fd >= 0) {
+            (void)::epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, nullptr);
+            (void)::close(fd);
+        }
         connections.erase(found);
     }
 
@@ -234,17 +259,26 @@ struct HttpServer::Impl {
     }
 
     void queue_response(Connection& connection, HttpResponse response) {
+        if (response.body.size() > config.max_response_bytes) {
+            response = error_response(500, "Internal Server Error",
+                                      "500 Internal Server Error\n");
+        }
+
         std::string wire;
         try {
             wire = serialize_response(response);
         } catch (...) {
-            response = error_response(500, "Internal Server Error", "500 Internal Server Error\n");
+            response = error_response(500, "Internal Server Error",
+                                      "500 Internal Server Error\n");
             wire = serialize_response(response);
         }
+
         if (wire.size() > config.max_response_bytes) {
-            response = error_response(500, "Internal Server Error", "500 Internal Server Error\n");
+            response = error_response(500, "Internal Server Error",
+                                      "500 Internal Server Error\n");
             wire = serialize_response(response);
         }
+
         connection.write_buffer = std::move(wire);
         connection.write_offset = 0U;
         connection.processing = false;
@@ -284,6 +318,7 @@ struct HttpServer::Impl {
             std::lock_guard<std::mutex> lock(completion_mutex);
             completions.push_back(std::move(completion));
         }
+
         const std::uint64_t one = 1U;
         for (;;) {
             const ssize_t written = ::write(wake_fd, &one, sizeof(one));
@@ -318,8 +353,8 @@ struct HttpServer::Impl {
                 try {
                     response = dispatch_request(request, router, static_files);
                 } catch (...) {
-                    response =
-                        error_response(500, "Internal Server Error", "500 Internal Server Error\n");
+                    response = error_response(500, "Internal Server Error",
+                                              "500 Internal Server Error\n");
                 }
                 publish_completion(Completion{fd, token, std::move(response)});
             });
@@ -337,6 +372,7 @@ struct HttpServer::Impl {
         if (connection.processing || connection.close_after_write) {
             return;
         }
+
         const std::uint64_t token = connection.token;
         if (connection.read_buffer.empty()) {
             if (connection.peer_closed) {
@@ -366,20 +402,28 @@ struct HttpServer::Impl {
             queue_error(connection, 413, "Content Too Large", "413 Content Too Large\n");
             return;
         }
+
         submit_request(connection, std::move(parsed.request));
     }
 
-    [[nodiscard]] bool read_client(Connection& connection) {
+    [[nodiscard]] bool read_client(Connection& connection, bool peer_hangup) {
         const std::uint64_t token = connection.token;
         char buffer[8192];
+
         for (;;) {
-            const ssize_t received = ::recv(connection.fd, buffer, sizeof(buffer), 0);
+            const std::size_t remaining = config.max_request_bytes - connection.read_buffer.size();
+            const std::size_t receive_capacity =
+                remaining >= sizeof(buffer) ? sizeof(buffer) : remaining + 1U;
+            const ssize_t received = ::recv(connection.fd, buffer, receive_capacity, 0);
+
             if (received > 0) {
-                connection.read_buffer.append(buffer, static_cast<std::size_t>(received));
-                if (connection.read_buffer.size() > config.max_request_bytes) {
-                    queue_error(connection, 413, "Content Too Large", "413 Content Too Large\n");
+                const std::size_t received_bytes = static_cast<std::size_t>(received);
+                if (received_bytes > remaining) {
+                    queue_error(connection, 413, "Content Too Large",
+                                "413 Content Too Large\n");
                     return connections.find(token) != connections.end();
                 }
+                connection.read_buffer.append(buffer, received_bytes);
                 continue;
             }
             if (received == 0) {
@@ -394,14 +438,19 @@ struct HttpServer::Impl {
             }
             return false;
         }
+
+        if (peer_hangup) {
+            connection.peer_closed = true;
+        }
         try_dispatch(connection);
         return connections.find(token) != connections.end();
     }
 
     void accept_clients() {
         for (;;) {
-            const int fd = ::accept4(listen_fd, nullptr, nullptr, SOCK_NONBLOCK | SOCK_CLOEXEC);
-            if (fd < 0) {
+            const int accepted =
+                ::accept4(listen_fd, nullptr, nullptr, SOCK_NONBLOCK | SOCK_CLOEXEC);
+            if (accepted < 0) {
                 if (errno == EINTR) {
                     continue;
                 }
@@ -411,28 +460,31 @@ struct HttpServer::Impl {
                 throw_system_error("accept4");
             }
 
+            UniqueFd client(accepted);
             if (connections.size() >= config.max_connections) {
                 const std::string busy = serialize_response(
                     error_response(503, "Service Unavailable", "503 Service Unavailable\n"));
-                (void)::send(fd, busy.data(), busy.size(), MSG_NOSIGNAL | MSG_DONTWAIT);
-                (void)::close(fd);
+                send_best_effort(client.get(), busy);
                 continue;
             }
 
             const std::uint64_t token = allocate_token();
-            epoll_event event{};
-            event.events = EPOLLIN;
-            event.data.u64 = token;
-            if (::epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event) < 0) {
-                (void)::close(fd);
+            Connection connection;
+            connection.fd = client.get();
+            connection.token = token;
+            const auto inserted = connections.emplace(token, std::move(connection));
+            if (!inserted.second) {
                 continue;
             }
 
-            Connection connection;
-            connection.fd = fd;
-            connection.token = token;
-            connections.emplace(token, std::move(connection));
-            token_by_fd.emplace(fd, token);
+            epoll_event event{};
+            event.events = EPOLLIN | EPOLLRDHUP;
+            event.data.u64 = token;
+            if (::epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client.get(), &event) < 0) {
+                connections.erase(inserted.first);
+                continue;
+            }
+            (void)client.release();
         }
     }
 
@@ -456,14 +508,13 @@ struct HttpServer::Impl {
             std::lock_guard<std::mutex> lock(completion_mutex);
             ready.swap(completions);
         }
+
         for (auto& completion : ready) {
             if (outstanding_jobs > 0U) {
                 --outstanding_jobs;
             }
             const auto found = connections.find(completion.token);
-            const auto current_fd = token_by_fd.find(completion.fd);
-            if (found == connections.end() || current_fd == token_by_fd.end() ||
-                current_fd->second != completion.token || found->second.fd != completion.fd) {
+            if (found == connections.end() || found->second.fd != completion.fd) {
                 continue;
             }
             queue_response(found->second, std::move(completion.response));
@@ -484,6 +535,7 @@ struct HttpServer::Impl {
             for (int index = 0; index < count; ++index) {
                 const std::uint64_t token = events[index].data.u64;
                 const std::uint32_t flags = events[index].events;
+
                 if (token == kWakeToken) {
                     drain_wake_fd();
                     drain_completions();
@@ -498,11 +550,12 @@ struct HttpServer::Impl {
                 if (found == connections.end()) {
                     continue;
                 }
+
                 bool keep = true;
-                if ((flags & EPOLLERR) != 0U || (flags & EPOLLHUP) != 0U) {
+                if ((flags & (EPOLLERR | EPOLLHUP)) != 0U) {
                     keep = false;
-                } else if ((flags & EPOLLIN) != 0U) {
-                    keep = read_client(found->second);
+                } else if ((flags & (EPOLLIN | EPOLLRDHUP)) != 0U) {
+                    keep = read_client(found->second, (flags & EPOLLRDHUP) != 0U);
                 }
 
                 found = connections.find(token);
@@ -522,6 +575,7 @@ struct HttpServer::Impl {
         if (wake_fd < 0) {
             return;
         }
+
         const std::uint64_t one = 1U;
         for (;;) {
             const ssize_t written = ::write(wake_fd, &one, sizeof(one));
@@ -548,15 +602,17 @@ HttpServer::~HttpServer() {
 std::uint16_t HttpServer::port() const noexcept {
     return impl_->bound_port;
 }
+
 bool HttpServer::running() const noexcept {
     return impl_->is_running.load();
 }
 
 void HttpServer::run() {
-    if (impl_->has_run) {
+    bool expected = false;
+    if (!impl_->has_run.compare_exchange_strong(expected, true)) {
         throw std::logic_error("HttpServer::run may only be called once");
     }
-    impl_->has_run = true;
+
     impl_->is_running.store(true);
     try {
         impl_->run_loop();

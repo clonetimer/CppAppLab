@@ -2,7 +2,7 @@
 
 ## Current delivery boundary
 
-The project provides a C++17 learning engine and cumulative W1–W8-D4 task packs. The W8 application pipeline now has a parser, static-file handler, Router, dynamic handlers and serializer. The Router task uses a real stdin-to-HTTP-response integration CLI; **it does not listen on a TCP port**. Next is W8-D5: integrate TCP/epoll, connection state and worker-pool handoff.
+The project provides a C++17 learning engine and cumulative W1–W8 task packs. W8-D1–D4 provide the HTTP parser, static-file handler, Router, dynamic handlers and serializer. W8-D5 is being implemented on `feat/p5-w8-http-server`: a real TCP listener, epoll Reactor and bounded W6 ThreadPool handoff. Until D5 is merged and validated, `main` still contains only the stdin-to-HTTP-response Router CLI.
 
 No Release or target-machine Windows 11 + WSL2 acceptance is declared. Hosted Ubuntu validation and local target acceptance are separate.
 
@@ -29,6 +29,21 @@ Before hosted integration, local native C++ probes observed Router 0/14 → 14/1
 
 The CI now also compiles and tests the Router fixed fixture directly with ASan/UBSan and clang-tidy. Root build options do not automatically instrument independently configured nested acceptance projects; a green root sanitizer job must not be described as blanket sanitizer coverage of every lab implementation.
 
+## W8-D5 HTTP TCP Server — in progress
+
+**Branch:** `feat/p5-w8-http-server`  
+**Base:** `main` at `dcee35395349104aad31ef1d2f1ad645e4c9fe06`  
+**Status:** design, API, reference implementation, learner scaffold and fixed loopback acceptance fixture are being assembled; hosted run `42953073079` passed all three jobs for tested head `433762deb47cd2bda66ff6e3fce27d65b59615ba`; the follow-up hardening in this branch is being revalidated.
+
+- Single Reactor owns listener/client sockets, epoll registrations, connection maps and read/write buffers.
+- Workers receive owned HttpRequest values and publish HttpResponse completions; they never touch sockets or Connection objects.
+- Generation tokens identify connections and prevent stale completions from being applied after fd reuse.
+- eventfd wakes the event loop after worker completion.
+- W6 ThreadPool is reused unchanged. Since its submit queue blocks, an event-loop-owned outstanding_jobs counter includes queued, running and undrained completions. The server returns 503 before submit at task_queue_capacity, including after disconnected clients, so the event loop never waits for queue space.
+- D5 preserves the existing serializer's Connection: close behavior: one request per TCP connection. Keep-Alive/pipelining is deferred to D6.
+- Fixed acceptance is 23 platform-owned tests + 10 reference tests + one real loopback CLI smoke (34 total).
+- No merge, hosted CI PASS, release, or local WSL2 acceptance is claimed yet.
+
 ## Source and scope
 
 The implementation follows the supplied `快速C++` D4 section. The optional hasPath/405 discussion is adopted consistently, and registration validation, nested-key storage and deterministic Allow are identified as engineering refinements in the lesson. Access to `clonetimer/cpptest` returned 404; its code has not been claimed as incorporated.
@@ -37,8 +52,8 @@ Known boundaries remain: no chunked Transfer-Encoding, no query parameter parser
 
 ## Remaining work
 
-1. W8-D5 network integration: nonblocking connections, receive/send buffers, worker completion delivery, safe connection identity and shutdown.
-2. Server-level keep-alive, deadlines, resource limits, logging and functional load checks.
+1. Finish W8-D5 code review, hosted GCC/ASan/UBSan/clang-tidy and merge only after final-head CI passes.
+2. W8-D6: HTTP/1.1 Keep-Alive, deadlines, request limits, logging and graceful shutdown policies.
 3. Full course workflow, reproducible/offline dependency delivery, local Windows/WSL2 acceptance and release qualification.
 
 A repository commit is not passing evidence. Record the final tested SHA, workflow result and target environment before claiming completion; learner progress files remain editable navigation data, not tamper-proof certificates.

@@ -133,7 +133,7 @@ The first-version language baseline is C++17. WSL2 Ubuntu 24.04 is the full acce
 2. `w8.http-parser` — incremental request parser with request line, case-insensitive headers, Content-Length and NeedMoreData/Complete/Error states. This D2 task depends on W8-D1 and reports consumed bytes for pipelined requests.
 3. `w8.static-files` — response serialization integrated with a GET-only static-file handler, MIME types, 404/405 responses and conservative path-traversal rejection. This D3 task depends on W8-D2.
 4. `w8.router` — method + path routing and dynamic endpoints, then integration with static-file fallback. This D4 task follows W8-D3.
-5. `w8.http-server` — connect the parser, router, handler and serializer to the TCP/epoll event loop and worker pool.
+5. `w8.http-server` — connect the parser, router, handler and serializer to a non-blocking TCP/epoll Reactor, bounded W6 ThreadPool, completion queue and eventfd wakeup. One request per connection is retained while the D1 serializer emits `Connection: close`; Keep-Alive is a later stage.
 
 ## Learning evidence
 

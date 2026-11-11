@@ -259,6 +259,7 @@ struct HttpServer::Impl {
         }
     }
 
+    // TODO(student): serialize with the saved request policy and HTTP version.
     void queue_response(Connection& connection, HttpResponse response) {
         if (response.body.size() > config.max_response_bytes) {
             response = error_response(500, "Internal Server Error", "500 Internal Server Error\n");

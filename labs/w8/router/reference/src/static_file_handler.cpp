@@ -10,11 +10,7 @@ namespace cppapplab::http {
 namespace {
 
 struct FileReadResult {
-    enum class Status {
-        Success,
-        Unreadable,
-        TooLarge
-    };
+    enum class Status { Success, Unreadable, TooLarge };
 
     Status status{Status::Unreadable};
     std::string contents;

@@ -32,6 +32,7 @@ struct HttpServerConfig {
     std::chrono::milliseconds shutdown_timeout{5000};
 };
 
+// TODO(student): declare HttpLogSink, HttpServerMetrics, log switches and metrics() API.
 class HttpServer {
    public:
     explicit HttpServer(HttpServerConfig config = {}, Router router = make_default_router());

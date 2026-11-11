@@ -1,6 +1,7 @@
 #include "http_message.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <sstream>
 #include <stdexcept>
 #include <string>

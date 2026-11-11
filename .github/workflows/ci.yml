@@ -86,6 +86,15 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug
           cmake --build build-http-observability --parallel
           ctest --test-dir build-http-observability --output-on-failure --timeout 15
+      - name: HTTP operational load acceptance
+        run: |
+          cmake -S course/fixtures/w8/http-operational -B build-http-operational \
+            -DCPPAPPLAB_HTTP_SERVER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCPPAPPLAB_ROUTER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/router/reference" \
+            -DCPPAPPLAB_THREAD_POOL_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w6/thread-pool/reference" \
+            -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-http-operational --parallel
+          ctest --test-dir build-http-operational --output-on-failure --timeout 25
       - name: Environment acceptance smoke test
         run: bash scripts/check_environment.sh
 
@@ -204,6 +213,20 @@ jobs:
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
           cmake --build build-http-observability-sanitize --parallel
           ctest --test-dir build-http-observability-sanitize --output-on-failure --timeout 20
+      - name: HTTP operational load sanitizer coverage
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1
+        run: |
+          cmake -S course/fixtures/w8/http-operational -B build-http-operational-sanitize \
+            -DCPPAPPLAB_HTTP_SERVER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCPPAPPLAB_ROUTER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/router/reference" \
+            -DCPPAPPLAB_THREAD_POOL_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w6/thread-pool/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-http-operational-sanitize --parallel
+          ctest --test-dir build-http-operational-sanitize --output-on-failure --timeout 30
 
   code-quality:
     name: Formatting and clang-tidy
@@ -295,3 +318,13 @@ jobs:
             -DCMAKE_CXX_CLANG_TIDY=clang-tidy
           cmake --build build-http-observability-quality --parallel
           ctest --test-dir build-http-observability-quality --output-on-failure --timeout 15
+      - name: HTTP operational load clang-tidy coverage
+        run: |
+          cmake -S course/fixtures/w8/http-operational -B build-http-operational-quality \
+            -DCPPAPPLAB_HTTP_SERVER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCPPAPPLAB_ROUTER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/router/reference" \
+            -DCPPAPPLAB_THREAD_POOL_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w6/thread-pool/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_CLANG_TIDY=clang-tidy
+          cmake --build build-http-operational-quality --parallel
+          ctest --test-dir build-http-operational-quality --output-on-failure --timeout 25

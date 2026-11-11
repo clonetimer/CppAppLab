@@ -86,3 +86,21 @@ The fixture runs under GCC, ASan/UBSan and clang-tidy. D5, D6-B, D6-C and D6-D1 
 4. Why redact query strings and omit request headers/bodies from default access logs?
 5. Why must a custom log sink be non-blocking and copy the supplied view if it retains it?
 6. Why is the metrics snapshot thread-safe but not transactionally consistent across all fields?
+
+## Learner task — `w8.http-observability`
+
+**Workspace files**
+
+- `include/http_server.hpp`
+- `src/http_server.cpp`
+
+Starting from D6-D1, add the public log and metrics API, JSONL access/error/lifecycle events, query-string redaction, a custom log sink, exception isolation, and atomic counters/gauges. Preserve the Reactor as the owner of connection state and metric updates.
+
+**Fixed acceptance:** 8 platform-owned loopback GoogleTests in `course/fixtures/w8/http-observability`. They verify log fields, redaction, metrics, handler failures, sink exception isolation, timeout counters, connection rejection and queue pressure.
+
+```bash
+./build/cppapplab start w8.http-observability "$HOME/cppapplab-work/w8-observability"
+./build/cppapplab lesson "$HOME/cppapplab-work/w8-observability"
+./build/cppapplab hint "$HOME/cppapplab-work/w8-observability" 1
+./build/cppapplab check "$HOME/cppapplab-work/w8-observability"
+```

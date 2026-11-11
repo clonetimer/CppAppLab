@@ -134,6 +134,10 @@ All symlinks below the configured document root are rejected, including symlinks
 
 The platform now has a guided learner entry point (`cppapplab learn`) and a one-command Ubuntu setup path (`bash scripts/quickstart.sh`). The guided command selects the next unlocked task, resumes a saved workspace or creates a non-overwriting default workspace, displays the task guide and prints the exact next commands. The quick-start script checks the Ubuntu 24.04 toolchain, requests approval before installing missing packages, builds the project and runs CTest before entering the first task. These changes reduce first-use command and workspace-management overhead; they do not replace target-machine acceptance.
 
+## Interactive learner experience and feedback
+
+The CLI now opens a terminal home screen when `cppapplab` is run without arguments in an interactive terminal. Learners can continue, choose tasks by number, or review progress without memorizing task IDs. Failed acceptance checks show a concise compiler/test diagnostic excerpt and direct hint, log and retry commands. Non-interactive invocations retain help output to avoid blocking scripts and CI.
+
 ## Remaining work
 
 1. Complete Windows 11 + WSL2 target acceptance.

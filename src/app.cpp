@@ -14,6 +14,8 @@ std::string_view usage() noexcept {
     return "CppAppLab - C++ learning and engineering practice\n"
            "\n"
            "Usage:\n"
+           "  cppapplab                                        Open interactive learning home\n"
+           "  cppapplab menu                                   Open interactive learning home\n"
            "  cppapplab --help                                  Show this help\n"
            "  cppapplab --version                               Show version\n"
            "  cppapplab list                                    List available tasks\n"

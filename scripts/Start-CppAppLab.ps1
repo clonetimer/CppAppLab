@@ -19,7 +19,7 @@ if ($LASTEXITCODE -ne 0) {
 
 $ubuntuDistros = @(
     $rawDistros |
-        ForEach-Object { $_.ToString().Replace([char]0, "").Trim() } |
+        ForEach-Object { ($_.ToString() -replace "\x00", "").Trim() } |
         Where-Object { $_ -match '^Ubuntu(?:[- ].*)?$' }
 )
 
@@ -53,7 +53,7 @@ if ([string]::IsNullOrWhiteSpace($Distro)) {
 
 $verboseDistros = @(
     & $wslCommand.Source --list --verbose 2>&1 |
-        ForEach-Object { $_.ToString().Replace([char]0, "").Trim() }
+        ForEach-Object { ($_.ToString() -replace "\x00", "").Trim() }
 )
 if ($LASTEXITCODE -ne 0) {
     throw "Cannot inspect WSL distribution versions. Run 'wsl -l -v' manually."
@@ -148,8 +148,10 @@ exec ./build/cppapplab
 
 $bashScript = $bashScript.Replace("__REPO_PATH_BASE64__", $repoPathBase64)
 $bashScript = $bashScript.Replace("__FORCE_SETUP__", $forceSetup)
+$bashScriptBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($bashScript))
+$bootstrapCommand = 'bash -c "$(printf ''%s'' ''' + $bashScriptBase64 + ''' | base64 --decode)"'
 
-Write-Host "CppAppLab · Windows / WSL2 launcher"
+Write-Host "CppAppLab - Windows / WSL2 launcher"
 Write-Host ("Distribution: {0}" -f $Distro)
 Write-Host ("Linux checkout: {0}" -f $RepoPath)
 if ($Setup) {
@@ -158,6 +160,6 @@ if ($Setup) {
     Write-Host "Mode: open existing build, or run setup if this is the first launch"
 }
 
-& $wslCommand.Source --distribution $Distro --exec bash -lc $bashScript
+& $wslCommand.Source --distribution $Distro --exec bash -lc $bootstrapCommand
 $launcherExitCode = $LASTEXITCODE
 exit $launcherExitCode

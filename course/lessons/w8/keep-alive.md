@@ -53,7 +53,7 @@ The dedicated loopback fixture covers:
 7. Draining a complete pipeline after peer half-close.
 8. Preventing the next handler from starting before the current response is ready.
 
-The fixture is run with GCC, ASan/UBSan and clang-tidy. The existing D5 fixed fixture remains a separate regression gate.
+Final-head CI run `42971176071` passed all three jobs. The eight loopback cases passed 8/8 under GCC, ASan/UBSan and clang-tidy. Root GCC/CTest and root ASan/UBSan each passed 53/53. The existing D5 fixed fixture remains a separate regression gate.
 
 ## Deliberate D6-C boundary
 

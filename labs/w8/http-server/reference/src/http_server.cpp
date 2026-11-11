@@ -861,11 +861,11 @@ struct HttpServer::Impl {
             if (connection.write_offset < connection.write_buffer.size()) {
                 connection.close_after_write = true;
                 if (connection.write_offset == 0U) {
-                    const std::string keep_alive = "Connection: keep-alive\\r\\n";
+                    const std::string keep_alive = "Connection: keep-alive\r\n";
                     const std::size_t position = connection.write_buffer.find(keep_alive);
                     if (position != std::string::npos) {
                         connection.write_buffer.replace(position, keep_alive.size(),
-                                                        "Connection: close\\r\\n");
+                                                        "Connection: close\r\n");
                     }
                 }
                 if (!update_interest(connection)) {
@@ -877,7 +877,7 @@ struct HttpServer::Impl {
             if (!connection.read_buffer.empty()) {
                 connection.read_buffer.clear();
                 queue_error(connection, 503, "Service Unavailable",
-                            "503 Service Unavailable\\n");
+                            "503 Service Unavailable\n");
                 continue;
             }
 

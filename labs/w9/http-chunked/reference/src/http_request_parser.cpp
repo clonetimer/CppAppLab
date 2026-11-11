@@ -170,7 +170,6 @@ constexpr std::string_view kTokenPunctuation = "!#$%&'*+-.^_`|~";
     return true;
 }
 
-
 [[nodiscard]] bool ascii_iequals(std::string_view left, std::string_view right) noexcept {
     if (left.size() != right.size()) {
         return false;
@@ -285,8 +284,7 @@ struct ChunkedParseResult {
                     return chunked_error("HTTP trailer section too large");
                 }
 
-                const std::string_view trailer_line =
-                    buffer.substr(cursor, trailer_end - cursor);
+                const std::string_view trailer_line = buffer.substr(cursor, trailer_end - cursor);
                 if (trailer_line.empty()) {
                     ChunkedParseResult result;
                     result.status = ChunkedParseStatus::Complete;
@@ -330,8 +328,7 @@ struct ChunkedParseResult {
             return {};
         }
 
-        if (buffer[cursor + chunk_size] != '\r' ||
-            buffer[cursor + chunk_size + 1U] != '\n') {
+        if (buffer[cursor + chunk_size] != '\r' || buffer[cursor + chunk_size + 1U] != '\n') {
             return chunked_error("HTTP chunk data is not followed by CRLF");
         }
 

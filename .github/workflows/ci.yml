@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build-and-test:
     name: GCC Build and GoogleTest
-    if: ${{ !(github.event_name == 'push' && contains(github.event.head_commit.message, '[non-ubuntu-only]')) && !(github.event_name == 'pull_request' && contains(github.event.pull_request.body, '<!-- ci-mode: non-ubuntu-only -->')) }}
+    if: ${{ contains(github.event.head_commit.message, '[non-ubuntu-only]') == false && contains(github.event.pull_request.body, 'ci-mode: non-ubuntu-only') == false }}
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -186,7 +186,7 @@ jobs:
 
   sanitizers:
     name: GCC ASan and UBSan
-    if: ${{ !(github.event_name == 'push' && contains(github.event.head_commit.message, '[non-ubuntu-only]')) && !(github.event_name == 'pull_request' && contains(github.event.pull_request.body, '<!-- ci-mode: non-ubuntu-only -->')) }}
+    if: ${{ contains(github.event.head_commit.message, '[non-ubuntu-only]') == false && contains(github.event.pull_request.body, 'ci-mode: non-ubuntu-only') == false }}
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -409,7 +409,7 @@ jobs:
 
   code-quality:
     name: Formatting and clang-tidy
-    if: ${{ !(github.event_name == 'push' && contains(github.event.head_commit.message, '[non-ubuntu-only]')) && !(github.event_name == 'pull_request' && contains(github.event.pull_request.body, '<!-- ci-mode: non-ubuntu-only -->')) }}
+    if: ${{ contains(github.event.head_commit.message, '[non-ubuntu-only]') == false && contains(github.event.pull_request.body, 'ci-mode: non-ubuntu-only') == false }}
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout

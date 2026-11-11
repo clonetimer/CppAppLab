@@ -29,6 +29,19 @@ class UniqueFd {
     explicit UniqueFd(int fd = -1) noexcept : fd_(fd) {}
     UniqueFd(const UniqueFd&) = delete;
     UniqueFd& operator=(const UniqueFd&) = delete;
+    UniqueFd(UniqueFd&& other) noexcept : fd_(other.fd_) {
+        other.fd_ = -1;
+    }
+    UniqueFd& operator=(UniqueFd&& other) noexcept {
+        if (this != &other) {
+            if (fd_ >= 0) {
+                (void)::close(fd_);
+            }
+            fd_ = other.fd_;
+            other.fd_ = -1;
+        }
+        return *this;
+    }
     ~UniqueFd() {
         if (fd_ >= 0) {
             (void)::close(fd_);

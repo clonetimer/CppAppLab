@@ -26,6 +26,13 @@ namespace {
 
 constexpr std::size_t kBytesPerKiB = 1024U;
 constexpr std::size_t kBytesPerMiB = kBytesPerKiB * kBytesPerKiB;
+constexpr int kSocketTimeoutSeconds = 5;
+constexpr std::size_t kSocketReadBufferBytes = 16384U;
+
+struct KeepAliveSoakOptions {
+    std::uint16_t port;
+    int request_count;
+};
 constexpr std::size_t kSlowReaderPayloadMiB = 8U;
 constexpr std::size_t kSlowReaderResponseLimitMiB = 10U;
 constexpr int kSlowReaderReceiveBufferBytes = 64 * static_cast<int>(kBytesPerKiB);
@@ -88,7 +95,7 @@ class TestClient {
         }
 
         timeval timeout{};
-        timeout.tv_sec = 5;
+        timeout.tv_sec = kSocketTimeoutSeconds;
         (void)::setsockopt(fd_, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
         sockaddr_in address{};
@@ -165,7 +172,7 @@ class TestClient {
     [[nodiscard]] std::string read_until_eof() {
         std::string result = std::move(read_buffer_);
         read_buffer_.clear();
-        char buffer[16384];
+        char buffer[kSocketReadBufferBytes];
         for (;;) {
             const ssize_t received = ::recv(fd_, buffer, sizeof(buffer), 0);
             if (received > 0) {
@@ -183,7 +190,7 @@ class TestClient {
 
    private:
     void receive_more() {
-        char buffer[16384];
+        char buffer[kSocketReadBufferBytes];
         for (;;) {
             const ssize_t received = ::recv(fd_, buffer, sizeof(buffer), 0);
             if (received > 0) {
@@ -240,10 +247,11 @@ void wait_until(Predicate predicate) {
            response_body(response) == "worked" && client.read_until_eof().empty();
 }
 
-[[nodiscard]] bool perform_keep_alive_soak_client(std::uint16_t port, int request_count) {
-    TestClient client(port);
-    for (int request_index = 0; request_index < request_count; ++request_index) {
-        const std::string policy = request_index + 1 == request_count ? "close" : "keep-alive";
+[[nodiscard]] bool perform_keep_alive_soak_client(const KeepAliveSoakOptions& options) {
+    TestClient client(options.port);
+    for (int request_index = 0; request_index < options.request_count; ++request_index) {
+        const std::string policy =
+            request_index + 1 == options.request_count ? "close" : "keep-alive";
         if (!client.send_all(make_request("/health", policy))) {
             return false;
         }
@@ -280,6 +288,7 @@ void wait_until(Predicate predicate) {
 
 }  // namespace
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) -- GoogleTest macros expand into nested control flow.
 TEST(HttpOperationalAcceptanceTest, ServesConcurrentClientsWithinWorkerAndQueueBounds) {
     constexpr int kClientCount = 16;
     constexpr int kWorkerCount = 4;
@@ -358,6 +367,7 @@ TEST(HttpOperationalAcceptanceTest, ServesConcurrentClientsWithinWorkerAndQueueB
     EXPECT_EQ(metrics.active_jobs, 0U);
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) -- GoogleTest macros expand into nested control flow.
 TEST(HttpOperationalAcceptanceTest, SlowReaderBackpressureResumesAndCompletesLargeResponse) {
     constexpr std::size_t kPayloadSize = kSlowReaderPayloadMiB * kBytesPerMiB;
     constexpr std::size_t kMaximumResponseSize = kSlowReaderResponseLimitMiB * kBytesPerMiB;
@@ -399,6 +409,7 @@ TEST(HttpOperationalAcceptanceTest, SlowReaderBackpressureResumesAndCompletesLar
     EXPECT_EQ(metrics.active_jobs, 0U);
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) -- GoogleTest macros expand into nested control flow.
 TEST(HttpOperationalAcceptanceTest, SustainsConcurrentKeepAliveSoakWithoutLeakingResources) {
     constexpr int kClientCount = 8;
     constexpr int kRequestsPerClient = 40;
@@ -427,7 +438,8 @@ TEST(HttpOperationalAcceptanceTest, SustainsConcurrentKeepAliveSoakWithoutLeakin
     for (int index = 0; index < kClientCount; ++index) {
         clients.emplace_back([&] {
             try {
-                if (perform_keep_alive_soak_client(server.port(), kRequestsPerClient)) {
+                const KeepAliveSoakOptions options{server.port(), kRequestsPerClient};
+                if (perform_keep_alive_soak_client(options)) {
                     succeeded.fetch_add(1);
                 } else {
                     failed.fetch_add(1);

@@ -19,7 +19,7 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 ## Current learning tasks
 
-The learning engine provides W1 Hello World and Calculator, W2 persistent Todo CLI, W3 TaskManager refactor, W4 quality gate, W5 Linux systems, W6 thread pool, W7 TCP Echo and epoll chat, and W8 HTTP protocol, incremental parser, static files, Router/dynamic handlers, and the W8-D5 TCP/epoll HTTP server. The catalog is the authoritative task list.
+The learning engine provides W1 Hello World and Calculator, W2 persistent Todo CLI, W3 TaskManager refactor, W4 quality gate, W5 Linux systems, W6 thread pool, W7 TCP Echo and epoll chat, and W8 HTTP protocol, incremental parser, static files, Router/dynamic handlers, and the W8-D5 TCP/epoll HTTP server. W8-D6-A connection policy is merged; D6-B sequential Keep-Alive has passed hosted CI and is awaiting merge. The catalog is the authoritative task list.
 
 ```bash
 ./build/cppapplab list
@@ -100,7 +100,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-W1–W7 and W8-D1–D5 are merged into `main`. W8-D5 adds a real TCP listener and epoll/worker-pool handoff. W8-D6 (Keep-Alive, deadlines, limits, logging and graceful shutdown) is next. No release or target WSL2 acceptance has been declared. See:
+W1–W7 and W8-D1–D6-A are merged into `main`. W8-D5 adds a real TCP listener and epoll/worker-pool handoff. D6-B sequential Keep-Alive has passed hosted CI and is awaiting merge; D6-C deadlines/limits and D6-D graceful shutdown/logging remain. No release or target WSL2 acceptance has been declared. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)
@@ -109,6 +109,8 @@ W1–W7 and W8-D1–D5 are merged into `main`. W8-D5 adds a real TCP listener an
 - [Current project status](docs/STATUS.md)
 - [Router lesson and exact task boundary](course/lessons/w8/router.md)
 - [HTTP TCP server lesson](course/lessons/w8/http-server.md)
+- [HTTP connection policy lesson](course/lessons/w8/connection-policy.md)
+- [HTTP Keep-Alive lifecycle lesson](course/lessons/w8/keep-alive.md)
 
 ## Quick start
 

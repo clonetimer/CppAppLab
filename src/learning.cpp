@@ -517,7 +517,6 @@ int resume_task(std::string_view task_id) {
     }
 }
 
-
 std::filesystem::path default_workspace_root(const Task& task) {
     const char* home = std::getenv("HOME");
     if (home == nullptr || home[0] == '\0') {

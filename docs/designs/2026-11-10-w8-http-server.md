@@ -34,7 +34,8 @@ Turn the already merged W8-D1–D4 application pipeline into a real Linux HTTP s
 - Keep the existing D3 serializer Connection: close contract. D5 therefore serves one request per TCP connection and closes after the response is fully sent. The supplied D5 discussion of parsing a second pipelined request after completion becomes active with D6 keep-alive; it cannot be enabled without changing the D3 serializer contract. This is an explicit compatibility ruling, not a silent behavior change.
 - Use level-triggered epoll and drain recv/send until EAGAIN/EWOULDBLOCK. Enable EPOLLOUT only while the write buffer is non-empty.
 - The server constructor binds/listens and exposes the actual bound port (including ephemeral port 0). run() blocks on the caller thread; request_stop() wakes it via eventfd. The caller must join the run thread before destroying the server.
-- Static-file responses exceeding the configured response limit are replaced with a bounded 500 response; malformed requests receive 400, parser/body limit failures receive 413, and rejected connections/worker queue saturation and connection-limit rejection receive 503.
+- Static-file reads are capped before full allocation and oversized files return 413; dynamic responses exceeding the configured serialized-response limit are replaced with a bounded 500 response. Malformed requests receive 400, parser/body limit failures receive 413, and rejected connections/worker queue saturation and connection-limit rejection receive 503.
+- Router callbacks run concurrently on the W6 worker pool; custom handlers must be thread-safe. Workers never mutate Router registration or connection state.
 
 ## Acceptance
 

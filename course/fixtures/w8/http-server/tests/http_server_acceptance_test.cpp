@@ -126,6 +126,9 @@ class TestClient {
     void shutdown_write() const {
         (void)::shutdown(fd_, SHUT_WR);
     }
+    void shutdown_both() const {
+        (void)::shutdown(fd_, SHUT_RDWR);
+    }
     std::string read_all() const {
         std::string result;
         char buffer[8192];
@@ -348,27 +351,44 @@ TEST(HttpServerAcceptanceTest, Returns503WhenWorkerQueueIsSaturated) {
 
 TEST(HttpServerAcceptanceTest, RejectsStaleWorkerCompletionAfterDisconnect) {
     std::atomic<bool> entered{false};
+    std::atomic<bool> completed{false};
     Router router = make_default_router();
-    router.add_route("GET", "/slow", [&entered](const HttpRequest&) {
+    router.add_route("GET", "/slow", [&entered, &completed](const HttpRequest&) {
         entered.store(true);
-        std::this_thread::sleep_for(120ms);
+        std::this_thread::sleep_for(300ms);
+        completed.store(true);
         HttpResponse response;
         response.body = "stale";
         return response;
     });
     TestServer server({}, std::move(router));
-    {
-        TestClient old_client(server.port());
-        ASSERT_TRUE(old_client.send_all(request("GET", "/slow")));
-        const auto deadline = std::chrono::steady_clock::now() + 1s;
-        while (!entered.load() && std::chrono::steady_clock::now() < deadline) {
-            std::this_thread::yield();
-        }
-        ASSERT_TRUE(entered.load());
-        old_client.close_now();
+    TestClient old_client(server.port());
+    ASSERT_TRUE(old_client.send_all(request("GET", "/slow")));
+    const auto entered_deadline = std::chrono::steady_clock::now() + 1s;
+    while (!entered.load() && std::chrono::steady_clock::now() < entered_deadline) {
+        std::this_thread::yield();
     }
-    EXPECT_EQ(body_of(exchange(server.port(), request("GET", "/hello"))),
-              "Hello from C++ HTTP Server!\n");
+    ASSERT_TRUE(entered.load());
+
+    // Keep the old client descriptor open while the server observes a full shutdown.
+    // The next accepted server-side descriptor can then reuse the old server fd.
+    old_client.shutdown_both();
+    std::this_thread::sleep_for(30ms);
+
+    TestClient replacement(server.port());
+    ASSERT_TRUE(replacement.send_all("GET /hel"));
+    std::this_thread::sleep_for(40ms);
+
+    const auto completed_deadline = std::chrono::steady_clock::now() + 1s;
+    while (!completed.load() && std::chrono::steady_clock::now() < completed_deadline) {
+        std::this_thread::yield();
+    }
+    ASSERT_TRUE(completed.load());
+    std::this_thread::sleep_for(20ms);
+
+    ASSERT_TRUE(replacement.send_all("lo HTTP/1.1\r\nHost: localhost\r\n\r\n"));
+    const auto response = replacement.read_all();
+    EXPECT_EQ(body_of(response), "Hello from C++ HTTP Server!\n");
 }
 
 TEST(HttpServerAcceptanceTest, HandlesFragmentedRequestBody) {

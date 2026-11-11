@@ -709,7 +709,6 @@ int guided_learn(std::string_view requested_task_id) {
     return 0;
 }
 
-
 std::string task_state_label(const Task& task) {
     if (has_current_pass(task.id)) {
         return "PASSED";

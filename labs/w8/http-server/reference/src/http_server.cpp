@@ -312,18 +312,15 @@ struct HttpServer::Impl {
 
         itimerspec timer_spec{};
         if (!deadlines.empty()) {
-            auto nanoseconds =
-                std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    deadlines.top().when.time_since_epoch())
-                    .count();
+            auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                   deadlines.top().when.time_since_epoch())
+                                   .count();
             if (nanoseconds <= 0) {
                 nanoseconds = 1;
             }
             constexpr std::int64_t kNanosecondsPerSecond = 1000000000LL;
-            timer_spec.it_value.tv_sec =
-                static_cast<time_t>(nanoseconds / kNanosecondsPerSecond);
-            timer_spec.it_value.tv_nsec =
-                static_cast<long>(nanoseconds % kNanosecondsPerSecond);
+            timer_spec.it_value.tv_sec = static_cast<time_t>(nanoseconds / kNanosecondsPerSecond);
+            timer_spec.it_value.tv_nsec = static_cast<long>(nanoseconds % kNanosecondsPerSecond);
         }
 
         if (::timerfd_settime(timer_fd, TFD_TIMER_ABSTIME, &timer_spec, nullptr) < 0) {

@@ -101,7 +101,6 @@ void ensure_real_directory(const std::filesystem::path& path) {
     }
 }
 
-
 std::vector<std::string> diagnostic_excerpt(const std::string& output) {
     std::vector<std::string> selected;
     std::vector<std::string> recent;
@@ -117,18 +116,17 @@ std::vector<std::string> diagnostic_excerpt(const std::string& output) {
             recent.erase(recent.begin());
         }
 
-        const bool relevant = line.find("[CppAppLab]") != std::string::npos ||
-                              line.find("error") != std::string::npos ||
-                              line.find("Error") != std::string::npos ||
-                              line.find("warning:") != std::string::npos ||
-                              line.find("FAILED") != std::string::npos ||
-                              line.find("Failed") != std::string::npos ||
-                              line.find("failed") != std::string::npos ||
-                              line.find("undefined reference") != std::string::npos ||
-                              line.find("not found") != std::string::npos ||
-                              line.find("No such file") != std::string::npos ||
-                              line.find("Expected bytes") != std::string::npos ||
-                              line.find("Actual bytes") != std::string::npos;
+        const bool relevant =
+            line.find("[CppAppLab]") != std::string::npos ||
+            line.find("error") != std::string::npos || line.find("Error") != std::string::npos ||
+            line.find("warning:") != std::string::npos ||
+            line.find("FAILED") != std::string::npos || line.find("Failed") != std::string::npos ||
+            line.find("failed") != std::string::npos ||
+            line.find("undefined reference") != std::string::npos ||
+            line.find("not found") != std::string::npos ||
+            line.find("No such file") != std::string::npos ||
+            line.find("Expected bytes") != std::string::npos ||
+            line.find("Actual bytes") != std::string::npos;
         if (relevant && selected.size() < 8U) {
             if (line.size() > 220U) {
                 line = line.substr(0U, 217U) + "...";
@@ -709,7 +707,6 @@ int guided_learn(std::string_view requested_task_id) {
                  "next task.\n";
     return 0;
 }
-
 
 int choose_task_interactively() {
     const auto& tasks = task_catalog();

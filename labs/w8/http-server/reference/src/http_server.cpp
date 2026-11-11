@@ -902,11 +902,6 @@ struct HttpServer::Impl {
             }
         }
         connection.read_buffer.erase(0U, parsed.consumed);
-        if (!connection.read_buffer.empty()) {
-            connection.request_started_at = Clock::now();
-        } else {
-            connection.request_started_at = Clock::time_point{};
-        }
         if (connection.peer_closed && connection.read_buffer.empty()) {
             connection_policy = ConnectionPolicy::Close;
         }

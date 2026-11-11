@@ -69,7 +69,7 @@ if ! git -C "$repo_path" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     mkdir -p "$(dirname "$repo_path")"
     echo "[INFO] Cloning the private CppAppLab repository into $repo_path"
     if ! git clone https://github.com/clonetimer/CppAppLab.git "$repo_path"; then
-        echo "[FAIL] Git clone failed. Authenticate Git inside WSL (for example, with 'gh auth login') and retry." >&2
+        echo "[FAIL] Git clone failed. Configure GitHub authentication for Git inside WSL (for example, install GitHub CLI and run 'gh auth login') and retry." >&2
         exit 5
     fi
 fi

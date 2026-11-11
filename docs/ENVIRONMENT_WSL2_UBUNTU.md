@@ -16,14 +16,20 @@ wsl -l -v
 The Ubuntu distribution must show `VERSION 2`. If it shows version 1, convert it from an elevated or normal PowerShell session as appropriate:
 
 ```powershell
-wsl --set-version Ubuntu 2
+wsl --set-version <distribution-name> 2
 ```
 
 Start Ubuntu:
 
 ```powershell
-wsl -d Ubuntu
+wsl -d <distribution-name>
 ```
+
+Use the exact distribution name shown by `wsl -l -v` (for example, `Ubuntu` or `Ubuntu-24.04`).
+
+## Windows launcher
+
+After the repository is available in Windows Explorer, `Start-CppAppLab.cmd` provides a direct Windows entry point. It detects the installed Ubuntu distribution, verifies WSL2 and Ubuntu 24.04, clones into `~/work/CppAppLab` only when that checkout is missing, and opens the interactive learning home. Use `Start-CppAppLab.cmd -Setup` after updating source code to rebuild and rerun CTest. The launcher does not update an existing Git checkout automatically.
 
 ## 2. Verify Ubuntu
 

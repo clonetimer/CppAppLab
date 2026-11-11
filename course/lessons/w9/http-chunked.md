@@ -55,7 +55,7 @@ Never use strlen, line-oriented text I/O or a C string terminator to determine c
 
 Implement the chunked framing branch in the parser. Preserve the W8 request model and the ParseStatus / ParseResult contract.
 
-**Fixed acceptance:** 33 platform-owned GoogleTests in course/fixtures/w9/http-chunked. They cover multi-chunk and binary payloads, extensions, trailers, incremental boundaries, pipelining, ambiguous framing, malformed input and resource limits.
+**Fixed acceptance:** 35 platform-owned GoogleTests in course/fixtures/w9/http-chunked. They cover multi-chunk and binary payloads, extensions, trailers, incremental boundaries, pipelining, ambiguous framing, malformed input and resource limits.
 
 \`\`\`bash
 ./build/cppapplab start w9.http-chunked "$HOME/cppapplab-work/w9-http-chunked"
@@ -86,4 +86,4 @@ Implement the chunked framing branch in the parser. Preserve the W8 request mode
 - [ ] Chunk and trailer metadata limits are enforced.
 - [ ] Pipelined bytes remain unconsumed.
 - [ ] Existing Content-Length framing remains unchanged.
-- [ ] All 33 fixed checks pass.
+- [ ] All 35 fixed checks pass.

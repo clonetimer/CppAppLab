@@ -37,6 +37,12 @@ jobs:
           ./build/cppapplab --version
           ./build/cppapplab --help
           timeout 5s ./build/cppapplab </dev/null
+          bash -n scripts/cppapplab-wsl-launcher.sh
+          launcher_home="/tmp/cppapplab-launcher-home"
+          test "$(HOME="$launcher_home" bash scripts/cppapplab-wsl-launcher.sh --test-normalize-path '~/work/CppAppLab')" = "$launcher_home/work/CppAppLab"
+          test "$(HOME="$launcher_home" bash scripts/cppapplab-wsl-launcher.sh --test-normalize-path '~')" = "$launcher_home"
+          test "$(HOME="$launcher_home" bash scripts/cppapplab-wsl-launcher.sh --test-normalize-path '/opt/CppAppLab')" = "/opt/CppAppLab"
+          test "$(HOME="$launcher_home" bash scripts/cppapplab-wsl-launcher.sh --test-normalize-path '~/work/Cpp App Lab')" = "$launcher_home/work/Cpp App Lab"
       - name: Build and test HTTP server reference workspace
         run: |
           cmake -S labs/w8/http-server/reference -B build-http-server-reference \
@@ -569,6 +575,9 @@ jobs:
           }
           if (-not (Test-Path 'Start-CppAppLab.cmd')) {
             throw 'The double-click launcher file is missing.'
+          }
+          if (-not (Test-Path 'scripts/cppapplab-wsl-launcher.sh')) {
+            throw 'The WSL bootstrap script is missing.'
           }
       - name: Parse PowerShell launcher with Windows PowerShell 5.1
         shell: powershell

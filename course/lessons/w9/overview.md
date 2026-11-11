@@ -18,7 +18,7 @@ The advanced curriculum remains cumulative: learners extend the W8 server and it
 | A4 | w9.http-hardening | Request-smuggling regression cases, header/framing policy, resource limits and deterministic protocol errors |
 | A5 | w9.http-fuzzing | Parser fuzz target, regression corpus, sanitizer-backed fuzz smoke and minimized reproductions |
 
-A1 is the first registered W9 task. A2–A5 remain roadmap stages until their learner source boundaries and fixed fixtures are implemented and validated.
+A1 (chunked transfer decoding) is merged into main. A2 (request-target and query parsing) is being implemented on feat/w9-request-target-query with a learner workspace and 39-case fixture. A3–A5 remain roadmap stages until their learner source boundaries and fixed fixtures are implemented and validated.
 
 ### W9-A1 contract
 

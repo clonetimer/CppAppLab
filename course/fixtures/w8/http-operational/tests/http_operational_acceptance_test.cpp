@@ -317,10 +317,11 @@ TEST(HttpOperationalAcceptanceTest, SlowReaderBackpressureResumesAndCompletesLar
     config.error_log_enabled = false;
     TestServer server(config, std::move(router));
     TestClient client(server.port());
-    client.set_receive_buffer(4096);
+    client.set_receive_buffer(65536);
 
     ASSERT_TRUE(client.send_all(make_request("/large")));
     std::this_thread::sleep_for(150ms);
+    EXPECT_EQ(server.metrics().responses_completed, 0U);
 
     const std::string response = client.read_response();
     EXPECT_NE(response.find("HTTP/1.1 200 OK\r\n"), std::string::npos);

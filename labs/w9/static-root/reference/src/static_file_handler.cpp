@@ -117,7 +117,7 @@ struct FileReadResult {
         return UniqueFd{};
     }
 
-    const std::string relative_path = resolve_document_path(decoded_path);
+    const std::string relative_path(decoded_path);
 
     UniqueFd current_directory;
     int current_fd = root_fd;

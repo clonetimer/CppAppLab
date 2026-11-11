@@ -17,7 +17,7 @@ W1–W7 and W8-D1–D6-D3 are merged into `main`. The platform includes a real L
 **D6-D2 final-head CI:** run `42986255957`, all three jobs passed.  
 **D6-D3 merge:** `597a8a00a3052b70bf1af7f695c63f7310d67563` (PR #25).  
 **D6-D3 final-head:** `736a0bac1e859c8cdffbfe7b1883e709cb928eec`; CI run `42991542424`, all three jobs passed.  
-**Advanced taskization branch:** `feat/w8-advanced-taskization`; adds six formal W8-D6 learner tasks after W8-D5, each with a staged learner baseline, progressive hints and fixed learner-source acceptance. Hosted task-mode CI is pending.  
+**Advanced taskization PR:** #26 (`feat/w8-advanced-taskization`); adds six formal W8-D6 learner tasks after W8-D5. Final tested head `6f77c25f08729f5dde858dfc5bed945afb24eef6`; CI run `42997438080` passed all three jobs. Root suite 60/60; six task-mode fixtures 49/49 under GCC, ASan/UBSan and clang-tidy.  
 **Target-machine status:** Windows 11 + WSL2 acceptance has not yet been performed or claimed. No Release is declared.
 
 ## Verified merged baseline
@@ -51,7 +51,7 @@ Final-head regression evidence: root GCC/CTest 53/53; root ASan/UBSan 53/53; HTT
 
 These are deterministic functional load/soak regressions and resource-recovery checks, not throughput, tail-latency or production-capacity SLAs.
 
-## W8 advanced tutorial taskization (implementation in progress)
+## W8 advanced tutorial taskization (implemented; PR #26 ready for merge)
 
 **Branch:** `feat/w8-advanced-taskization`.
 
@@ -68,11 +68,11 @@ The catalog grows from 14 to 20 tasks. Six sequential learner tasks are register
 
 The tasks form a strict prerequisite chain from D6-A through D6-D3. D6-B through D6-D2 use a known completed previous-stage baseline so each task concentrates on its own implementation delta; the learner still implements the stage under test. D6-D3 adds a reusable load-probe module while the existing four-case operational regression fixture remains an independent server-level gate.
 
-Task-mode CI configures each fixed fixture with `CPPAPPLAB_LEARNER_SOURCE_DIR` pointing to the corresponding reference implementation. This validates the same CMake path used by `cppapplab check` without pre-filling learner workspaces.
+Task-mode CI configures each fixed fixture with `CPPAPPLAB_LEARNER_SOURCE_DIR` pointing to the corresponding reference implementation. This validates the same CMake path used by `cppapplab check` without pre-filling learner workspaces. Final run `42997438080` passed the learner-mode 49/49 checks under GCC, ASan/UBSan and clang-tidy. The root workflow test also created each learner workspace, copied its known-good stage implementation, invoked `cppapplab check`, and verified a current PASS for all six tasks.
 
 ## Remaining work
 
-1. Complete W8-D6 taskization CI and review; confirm each task's `check` contract and progressive hints.
+1. Merge PR #26 after review; hosted task-mode and end-to-end `cppapplab check` contracts now pass.
 2. Complete Windows 11 + WSL2 target acceptance.
 3. Finish reproducible/offline dependency delivery, first-use guidance and release qualification.
 

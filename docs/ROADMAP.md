@@ -182,7 +182,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ### W8-D6 advanced tutorial taskization
 
-**Implemented on `feat/w8-advanced-taskization`, PR #26 ready for merge.** The formal catalog grows from 14 to 20 tasks with a strict D6-A → D6-B → D6-C → D6-D1 → D6-D2 → D6-D3 prerequisite chain. Each task has a focused learner source boundary, three progressive hints and a fixed fixture that builds the learner's declared implementation. D6-A through D6-D2 use staged previous-milestone server baselines; D6-D3 implements a reusable HTTP load-probe client while retaining the existing server operational regression suite. Final tested head `6f77c25`; run `42997438080` passed all three jobs: root 60/60 and task-mode 49/49 under GCC, ASan/UBSan and clang-tidy. The end-to-end workflow test also invokes `cppapplab check` for all six tasks and verifies current PASS evidence.
+**Merged into `main` via PR #26 (`c8f8e03`).** The formal catalog now contains 20 tasks with a strict D6-A → D6-B → D6-C → D6-D1 → D6-D2 → D6-D3 prerequisite chain. Each task has a focused learner source boundary, three progressive hints and a fixed fixture that builds the learner's declared implementation. D6-A through D6-D2 use staged previous-milestone server baselines; D6-D3 implements a reusable HTTP load-probe client while retaining the existing server operational regression suite. Final PR-head run `42998617546` passed all three jobs: root 60/60 and task-mode 49/49 under GCC, ASan/UBSan and clang-tidy. The end-to-end workflow test invokes `cppapplab check` for all six tasks and verifies current PASS evidence.
 
 - TCP/IP and Linux socket API
 - blocking and nonblocking I/O

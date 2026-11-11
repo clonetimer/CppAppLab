@@ -778,6 +778,8 @@ struct HttpServer::Impl {
             connection.response_version = request.version;
         }
         if (outstanding_jobs >= config.task_queue_capacity) {
+            metric_counters.queue_rejections.fetch_add(1U, std::memory_order_relaxed);
+            log_error_event("worker_queue_rejected", "task_queue_capacity", 503, token);
             queue_error(connection, 503, "Service Unavailable", "503 Service Unavailable\n");
             return;
         }
@@ -789,19 +791,26 @@ struct HttpServer::Impl {
         }
 
         ++outstanding_jobs;
+        metric_counters.active_jobs.fetch_add(1U, std::memory_order_relaxed);
         try {
             (void)pool.submit([this, fd, token, request = std::move(request)]() mutable {
                 HttpResponse response;
+                bool handler_failed = false;
                 try {
                     response = dispatch_request(request, router, static_files);
                 } catch (...) {
+                    handler_failed = true;
                     response =
                         error_response(500, "Internal Server Error", "500 Internal Server Error\n");
                 }
-                publish_completion(Completion{fd, token, std::move(response)});
+                publish_completion(
+                    Completion{fd, token, std::move(response), handler_failed});
             });
         } catch (...) {
             --outstanding_jobs;
+            metric_counters.active_jobs.fetch_sub(1U, std::memory_order_relaxed);
+            metric_counters.queue_rejections.fetch_add(1U, std::memory_order_relaxed);
+            log_error_event("worker_queue_rejected", "thread_pool_submit_failed", 503, token);
             const auto current = connections.find(token);
             if (current != connections.end()) {
                 queue_error(current->second, 503, "Service Unavailable",
@@ -826,7 +835,14 @@ struct HttpServer::Impl {
             return;
         }
 
+        if (connection.request_started_at == Clock::time_point{}) {
+            connection.request_started_at = Clock::now();
+        }
         ParseResult parsed = HttpRequestParser{}.parse(connection.read_buffer);
+        if (!parsed.request.method.empty()) {
+            connection.request_method = parsed.request.method;
+            connection.request_target = parsed.request.target;
+        }
         if (!parsed.request.version.empty()) {
             connection.response_version = parsed.request.version;
         }
@@ -857,6 +873,7 @@ struct HttpServer::Impl {
 
         cancel_deadline(connection);
         ++connection.requests_started;
+        metric_counters.requests_received.fetch_add(1U, std::memory_order_relaxed);
         ConnectionPolicy connection_policy = request_connection_policy(parsed.request);
         const bool request_limit_reached =
             connection.requests_started >= config.max_requests_per_connection;
@@ -870,9 +887,16 @@ struct HttpServer::Impl {
             } else {
                 connection.persistent_slot_reserved = true;
                 ++persistent_connections;
+                metric_counters.persistent_connections.store(persistent_connections,
+                                                              std::memory_order_relaxed);
             }
         }
         connection.read_buffer.erase(0U, parsed.consumed);
+        if (!connection.read_buffer.empty()) {
+            connection.request_started_at = Clock::now();
+        } else {
+            connection.request_started_at = Clock::time_point{};
+        }
         if (connection.peer_closed && connection.read_buffer.empty()) {
             connection_policy = ConnectionPolicy::Close;
         }
@@ -911,6 +935,9 @@ struct HttpServer::Impl {
             const ssize_t received = ::recv(connection.fd, buffer, receive_capacity, 0);
 
             if (received > 0) {
+                if (connection.read_buffer.empty()) {
+                    connection.request_started_at = Clock::now();
+                }
                 connection.read_buffer.append(buffer, static_cast<std::size_t>(received));
                 if (!connection.peer_closed) {
                     try_dispatch(connection);

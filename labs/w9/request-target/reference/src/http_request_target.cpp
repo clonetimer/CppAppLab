@@ -63,7 +63,9 @@ struct DecodeResult {
     result.value.reserve(raw.size());
     for (std::size_t index = 0U; index < raw.size(); ++index) {
         unsigned char decoded = static_cast<unsigned char>(raw[index]);
+        bool percent_encoded = false;
         if (decoded == '%') {
+            percent_encoded = true;
             if (index + 2U >= raw.size()) {
                 result.error = "invalid percent-encoding";
                 return result;
@@ -82,7 +84,7 @@ struct DecodeResult {
             result.error = "decoded request target contains a control byte";
             return result;
         }
-        if (path_component && (decoded == '/' || decoded == '\\')) {
+        if (path_component && percent_encoded && (decoded == '/' || decoded == '\\')) {
             result.error = "encoded path separator is not allowed";
             return result;
         }

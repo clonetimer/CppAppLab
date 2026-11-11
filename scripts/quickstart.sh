@@ -64,5 +64,5 @@ echo "== Platform tests =="
 ctest --test-dir build --output-on-failure
 
 echo
-echo "== Start guided learning =="
-exec ./build/cppapplab learn
+echo "== Open interactive learning home =="
+exec ./build/cppapplab

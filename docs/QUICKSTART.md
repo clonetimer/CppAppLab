@@ -31,7 +31,7 @@ The script:
 2. Offers to install missing packages with `apt` (you approve before installation).
 3. Configures and builds CppAppLab.
 4. Runs the platform's CTest suite.
-5. Starts the guided learning entry point.
+5. Opens the interactive learning home, where you can continue, search for a task or review progress.
 
 The script does not delete or replace learner workspaces. It uses the default CppAppLab build directory and may reuse its build cache.
 
@@ -43,7 +43,7 @@ For an interactive home screen, run:
 ./build/cppapplab
 ```
 
-Choose **Continue learning**, browse the task list by number, or view progress. If you prefer to skip the menu, run the guided command directly:
+Choose **Continue learning**, browse tasks by number, or search by task ID or title keyword. The task list shows PASSED, IN PROGRESS, NEEDS WORK, STALE, AVAILABLE and LOCKED states. If you prefer to skip the menu, run the guided command directly:
 
 ```bash
 ./build/cppapplab learn

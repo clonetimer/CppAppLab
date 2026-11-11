@@ -27,7 +27,7 @@ The main branch contains 23 hands-on tasks across W1–W9. W1–W7 cover C++ fun
 ./build/cppapplab
 ```
 
-Choose **Continue learning**, browse tasks by number, or review course progress. In non-interactive terminals, the command prints help instead of waiting for input. To bypass the menu and start the next task directly:
+Choose **Continue learning**, browse tasks by number, or search by a task ID or words from its title. The task list distinguishes PASSED, IN PROGRESS, NEEDS WORK, STALE, AVAILABLE and LOCKED. In non-interactive terminals, the command prints help instead of waiting for input. To bypass the menu and start the next task directly:
 
 ```bash
 ./build/cppapplab learn
@@ -126,7 +126,7 @@ After cloning the repository inside Ubuntu 24.04 (WSL2 is the target environment
 bash scripts/quickstart.sh
 ```
 
-The script checks the environment, offers to install missing Ubuntu build dependencies, configures and builds the project, runs the platform tests, and opens the first guided task. It does not overwrite existing learner workspaces. After setup, run `./build/cppapplab` for the interactive home or `./build/cppapplab learn` to continue directly. Failed checks now show a short diagnostic excerpt and the next hint, log and retry commands. For a manual setup path, see [Environment setup](docs/ENVIRONMENT_WSL2_UBUNTU.md).
+The script checks the environment, offers to install missing Ubuntu build dependencies, configures and builds the project, runs the platform tests, and opens the interactive learning home. It does not overwrite existing learner workspaces. After setup, run `./build/cppapplab` for the interactive home or `./build/cppapplab learn` to continue directly. The task picker accepts a number, task ID or title keyword. Failed checks now show a short diagnostic excerpt and the next hint, log and retry commands. For a manual setup path, see [Environment setup](docs/ENVIRONMENT_WSL2_UBUNTU.md).
 
 After satisfying the static-files prerequisite, start `w8.router` like any other learning task. For a reference-only demonstration:
 

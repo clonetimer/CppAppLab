@@ -7,6 +7,7 @@
 #include "cppapplab/workspace.hpp"
 
 #include <chrono>
+#include <cctype>
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
@@ -708,58 +709,145 @@ int guided_learn(std::string_view requested_task_id) {
     return 0;
 }
 
+std::string task_state_label(const Task& task) {
+    if (has_current_pass(task.id)) {
+        return "PASSED";
+    }
+
+    const auto record = read_progress(task.id);
+    if (record.has_value()) {
+        if (!record->checked) {
+            return "IN PROGRESS";
+        }
+        return record->evidence.passed ? "STALE" : "NEEDS WORK";
+    }
+
+    return prerequisites_satisfied(task) ? "AVAILABLE" : "LOCKED";
+}
+
+std::string normalize_task_query(std::string_view value) {
+    std::string normalized;
+    normalized.reserve(value.size());
+    for (const unsigned char character : value) {
+        normalized.push_back(static_cast<char>(std::tolower(character)));
+    }
+    return normalized;
+}
+
+std::string trim_task_query(std::string_view value) {
+    std::size_t first = 0U;
+    while (first < value.size() && std::isspace(static_cast<unsigned char>(value[first])) != 0) {
+        ++first;
+    }
+
+    std::size_t last = value.size();
+    while (last > first && std::isspace(static_cast<unsigned char>(value[last - 1U])) != 0) {
+        --last;
+    }
+    return std::string(value.substr(first, last - first));
+}
+
+bool task_matches_query(const Task& task, std::string_view normalized_query) {
+    const std::string normalized_id = normalize_task_query(task.id);
+    const std::string normalized_title = normalize_task_query(task.title);
+    return normalized_id.find(normalized_query) != std::string::npos ||
+           normalized_title.find(normalized_query) != std::string::npos;
+}
+
+int open_selected_task(const Task& task) {
+    try {
+        return guided_learn(task.id);
+    } catch (const std::exception& error) {
+        std::cerr << "Cannot open this task: " << error.what() << '\n';
+        return 1;
+    }
+}
+
 int choose_task_interactively() {
     const auto& tasks = task_catalog();
-    std::cout << "\nChoose a task by number or task ID (0 to return):\n";
+    std::cout << "\nChoose a task by number, task ID, or title keyword (0 to return):\n";
     for (std::size_t index = 0; index < tasks.size(); ++index) {
         const Task& task = tasks[index];
-        std::string state;
-        if (has_current_pass(task.id)) {
-            state = "PASSED";
-        } else if (prerequisites_satisfied(task)) {
-            state = "AVAILABLE";
-        } else {
-            state = "LOCKED";
-        }
-        std::cout << "  " << (index + 1U) << ". [" << state << "] " << task.id << " · "
-                  << task.title << '\n';
+        std::cout << "  " << (index + 1U) << ". [" << task_state_label(task) << "] " << task.id
+                  << " · " << task.title << '\n';
     }
 
-    std::cout << "Task: " << std::flush;
     std::string selection;
-    if (!std::getline(std::cin, selection) || selection == "0" || selection.empty()) {
-        return 0;
-    }
+    while (true) {
+        std::cout << "Task: " << std::flush;
+        if (!std::getline(std::cin, selection)) {
+            return 0;
+        }
+        selection = trim_task_query(selection);
+        if (selection.empty() || selection == "0") {
+            return 0;
+        }
 
-    for (std::size_t index = 0; index < tasks.size(); ++index) {
-        if (selection == std::to_string(index + 1U) || selection == tasks[index].id) {
-            try {
-                return guided_learn(tasks[index].id);
-            } catch (const std::exception& error) {
-                std::cerr << "Cannot open this task: " << error.what() << '\n';
-                return 1;
+        for (std::size_t index = 0; index < tasks.size(); ++index) {
+            if (selection == std::to_string(index + 1U) || selection == tasks[index].id) {
+                return open_selected_task(tasks[index]);
             }
         }
-    }
 
-    std::cout << "Task selection not recognized. Enter a listed number or task ID.\n";
-    return 0;
+        const std::string normalized_query = normalize_task_query(selection);
+        std::vector<std::size_t> matches;
+        for (std::size_t index = 0; index < tasks.size(); ++index) {
+            if (task_matches_query(tasks[index], normalized_query)) {
+                matches.push_back(index);
+            }
+        }
+
+        if (matches.size() == 1U) {
+            return open_selected_task(tasks[matches.front()]);
+        }
+        if (matches.size() > 1U) {
+            std::cout << "Several tasks match \"" << selection << "\":\n";
+            for (const std::size_t index : matches) {
+                std::cout << "  " << (index + 1U) << ". [" << task_state_label(tasks[index]) << "] "
+                          << tasks[index].id << " · " << tasks[index].title << '\n';
+            }
+            std::cout << "Enter one of these numbers or a more specific keyword.\n";
+        } else {
+            std::cout << "No task matches \"" << selection
+                      << "\". Try a number, task ID, or a word from its title.\n";
+        }
+    }
 }
 
 int interactive_menu() {
+    const auto& tasks = task_catalog();
     while (true) {
         std::size_t passed = 0U;
-        for (const Task& task : task_catalog()) {
-            if (has_current_pass(task.id)) {
+        std::size_t in_progress = 0U;
+        std::size_t needs_work = 0U;
+        std::size_t stale = 0U;
+        std::size_t available = 0U;
+        std::size_t locked = 0U;
+
+        for (const Task& task : tasks) {
+            const std::string state = task_state_label(task);
+            if (state == "PASSED") {
                 ++passed;
+            } else if (state == "IN PROGRESS") {
+                ++in_progress;
+            } else if (state == "NEEDS WORK") {
+                ++needs_work;
+            } else if (state == "STALE") {
+                ++stale;
+            } else if (state == "AVAILABLE") {
+                ++available;
+            } else {
+                ++locked;
             }
         }
 
         std::cout << "\nCppAppLab · Learning home\n"
-                  << "Course progress: " << passed << '/' << task_catalog().size()
-                  << " tasks passed\n\n"
+                  << "Course: " << passed << '/' << tasks.size() << " passed"
+                  << " · in progress: " << in_progress << " · needs work: " << needs_work
+                  << " · stale: " << stale << " · available: " << available
+                  << " · locked: " << locked << "\n\n"
                   << "  1. Continue learning\n"
-                  << "  2. Choose a task\n"
+                  << "  2. Choose or search a task\n"
                   << "  3. View course progress\n"
                   << "  4. Help and commands\n"
                   << "  0. Exit\n"
@@ -816,7 +904,7 @@ void print_help() {
 
 int run_cli(int argc, char* argv[]) {
     if (argc <= 1) {
-        if (::isatty(STDIN_FILENO) != 0) {
+        if (::isatty(STDIN_FILENO) != 0 && ::isatty(STDOUT_FILENO) != 0) {
             return interactive_menu();
         }
         print_help();

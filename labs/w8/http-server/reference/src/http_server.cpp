@@ -308,6 +308,144 @@ struct HttpServer::Impl {
     Clock::time_point shutdown_deadline{};
     cppapplab::concurrency::ThreadPool pool;
 
+    [[nodiscard]] static std::string json_quote(std::string_view value) {
+        constexpr char kHex[] = "0123456789abcdef";
+        std::string output;
+        output.reserve(value.size() + 2U);
+        output.push_back('"');
+        for (const unsigned char character : value) {
+            switch (character) {
+                case '"':
+                    output += "\\\"";
+                    break;
+                case '\\':
+                    output += "\\\\";
+                    break;
+                case '\b':
+                    output += "\\b";
+                    break;
+                case '\f':
+                    output += "\\f";
+                    break;
+                case '\n':
+                    output += "\\n";
+                    break;
+                case '\r':
+                    output += "\\r";
+                    break;
+                case '\t':
+                    output += "\\t";
+                    break;
+                default:
+                    if (character < 0x20U) {
+                        output += "\\u00";
+                        output.push_back(kHex[(character >> 4U) & 0x0fU]);
+                        output.push_back(kHex[character & 0x0fU]);
+                    } else {
+                        output.push_back(static_cast<char>(character));
+                    }
+                    break;
+            }
+        }
+        output.push_back('"');
+        return output;
+    }
+
+    [[nodiscard]] static std::string log_prefix(std::string_view level,
+                                                std::string_view event) {
+        const auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                   std::chrono::system_clock::now().time_since_epoch())
+                                   .count();
+        return "{\"timestamp_ms\":" + std::to_string(timestamp) +
+               ",\"level\":" + json_quote(level) + ",\"event\":" + json_quote(event);
+    }
+
+    void emit_log(const std::string& line, bool access_log) noexcept {
+        if ((access_log && !config.access_log_enabled) ||
+            (!access_log && !config.error_log_enabled)) {
+            return;
+        }
+
+        try {
+            if (config.log_sink) {
+                config.log_sink(line);
+            } else {
+                static std::mutex output_mutex;
+                const std::lock_guard<std::mutex> lock(output_mutex);
+                std::clog << line << '\\n';
+            }
+        } catch (...) {
+            metric_counters.log_sink_failures.fetch_add(1U, std::memory_order_relaxed);
+        }
+    }
+
+    void log_server_event(std::string_view event, std::string_view detail = {},
+                          std::uint64_t count = 0U) noexcept {
+        std::string line = log_prefix("info", event);
+        if (!detail.empty()) {
+            line += ",\"detail\":" + json_quote(detail);
+        }
+        if (count != 0U) {
+            line += ",\"count\":" + std::to_string(count);
+        }
+        line.push_back('}');
+        emit_log(line, false);
+    }
+
+    void log_error_event(std::string_view event, std::string_view detail, int status_code = 0,
+                         std::uint64_t connection_id = 0U) noexcept {
+        std::string line = log_prefix("error", event);
+        if (status_code != 0) {
+            line += ",\"status\":" + std::to_string(status_code);
+        }
+        if (connection_id != 0U) {
+            line += ",\"connection_id\":" + std::to_string(connection_id);
+        }
+        if (!detail.empty()) {
+            line += ",\"detail\":" + json_quote(detail);
+        }
+        line.push_back('}');
+        emit_log(line, false);
+    }
+
+    void log_access(const Connection& connection, std::size_t response_bytes,
+                    std::uint64_t duration_ms) noexcept {
+        std::string line = log_prefix("info", "http_access");
+        line += ",\"connection_id\":" + std::to_string(connection.token);
+        line += ",\"method\":" + json_quote(connection.request_method);
+        line += ",\"target\":" + json_quote(connection.request_target);
+        line += ",\"status\":" + std::to_string(connection.response_status_code);
+        line += ",\"duration_ms\":" + std::to_string(duration_ms);
+        line += ",\"response_bytes\":" + std::to_string(response_bytes);
+        line += ",\"connection\":";
+        line += json_quote(connection.close_after_write ? "close" : "keep-alive");
+        line.push_back('}');
+        emit_log(line, true);
+    }
+
+    [[nodiscard]] HttpServerMetrics snapshot_metrics() const noexcept {
+        HttpServerMetrics snapshot;
+        snapshot.accepted_connections = metric_counters.accepted_connections.load();
+        snapshot.rejected_connections = metric_counters.rejected_connections.load();
+        snapshot.active_connections = metric_counters.active_connections.load();
+        snapshot.closed_connections = metric_counters.closed_connections.load();
+        snapshot.persistent_connections = metric_counters.persistent_connections.load();
+        snapshot.requests_received = metric_counters.requests_received.load();
+        snapshot.responses_completed = metric_counters.responses_completed.load();
+        snapshot.response_bytes = metric_counters.response_bytes.load();
+        snapshot.client_errors = metric_counters.client_errors.load();
+        snapshot.server_errors = metric_counters.server_errors.load();
+        snapshot.request_timeouts = metric_counters.request_timeouts.load();
+        snapshot.idle_timeouts = metric_counters.idle_timeouts.load();
+        snapshot.handler_failures = metric_counters.handler_failures.load();
+        snapshot.queue_rejections = metric_counters.queue_rejections.load();
+        snapshot.active_jobs = metric_counters.active_jobs.load();
+        snapshot.graceful_shutdowns = metric_counters.graceful_shutdowns.load();
+        snapshot.forced_shutdown_connections = metric_counters.forced_shutdown_connections.load();
+        snapshot.log_sink_failures = metric_counters.log_sink_failures.load();
+        return snapshot;
+    }
+
     void discard_stale_deadlines() {
         while (!deadlines.empty()) {
             const DeadlineEntry& entry = deadlines.top();

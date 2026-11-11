@@ -9,11 +9,9 @@ In PowerShell, list installed distributions and start the installed Ubuntu 24.04
 ~~~powershell
 wsl -l -v
 wsl -d Ubuntu
-# If the listed distribution is named Ubuntu-24.04 instead:
-wsl -d Ubuntu-24.04
 ~~~
 
-The distribution must report WSL version 2. Use the exact name shown by wsl -l -v.
+If the listed distribution is named Ubuntu-24.04, use wsl -d Ubuntu-24.04 instead. The distribution must report WSL version 2.
 
 Inside Ubuntu:
 

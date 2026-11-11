@@ -228,7 +228,6 @@ TEST(GuidedLearningWorkflowTest, LearnMovesToTheNextUnlockedTaskAfterAcceptanceP
                                                  ".cppapplab-workspace"));
 }
 
-
 TEST(MenuWorkflowTest, LetsLearnerChooseATaskWithoutRememberingItsIdentifier) {
     TemporaryDirectory temporary;
     const auto home = temporary.path() / "home";

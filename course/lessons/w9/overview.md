@@ -14,11 +14,11 @@ The advanced curriculum remains cumulative: learners extend the W8 server and it
 |---|---|---|
 | A1 | w9.http-chunked | Incremental chunked request-body decoding, trailers, exact consumed-byte accounting and unambiguous message framing |
 | A2 | w9.request-target | Origin-form target parsing, strict percent decoding, query multimap and malformed-escape rejection |
-| A3 | w9.static-root | Document-root confinement using directory file descriptors, openat, no-follow semantics and regular-file checks (in progress) |
+| A3 | w9.static-root | Document-root confinement using directory file descriptors, openat, no-follow semantics and regular-file checks (merged) |
 | A4 | w9.http-hardening | Request-smuggling regression cases, header/framing policy, resource limits and deterministic protocol errors |
 | A5 | w9.http-fuzzing | Parser fuzz target, regression corpus, sanitizer-backed fuzz smoke and minimized reproductions |
 
-A1 (chunked transfer decoding) and A2 (request-target and query parsing) are merged into main. A1 has 35 fixed tests and A2 has 39; both passed GCC, ASan/UBSan, clang-tidy and the real learning-engine check. A3 (secure static-root confinement) is being implemented on `feat/w9-secure-static-root`; its 34-case fixture and real learning-engine check are staged, with hosted CI pending. A4–A5 remain roadmap stages.
+A1 (chunked transfer decoding) and A2 (request-target and query parsing) are merged into main. A1 has 35 fixed tests and A2 has 39; both passed GCC, ASan/UBSan, clang-tidy and the real learning-engine check. A3 (secure static-root confinement) is merged via PR #29 (`f741e34`); its 34-case fixture passed GCC, ASan/UBSan and clang-tidy, and the real learning-engine check passed. Final PR-head run `43013017702` passed all three jobs, including root 66/66. A4–A5 remain roadmap stages.
 
 ### W9-A1 contract
 

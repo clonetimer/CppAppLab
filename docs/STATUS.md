@@ -101,13 +101,15 @@ The task introduces a standalone request-target parser. It accepts origin-form a
 
 The learner source boundary is a new request-target header/source pair. The reference fixture contains 39 platform-owned GoogleTests. A root workflow test creates the learner workspace, copies only the declared reference source, disables learner CMake and invokes the real `cppapplab check` path. Final PR-head run `43008862704` passed all three jobs: root 64/64 and W9-A2 39/39 under GCC, ASan/UBSan and clang-tidy; W9-A1 remained 35/35. End-to-end learning-engine checks verified current PASS evidence for both W9 tasks.
 
-## W9-A3 — Secure static-file root confinement (implementation in progress)
+## W9-A3 — Secure static-file root confinement (merged and validated)
 
-**Branch:** `feat/w9-secure-static-root`.  
+**Merge:** PR #29, commit `f741e3440ac9e3dbf206b8f19215ca3b18720b71`.  
+**Final tested head:** `1018190a93bb1bdd134d0d347c71e9497f39485e`.  
+**Final PR CI:** run `43013017702`, all three jobs passed.  
 **Task ID:** `w9.static-root`.  
 **Prerequisite:** current PASS for `w9.request-target`.
 
-The branch adds the third W9 task to the catalog (23 tasks on this branch; 22 remain on main until merge). The learner workspace stages the completed W8 HTTP message model and W9-A2 request-target parser as known-good baselines. The learner implements the static-file handler.
+The main catalog now contains 23 tasks. The learner workspace stages the completed W8 HTTP message model and W9-A2 request-target parser as known-good baselines. The learner implements the static-file handler.
 
 The reference handler:
 
@@ -118,15 +120,21 @@ The reference handler:
 - Maps root/trailing-slash paths to `index.html`, preserves binary bytes and MIME types, and enforces a maximum read size before and during the read.
 - Rejects final and intermediate symlinks, FIFOs, directories and path traversal.
 
-The fixed fixture contains 34 platform-owned GoogleTests, including symlink escape, FIFO nonblocking, file-size, root descriptor rename/lifetime and percent-decoding regression cases. The root learning-engine test creates the W9 workspace, copies all declared reference files, disables learner-controlled CMake and invokes the real `cppapplab check` path. GCC, ASan/UBSan and clang-tidy CI gates have been added but have not yet completed for this branch.
+Final acceptance evidence:
 
-W9-A3 is not yet merged or claimed as passing. W9-A4 HTTP hardening and W9-A5 parser fuzzing remain planned.
+- Root learning-engine suite: 66/66 under GCC, ASan/UBSan and clang-tidy.
+- W9-A3 fixed fixture: 34/34 under GCC, ASan/UBSan and clang-tidy.
+- W9-A1 regression: 35/35; W9-A2 regression: 39/39.
+- End-to-end `cppapplab check` created the W9-A3 learner workspace and verified current PASS evidence.
+- clang-format and clang-tidy passed.
+
+All symlinks below the configured document root are rejected, including symlinks that point back inside the root. The configured root itself is trusted configuration; its final component must not be a symlink. This is an educational security boundary, not a claim of full production filesystem sandboxing.
 
 ## Remaining work
 
 1. Complete Windows 11 + WSL2 target acceptance.
 2. Finish reproducible/offline dependency delivery, first-use guidance and release qualification.
 
-W9-A1 chunked-transfer decoding and W9-A2 request-target/query parsing are merged and validated. W9-A3 secure static-root confinement is under implementation on its feature branch. W9-A4 HTTP hardening and W9-A5 parser fuzzing remain planned; TLS/WebSocket, performance engineering and production operations are planned for W10–W12. These later stages are not complete or release-qualified.
+W9-A1 chunked-transfer decoding, W9-A2 request-target/query parsing and W9-A3 secure static-root confinement are merged and validated. W9-A4 HTTP hardening and W9-A5 parser fuzzing remain planned; TLS/WebSocket, performance engineering and production operations are planned for W10–W12. These later stages are not complete or release-qualified.
 
 A repository commit is not passing evidence. Record exact tested SHA, workflow result, test counts and target environment. CI does not certify human understanding or target-machine compatibility.

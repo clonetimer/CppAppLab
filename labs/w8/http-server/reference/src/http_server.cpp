@@ -666,11 +666,13 @@ struct HttpServer::Impl {
         }
         if (fd >= 0) {
             (void)::epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, nullptr);
-            (void)::close(fd);
         }
         connections.erase(found);
         metric_counters.closed_connections.fetch_add(1U, std::memory_order_relaxed);
         metric_counters.active_connections.store(connections.size(), std::memory_order_relaxed);
+        if (fd >= 0) {
+            (void)::close(fd);
+        }
     }
 
     void cleanup_connections() noexcept {

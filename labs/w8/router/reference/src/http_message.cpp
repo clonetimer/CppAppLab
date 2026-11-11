@@ -61,7 +61,7 @@ constexpr std::string_view kHeaderPunctuation = "!#$%&'*+-.^_`|~";
 }
 
 [[nodiscard]] bool contains_connection_option(std::string_view value,
-                                               std::string_view expected) noexcept {
+                                              std::string_view expected) noexcept {
     std::size_t begin = 0U;
     while (begin <= value.size()) {
         const std::size_t comma = value.find(',', begin);
@@ -152,8 +152,7 @@ std::string serialize_response(const HttpResponse& response) {
     return serialize_response(response, ConnectionPolicy::Close);
 }
 
-std::string serialize_response(const HttpResponse& response,
-                               ConnectionPolicy connection_policy) {
+std::string serialize_response(const HttpResponse& response, ConnectionPolicy connection_policy) {
     if (response.status_code < 100 || response.status_code > 599) {
         throw std::invalid_argument("HTTP status code must be in the range 100..599");
     }

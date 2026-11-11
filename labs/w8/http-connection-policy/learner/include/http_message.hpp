@@ -6,6 +6,8 @@
 
 namespace cppapplab::http {
 
+// TODO(student): declare ConnectionPolicy and the policy-aware API used by the fixed tests.
+
 struct HttpRequest {
     std::string method;
     std::string target;

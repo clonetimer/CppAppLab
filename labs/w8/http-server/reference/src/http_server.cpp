@@ -460,7 +460,7 @@ struct HttpServer::Impl {
         char buffer[8192];
 
         for (;;) {
-            if (connection.read_buffer.size() >= config.max_request_bytes) {
+            if (connection.read_buffer.size() > config.max_request_bytes) {
                 if (connection.peer_closed) {
                     queue_error(connection, 413, "Content Too Large",
                                 "413 Content Too Large\n");

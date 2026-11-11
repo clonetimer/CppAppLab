@@ -97,6 +97,13 @@ jobs:
           ctest --test-dir build-http-operational --output-on-failure --timeout 25
       - name: Environment acceptance smoke test
         run: bash scripts/check_environment.sh
+      - name: Offline source bundle acceptance
+        run: |
+          bash scripts/create_offline_bundle.sh "$RUNNER_TEMP/cppapplab-offline.tar.gz"
+          mkdir -p "$RUNNER_TEMP/cppapplab-offline"
+          tar -xzf "$RUNNER_TEMP/cppapplab-offline.tar.gz" -C "$RUNNER_TEMP/cppapplab-offline"
+          bash "$RUNNER_TEMP/cppapplab-offline/package/scripts/build_offline.sh" \
+            "$RUNNER_TEMP/cppapplab-offline-build"
 
   sanitizers:
     name: GCC ASan and UBSan

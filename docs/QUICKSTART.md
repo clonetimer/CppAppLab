@@ -37,7 +37,13 @@ The script does not delete or replace learner workspaces. It uses the default Cp
 
 ## 3. Start learning
 
-The guided entry point is:
+For an interactive home screen, run:
+
+```bash
+./build/cppapplab
+```
+
+Choose **Continue learning**, browse the task list by number, or view progress. If you prefer to skip the menu, run the guided command directly:
 
 ```bash
 ./build/cppapplab learn
@@ -65,7 +71,7 @@ A task with an unmet prerequisite remains locked. The command reports which prer
 2. Edit the files listed by the task guide.
 3. If stuck, request a progressive hint (levels 1–3).
 4. Run the printed `cppapplab check` command.
-5. After PASS, run `./build/cppapplab learn` to continue.
+5. After PASS, run `./build/cppapplab learn` to continue, or return to the home menu with `./build/cppapplab`.
 
 Your source files, progress and check history are kept between sessions. A changed source file makes the previous PASS evidence stale; rerun the check after editing.
 

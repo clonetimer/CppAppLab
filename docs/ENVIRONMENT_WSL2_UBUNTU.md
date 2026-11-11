@@ -17,19 +17,17 @@ The Ubuntu distribution must show VERSION 2. If it shows version 1, convert the 
 
 ~~~powershell
 wsl --set-version Ubuntu 2
-# Or, if the installed name is Ubuntu-24.04:
-wsl --set-version Ubuntu-24.04 2
 ~~~
+
+If the installed name is Ubuntu-24.04, use wsl --set-version Ubuntu-24.04 2 instead.
 
 Start Ubuntu:
 
 ~~~powershell
 wsl -d Ubuntu
-# Or, if the installed name is Ubuntu-24.04:
-wsl -d Ubuntu-24.04
 ~~~
 
-Use the exact distribution name shown by wsl -l -v.
+If the installed name is Ubuntu-24.04, use wsl -d Ubuntu-24.04 instead. Always use the exact distribution name shown by wsl -l -v.
 
 ## Windows launcher
 

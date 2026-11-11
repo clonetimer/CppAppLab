@@ -367,6 +367,25 @@ TEST(HttpObservabilityAcceptanceTest, ErrorLogCanBeDisabledWithoutDisablingAcces
     }));
 }
 
+TEST(HttpObservabilityAcceptanceTest, LogSinkExceptionsDoNotBreakRequestProcessing) {
+    HttpServerConfig config;
+    config.log_sink = [](std::string_view) {
+        throw std::runtime_error("log sink unavailable");
+    };
+    TestServer server(config);
+    TestClient client(server.port());
+
+    ASSERT_TRUE(client.send_all(make_request("/hello")));
+    const std::string response = client.read_response();
+    EXPECT_NE(response.find("HTTP/1.1 200 OK\\r\\n"), std::string::npos);
+    EXPECT_EQ(response_body(response), "Hello from C++ HTTP Server!\\n");
+    EXPECT_TRUE(client.read_until_eof().empty());
+
+    const HttpServerMetrics metrics = server.metrics();
+    EXPECT_GE(metrics.log_sink_failures, 2U);
+    EXPECT_EQ(metrics.responses_completed, 1U);
+}
+
 TEST(HttpObservabilityAcceptanceTest, TracksIdleAndRequestTimeoutCounters) {
     HttpServerConfig config;
     config.idle_timeout = 100ms;

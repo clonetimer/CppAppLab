@@ -333,7 +333,7 @@ TEST(HttpKeepAliveAcceptanceTest, DoesNotDispatchNextRequestBeforeCurrentRespons
         std::unique_lock<std::mutex> lock(mutex);
         first_entered = true;
         condition.notify_all();
-        condition.wait(lock, [&] { return release_first; });
+        (void)condition.wait_for(lock, 2s, [&] { return release_first; });
         HttpResponse response;
         response.body = "first";
         return response;

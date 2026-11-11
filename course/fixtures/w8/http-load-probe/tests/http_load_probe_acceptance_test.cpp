@@ -97,23 +97,23 @@ void wait_for_responses(const TestServer& server, std::uint64_t expected) {
 
 TEST(HttpLoadProbeAcceptanceTest, RejectsInvalidConfiguration) {
     HttpLoadProbeConfig config;
-    EXPECT_THROW(run_http_load_probe(config), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(run_http_load_probe(config)), std::invalid_argument);
 
     config.port = 8080U;
     config.client_count = 0U;
-    EXPECT_THROW(run_http_load_probe(config), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(run_http_load_probe(config)), std::invalid_argument);
 
     config.client_count = 1U;
     config.requests_per_client = 0U;
-    EXPECT_THROW(run_http_load_probe(config), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(run_http_load_probe(config)), std::invalid_argument);
 
     config.requests_per_client = 1U;
     config.target = "health";
-    EXPECT_THROW(run_http_load_probe(config), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(run_http_load_probe(config)), std::invalid_argument);
 
     config.target = "/health";
     config.timeout = 0ms;
-    EXPECT_THROW(run_http_load_probe(config), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(run_http_load_probe(config)), std::invalid_argument);
 }
 
 TEST(HttpLoadProbeAcceptanceTest, ReportsSingleClientLatencyAndThroughput) {

@@ -196,6 +196,8 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 - source package and learner package
 - offline dependency strategy and reproducible checks
+- interactive learner home and numbered task selection
+- actionable check-failure diagnostics and retry guidance
 - first-use guide and troubleshooting
 - Linux/WSL2 end-to-end verification
 - version tag and release notes

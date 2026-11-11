@@ -69,7 +69,7 @@ class UniqueFd {
 
 [[nodiscard]] HttpServerConfig validate_config(HttpServerConfig config) {
     constexpr auto kMaximumTimeout = std::chrono::hours(24);
-    const auto valid_timeout = [](std::chrono::milliseconds timeout) {
+    const auto valid_timeout = [kMaximumTimeout](std::chrono::milliseconds timeout) {
         return timeout.count() > 0 && timeout <= kMaximumTimeout;
     };
     if (config.backlog <= 0 || config.worker_count == 0U || config.task_queue_capacity == 0U ||

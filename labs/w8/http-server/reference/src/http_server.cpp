@@ -174,6 +174,7 @@ struct HttpServer::Impl {
         std::atomic<std::uint64_t> accepted_connections{0U};
         std::atomic<std::uint64_t> rejected_connections{0U};
         std::atomic<std::uint64_t> active_connections{0U};
+        std::atomic<std::uint64_t> peak_active_connections{0U};
         std::atomic<std::uint64_t> closed_connections{0U};
         std::atomic<std::uint64_t> persistent_connections{0U};
         std::atomic<std::uint64_t> requests_received{0U};
@@ -189,6 +190,7 @@ struct HttpServer::Impl {
         std::atomic<std::uint64_t> graceful_shutdowns{0U};
         std::atomic<std::uint64_t> forced_shutdown_connections{0U};
         std::atomic<std::uint64_t> log_sink_failures{0U};
+        std::atomic<std::uint64_t> write_backpressure_events{0U};
     };
 
     explicit Impl(HttpServerConfig server_config, Router server_router)
@@ -434,6 +436,7 @@ struct HttpServer::Impl {
         snapshot.accepted_connections = metric_counters.accepted_connections.load();
         snapshot.rejected_connections = metric_counters.rejected_connections.load();
         snapshot.active_connections = metric_counters.active_connections.load();
+        snapshot.peak_active_connections = metric_counters.peak_active_connections.load();
         snapshot.closed_connections = metric_counters.closed_connections.load();
         snapshot.persistent_connections = metric_counters.persistent_connections.load();
         snapshot.requests_received = metric_counters.requests_received.load();
@@ -449,6 +452,7 @@ struct HttpServer::Impl {
         snapshot.graceful_shutdowns = metric_counters.graceful_shutdowns.load();
         snapshot.forced_shutdown_connections = metric_counters.forced_shutdown_connections.load();
         snapshot.log_sink_failures = metric_counters.log_sink_failures.load();
+        snapshot.write_backpressure_events = metric_counters.write_backpressure_events.load();
         return snapshot;
     }
 
@@ -745,6 +749,8 @@ struct HttpServer::Impl {
                 continue;
             }
             if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                metric_counters.write_backpressure_events.fetch_add(1U,
+                                                                    std::memory_order_relaxed);
                 return update_interest(connection);
             }
             return false;
@@ -1040,7 +1046,14 @@ struct HttpServer::Impl {
                 throw;
             }
             metric_counters.accepted_connections.fetch_add(1U, std::memory_order_relaxed);
-            metric_counters.active_connections.store(connections.size(), std::memory_order_relaxed);
+            const auto active_connections = static_cast<std::uint64_t>(connections.size());
+            metric_counters.active_connections.store(active_connections, std::memory_order_relaxed);
+            auto peak_connections =
+                metric_counters.peak_active_connections.load(std::memory_order_relaxed);
+            while (active_connections > peak_connections &&
+                   !metric_counters.peak_active_connections.compare_exchange_weak(
+                       peak_connections, active_connections, std::memory_order_relaxed)) {
+            }
         }
     }
 

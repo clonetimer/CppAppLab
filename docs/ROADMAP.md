@@ -166,7 +166,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ## P6 — W8: HTTP server engineering
 
-**Status: W8-D1–D5 merged into `main`; W8-D6 is next.**
+**Status: W8-D1–D6-B merged into `main`; D6-C is in progress.**
 
 - D1: HTTP/1.1 message model, request-line parser and response serializer; 33 fixed acceptance checks passed.
 - D2: incremental parser, NeedMoreData/Complete/Error states, strict header syntax, Content-Length and byte-accurate consumed length; 39 checks passed.
@@ -174,8 +174,8 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - D4: method + path Router, dynamic Hello/Echo/Health handlers, 405 Allow, static fallback and byte-exact CLI integration; 43 checks passed.
 - D5: non-blocking TCP listener, single-owner epoll Reactor, W6 ThreadPool handoff, completion queue/eventfd, generation-safe stale completion rejection, bounded buffers and 400/413/500/503 paths. Merged as `f503d3f`; final-head Ubuntu 24.04 run `42956321926` passed all three jobs. Acceptance: 23 platform tests + 10 reference tests + CLI loopback smoke (34 total); root GCC/CTest and ASan/UBSan each 53/53; Router fixture 43/43; formatting and clang-tidy passed. Windows 11 + WSL2 target acceptance remains separate.
 - D6-A: merged as `241059c`; explicit HTTP/1.1/1.0 connection policy, exact case-insensitive Connection token parsing, authoritative response Connection header, and backward-compatible close-only serializer overload. Both maintained protocol copies passed 14 tests each under GCC, ASan/UBSan and clang-tidy.
-- D6-B (implemented on `feat/w8-d6-keep-alive-lifecycle`, PR #21 awaiting merge): sequential Keep-Alive lifecycle, buffered subsequent requests, HTTP/1.0 response-version preservation, peer half-close pipeline draining and strict response ordering. Final-head run `42971176071` passed all three jobs: GCC, ASan/UBSan, clang-format and clang-tidy; the dedicated loopback fixture passed 8/8 under GCC, sanitizer and clang-tidy.
-- D6-C: idle/header/body deadlines and per-connection limits.
+- D6-B: merged as `8597a38` (PR #21); sequential Keep-Alive lifecycle, buffered subsequent requests, HTTP/1.0 response-version preservation, peer half-close pipeline draining and strict response ordering. Final-head run `42971917343` passed GCC, ASan/UBSan, clang-format and clang-tidy; loopback fixture 8/8.
+- D6-C (in progress on `feat/w8-d6-connection-guards`): timerfd-backed absolute idle/header/body deadlines, HTTP 408 for incomplete requests, per-connection request cap and persistent-connection quota. Dedicated nine-case loopback fixture and GCC, ASan/UBSan, clang-tidy gates added; hosted CI pending.
 - D6-D: graceful shutdown, structured access/error logging, metrics and load/soak checks.
 
 - TCP/IP and Linux socket API

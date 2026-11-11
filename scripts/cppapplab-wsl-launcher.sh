@@ -4,9 +4,9 @@ set -Eeuo pipefail
 normalize_repo_path() {
     local path="$1"
     case "$path" in
-        "~/"*) printf '%s/%s' "$HOME" "${path#\~/}" ;;
-        "~") printf '%s' "$HOME" ;;
-        /*) printf '%s' "$path" ;;
+        "~/"*) printf '%s/%s\n' "$HOME" "${path#\~/}" ;;
+        "~") printf '%s\n' "$HOME" ;;
+        /*) printf '%s\n' "$path" ;;
         *)
             echo "[FAIL] RepoPath must be an absolute Linux path or begin with ~/." >&2
             return 2

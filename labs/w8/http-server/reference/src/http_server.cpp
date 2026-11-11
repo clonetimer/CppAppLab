@@ -117,6 +117,8 @@ struct HttpServer::Impl {
         bool processing{false};
         bool peer_closed{false};
         bool close_after_write{false};
+        ConnectionPolicy pending_policy{ConnectionPolicy::Close};
+        std::string response_version{"HTTP/1.1"};
     };
 
     struct Completion {
@@ -229,7 +231,9 @@ struct HttpServer::Impl {
 
     [[nodiscard]] bool update_interest(const Connection& connection) const {
         epoll_event event{};
-        if (!connection.processing && !connection.peer_closed && !connection.close_after_write) {
+        if (!connection.processing &&
+            connection.write_offset >= connection.write_buffer.size() &&
+            !connection.peer_closed && !connection.close_after_write) {
             event.events |= EPOLLIN | EPOLLRDHUP;
         }
         if (connection.write_offset < connection.write_buffer.size()) {
@@ -259,28 +263,40 @@ struct HttpServer::Impl {
         }
     }
 
-    void queue_response(Connection& connection, HttpResponse response) {
+    void queue_response(Connection& connection, HttpResponse response,
+                        ConnectionPolicy connection_policy = ConnectionPolicy::Close) {
+        std::string version = connection.response_version;
+        if (version != "HTTP/1.0" && version != "HTTP/1.1") {
+            version = "HTTP/1.1";
+        }
+
+        if (connection.peer_closed && connection.read_buffer.empty()) {
+            connection_policy = ConnectionPolicy::Close;
+        }
         if (response.body.size() > config.max_response_bytes) {
             response = error_response(500, "Internal Server Error", "500 Internal Server Error\n");
+            connection_policy = ConnectionPolicy::Close;
         }
 
         std::string wire;
         try {
-            wire = serialize_response(response);
+            wire = serialize_response(response, connection_policy, version);
         } catch (...) {
             response = error_response(500, "Internal Server Error", "500 Internal Server Error\n");
-            wire = serialize_response(response);
+            connection_policy = ConnectionPolicy::Close;
+            wire = serialize_response(response, connection_policy, version);
         }
 
         if (wire.size() > config.max_response_bytes) {
             response = error_response(500, "Internal Server Error", "500 Internal Server Error\n");
-            wire = serialize_response(response);
+            connection_policy = ConnectionPolicy::Close;
+            wire = serialize_response(response, connection_policy, version);
         }
 
         connection.write_buffer = std::move(wire);
         connection.write_offset = 0U;
         connection.processing = false;
-        connection.close_after_write = true;
+        connection.close_after_write = connection_policy == ConnectionPolicy::Close;
         const std::uint64_t token = connection.token;
         if (!update_interest(connection)) {
             close_connection(token);
@@ -292,6 +308,7 @@ struct HttpServer::Impl {
     }
 
     [[nodiscard]] bool flush_write(Connection& connection) {
+        const std::uint64_t token = connection.token;
         while (connection.write_offset < connection.write_buffer.size()) {
             const ssize_t sent =
                 ::send(connection.fd, connection.write_buffer.data() + connection.write_offset,
@@ -308,7 +325,24 @@ struct HttpServer::Impl {
             }
             return false;
         }
-        return false;  // D5 always emits Connection: close.
+
+        if (connection.close_after_write) {
+            return false;
+        }
+
+        connection.write_buffer.clear();
+        connection.write_offset = 0U;
+        try_dispatch(connection);
+
+        const auto current = connections.find(token);
+        if (current == connections.end()) {
+            return false;
+        }
+        if (current->second.processing ||
+            current->second.write_offset < current->second.write_buffer.size()) {
+            return true;
+        }
+        return update_interest(current->second);
     }
 
     void publish_completion(Completion completion) {
@@ -330,9 +364,14 @@ struct HttpServer::Impl {
         }
     }
 
-    void submit_request(Connection& connection, HttpRequest request) {
+    void submit_request(Connection& connection, HttpRequest request,
+                        ConnectionPolicy connection_policy) {
         const std::uint64_t token = connection.token;
         const int fd = connection.fd;
+        connection.pending_policy = connection_policy;
+        if (!request.version.empty()) {
+            connection.response_version = request.version;
+        }
         if (outstanding_jobs >= config.task_queue_capacity) {
             queue_error(connection, 503, "Service Unavailable", "503 Service Unavailable\n");
             return;
@@ -367,7 +406,8 @@ struct HttpServer::Impl {
     }
 
     void try_dispatch(Connection& connection) {
-        if (connection.processing || connection.close_after_write) {
+        if (connection.processing || connection.close_after_write ||
+            connection.write_offset < connection.write_buffer.size()) {
             return;
         }
 
@@ -380,6 +420,9 @@ struct HttpServer::Impl {
         }
 
         ParseResult parsed = HttpRequestParser{}.parse(connection.read_buffer);
+        if (!parsed.request.version.empty()) {
+            connection.response_version = parsed.request.version;
+        }
         if (parsed.status == ParseStatus::NeedMoreData) {
             if (connection.peer_closed) {
                 queue_error(connection, 400, "Bad Request", "400 Bad Request\n");
@@ -401,26 +444,60 @@ struct HttpServer::Impl {
             return;
         }
 
-        submit_request(connection, std::move(parsed.request));
+        ConnectionPolicy connection_policy = request_connection_policy(parsed.request);
+        connection.read_buffer.erase(0U, parsed.consumed);
+        if (connection.peer_closed && connection.read_buffer.empty()) {
+            connection_policy = ConnectionPolicy::Close;
+        }
+        submit_request(connection, std::move(parsed.request), connection_policy);
     }
 
     [[nodiscard]] bool read_client(Connection& connection, bool peer_hangup) {
         const std::uint64_t token = connection.token;
+        if (peer_hangup) {
+            connection.peer_closed = true;
+        }
         char buffer[8192];
 
         for (;;) {
+            if (connection.read_buffer.size() >= config.max_request_bytes) {
+                if (connection.peer_closed) {
+                    queue_error(connection, 413, "Content Too Large",
+                                "413 Content Too Large\n");
+                    return connections.find(token) != connections.end();
+                }
+                try_dispatch(connection);
+                const auto current = connections.find(token);
+                if (current == connections.end()) {
+                    return false;
+                }
+                if (current->second.processing ||
+                    current->second.write_offset < current->second.write_buffer.size()) {
+                    return true;
+                }
+                queue_error(current->second, 413, "Content Too Large",
+                            "413 Content Too Large\n");
+                return connections.find(token) != connections.end();
+            }
+
             const std::size_t remaining = config.max_request_bytes - connection.read_buffer.size();
             const std::size_t receive_capacity =
                 remaining >= sizeof(buffer) ? sizeof(buffer) : remaining + 1U;
             const ssize_t received = ::recv(connection.fd, buffer, receive_capacity, 0);
 
             if (received > 0) {
-                const std::size_t received_bytes = static_cast<std::size_t>(received);
-                if (received_bytes > remaining) {
-                    queue_error(connection, 413, "Content Too Large", "413 Content Too Large\n");
-                    return connections.find(token) != connections.end();
+                connection.read_buffer.append(buffer, static_cast<std::size_t>(received));
+                if (!connection.peer_closed) {
+                    try_dispatch(connection);
+                    const auto current = connections.find(token);
+                    if (current == connections.end()) {
+                        return false;
+                    }
+                    if (current->second.processing ||
+                        current->second.write_offset < current->second.write_buffer.size()) {
+                        return true;
+                    }
                 }
-                connection.read_buffer.append(buffer, received_bytes);
                 continue;
             }
             if (received == 0) {
@@ -436,9 +513,6 @@ struct HttpServer::Impl {
             return false;
         }
 
-        if (peer_hangup) {
-            connection.peer_closed = true;
-        }
         try_dispatch(connection);
         return connections.find(token) != connections.end();
     }
@@ -514,7 +588,8 @@ struct HttpServer::Impl {
             if (found == connections.end() || found->second.fd != completion.fd) {
                 continue;
             }
-            queue_response(found->second, std::move(completion.response));
+            queue_response(found->second, std::move(completion.response),
+                           found->second.pending_policy);
         }
     }
 

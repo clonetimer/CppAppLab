@@ -166,7 +166,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ## P6 — W8: HTTP server engineering
 
-**Status: W8-D1–D6-D1 merged into `main`; D6-D2 is in progress.**
+**Status: W8-D1–D6-D2 merged into `main`; D6-D3 is in progress.**
 
 - D1: HTTP/1.1 message model, request-line parser and response serializer; 33 fixed acceptance checks passed.
 - D2: incremental parser, NeedMoreData/Complete/Error states, strict header syntax, Content-Length and byte-accurate consumed length; 39 checks passed.
@@ -177,8 +177,8 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - D6-B: merged as `8597a38` (PR #21); sequential Keep-Alive lifecycle, buffered subsequent requests, HTTP/1.0 response-version preservation, peer half-close pipeline draining and strict response ordering. Final-head run `42971917343` passed GCC, ASan/UBSan, clang-format and clang-tidy; loopback fixture 8/8.
 - D6-C: merged as `974b3d2` (PR #22); timerfd-backed absolute idle/header/body deadlines, HTTP 408 for incomplete requests, per-connection request cap and persistent-connection quota. Final-head run `42977367404` passed all three jobs; the nine-case loopback fixture passed under GCC, ASan/UBSan and clang-tidy.
 - D6-D1: merged as `d29d38e` (PR #23); stop accepting, close idle clients, return 503 for incomplete requests, drain in-flight handlers with Connection: close, and enforce a monotonic socket-drain deadline. Final-head run `42979170395` passed all three jobs; fixture 5/5 under GCC, ASan/UBSan and clang-tidy.
-- D6-D2 (in progress on `feat/w8-d6-observability-metrics`): JSONL access/error/lifecycle events, query redaction, custom non-blocking log sink, atomic runtime metrics and operational gauges. Dedicated eight-case loopback fixture and GCC, ASan/UBSan, clang-tidy gates added; hosted CI pending.
-- D6-D3: concurrent load, slow-client/backpressure, repeated start/stop and soak tests.
+- D6-D2: merged as `546f87c` (PR #24); JSONL access/error/lifecycle events, query redaction, custom log sink, atomic runtime metrics and operational gauges. Final-head run `42986255957` passed all three jobs; eight-case observability fixture passed under GCC, ASan/UBSan and clang-tidy.
+- D6-D3 (in progress on `feat/w8-d6-operational-load-tests`): concurrent load, slow-reader/backpressure, sustained Keep-Alive soak, repeated start/stop and resource-recovery checks.
 
 - TCP/IP and Linux socket API
 - blocking and nonblocking I/O

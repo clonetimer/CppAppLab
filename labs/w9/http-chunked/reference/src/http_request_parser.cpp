@@ -398,6 +398,9 @@ ParseResult HttpRequestParser::parse(std::string_view buffer) const {
     const auto content_length_header = result.request.headers.find("content-length");
 
     if (transfer_encoding_header != result.request.headers.end()) {
+        if (result.request.version != "HTTP/1.1") {
+            return make_error("Transfer-Encoding requires HTTP/1.1", std::move(result.request));
+        }
         if (content_length_header != result.request.headers.end()) {
             return make_error("Content-Length and Transfer-Encoding cannot be combined",
                               std::move(result.request));

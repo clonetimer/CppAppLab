@@ -95,6 +95,43 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug
           cmake --build build-http-operational --parallel
           ctest --test-dir build-http-operational --output-on-failure --timeout 25
+      - name: W8 D6 learner task acceptance contracts
+        run: |
+          cmake -S course/fixtures/w8/http-connection-policy -B build-task-d6a \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/router/reference" \
+            -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-task-d6a --parallel
+          ctest --test-dir build-task-d6a --output-on-failure --timeout 10
+
+          cmake -S course/fixtures/w8/http-keep-alive -B build-task-d6b \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-task-d6b --parallel
+          ctest --test-dir build-task-d6b --output-on-failure --timeout 15
+
+          cmake -S course/fixtures/w8/http-connection-guards -B build-task-d6c \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-task-d6c --parallel
+          ctest --test-dir build-task-d6c --output-on-failure --timeout 15
+
+          cmake -S course/fixtures/w8/http-graceful-shutdown -B build-task-d6d1 \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-task-d6d1 --parallel
+          ctest --test-dir build-task-d6d1 --output-on-failure --timeout 15
+
+          cmake -S course/fixtures/w8/http-observability -B build-task-d6d2 \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-task-d6d2 --parallel
+          ctest --test-dir build-task-d6d2 --output-on-failure --timeout 15
+
+          cmake -S course/fixtures/w8/http-load-probe -B build-task-d6d3 \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-load-probe/reference" \
+            -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-task-d6d3 --parallel
+          ctest --test-dir build-task-d6d3 --output-on-failure --timeout 20
       - name: Environment acceptance smoke test
         run: bash scripts/check_environment.sh
 
@@ -228,6 +265,59 @@ jobs:
           cmake --build build-http-operational-sanitize --parallel
           ctest --test-dir build-http-operational-sanitize --output-on-failure --timeout 30
 
+      - name: W8 D6 learner task sanitizer contracts
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1
+        run: |
+          cmake -S course/fixtures/w8/http-connection-policy -B build-task-d6a-sanitize \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/router/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-task-d6a-sanitize --parallel
+          ctest --test-dir build-task-d6a-sanitize --output-on-failure --timeout 15
+
+          cmake -S course/fixtures/w8/http-keep-alive -B build-task-d6b-sanitize \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-task-d6b-sanitize --parallel
+          ctest --test-dir build-task-d6b-sanitize --output-on-failure --timeout 20
+
+          cmake -S course/fixtures/w8/http-connection-guards -B build-task-d6c-sanitize \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-task-d6c-sanitize --parallel
+          ctest --test-dir build-task-d6c-sanitize --output-on-failure --timeout 20
+
+          cmake -S course/fixtures/w8/http-graceful-shutdown -B build-task-d6d1-sanitize \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-task-d6d1-sanitize --parallel
+          ctest --test-dir build-task-d6d1-sanitize --output-on-failure --timeout 20
+
+          cmake -S course/fixtures/w8/http-observability -B build-task-d6d2-sanitize \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-task-d6d2-sanitize --parallel
+          ctest --test-dir build-task-d6d2-sanitize --output-on-failure --timeout 20
+
+          cmake -S course/fixtures/w8/http-load-probe -B build-task-d6d3-sanitize \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-load-probe/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-task-d6d3-sanitize --parallel
+          ctest --test-dir build-task-d6d3-sanitize --output-on-failure --timeout 25
+
   code-quality:
     name: Formatting and clang-tidy
     runs-on: ubuntu-24.04
@@ -328,3 +418,46 @@ jobs:
             -DCMAKE_CXX_CLANG_TIDY=clang-tidy
           cmake --build build-http-operational-quality --parallel
           ctest --test-dir build-http-operational-quality --output-on-failure --timeout 25
+      - name: W8 D6 learner task clang-tidy contracts
+        run: |
+          cmake -S course/fixtures/w8/http-connection-policy -B build-task-d6a-quality \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/router/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_CLANG_TIDY=clang-tidy
+          cmake --build build-task-d6a-quality --parallel
+          ctest --test-dir build-task-d6a-quality --output-on-failure --timeout 10
+
+          cmake -S course/fixtures/w8/http-keep-alive -B build-task-d6b-quality \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_CLANG_TIDY=clang-tidy
+          cmake --build build-task-d6b-quality --parallel
+          ctest --test-dir build-task-d6b-quality --output-on-failure --timeout 15
+
+          cmake -S course/fixtures/w8/http-connection-guards -B build-task-d6c-quality \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_CLANG_TIDY=clang-tidy
+          cmake --build build-task-d6c-quality --parallel
+          ctest --test-dir build-task-d6c-quality --output-on-failure --timeout 15
+
+          cmake -S course/fixtures/w8/http-graceful-shutdown -B build-task-d6d1-quality \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_CLANG_TIDY=clang-tidy
+          cmake --build build-task-d6d1-quality --parallel
+          ctest --test-dir build-task-d6d1-quality --output-on-failure --timeout 15
+
+          cmake -S course/fixtures/w8/http-observability -B build-task-d6d2-quality \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-server/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_CLANG_TIDY=clang-tidy
+          cmake --build build-task-d6d2-quality --parallel
+          ctest --test-dir build-task-d6d2-quality --output-on-failure --timeout 15
+
+          cmake -S course/fixtures/w8/http-load-probe -B build-task-d6d3-quality \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-load-probe/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_CLANG_TIDY=clang-tidy
+          cmake --build build-task-d6d3-quality --parallel
+          ctest --test-dir build-task-d6d3-quality --output-on-failure --timeout 20

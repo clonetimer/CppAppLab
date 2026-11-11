@@ -613,3 +613,6 @@ jobs:
             $errors | Format-List
             exit 1
           }
+      - name: Exercise Windows-to-WSL command handoff
+        shell: pwsh
+        run: ./tests/windows-launcher-smoke.ps1

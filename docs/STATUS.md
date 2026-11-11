@@ -142,6 +142,8 @@ The interactive task picker now supports number, task-ID and title-keyword selec
 
 **Usability delivery is merged:** PR #30 (`917b45c`) added `cppapplab learn` and the one-command Ubuntu quick start; PR #31 (`89ea327`) added the interactive learner home and actionable check diagnostics; PR #32 (`991007e`) added title-keyword search and granular progress states. Final PR #32 CI run `43024884781` passed all three jobs: root GCC/CTest 75/75, root ASan/UBSan 75/75, clang-format and clang-tidy, plus the W8/W9 acceptance fixtures. This validates the hosted Ubuntu workflow; Windows 11 + WSL2 target-machine acceptance remains separate.
 
+**Windows launcher merged:** PR #33 (986e9ff) adds the double-click Start-CppAppLab.cmd entry point, PowerShell 5.1/7 distribution detection and WSL2 checks, first-run Linux checkout preparation, safe existing-checkout validation and an explicit rebuild mode. Final CI run 43031051999 passed all four jobs: GCC 75/75, ASan/UBSan 75/75, clang-format/clang-tidy and Windows PowerShell syntax; Bash bootstrap tests also covered path expansion, spaces, launch and rejection of unrelated repositories. Actual WSL2 runtime acceptance on a target Windows machine remains separate.
+
 ## Remaining work
 
 1. Complete Windows 11 + WSL2 target acceptance.

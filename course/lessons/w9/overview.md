@@ -8,7 +8,7 @@ The advanced curriculum remains cumulative: learners extend the W8 server and it
 
 ## W9 · HTTP protocol completeness and security
 
-**Current implementation branch:** feat/w9-http-protocol-security.
+**W9-A1 merged into main:** PR #27, commit bfb3f3f; GCC, ASan/UBSan and clang-tidy acceptance passed.
 
 | Stage | Planned task | Engineering outcome |
 |---|---|---|

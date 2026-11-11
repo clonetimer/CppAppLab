@@ -171,7 +171,7 @@ D6-B through D6-D2 learner templates include a known completed baseline for the 
 - filesystem document-root confinement and symlink/path traversal defense
 - request-smuggling regression cases and parser fuzzing
 
-**Current implementation:** W9-A1, task `w9.http-chunked`, is being added on branch `feat/w9-http-protocol-security`. It extends the W8 parser with a bounded HTTP/1.1 chunked profile, rejects ambiguous Content-Length + Transfer-Encoding framing, validates trailers and preserves pipelined bytes. The learner workspace contains the W8 parser baseline with an explicit implementation TODO; the platform fixture compiles the learner's declared source files and contains 35 fixed GoogleTests.
+**Implemented task:** W9-A1, `w9.http-chunked`, is merged into `main`. It extends the W8 parser with a bounded HTTP/1.1 chunked profile, rejects ambiguous Content-Length + Transfer-Encoding framing, validates trailers and preserves pipelined bytes. The learner workspace contains the W8 parser baseline with an explicit implementation TODO; the platform fixture compiles the learner's declared source files and contains 35 fixed GoogleTests. Final PR-head CI passed GCC, ASan/UBSan and clang-tidy; the end-to-end learning-engine check verified a current PASS.
 
 **Remaining W9 stages:** request-target and query parsing; secure static-file access using directory file descriptors and no-follow semantics; HTTP framing/security hardening; parser fuzzing with a regression corpus. These stages will be registered only when their learner source boundaries and fixed acceptance fixtures are implemented.
 

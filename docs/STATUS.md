@@ -33,7 +33,7 @@ The CI now also compiles and tests the Router fixed fixture directly with ASan/U
 
 **Branch:** `feat/p5-w8-http-server`  
 **Base:** `main` at `dcee35395349104aad31ef1d2f1ad645e4c9fe06`  
-**Status:** design, API, reference implementation, learner scaffold and fixed loopback acceptance fixture are being assembled; hosted CI has not yet run.
+**Status:** design, API, reference implementation, learner scaffold and fixed loopback acceptance fixture are being assembled; hosted run `42953073079` passed all three jobs for tested head `433762deb47cd2bda66ff6e3fce27d65b59615ba`; the follow-up hardening in this branch is being revalidated.
 
 - Single Reactor owns listener/client sockets, epoll registrations, connection maps and read/write buffers.
 - Workers receive owned HttpRequest values and publish HttpResponse completions; they never touch sockets or Connection objects.
@@ -41,7 +41,7 @@ The CI now also compiles and tests the Router fixed fixture directly with ASan/U
 - eventfd wakes the event loop after worker completion.
 - W6 ThreadPool is reused unchanged. Since its submit queue blocks, an event-loop-owned outstanding_jobs counter includes queued, running and undrained completions. The server returns 503 before submit at task_queue_capacity, including after disconnected clients, so the event loop never waits for queue space.
 - D5 preserves the existing serializer's Connection: close behavior: one request per TCP connection. Keep-Alive/pipelining is deferred to D6.
-- Fixed acceptance is planned as 21 platform-owned tests + 10 reference tests + one real loopback CLI smoke (32 total).
+- Fixed acceptance is 23 platform-owned tests + 10 reference tests + one real loopback CLI smoke (34 total).
 - No merge, hosted CI PASS, release, or local WSL2 acceptance is claimed yet.
 
 ## Source and scope

@@ -40,7 +40,49 @@ The script does not delete or replace learner workspaces. It uses the default Cp
 
 ### Windows one-click launcher
 
-From the repository root in Windows Explorer, double-click `Start-CppAppLab.cmd`, or run it from PowerShell:
+The launcher files must be in a Windows-accessible checkout. If your only checkout is inside WSL, open it through the distribution's `\\wsl# First-use quick start
+
+This guide is for a learner using Windows 11 + WSL2 + Ubuntu 24.04. You do not need to know the task IDs or choose a workspace path to begin.
+
+## 1. Open Ubuntu and get the project
+
+In PowerShell, list installed distributions and start the exact Ubuntu 24.04 name shown in the first column:
+
+```powershell
+wsl -l -v
+wsl -d <distribution-name>
+```
+
+The distribution must report WSL version 2. Common names include `Ubuntu` and `Ubuntu-24.04`.
+
+Inside Ubuntu:
+
+```bash
+mkdir -p ~/work
+cd ~/work
+git clone https://github.com/clonetimer/CppAppLab.git
+cd CppAppLab
+```
+
+## 2. Run the one-command setup
+
+```bash
+bash scripts/quickstart.sh
+```
+
+The script:
+
+1. Checks that Ubuntu 24.04 and the required toolchain are available.
+2. Offers to install missing packages with `apt` (you approve before installation).
+3. Configures and builds CppAppLab.
+4. Runs the platform's CTest suite.
+5. Opens the interactive learning home, where you can continue, search for a task or review progress.
+
+The script does not delete or replace learner workspaces. It uses the default CppAppLab build directory and may reuse its build cache.
+
+### Windows one-click launcher
+
+ share in Explorer, or clone/download the private repository into a Windows folder once. From that Windows-accessible repository root, double-click `Start-CppAppLab.cmd`, or run it from PowerShell:
 
 ```powershell
 .\Start-CppAppLab.cmd

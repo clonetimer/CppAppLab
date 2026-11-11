@@ -20,6 +20,7 @@
 #include <atomic>
 #include <chrono>
 #include <deque>
+#include <iostream>
 #include <mutex>
 #include <queue>
 #include <stdexcept>
@@ -156,12 +157,38 @@ struct HttpServer::Impl {
         DeadlineKind deadline_kind{DeadlineKind::None};
         std::uint64_t deadline_generation{0U};
         Clock::time_point deadline_at{};
+        Clock::time_point request_started_at{};
+        std::string request_method;
+        std::string request_target;
+        int response_status_code{0};
     };
 
     struct Completion {
         int fd{-1};
         std::uint64_t token{0U};
         HttpResponse response;
+        bool handler_failed{false};
+    };
+
+    struct AtomicMetrics {
+        std::atomic<std::uint64_t> accepted_connections{0U};
+        std::atomic<std::uint64_t> rejected_connections{0U};
+        std::atomic<std::uint64_t> active_connections{0U};
+        std::atomic<std::uint64_t> closed_connections{0U};
+        std::atomic<std::uint64_t> persistent_connections{0U};
+        std::atomic<std::uint64_t> requests_received{0U};
+        std::atomic<std::uint64_t> responses_completed{0U};
+        std::atomic<std::uint64_t> response_bytes{0U};
+        std::atomic<std::uint64_t> client_errors{0U};
+        std::atomic<std::uint64_t> server_errors{0U};
+        std::atomic<std::uint64_t> request_timeouts{0U};
+        std::atomic<std::uint64_t> idle_timeouts{0U};
+        std::atomic<std::uint64_t> handler_failures{0U};
+        std::atomic<std::uint64_t> queue_rejections{0U};
+        std::atomic<std::uint64_t> active_jobs{0U};
+        std::atomic<std::uint64_t> graceful_shutdowns{0U};
+        std::atomic<std::uint64_t> forced_shutdown_connections{0U};
+        std::atomic<std::uint64_t> log_sink_failures{0U};
     };
 
     explicit Impl(HttpServerConfig server_config, Router server_router)
@@ -275,6 +302,7 @@ struct HttpServer::Impl {
     std::size_t outstanding_jobs{0U};
     std::size_t persistent_connections{0U};
     std::priority_queue<DeadlineEntry, std::vector<DeadlineEntry>, DeadlineLater> deadlines;
+    AtomicMetrics metric_counters;
     bool shutting_down{false};
     bool shutdown_deadline_expired{false};
     Clock::time_point shutdown_deadline{};

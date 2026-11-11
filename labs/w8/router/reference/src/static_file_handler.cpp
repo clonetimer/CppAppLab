@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <fstream>
+#include <limits>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -113,6 +114,9 @@ struct FileReadResult {
 }
 
 }  // namespace
+
+StaticFileHandler::StaticFileHandler(std::filesystem::path document_root)
+    : StaticFileHandler(std::move(document_root), std::numeric_limits<std::size_t>::max()) {}
 
 StaticFileHandler::StaticFileHandler(std::filesystem::path document_root,
                                      std::size_t max_file_bytes)

@@ -372,7 +372,7 @@ struct HttpServer::Impl {
             } else {
                 static std::mutex output_mutex;
                 const std::lock_guard<std::mutex> lock(output_mutex);
-                std::clog << line << '\\n';
+                std::clog << line << '\n';
             }
         } catch (...) {
             metric_counters.log_sink_failures.fetch_add(1U, std::memory_order_relaxed);
@@ -644,12 +644,16 @@ struct HttpServer::Impl {
         }
         if (found->second.persistent_slot_reserved && persistent_connections > 0U) {
             --persistent_connections;
+            metric_counters.persistent_connections.store(persistent_connections,
+                                                          std::memory_order_relaxed);
         }
         if (fd >= 0) {
             (void)::epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, nullptr);
             (void)::close(fd);
         }
         connections.erase(found);
+        metric_counters.closed_connections.fetch_add(1U, std::memory_order_relaxed);
+        metric_counters.active_connections.store(connections.size(), std::memory_order_relaxed);
     }
 
     void cleanup_connections() noexcept {
@@ -689,6 +693,7 @@ struct HttpServer::Impl {
             wire = serialize_response(response, connection_policy, version);
         }
 
+        connection.response_status_code = response.status_code;
         connection.write_buffer = std::move(wire);
         connection.write_offset = 0U;
         connection.processing = false;
@@ -700,6 +705,7 @@ struct HttpServer::Impl {
     }
 
     void queue_error(Connection& connection, int status, const char* reason, const char* body) {
+        log_error_event("http_error", reason, status, connection.token);
         queue_response(connection, error_response(status, reason, body));
     }
 
@@ -722,6 +728,9 @@ struct HttpServer::Impl {
             return false;
         }
 
+        if (!connection.write_buffer.empty()) {
+            record_response(connection);
+        }
         if (connection.close_after_write) {
             return false;
         }

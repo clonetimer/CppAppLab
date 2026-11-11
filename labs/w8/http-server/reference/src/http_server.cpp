@@ -446,6 +446,32 @@ struct HttpServer::Impl {
         return snapshot;
     }
 
+    void record_response(Connection& connection) noexcept {
+        const std::size_t bytes = connection.write_buffer.size();
+        const auto elapsed = connection.request_started_at == Clock::time_point{}
+                                 ? std::chrono::milliseconds::zero()
+                                 : std::chrono::duration_cast<std::chrono::milliseconds>(
+                                       Clock::now() - connection.request_started_at);
+        const auto duration_ms = static_cast<std::uint64_t>(std::max<std::int64_t>(0, elapsed.count()));
+
+        metric_counters.responses_completed.fetch_add(1U, std::memory_order_relaxed);
+        metric_counters.response_bytes.fetch_add(static_cast<std::uint64_t>(bytes),
+                                                 std::memory_order_relaxed);
+        if (connection.response_status_code >= 400 && connection.response_status_code < 500) {
+            metric_counters.client_errors.fetch_add(1U, std::memory_order_relaxed);
+        } else if (connection.response_status_code >= 500 &&
+                   connection.response_status_code < 600) {
+            metric_counters.server_errors.fetch_add(1U, std::memory_order_relaxed);
+        }
+
+        log_access(connection, bytes, duration_ms);
+        connection.request_method.clear();
+        connection.request_target.clear();
+        connection.response_status_code = 0;
+        connection.request_started_at =
+            connection.read_buffer.empty() ? Clock::time_point{} : Clock::now();
+    }
+
     void discard_stale_deadlines() {
         while (!deadlines.empty()) {
             const DeadlineEntry& entry = deadlines.top();

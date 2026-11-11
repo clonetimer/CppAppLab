@@ -138,6 +138,8 @@ The platform now has a guided learner entry point (`cppapplab learn`) and a one-
 
 The CLI now opens a terminal home screen when `cppapplab` is run without arguments in an interactive terminal. Learners can continue, choose tasks by number, or review progress without memorizing task IDs. Failed acceptance checks show a concise compiler/test diagnostic excerpt and direct hint, log and retry commands. Non-interactive invocations retain help output to avoid blocking scripts and CI.
 
+The interactive task picker now supports number, task-ID and title-keyword selection. Its task list distinguishes PASSED, IN PROGRESS, NEEDS WORK, STALE, AVAILABLE and LOCKED; the home screen summarizes those counts so learners can find unfinished work without remembering identifiers.
+
 ## Remaining work
 
 1. Complete Windows 11 + WSL2 target acceptance.

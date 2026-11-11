@@ -1256,16 +1256,19 @@ void HttpServer::run() {
     }
 
     impl_->is_running.store(true);
-    impl_->log_server_event("server_started", impl_->config.bind_address, impl_->bound_port);
     try {
+        impl_->log_server_event("server_started", impl_->config.bind_address, impl_->bound_port);
         impl_->run_loop();
+        impl_->log_server_event("server_stopped");
     } catch (...) {
-        impl_->log_error_event("server_loop_failure", "reactor_exception");
+        try {
+            impl_->log_error_event("server_loop_failure", "reactor_exception");
+        } catch (...) {
+        }
         impl_->cleanup_connections();
         impl_->is_running.store(false);
         throw;
     }
-    impl_->log_server_event("server_stopped");
     impl_->is_running.store(false);
 }
 

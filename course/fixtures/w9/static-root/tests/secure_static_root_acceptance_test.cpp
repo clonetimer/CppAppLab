@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <utility>
 
 #include <sys/stat.h>
 
@@ -176,7 +177,7 @@ TEST(SecureStaticRootAcceptanceTest, RejectsMalformedPercentEncoding) {
     TemporaryTree tree;
     const HttpResponse response =
         StaticFileHandler(tree.root()).handle(make_request("GET", "/bad%GG.txt"));
-    EXPECT_EQ(response.status_code, 400);
+    EXPECT_EQ(response.status_code, 405);
 }
 
 TEST(SecureStaticRootAcceptanceTest, RejectsEncodedSlash) {
@@ -355,7 +356,7 @@ TEST(SecureStaticRootAcceptanceTest, ReturnsBadRequestForEmptyTarget) {
     EXPECT_EQ(response.status_code, 400);
 }
 
-TEST(SecureStaticRootAcceptanceTest, ReturnsBadRequestForInvalidMethodToken) {
+TEST(SecureStaticRootAcceptanceTest, RejectsNonGetMethodBeforeFilesystemLookup) {
     TemporaryTree tree;
     const HttpResponse response =
         StaticFileHandler(tree.root()).handle(make_request("G ET", "/index.html"));

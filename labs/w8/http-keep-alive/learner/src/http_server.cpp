@@ -308,6 +308,7 @@ struct HttpServer::Impl {
             }
             return false;
         }
+        // TODO(student): finish the response, then reuse or close the connection by policy.
         return false;  // D5 always emits Connection: close.
     }
 

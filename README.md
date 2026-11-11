@@ -19,7 +19,7 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 ## Current learning tasks
 
-The learning engine provides W1 Hello World and Calculator, W2 persistent Todo CLI, W3 TaskManager refactor, W4 quality gate, W5 Linux systems, W6 thread pool, W7 TCP Echo and epoll chat, and W8 HTTP protocol, incremental parser, static files, Router/dynamic handlers, and the W8-D5 TCP/epoll HTTP server. W8-D6-A connection policy is merged; D6-B sequential Keep-Alive has passed hosted CI and is awaiting merge. The catalog is the authoritative task list.
+The learning engine currently registers 14 hands-on tasks across W1–W8: W1 Hello World and Calculator; W2 persistent Todo CLI; W3 TaskManager refactor; W4 quality gate; W5 Linux systems; W6 thread pool; W7 TCP Echo and epoll chat; and W8 HTTP protocol, incremental parser, static files, Router/dynamic handlers, and the D5 TCP/epoll HTTP server. W8-D6-A through D6-D3 are advanced reference-server extensions with dedicated lessons and acceptance fixtures, but are not yet separate learner task IDs. `course/tasks.tsv` is the authoritative task catalog.
 
 ```bash
 ./build/cppapplab list
@@ -100,7 +100,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-W1–W7 and W8-D1–D6-D2 are merged into `main`. W8-D5 adds a real TCP listener and epoll/worker-pool handoff; D6-A defines connection policy, D6-B sequential Keep-Alive, D6-C deadlines/quotas, D6-D1 graceful shutdown and D6-D2 structured logs/runtime metrics. D6-D3 operational load/soak validation is in progress; Windows 11 + WSL2 target acceptance and release qualification remain separate. See:
+W1–W7 and W8-D1–D6-D3 are merged into `main`. The HTTP reference server now includes sequential Keep-Alive, connection deadlines and quotas, graceful shutdown, structured JSONL logs, runtime metrics, and operational load/soak regression coverage. PR #25 merged as `597a8a0`; final-head CI run `42991542424` passed all three jobs. The 14-task learning catalog currently ends at W8-D5; D6 is documented and tested as an advanced engineering extension, not yet split into learner tasks. Windows 11 + WSL2 target acceptance, offline dependency packaging, and release qualification remain separate. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)

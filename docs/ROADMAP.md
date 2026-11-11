@@ -196,7 +196,31 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 **Windows launcher merged via PR #33 (986e9ff).** The Windows entry point detects WSL2 Ubuntu 24.04, prepares the Linux checkout on first launch, opens the interactive learner home on subsequent launches and provides an explicit rebuild mode. Final CI run 43031051999 passed all four jobs, including the Windows PowerShell 5.1/7 syntax gate and Bash bootstrap integration tests. Real WSL2 target-machine acceptance remains a release qualification item.
 
-## P7 — Delivery and stabilization
+## P7 — Delivery and stabilization (in progress)
+
+**P6 exit verification: PASS.** The merged W8 course contains 11 registered tasks, including the six-task D6 prerequisite chain. Final mainline CI run 43031051999 passed root 75/75 under GCC and ASan/UBSan, the W8 D6 task workflow, W9-A1 35/35, W9-A2 39/39 and W9-A3 34/34 under GCC, ASan/UBSan and clang-tidy. P6 is closed; remaining work is release packaging and target-environment qualification.
+
+### P7-A — Reproducible source and learner packages (implementation started)
+
+- Build a full source archive from the exact tested Git commit.
+- Build a relocatable Ubuntu 24.04 learner archive containing the prebuilt CLI, course assets, learner templates and fixed acceptance fixtures.
+- Set CPPAPPLAB_DATA_DIR through the package wrapper so the learner archive works after extraction to a different directory.
+- Record source commit, target platform and SHA-256 values in a package manifest.
+- Smoke-test the extracted package by listing W1/W8/W9 tasks, creating a W1 learner workspace and passing its fixed acceptance check.
+- Upload CI package candidates as short-lived workflow artifacts; do not treat them as a formal release.
+
+### P7-B — Offline dependency bundle
+
+- Package the Ubuntu 24.04 dependency closure for compiler, CMake, GDB and GoogleTest.
+- Verify installation without external network access on a clean target image.
+- Keep optional clang-format/clang-tidy quality tools distinguishable from learner runtime requirements.
+
+### P7-C — Target-machine acceptance and release qualification
+
+- Validate Windows 11 + WSL2 + Ubuntu 24.04 launch, package extraction, task execution and persistence.
+- Record exact package SHA-256, environment, commands and test evidence.
+- Publish version tag, release notes, known limitations and evidence archive only after P7-A/B/C pass.
+
 
 - [ ] source package and learner package
 - [ ] offline dependency strategy and reproducible checks

@@ -25,7 +25,8 @@ The parser already normalizes parsed header names to lowercase. The policy helpe
 
 - `ConnectionPolicy::Close` and `ConnectionPolicy::KeepAlive` represent the decision.
 - `request_connection_policy(const HttpRequest&)` computes the policy without modifying the request.
-- `serialize_response(response, policy)` writes exactly one authoritative Connection header and computes Content-Length from the body bytes.
+- `serialize_response(response, policy)` writes exactly one authoritative Connection header, defaults the status line to HTTP/1.1 and computes Content-Length from the body bytes.
+- `serialize_response(response, policy, response_version)` preserves HTTP/1.0 or HTTP/1.1 in the status line; unsupported versions are rejected.
 - The legacy one-argument `serialize_response(response)` overload remains close-after-response for W1–W8-D5 compatibility.
 
 Caller-provided Connection and Content-Length values are not forwarded; the serializer owns both fields.

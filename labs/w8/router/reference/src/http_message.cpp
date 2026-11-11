@@ -149,10 +149,18 @@ ConnectionPolicy request_connection_policy(const HttpRequest& request) noexcept 
 }
 
 std::string serialize_response(const HttpResponse& response) {
-    return serialize_response(response, ConnectionPolicy::Close);
+    return serialize_response(response, ConnectionPolicy::Close, "HTTP/1.1");
 }
 
 std::string serialize_response(const HttpResponse& response, ConnectionPolicy connection_policy) {
+    return serialize_response(response, connection_policy, "HTTP/1.1");
+}
+
+std::string serialize_response(const HttpResponse& response, ConnectionPolicy connection_policy,
+                               std::string_view response_version) {
+    if (response_version != "HTTP/1.0" && response_version != "HTTP/1.1") {
+        throw std::invalid_argument("HTTP response version must be HTTP/1.0 or HTTP/1.1");
+    }
     if (response.status_code < 100 || response.status_code > 599) {
         throw std::invalid_argument("HTTP status code must be in the range 100..599");
     }
@@ -184,8 +192,9 @@ std::string serialize_response(const HttpResponse& response, ConnectionPolicy co
         }
     }
 
-    std::string output =
-        "HTTP/1.1 " + std::to_string(response.status_code) + " " + response.reason_phrase + "\r\n";
+    std::string output = std::string(response_version) + " " +
+                         std::to_string(response.status_code) + " " + response.reason_phrase +
+                         "\r\n";
     for (const auto& entry : headers) {
         output += entry.first + ": " + entry.second + "\r\n";
     }

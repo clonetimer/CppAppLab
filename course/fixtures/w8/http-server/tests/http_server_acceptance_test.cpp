@@ -164,7 +164,8 @@ class TestClient {
 
 std::string request(const std::string& method, const std::string& target,
                     const std::string& body = {}) {
-    std::string wire = method + " " + target + " HTTP/1.1\r\nHost: localhost\r\n";
+    std::string wire =
+        method + " " + target + " HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n";
     if (!body.empty())
         wire += "Content-Length: " + std::to_string(body.size()) + "\r\n";
     wire += "\r\n";
@@ -266,7 +267,7 @@ TEST(HttpServerAcceptanceTest, HandlesFragmentedRequestLineAndHeaders) {
     TestClient client(server.port());
     ASSERT_TRUE(client.send_all("GET /hel"));
     std::this_thread::sleep_for(15ms);
-    ASSERT_TRUE(client.send_all("lo HTTP/1.1\r\nHost: localhost\r\n\r\n"));
+    ASSERT_TRUE(client.send_all("lo HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"));
     EXPECT_EQ(body_of(client.read_all()), "Hello from C++ HTTP Server!\n");
 }
 TEST(HttpServerAcceptanceTest, ResumesPartialWritesForLargeResponse) {
@@ -398,7 +399,8 @@ TEST(HttpServerAcceptanceTest, RejectsStaleWorkerCompletionAfterDisconnect) {
     ASSERT_TRUE(completed.load());
     std::this_thread::sleep_for(20ms);
 
-    ASSERT_TRUE(replacement.send_all("lo HTTP/1.1\r\nHost: localhost\r\n\r\n"));
+    ASSERT_TRUE(
+        replacement.send_all("lo HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"));
     const auto response = replacement.read_all();
     EXPECT_EQ(body_of(response), "Hello from C++ HTTP Server!\n");
     (void)::close(reserved_fd);
@@ -407,7 +409,8 @@ TEST(HttpServerAcceptanceTest, RejectsStaleWorkerCompletionAfterDisconnect) {
 TEST(HttpServerAcceptanceTest, HandlesFragmentedRequestBody) {
     TestServer server;
     TestClient client(server.port());
-    std::string first = "POST /echo HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\n";
+    std::string first =
+        "POST /echo HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nContent-Length: 5\r\n\r\n";
     first.append("a\0", 2U);
     ASSERT_TRUE(client.send_all(first));
     std::this_thread::sleep_for(15ms);

@@ -2,7 +2,7 @@
 
 ## Current delivery boundary
 
-W1–W7 and W8-D1–D6-D1 are merged into `main`. The platform includes a real Linux TCP HTTP server with incremental parsing, Router/static-file handling, epoll Reactor, bounded W6 ThreadPool, sequential Keep-Alive, absolute connection deadlines, persistent-connection quotas and bounded graceful shutdown.
+W1–W7 and W8-D1–D6-D2 are merged into `main`. The platform includes a real Linux TCP HTTP server with incremental parsing, Router/static-file handling, epoll Reactor, bounded W6 ThreadPool, sequential Keep-Alive, absolute connection deadlines, persistent-connection quotas, bounded graceful shutdown, structured JSONL logs and thread-safe runtime metrics.
 
 **D5 functional merge:** `f503d3f52a9dcaa9dc5a3df1df424e2b7e65e932`.  
 **D5 final-head CI:** run `42956321926`, all three jobs passed.  
@@ -13,7 +13,9 @@ W1–W7 and W8-D1–D6-D1 are merged into `main`. The platform includes a real L
 **D6-C final-head CI:** run `42977367404`, all three jobs passed.  
 **D6-D1 merge:** `d29d38ec04d4d5a0765f4585c9c25d9df69ab8c2` (PR #23).  
 **D6-D1 final-head CI:** run `42979170395`, all three jobs passed.  
-**D6-D2 branch:** `feat/w8-d6-observability-metrics`; structured JSONL access/error events, query redaction, thread-safe runtime metrics and an eight-case fixed fixture are in progress.  
+**D6-D2 merge:** `546f87c669d7cbf88429e87ed1bc7041313dfc63` (PR #24).  
+**D6-D2 final-head CI:** run `42986255957`, all three jobs passed.  
+**D6-D3 branch:** `feat/w8-d6-operational-load-tests`; concurrent-load, slow-reader/backpressure, repeated start/stop and sustained Keep-Alive soak acceptance are being added.  
 **Target-machine status:** Windows 11 + WSL2 acceptance has not yet been performed or claimed. No Release is declared.
 
 ## Verified merged baseline
@@ -28,25 +30,26 @@ W1–W7 and W8-D1–D6-D1 are merged into `main`. The platform includes a real L
 - W8-D6-B sequential Keep-Alive: eight fixed loopback tests for sequential reuse, pipelining, explicit close, fragmented requests, HTTP/1.0, half-close draining and response ordering.
 - W8-D6-C connection guards: nine fixed loopback tests for idle/header/body deadlines, absolute trickle-resistant deadlines, idle refresh, request-count cap, persistent-connection quota and invalid configuration. Final-head run `42977367404` passed root GCC/CTest 53/53, root ASan/UBSan 53/53, D6-C fixture 9/9 under GCC and sanitizer, D6-B fixture 8/8 under GCC and sanitizer, D6-A fixture 28/28 under GCC and sanitizer, formatting and clang-tidy across all direct fixtures.
 - W8-D6-D1 graceful shutdown: five fixed loopback tests for idle connection close, in-flight response drain, incomplete-request 503, shutdown deadline and invalid configuration. Final-head run `42979170395` passed all three jobs; D6-D1 fixture 5/5 under GCC, ASan/UBSan and clang-tidy.
+- W8-D6-D2 observability: eight fixed loopback tests for structured access logs, query redaction, connection gauges, handler failures, log-sink exception isolation, timeout counters, connection rejection and worker-queue rejection. Final-head run `42986255957` passed all three jobs; root GCC/CTest 53/53, root ASan/UBSan 53/53, HTTP Server reference workspace 10/10, D6-A 28/28, D6-B 8/8, D6-C 9/9, D6-D1 5/5 and D6-D2 8/8. Formatting and clang-tidy passed for all configured direct fixtures.
 
-## W8-D6-D2 — structured logs and runtime metrics (implementation in progress)
+## W8-D6-D3 — operational load and soak validation (implementation in progress)
 
-**Branch:** `feat/w8-d6-observability-metrics`
+**Branch:** `feat/w8-d6-operational-load-tests`
 
-- Add JSON Lines access/error and lifecycle events, defaulting to stderr.
-- Add independent access/error log switches and a custom `HttpLogSink` callback on the Reactor thread.
-- Redact query strings; never log request headers, bodies or raw handler exception messages.
-- Contain custom log sink exceptions and expose a failure counter.
-- Add a thread-safe `HttpServer::metrics()` snapshot with connection/request/response/byte/error/timeout/handler/queue/shutdown counters and current gauges.
-- Count responses only after their full serialized wire representation is written.
-- Add a seven-case fixed loopback fixture for structured access logs, active/persistent gauges, handler errors, log channel toggles, timeout counters, connection rejection and worker queue rejection.
-- GCC, ASan/UBSan and clang-tidy CI coverage has been added; final-head hosted results are pending.
+Planned fixed loopback coverage:
+
+- Concurrent clients and worker execution under a bounded queue.
+- Slow-reader TCP backpressure with eventual complete response delivery.
+- Sustained sequential Keep-Alive traffic with no leaked connections or worker jobs.
+- Repeated server construction, run, stop and destruction cycles.
+- Retain all D5/D6 fixed fixtures as independent regression gates.
+
+The target is deterministic behavior and resource recovery, not a fragile machine-specific throughput threshold. Hosted GCC, ASan/UBSan, clang-format and clang-tidy results are required before merge.
 
 ## Remaining work
 
-1. Complete D6-D2 final-head CI and review.
-2. D6-D3: concurrent load, slow-client/backpressure, repeated start/stop and soak tests.
-3. Windows 11 + WSL2 target acceptance, reproducible/offline dependency delivery and release qualification.
+1. Complete D6-D3 final-head CI, inspect resource counters and close the operational test loop.
+2. Windows 11 + WSL2 target acceptance, reproducible/offline dependency delivery and release qualification.
 
 Chunked Transfer-Encoding, TLS, URL decoding, query parameter parsing, route patterns and production-grade canonical/symlink containment remain outside the current scope.
 

@@ -36,13 +36,14 @@ W1–W7 and W8-D1–D6-D2 are merged into `main`. The platform includes a real L
 
 **Branch:** `feat/w8-d6-operational-load-tests`
 
-Planned fixed loopback coverage:
+A dedicated four-case loopback fixture is implemented in `course/fixtures/w8/http-operational`:
 
-- Concurrent clients and worker execution under a bounded queue.
-- Slow-reader TCP backpressure with eventual complete response delivery.
-- Sustained sequential Keep-Alive traffic with no leaked connections or worker jobs.
-- Repeated server construction, run, stop and destruction cycles.
-- Retain all D5/D6 fixed fixtures as independent regression gates.
+1. Sixteen concurrent clients; verify handler concurrency remains within the four-worker bound and all responses complete.
+2. An 8 MiB response to a deliberately slow reader; verify non-blocking backpressure, EPOLLOUT recovery and complete body delivery.
+3. Eight concurrent Keep-Alive clients × forty requests (320 total); verify no queue rejection, protocol errors or leaked connections/jobs.
+4. Eight repeated server construction/run/stop/join/destruction cycles with idempotent stop requests.
+
+The tests assert resource recovery and protocol correctness rather than a machine-specific throughput threshold. GCC, ASan/UBSan and clang-tidy gates have been added; final-head hosted results are pending.
 
 The target is deterministic behavior and resource recovery, not a fragile machine-specific throughput threshold. Hosted GCC, ASan/UBSan, clang-format and clang-tidy results are required before merge.
 

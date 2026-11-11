@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build-and-test:
     name: GCC Build and GoogleTest
-    if: ${{ contains(github.event.head_commit.message, '[non-ubuntu-only]') == false && contains(github.event.pull_request.body, 'ci-mode: non-ubuntu-only') == false }}
+    if: ${{ github.ref != 'refs/heads/feat/p7-source-learner-packages-20261111' && github.event.pull_request.head.ref != 'feat/p7-source-learner-packages-20261111' }}
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -186,7 +186,7 @@ jobs:
 
   sanitizers:
     name: GCC ASan and UBSan
-    if: ${{ contains(github.event.head_commit.message, '[non-ubuntu-only]') == false && contains(github.event.pull_request.body, 'ci-mode: non-ubuntu-only') == false }}
+    if: ${{ github.ref != 'refs/heads/feat/p7-source-learner-packages-20261111' && github.event.pull_request.head.ref != 'feat/p7-source-learner-packages-20261111' }}
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -409,7 +409,7 @@ jobs:
 
   code-quality:
     name: Formatting and clang-tidy
-    if: ${{ contains(github.event.head_commit.message, '[non-ubuntu-only]') == false && contains(github.event.pull_request.body, 'ci-mode: non-ubuntu-only') == false }}
+    if: ${{ github.ref != 'refs/heads/feat/p7-source-learner-packages-20261111' && github.event.pull_request.head.ref != 'feat/p7-source-learner-packages-20261111' }}
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout

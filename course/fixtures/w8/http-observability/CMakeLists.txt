@@ -10,16 +10,23 @@ include(CTest)
 find_package(GTest CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 
-foreach(variable IN ITEMS
-    CPPAPPLAB_HTTP_SERVER_SOURCE_DIR
-    CPPAPPLAB_ROUTER_SOURCE_DIR
-    CPPAPPLAB_THREAD_POOL_SOURCE_DIR)
-    if(NOT DEFINED ${variable})
-        message(FATAL_ERROR "${variable} is required.")
-    endif()
-endforeach()
+get_filename_component(CPPAPPLAB_REPOSITORY_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../.." ABSOLUTE)
+if(NOT DEFINED CPPAPPLAB_ROUTER_SOURCE_DIR)
+    set(CPPAPPLAB_ROUTER_SOURCE_DIR "${CPPAPPLAB_REPOSITORY_ROOT}/labs/w8/router/reference")
+endif()
+if(NOT DEFINED CPPAPPLAB_THREAD_POOL_SOURCE_DIR)
+    set(CPPAPPLAB_THREAD_POOL_SOURCE_DIR "${CPPAPPLAB_REPOSITORY_ROOT}/labs/w6/thread-pool/reference")
+endif()
 
-set(HTTP_SERVER_SOURCE "${CPPAPPLAB_HTTP_SERVER_SOURCE_DIR}/src/http_server.cpp")
+if(DEFINED CPPAPPLAB_LEARNER_SOURCE_DIR)
+    set(HTTP_SERVER_SOURCE_DIR "${CPPAPPLAB_LEARNER_SOURCE_DIR}")
+elseif(DEFINED CPPAPPLAB_HTTP_SERVER_SOURCE_DIR)
+    set(HTTP_SERVER_SOURCE_DIR "${CPPAPPLAB_HTTP_SERVER_SOURCE_DIR}")
+else()
+    message(FATAL_ERROR "CPPAPPLAB_LEARNER_SOURCE_DIR or CPPAPPLAB_HTTP_SERVER_SOURCE_DIR is required.")
+endif()
+
+set(HTTP_SERVER_SOURCE "${HTTP_SERVER_SOURCE_DIR}/src/http_server.cpp")
 set(ROUTER_SOURCES
     "${CPPAPPLAB_ROUTER_SOURCE_DIR}/src/http_message.cpp"
     "${CPPAPPLAB_ROUTER_SOURCE_DIR}/src/http_request_parser.cpp"
@@ -31,7 +38,7 @@ set(ROUTER_SOURCES
 set(THREAD_POOL_SOURCE "${CPPAPPLAB_THREAD_POOL_SOURCE_DIR}/src/thread_pool.cpp")
 
 foreach(required IN ITEMS
-    "${CPPAPPLAB_HTTP_SERVER_SOURCE_DIR}/include/http_server.hpp"
+    "${HTTP_SERVER_SOURCE_DIR}/include/http_server.hpp"
     "${HTTP_SERVER_SOURCE}"
     "${CPPAPPLAB_ROUTER_SOURCE_DIR}/include/http_message.hpp"
     "${CPPAPPLAB_ROUTER_SOURCE_DIR}/include/http_request_parser.hpp"
@@ -40,7 +47,7 @@ foreach(required IN ITEMS
     "${THREAD_POOL_SOURCE}"
     ${ROUTER_SOURCES})
     if(NOT EXISTS "${required}")
-        message(FATAL_ERROR "Required HTTP observability source is missing: ${required}")
+        message(FATAL_ERROR "Required HTTP server source is missing: ${required}")
     endif()
 endforeach()
 
@@ -50,7 +57,7 @@ add_library(http_observability_core
     ${ROUTER_SOURCES}
 )
 target_include_directories(http_observability_core PUBLIC
-    "${CPPAPPLAB_HTTP_SERVER_SOURCE_DIR}/include"
+    "${HTTP_SERVER_SOURCE_DIR}/include"
     "${CPPAPPLAB_ROUTER_SOURCE_DIR}/include"
     "${CPPAPPLAB_THREAD_POOL_SOURCE_DIR}/include"
 )

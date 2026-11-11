@@ -597,15 +597,25 @@ struct HttpServer::Impl {
             connection.deadline_kind = DeadlineKind::None;
             ++connection.deadline_generation;
             if (entry.kind == DeadlineKind::Idle) {
+                metric_counters.idle_timeouts.fetch_add(1U, std::memory_order_relaxed);
+                log_error_event("idle_timeout", "idle_deadline_expired", 0, entry.token);
                 close_connection(entry.token);
                 continue;
             }
 
+            metric_counters.request_timeouts.fetch_add(1U, std::memory_order_relaxed);
+            log_error_event(entry.kind == DeadlineKind::Header ? "header_timeout" : "body_timeout",
+                            "request_deadline_expired", 408, entry.token);
             connection.read_buffer.clear();
             queue_error(connection, 408, "Request Timeout", "408 Request Timeout\n");
         }
         if (shutting_down && !shutdown_deadline_expired && shutdown_deadline <= now) {
             shutdown_deadline_expired = true;
+            const auto forced_connections = static_cast<std::uint64_t>(connections.size());
+            metric_counters.forced_shutdown_connections.fetch_add(
+                forced_connections, std::memory_order_relaxed);
+            log_server_event("shutdown_deadline_expired", "connection_drain_timeout",
+                             forced_connections);
             cleanup_connections();
         }
         schedule_timer();
@@ -988,6 +998,8 @@ struct HttpServer::Impl {
 
             UniqueFd client(accepted);
             if (connections.size() >= config.max_connections) {
+                metric_counters.rejected_connections.fetch_add(1U, std::memory_order_relaxed);
+                log_error_event("connection_rejected", "max_connections", 503);
                 const std::string busy = serialize_response(
                     error_response(503, "Service Unavailable", "503 Service Unavailable\n"));
                 send_best_effort(client.get(), busy);
@@ -1017,6 +1029,8 @@ struct HttpServer::Impl {
                 close_connection(token);
                 throw;
             }
+            metric_counters.accepted_connections.fetch_add(1U, std::memory_order_relaxed);
+            metric_counters.active_connections.store(connections.size(), std::memory_order_relaxed);
         }
     }
 
@@ -1044,6 +1058,11 @@ struct HttpServer::Impl {
         for (auto& completion : ready) {
             if (outstanding_jobs > 0U) {
                 --outstanding_jobs;
+                metric_counters.active_jobs.fetch_sub(1U, std::memory_order_relaxed);
+            }
+            if (completion.handler_failed) {
+                metric_counters.handler_failures.fetch_add(1U, std::memory_order_relaxed);
+                log_error_event("handler_failure", "handler_exception", 500, completion.token);
             }
             const auto found = connections.find(completion.token);
             if (found == connections.end() || found->second.fd != completion.fd) {
@@ -1060,6 +1079,9 @@ struct HttpServer::Impl {
         }
         shutting_down = true;
         shutdown_deadline = Clock::now() + config.shutdown_timeout;
+        metric_counters.graceful_shutdowns.fetch_add(1U, std::memory_order_relaxed);
+        log_server_event("server_shutdown_started", "request_stop",
+                         static_cast<std::uint64_t>(connections.size()));
 
         if (listen_fd >= 0) {
             (void)::epoll_ctl(epoll_fd, EPOLL_CTL_DEL, listen_fd, nullptr);
@@ -1222,6 +1244,10 @@ bool HttpServer::running() const noexcept {
     return impl_->is_running.load();
 }
 
+HttpServerMetrics HttpServer::metrics() const noexcept {
+    return impl_->snapshot_metrics();
+}
+
 void HttpServer::run() {
     bool expected = false;
     if (!impl_->has_run.compare_exchange_strong(expected, true)) {
@@ -1229,13 +1255,16 @@ void HttpServer::run() {
     }
 
     impl_->is_running.store(true);
+    impl_->log_server_event("server_started", impl_->config.bind_address, impl_->bound_port);
     try {
         impl_->run_loop();
     } catch (...) {
+        impl_->log_error_event("server_loop_failure", "reactor_exception");
         impl_->cleanup_connections();
         impl_->is_running.store(false);
         throw;
     }
+    impl_->log_server_event("server_stopped");
     impl_->is_running.store(false);
 }
 

@@ -140,6 +140,8 @@ The CLI now opens a terminal home screen when `cppapplab` is run without argumen
 
 The interactive task picker now supports number, task-ID and title-keyword selection. Its task list distinguishes PASSED, IN PROGRESS, NEEDS WORK, STALE, AVAILABLE and LOCKED; the home screen summarizes those counts so learners can find unfinished work without remembering identifiers.
 
+**Usability delivery is merged:** PR #30 (`917b45c`) added `cppapplab learn` and the one-command Ubuntu quick start; PR #31 (`89ea327`) added the interactive learner home and actionable check diagnostics; PR #32 (`991007e`) added title-keyword search and granular progress states. Final PR #32 CI run `43024884781` passed all three jobs: root GCC/CTest 75/75, root ASan/UBSan 75/75, clang-format and clang-tidy, plus the W8/W9 acceptance fixtures. This validates the hosted Ubuntu workflow; Windows 11 + WSL2 target-machine acceptance remains separate.
+
 ## Remaining work
 
 1. Complete Windows 11 + WSL2 target acceptance.

@@ -312,12 +312,12 @@ TEST(SecureStaticRootAcceptanceTest, RejectsSymlinkAsDocumentRoot) {
     TemporaryTree tree;
     const auto link = tree.base() / "root-link";
     std::filesystem::create_directory_symlink(tree.root(), link);
-    EXPECT_THROW(StaticFileHandler(link), std::system_error);
+    EXPECT_THROW((StaticFileHandler{link}), std::system_error);
 }
 
 TEST(SecureStaticRootAcceptanceTest, RejectsMissingDocumentRoot) {
     TemporaryTree tree;
-    EXPECT_THROW(StaticFileHandler(tree.base() / "missing"), std::system_error);
+    EXPECT_THROW((StaticFileHandler{tree.base() / "missing"}), std::system_error);
 }
 
 TEST(SecureStaticRootAcceptanceTest, RejectsRegularFileAsDocumentRoot) {
@@ -327,7 +327,7 @@ TEST(SecureStaticRootAcceptanceTest, RejectsRegularFileAsDocumentRoot) {
         std::ofstream output(file);
         output << "not a directory";
     }
-    EXPECT_THROW(StaticFileHandler(file), std::system_error);
+    EXPECT_THROW((StaticFileHandler{file}), std::system_error);
 }
 
 TEST(SecureStaticRootAcceptanceTest, DoesNotDecodePercentEncodingTwice) {

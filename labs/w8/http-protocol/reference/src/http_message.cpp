@@ -192,9 +192,9 @@ std::string serialize_response(const HttpResponse& response, ConnectionPolicy co
         }
     }
 
-    std::string output =
-        std::string(response_version) + " " + std::to_string(response.status_code) + " " +
-        response.reason_phrase + "\r\n";
+    std::string output = std::string(response_version) + " " +
+                         std::to_string(response.status_code) + " " + response.reason_phrase +
+                         "\r\n";
     for (const auto& entry : headers) {
         output += entry.first + ": " + entry.second + "\r\n";
     }

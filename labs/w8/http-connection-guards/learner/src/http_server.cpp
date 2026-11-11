@@ -109,6 +109,7 @@ void send_best_effort(int fd, const std::string& bytes) noexcept {
 }  // namespace
 
 struct HttpServer::Impl {
+    // TODO(student): add per-connection deadline generation, request count and quota state.
     struct Connection {
         int fd{-1};
         std::uint64_t token{0U};

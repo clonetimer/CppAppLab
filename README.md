@@ -100,7 +100,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-W1–W7 and W8-D1–D6-D1 are merged into `main`. W8-D5 adds a real TCP listener and epoll/worker-pool handoff; D6-A defines connection policy, D6-B sequential Keep-Alive, D6-C deadlines/quotas and D6-D1 graceful shutdown. D6-D2 structured logs/metrics are in progress; D6-D3 load/soak and Windows 11 + WSL2 target acceptance remain. No release or target WSL2 acceptance has been declared. See:
+W1–W7 and W8-D1–D6-D2 are merged into `main`. W8-D5 adds a real TCP listener and epoll/worker-pool handoff; D6-A defines connection policy, D6-B sequential Keep-Alive, D6-C deadlines/quotas, D6-D1 graceful shutdown and D6-D2 structured logs/runtime metrics. D6-D3 operational load/soak validation is in progress; Windows 11 + WSL2 target acceptance and release qualification remain separate. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)
@@ -114,6 +114,7 @@ W1–W7 and W8-D1–D6-D1 are merged into `main`. W8-D5 adds a real TCP listener
 - [HTTP connection guards lesson](course/lessons/w8/connection-guards.md)
 - [HTTP graceful shutdown lesson](course/lessons/w8/graceful-shutdown.md)
 - [HTTP observability lesson](course/lessons/w8/observability.md)
+- [HTTP operational load lesson](course/lessons/w8/operational-load.md)
 
 ## Quick start
 

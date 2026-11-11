@@ -28,6 +28,7 @@ namespace {
 constexpr std::uint64_t kListenerToken = 1U;
 constexpr std::uint64_t kWakeToken = 2U;
 constexpr std::uint64_t kFirstConnectionToken = 3U;
+constexpr std::size_t kResponseHeaderReserve = 256U;
 
 class UniqueFd {
    public:
@@ -127,7 +128,7 @@ struct HttpServer::Impl {
     explicit Impl(HttpServerConfig server_config, Router server_router)
         : config(validate_config(std::move(server_config))),
           router(std::move(server_router)),
-          static_files(config.document_root),
+          static_files(config.document_root, config.max_response_bytes - kResponseHeaderReserve),
           pool(config.worker_count, config.task_queue_capacity) {
         UniqueFd listener(::socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0));
         if (listener.get() < 0) {
@@ -529,6 +530,9 @@ struct HttpServer::Impl {
             }
 
             for (int index = 0; index < count; ++index) {
+                if (stop_requested.load()) {
+                    break;
+                }
                 const std::uint64_t token = events[index].data.u64;
                 const std::uint32_t flags = events[index].events;
 

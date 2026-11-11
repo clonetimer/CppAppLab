@@ -60,6 +60,7 @@ class UniqueFd {
     throw std::runtime_error(std::string(operation) + ": " + std::strerror(errno));
 }
 
+// TODO(student): validate bounded positive timeout and quota configuration.
 [[nodiscard]] HttpServerConfig validate_config(HttpServerConfig config) {
     if (config.backlog <= 0 || config.worker_count == 0U || config.task_queue_capacity == 0U ||
         config.max_connections == 0U || config.max_request_bytes == 0U ||

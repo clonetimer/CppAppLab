@@ -36,6 +36,12 @@ jobs:
         run: |
           ./build/cppapplab --version
           ./build/cppapplab --help
+      - name: Build and test HTTP server reference workspace
+        run: |
+          cmake -S labs/w8/http-server/reference -B build-http-server-reference \
+            -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-http-server-reference --parallel
+          ctest --test-dir build-http-server-reference --output-on-failure --timeout 15
       - name: Environment acceptance smoke test
         run: bash scripts/check_environment.sh
 

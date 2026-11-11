@@ -117,7 +117,7 @@ The fixed fixture uses real loopback TCP sockets and the real parser → dispatc
 - [ ] Incremental parser and bounded read/write buffers.
 - [ ] Partial writes resumed through EPOLLOUT only when needed.
 - [ ] 400 / 413 / 500 / 503 mapping and clean shutdown.
-- [ ] All 30 fixed acceptance checks pass.
+- [ ] All 30 acceptance checks pass.
 
 ## Explain your design
 

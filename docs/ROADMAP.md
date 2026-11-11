@@ -83,7 +83,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 - W1: toolchain, syntax, functions, multi-file compilation, CMake, GDB, calculator
 - W2: STL, algorithms, lambdas, file persistence, Todo CLI (P2-A)
-- W3: classes, RAII, smart pointers, copy/move, operators, TaskManager refactor (**P2-B in progress on `feat/p2-w3-task-manager`**)
+- W3: classes, RAII, smart pointers, copy/move, operators, TaskManager refactor (P2-B merged into `main` via PR #6)
 
 ### P2-B — W3 Task / TaskManager Refactor
 
@@ -99,7 +99,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ### P3-A — W4 TaskManager Quality Gate
 
-**Status: implementation complete on `feat/p3-w4-quality-gate`; hosted CI passed; PR preparation pending.**
+**Status: merged into `main` via PR #7; hosted Ubuntu CI passed.**
 
 - ten learner-authored GoogleTest cases with meaningful TODO prompts
 - CMake Debug build, CTest, ASan/UBSan, clang-format and clang-tidy configurations
@@ -146,7 +146,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ## P5 — W7: TCP/IP and socket programming
 
-**Status: W7-A TCP Echo Server merged into `main` via PR #10; W7-B epoll chat server is next.**
+**Status: W7-A and W7-B are both merged into `main` via PRs #10 and #11; hosted Ubuntu CI passed.**
 
 - W7-A: IPv4 socket API, blocking TCP echo server/client, partial sends, descriptor lifetime
 - W7-B: thread-per-connection learning path, non-blocking sockets, select/poll, epoll
@@ -166,7 +166,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ## P6 — W8: HTTP server engineering
 
-**Status: W8-D1–D6-D2 merged into `main`; D6-D3 is in progress.**
+**Status: W8-D1–D6-D3 merged into `main`; the D5 server task is in the learner catalog and D6 is the next curriculum formalization target.**
 
 - D1: HTTP/1.1 message model, request-line parser and response serializer; 33 fixed acceptance checks passed.
 - D2: incremental parser, NeedMoreData/Complete/Error states, strict header syntax, Content-Length and byte-accurate consumed length; 39 checks passed.
@@ -178,7 +178,9 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - D6-C: merged as `974b3d2` (PR #22); timerfd-backed absolute idle/header/body deadlines, HTTP 408 for incomplete requests, per-connection request cap and persistent-connection quota. Final-head run `42977367404` passed all three jobs; the nine-case loopback fixture passed under GCC, ASan/UBSan and clang-tidy.
 - D6-D1: merged as `d29d38e` (PR #23); stop accepting, close idle clients, return 503 for incomplete requests, drain in-flight handlers with Connection: close, and enforce a monotonic socket-drain deadline. Final-head run `42979170395` passed all three jobs; fixture 5/5 under GCC, ASan/UBSan and clang-tidy.
 - D6-D2: merged as `546f87c` (PR #24); JSONL access/error/lifecycle events, query redaction, custom log sink, atomic runtime metrics and operational gauges. Final-head run `42986255957` passed all three jobs; eight-case observability fixture passed under GCC, ASan/UBSan and clang-tidy.
-- D6-D3 (implemented on `feat/w8-d6-operational-load-tests`, PR #25 ready for merge): four-case fixed loopback fixture for 16-client concurrent load and worker bounds, 8 MiB slow-reader backpressure, 320-request Keep-Alive soak, and eight repeated server lifecycle cycles. Final tested head `42c2438`; run `42988902800` passed all three jobs; D6-D3 fixture 4/4 under GCC, ASan/UBSan and clang-tidy.
+- D6-D3: merged as `597a8a0` (PR #25); four-case fixed loopback fixture for 16-client concurrent load and worker bounds, 8 MiB slow-reader backpressure, 320-request Keep-Alive soak, and eight repeated server lifecycle cycles. Final tested head `736a0ac`; run `42991542424` passed all three jobs; D6-D3 fixture 4/4 under GCC, ASan/UBSan and clang-tidy.
+
+**Course boundary:** `course/tasks.tsv` currently registers 14 learner tasks through W8-D5. D6-A–D3 have reference-server lessons and acceptance fixtures but are not yet separately registered learner tasks; taskization is the next curriculum step.
 
 - TCP/IP and Linux socket API
 - blocking and nonblocking I/O

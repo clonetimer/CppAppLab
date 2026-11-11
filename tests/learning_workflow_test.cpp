@@ -283,8 +283,8 @@ TEST(MenuWorkflowTest, ShowsInProgressAndLockedStatesWithAProgressSummary) {
 
     const cppapplab::Task* hello = cppapplab::find_task("w1.hello-world");
     ASSERT_NE(hello, nullptr);
-    const auto workspace = cppapplab::create_workspace(
-        *hello, home / "cppapplab-work" / "w1.hello-world");
+    const auto workspace =
+        cppapplab::create_workspace(*hello, home / "cppapplab-work" / "w1.hello-world");
     cppapplab::register_workspace(workspace.root);
     StdinOverride input("2\n0\n0\n");
 
@@ -329,8 +329,8 @@ TEST(MenuWorkflowTest, MarksFailedTasksAsNeedingWork) {
 
     const cppapplab::Task* hello = cppapplab::find_task("w1.hello-world");
     ASSERT_NE(hello, nullptr);
-    const auto workspace = cppapplab::create_workspace(
-        *hello, home / "cppapplab-work" / "w1.hello-world");
+    const auto workspace =
+        cppapplab::create_workspace(*hello, home / "cppapplab-work" / "w1.hello-world");
     cppapplab::register_workspace(workspace.root);
     write_source(workspace.root, "int main( { return 0; }\n");
 
@@ -362,8 +362,8 @@ TEST(MenuWorkflowTest, MarksPassedWorkspacesAsStaleAfterLearnerSourceChanges) {
 
     const cppapplab::Task* hello = cppapplab::find_task("w1.hello-world");
     ASSERT_NE(hello, nullptr);
-    const auto workspace = cppapplab::create_workspace(
-        *hello, home / "cppapplab-work" / "w1.hello-world");
+    const auto workspace =
+        cppapplab::create_workspace(*hello, home / "cppapplab-work" / "w1.hello-world");
     cppapplab::register_workspace(workspace.root);
     write_source(workspace.root,
                  "#include <iostream>\n"

@@ -207,6 +207,17 @@ TEST(HttpServerAcceptanceTest, ServesStaticIndexFallback) {
     TestServer server(config);
     EXPECT_EQ(body_of(exchange(server.port(), request("GET", "/"))), "<h1>native</h1>");
 }
+TEST(HttpServerAcceptanceTest, Returns413ForStaticFileAboveResponseLimit) {
+    TemporaryRoot root;
+    root.write("large.txt", std::string(2048U, 'x'));
+    HttpServerConfig config;
+    config.document_root = root.path();
+    config.max_response_bytes = 512U;
+    TestServer server(config);
+    const auto response = exchange(server.port(), request("GET", "/large.txt"));
+    EXPECT_NE(response.find("HTTP/1.1 413 Content Too Large\r\n"), std::string::npos);
+}
+
 TEST(HttpServerAcceptanceTest, Returns404ForMissingStaticFile) {
     TestServer server;
     EXPECT_NE(
@@ -298,6 +309,16 @@ TEST(HttpServerAcceptanceTest, Returns400ForIncompleteRequestAtEof) {
     client.shutdown_write();
     EXPECT_NE(client.read_all().find("HTTP/1.1 400 Bad Request\r\n"), std::string::npos);
 }
+TEST(HttpServerAcceptanceTest, CompletesRequestWhenPeerHalfClosesWrite) {
+    TestServer server;
+    TestClient client(server.port());
+    ASSERT_TRUE(client.send_all(request("GET", "/hello")));
+    client.shutdown_write();
+    const auto response = client.read_all();
+    EXPECT_NE(response.find("HTTP/1.1 200 OK\r\n"), std::string::npos);
+    EXPECT_EQ(body_of(response), "Hello from C++ HTTP Server!\n");
+}
+
 TEST(HttpServerAcceptanceTest, Returns503WhenWorkerQueueIsSaturated) {
     std::atomic<bool> entered{false};
     Router router = make_default_router();

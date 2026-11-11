@@ -42,6 +42,14 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug
           cmake --build build-http-server-reference --parallel
           ctest --test-dir build-http-server-reference --output-on-failure --timeout 15
+      - name: HTTP connection policy acceptance
+        run: |
+          cmake -S course/fixtures/w8/http-connection-policy -B build-http-connection-policy \
+            -DCPPAPPLAB_HTTP_PROTOCOL_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-protocol/reference" \
+            -DCPPAPPLAB_ROUTER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/router/reference" \
+            -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-http-connection-policy --parallel
+          ctest --test-dir build-http-connection-policy --output-on-failure --timeout 10
       - name: Environment acceptance smoke test
         run: bash scripts/check_environment.sh
 
@@ -91,6 +99,19 @@ jobs:
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
           cmake --build build-http-server-sanitize --parallel
           ctest --test-dir build-http-server-sanitize --output-on-failure --timeout 20
+      - name: HTTP connection policy sanitizer coverage
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1
+        run: |
+          cmake -S course/fixtures/w8/http-connection-policy -B build-http-connection-policy-sanitize \
+            -DCPPAPPLAB_HTTP_PROTOCOL_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-protocol/reference" \
+            -DCPPAPPLAB_ROUTER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/router/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-http-connection-policy-sanitize --parallel
+          ctest --test-dir build-http-connection-policy-sanitize --output-on-failure --timeout 10
 
   code-quality:
     name: Formatting and clang-tidy
@@ -133,3 +154,12 @@ jobs:
             -DCMAKE_CXX_CLANG_TIDY=clang-tidy
           cmake --build build-http-server-quality --parallel
           ctest --test-dir build-http-server-quality --output-on-failure --timeout 20
+      - name: HTTP connection policy clang-tidy coverage
+        run: |
+          cmake -S course/fixtures/w8/http-connection-policy -B build-http-connection-policy-quality \
+            -DCPPAPPLAB_HTTP_PROTOCOL_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/http-protocol/reference" \
+            -DCPPAPPLAB_ROUTER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w8/router/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_CLANG_TIDY=clang-tidy
+          cmake --build build-http-connection-policy-quality --parallel
+          ctest --test-dir build-http-connection-policy-quality --output-on-failure --timeout 10

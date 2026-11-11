@@ -280,6 +280,7 @@ TEST(HttpObservabilityAcceptanceTest, TracksPersistentAndActiveConnectionGauges)
     ASSERT_TRUE(client.send_all(make_request("/hello", "keep-alive")));
     const std::string first = client.read_response();
     ASSERT_NE(first.find("Connection: keep-alive\r\n"), std::string::npos);
+    wait_until([&] { return server.metrics().responses_completed == 1U; });
 
     HttpServerMetrics metrics = server.metrics();
     EXPECT_EQ(metrics.accepted_connections, 1U);

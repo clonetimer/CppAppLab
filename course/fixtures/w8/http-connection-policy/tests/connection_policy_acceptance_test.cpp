@@ -2,7 +2,9 @@
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <string>
+#include <utility>
 
 using namespace cppapplab::http;
 

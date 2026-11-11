@@ -79,7 +79,7 @@ TEST(HttpChunkedParserAcceptanceTest, PreservesBinaryChunkBytes) {
 }
 
 TEST(HttpChunkedParserAcceptanceTest, PreservesCrlfBytesInsideChunkData) {
-    const ParseResult result = parse_chunked("6\r\na\r\nb!\r\n0\r\n\r\n");
+    const ParseResult result = parse_chunked("5\r\na\r\nb!\r\n0\r\n\r\n");
     ASSERT_EQ(result.status, ParseStatus::Complete);
     EXPECT_EQ(result.request.body, "a\r\nb!");
 }
@@ -138,6 +138,14 @@ TEST(HttpChunkedParserAcceptanceTest, RejectsChunkedBodyLargerThanOneMiB) {
     const ParseResult result = parse_chunked("100001\r\n");
     EXPECT_EQ(result.status, ParseStatus::Error);
     EXPECT_EQ(result.error, "HTTP body too large");
+}
+
+TEST(HttpChunkedParserAcceptanceTest, RejectsTransferEncodingOnHttp10) {
+    const std::string wire =
+        "POST / HTTP/1.0\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n";
+    const ParseResult result = HttpRequestParser{}.parse(wire);
+    EXPECT_EQ(result.status, ParseStatus::Error);
+    EXPECT_EQ(result.error, "Transfer-Encoding requires HTTP/1.1");
 }
 
 TEST(HttpChunkedParserAcceptanceTest, RejectsContentLengthCombinedWithTransferEncoding) {

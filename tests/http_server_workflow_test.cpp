@@ -70,7 +70,7 @@ TEST(HttpServerWorkflowTest, CatalogPreservesPrerequisiteAndAcceptanceContract) 
     EXPECT_EQ(task->order, 5U);
     EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
     EXPECT_EQ(task->source_files.size(), 4U);
-    EXPECT_EQ(task->expected_test_count, 30U);
+    EXPECT_EQ(task->expected_test_count, 32U);
     ASSERT_EQ(task->prerequisites.size(), 1U);
     EXPECT_EQ(task->prerequisites.front(), "w8.router");
 }
@@ -112,6 +112,6 @@ TEST(HttpServerWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImplementa
     const auto evidence = cppapplab::read_evidence(workspace.root);
     ASSERT_TRUE(evidence.has_value()) << diagnostic;
     EXPECT_TRUE(evidence->passed) << diagnostic;
-    EXPECT_EQ(evidence->tests_passed, 30U) << diagnostic;
-    EXPECT_EQ(evidence->tests_total, 30U) << diagnostic;
+    EXPECT_EQ(evidence->tests_passed, 32U) << diagnostic;
+    EXPECT_EQ(evidence->tests_total, 32U) << diagnostic;
 }

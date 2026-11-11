@@ -350,6 +350,30 @@ TEST(HttpServerAcceptanceTest, RejectsStaleWorkerCompletionAfterDisconnect) {
               "Hello from C++ HTTP Server!\n");
 }
 
+TEST(HttpServerAcceptanceTest, HandlesFragmentedRequestBody) {
+    TestServer server;
+    TestClient client(server.port());
+    std::string first = "POST /echo HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\n";
+    first.append("a\0", 2U);
+    ASSERT_TRUE(client.send_all(first));
+    std::this_thread::sleep_for(15ms);
+    ASSERT_TRUE(client.send_all("bcd"));
+    const std::string response = client.read_all();
+    const std::string expected("a\0bcd", 5U);
+    EXPECT_EQ(body_of(response), expected);
+}
+
+TEST(HttpServerAcceptanceTest, ClosesAfterOneRequestAndDoesNotServePipelinedSecondRequest) {
+    TestServer server;
+    const std::string wire = request("GET", "/hello") + request("GET", "/health");
+    const std::string response = exchange(server.port(), wire);
+    const std::size_t first_status = response.find("HTTP/1.1 ");
+    ASSERT_NE(first_status, std::string::npos);
+    EXPECT_EQ(response.find("HTTP/1.1 ", first_status + 1U), std::string::npos);
+    EXPECT_NE(response.find("Connection: close\r\n"), std::string::npos);
+    EXPECT_EQ(body_of(response), "Hello from C++ HTTP Server!\n");
+}
+
 TEST(HttpServerAcceptanceTest, KeepsWorkerSlotUntilDisconnectedRequestCompletes) {
     std::atomic<bool> entered{false};
     Router router = make_default_router();

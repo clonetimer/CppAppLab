@@ -136,7 +136,7 @@ The platform now has a guided learner entry point (`cppapplab learn`) and a one-
 
 ## Interactive learner experience and feedback
 
-The next usability layer adds a terminal home screen for learners who run `cppapplab` without arguments, numbered task selection without memorizing task IDs, and concise compiler/acceptance diagnostics with direct hint, log and retry commands. Non-interactive invocations retain the help output to avoid blocking scripts and CI.
+The CLI now opens a terminal home screen when `cppapplab` is run without arguments in an interactive terminal. Learners can continue, choose tasks by number, or review progress without memorizing task IDs. Failed acceptance checks show a concise compiler/test diagnostic excerpt and direct hint, log and retry commands. Non-interactive invocations retain help output to avoid blocking scripts and CI.
 
 ## Remaining work
 

@@ -369,9 +369,7 @@ TEST(HttpObservabilityAcceptanceTest, ErrorLogCanBeDisabledWithoutDisablingAcces
 
 TEST(HttpObservabilityAcceptanceTest, LogSinkExceptionsDoNotBreakRequestProcessing) {
     HttpServerConfig config;
-    config.log_sink = [](std::string_view) {
-        throw std::runtime_error("log sink unavailable");
-    };
+    config.log_sink = [](std::string_view) { throw std::runtime_error("log sink unavailable"); };
     TestServer server(config);
     TestClient client(server.port());
 

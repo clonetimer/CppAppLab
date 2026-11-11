@@ -166,7 +166,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ## P6 — W8: HTTP server engineering
 
-**Status: W8-D1–D6-D3 merged into `main`; the D5 server task is in the learner catalog and D6 is the next curriculum formalization target.**
+**Status: W8-D1–D6-D3 merged into `main`; six D6 learner tasks are being registered on `feat/w8-advanced-taskization`.**
 
 - D1: HTTP/1.1 message model, request-line parser and response serializer; 33 fixed acceptance checks passed.
 - D2: incremental parser, NeedMoreData/Complete/Error states, strict header syntax, Content-Length and byte-accurate consumed length; 39 checks passed.
@@ -180,7 +180,9 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - D6-D2: merged as `546f87c` (PR #24); JSONL access/error/lifecycle events, query redaction, custom log sink, atomic runtime metrics and operational gauges. Final-head run `42986255957` passed all three jobs; eight-case observability fixture passed under GCC, ASan/UBSan and clang-tidy.
 - D6-D3: merged as `597a8a0` (PR #25); four-case fixed loopback fixture for 16-client concurrent load and worker bounds, 8 MiB slow-reader backpressure, 320-request Keep-Alive soak, and eight repeated server lifecycle cycles. Final tested head `736a0ac`; run `42991542424` passed all three jobs; D6-D3 fixture 4/4 under GCC, ASan/UBSan and clang-tidy.
 
-**Course boundary:** `course/tasks.tsv` currently registers 14 learner tasks through W8-D5. D6-A–D3 have reference-server lessons and acceptance fixtures but are not yet separately registered learner tasks; taskization is the next curriculum step.
+### W8-D6 advanced tutorial taskization
+
+**Implemented on `feat/w8-advanced-taskization`, PR #26 ready for merge.** The formal catalog grows from 14 to 20 tasks with a strict D6-A → D6-B → D6-C → D6-D1 → D6-D2 → D6-D3 prerequisite chain. Each task has a focused learner source boundary, three progressive hints and a fixed fixture that builds the learner's declared implementation. D6-A through D6-D2 use staged previous-milestone server baselines; D6-D3 implements a reusable HTTP load-probe client while retaining the existing server operational regression suite. Final tested head `6f77c25`; run `42997438080` passed all three jobs: root 60/60 and task-mode 49/49 under GCC, ASan/UBSan and clang-tidy. The end-to-end workflow test also invokes `cppapplab check` for all six tasks and verifies current PASS evidence.
 
 - TCP/IP and Linux socket API
 - blocking and nonblocking I/O

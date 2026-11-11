@@ -66,3 +66,21 @@ The fixture runs independently under GCC, ASan/UBSan and clang-tidy. D6-B's eigh
 4. Why is the persistent-connection quota distinct from the total accepted-connection limit?
 5. Why is the persistent slot released on actual socket close rather than as soon as a request asks for Connection: close?
 6. Why does the final allowed request carry Connection: close before the server discards any later pipelined bytes?
+
+## Learner task — `w8.http-connection-guards`
+
+**Workspace files**
+
+- `include/http_server.hpp`
+- `src/http_server.cpp`
+
+Starting from the D6-B baseline, add validated idle/header/body timeout settings, a timerfd-backed monotonic deadline scheduler, absolute header/body deadlines, per-connection request limits and a persistent-connection quota. Use generation values to invalidate stale deadline entries.
+
+**Fixed acceptance:** 9 platform-owned loopback GoogleTests in `course/fixtures/w8/http-connection-guards`. The tests cover idle close, 408 responses, trickle-resistant absolute deadlines, idle refresh, request caps, quota release and invalid configuration.
+
+```bash
+./build/cppapplab start w8.http-connection-guards "$HOME/cppapplab-work/w8-connection-guards"
+./build/cppapplab lesson "$HOME/cppapplab-work/w8-connection-guards"
+./build/cppapplab hint "$HOME/cppapplab-work/w8-connection-guards" 1
+./build/cppapplab check "$HOME/cppapplab-work/w8-connection-guards"
+```

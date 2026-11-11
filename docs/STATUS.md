@@ -17,6 +17,7 @@ W1–W7 and W8-D1–D6-D3 are merged into `main`. The platform includes a real L
 **D6-D2 final-head CI:** run `42986255957`, all three jobs passed.  
 **D6-D3 merge:** `597a8a00a3052b70bf1af7f695c63f7310d67563` (PR #25).  
 **D6-D3 final-head:** `736a0bac1e859c8cdffbfe7b1883e709cb928eec`; CI run `42991542424`, all three jobs passed.  
+**Advanced taskization PR:** #26 (`feat/w8-advanced-taskization`); adds six formal W8-D6 learner tasks after W8-D5. Final tested head `6f77c25f08729f5dde858dfc5bed945afb24eef6`; CI run `42997438080` passed all three jobs. Root suite 60/60; six task-mode fixtures 49/49 under GCC, ASan/UBSan and clang-tidy.  
 **Target-machine status:** Windows 11 + WSL2 acceptance has not yet been performed or claimed. No Release is declared.
 
 ## Verified merged baseline
@@ -50,13 +51,28 @@ Final-head regression evidence: root GCC/CTest 53/53; root ASan/UBSan 53/53; HTT
 
 These are deterministic functional load/soak regressions and resource-recovery checks, not throughput, tail-latency or production-capacity SLAs.
 
-## Course catalog boundary
+## W8 advanced tutorial taskization (implemented; PR #26 ready for merge)
 
-The formal learning catalog currently contains 14 tasks through `w8.http-server` (D5). D6-A through D6-D3 are integrated into the reference server and have dedicated lessons and acceptance fixtures, but are not yet independent learner task IDs with their own workspaces, hints and `cppapplab check` contracts.
+**Branch:** `feat/w8-advanced-taskization`.
+
+The catalog grows from 14 to 20 tasks. Six sequential learner tasks are registered after `w8.http-server`, with dedicated learner templates, three progressive hints, and fixed acceptance fixtures that compile the learner's declared source files:
+
+| Task | Focus | Fixed checks |
+|---|---|---:|
+| `w8.http-connection-policy` | HTTP/1.0/1.1 persistence and authoritative response serialization | 14 |
+| `w8.http-keep-alive` | Sequential reuse, pipelining and half-close draining | 8 |
+| `w8.http-connection-guards` | timerfd deadlines and connection quotas | 9 |
+| `w8.http-graceful-shutdown` | In-flight drain and bounded shutdown | 5 |
+| `w8.http-observability` | JSONL logs, redaction and atomic metrics | 8 |
+| `w8.http-operational-load` | Concurrent Keep-Alive load probe and latency statistics | 5 |
+
+The tasks form a strict prerequisite chain from D6-A through D6-D3. D6-B through D6-D2 use a known completed previous-stage baseline so each task concentrates on its own implementation delta; the learner still implements the stage under test. D6-D3 adds a reusable load-probe module while the existing four-case operational regression fixture remains an independent server-level gate.
+
+Task-mode CI configures each fixed fixture with `CPPAPPLAB_LEARNER_SOURCE_DIR` pointing to the corresponding reference implementation. This validates the same CMake path used by `cppapplab check` without pre-filling learner workspaces. Final run `42997438080` passed the learner-mode 49/49 checks under GCC, ASan/UBSan and clang-tidy. The root workflow test also created each learner workspace, copied its known-good stage implementation, invoked `cppapplab check`, and verified a current PASS for all six tasks.
 
 ## Remaining work
 
-1. Convert the D6 engineering extensions into staged learner-facing tasks with focused source boundaries, hints and fixed platform-owned acceptance.
+1. Merge PR #26 after review; hosted task-mode and end-to-end `cppapplab check` contracts now pass.
 2. Complete Windows 11 + WSL2 target acceptance.
 3. Finish reproducible/offline dependency delivery, first-use guidance and release qualification.
 

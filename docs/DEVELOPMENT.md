@@ -11,7 +11,18 @@ ctest --test-dir build --output-on-failure
 ./build/cppapplab --help
 ```
 
-If GoogleTest is installed from Ubuntu packages, configure with `-DCPPAPPLAB_FETCH_GTEST=OFF`. Otherwise CMake can fetch the pinned GoogleTest source when network access is available.
+If GoogleTest is installed from Ubuntu packages, configure with `-DCPPAPPLAB_FETCH_GTEST=OFF`. For an offline build, extract the source bundle and run `bash scripts/build_offline.sh`; it uses the bundled GoogleTest v1.18.0 source and disables CMake package discovery and FetchContent network access.
+
+## Offline source bundle
+
+On a connected, clean checkout run:
+
+```bash
+bash scripts/create_offline_bundle.sh "$HOME/CppAppLab-offline.tar.gz"
+sha256sum -c "$HOME/CppAppLab-offline.tar.gz.sha256"
+```
+
+Transfer the archive and checksum to the target WSL2 filesystem, extract the package, then run `bash scripts/check_environment.sh --strict-wsl` and `bash scripts/build_offline.sh`. The bundle includes source and GoogleTest source only; install Ubuntu/GCC/CMake/GDB system packages separately. See [Offline Build](OFFLINE_BUILD.md).
 
 ## Sanitizer build
 
@@ -35,6 +46,10 @@ cmake -S . -B build-quality \\
 cmake --build build-quality --parallel
 ctest --test-dir build-quality --output-on-failure
 ```
+
+## Target WSL2 and release qualification
+
+Use [Release Qualification](RELEASE_QUALIFICATION.md) as the release gate. Hosted CI is not a substitute for running the strict environment checker and offline build on the actual Windows 11 + WSL2 + Ubuntu 24.04 target machine. Record the target machine's toolchain versions, tested commit SHA, CTest counts and offline bundle SHA-256 before declaring a release.
 
 ## Contribution workflow
 

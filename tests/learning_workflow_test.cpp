@@ -5,7 +5,9 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <cstdlib>
 #include <filesystem>
+#include <utility>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -35,6 +37,37 @@ class TemporaryDirectory {
 
    private:
     std::filesystem::path path_;
+};
+
+
+class EnvironmentOverride {
+   public:
+    EnvironmentOverride(std::string name, std::string value) : name_(std::move(name)) {
+        const char* previous = std::getenv(name_.c_str());
+        if (previous != nullptr) {
+            had_previous_ = true;
+            previous_ = previous;
+        }
+        if (::setenv(name_.c_str(), value.c_str(), 1) != 0) {
+            throw std::runtime_error("Cannot set test environment variable: " + name_);
+        }
+    }
+
+    ~EnvironmentOverride() {
+        if (had_previous_) {
+            ::setenv(name_.c_str(), previous_.c_str(), 1);
+        } else {
+            ::unsetenv(name_.c_str());
+        }
+    }
+
+    EnvironmentOverride(const EnvironmentOverride&) = delete;
+    EnvironmentOverride& operator=(const EnvironmentOverride&) = delete;
+
+   private:
+    std::string name_;
+    std::string previous_;
+    bool had_previous_{false};
 };
 
 class StdoutCapture {
@@ -77,6 +110,106 @@ void write_source(const std::filesystem::path& workspace, const std::string& sou
 }
 
 }  // namespace
+
+
+TEST(GuidedLearningWorkflowTest, LearnCreatesAndThenResumesTheDefaultWorkspace) {
+    TemporaryDirectory temporary;
+    const auto home = temporary.path() / "home";
+    EnvironmentOverride home_override("HOME", home.string());
+    EnvironmentOverride state_override("CPPAPPLAB_STATE_DIR",
+                                       (temporary.path() / "state").string());
+
+    std::string first_output;
+    {
+        StdoutCapture capture;
+        EXPECT_EQ(invoke({"cppapplab", "learn"}), 0);
+        first_output = capture.str();
+    }
+
+    const auto expected_workspace = home / "cppapplab-work" / "w1.hello-world";
+    EXPECT_NE(first_output.find("Created your learner workspace"), std::string::npos);
+    EXPECT_NE(first_output.find("First C++ Program"), std::string::npos);
+    EXPECT_NE(first_output.find("cppapplab check"), std::string::npos);
+    EXPECT_TRUE(std::filesystem::is_regular_file(expected_workspace / ".cppapplab-workspace"));
+
+    const auto saved = cppapplab::read_progress("w1.hello-world");
+    ASSERT_TRUE(saved.has_value());
+    EXPECT_EQ(saved->workspace_root, std::filesystem::absolute(expected_workspace));
+
+    std::string second_output;
+    {
+        StdoutCapture capture;
+        EXPECT_EQ(invoke({"cppapplab", "learn", "w1.hello-world"}), 0);
+        second_output = capture.str();
+    }
+    EXPECT_NE(second_output.find("Resuming your saved workspace"), std::string::npos);
+    EXPECT_NE(second_output.find(expected_workspace.string()), std::string::npos);
+}
+
+TEST(GuidedLearningWorkflowTest, LearnNeverOverwritesAnUnrelatedDefaultDirectory) {
+    TemporaryDirectory temporary;
+    const auto home = temporary.path() / "home";
+    const auto occupied = home / "cppapplab-work" / "w1.hello-world";
+    std::filesystem::create_directories(occupied);
+    {
+        std::ofstream sentinel(occupied / "keep.txt");
+        sentinel << "keep this file";
+    }
+    EnvironmentOverride home_override("HOME", home.string());
+    EnvironmentOverride state_override("CPPAPPLAB_STATE_DIR",
+                                       (temporary.path() / "state").string());
+
+    std::string output;
+    {
+        StdoutCapture capture;
+        EXPECT_EQ(invoke({"cppapplab", "learn"}), 0);
+        output = capture.str();
+    }
+    const auto new_workspace = home / "cppapplab-work" / "w1.hello-world-2";
+    EXPECT_NE(output.find(new_workspace.string()), std::string::npos);
+    EXPECT_TRUE(std::filesystem::is_regular_file(new_workspace / ".cppapplab-workspace"));
+    std::ifstream sentinel(occupied / "keep.txt");
+    std::string content;
+    std::getline(sentinel, content);
+    EXPECT_EQ(content, "keep this file");
+}
+
+TEST(GuidedLearningWorkflowTest, LearnMovesToTheNextUnlockedTaskAfterAcceptancePasses) {
+    TemporaryDirectory temporary;
+    const auto home = temporary.path() / "home";
+    EnvironmentOverride home_override("HOME", home.string());
+    EnvironmentOverride state_override("CPPAPPLAB_STATE_DIR",
+                                       (temporary.path() / "state").string());
+
+    ASSERT_EQ(invoke({"cppapplab", "learn"}), 0);
+    const auto first_workspace = home / "cppapplab-work" / "w1.hello-world";
+    write_source(first_workspace,
+                 "#include <iostream>\n"
+                 "int main() {\n"
+                 "    std::cout << \"Hello, CppAppLab!\\n\";\n"
+                 "    return 0;\n"
+                 "}\n");
+
+    std::string check_output;
+    int check_result = -1;
+    {
+        StdoutCapture capture;
+        check_result = invoke({"cppapplab", "check", first_workspace.string()});
+        check_output = capture.str();
+    }
+    ASSERT_EQ(check_result, 0) << check_output;
+
+    std::string next_output;
+    {
+        StdoutCapture capture;
+        EXPECT_EQ(invoke({"cppapplab", "learn"}), 0);
+        next_output = capture.str();
+    }
+    EXPECT_NE(next_output.find("w1.calculator"), std::string::npos);
+    EXPECT_NE(next_output.find("Created your learner workspace"), std::string::npos);
+    EXPECT_TRUE(std::filesystem::is_regular_file(
+        home / "cppapplab-work" / "w1.calculator" / ".cppapplab-workspace"));
+}
 
 TEST(LearningWorkflowTest, FixedCheckPassesAndSourceEditsMakeEvidenceStale) {
     const cppapplab::Task* task = cppapplab::find_task("w1.hello-world");

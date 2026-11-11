@@ -44,6 +44,7 @@ struct HttpServerMetrics {
     std::uint64_t accepted_connections{0U};
     std::uint64_t rejected_connections{0U};
     std::uint64_t active_connections{0U};
+    std::uint64_t peak_active_connections{0U};
     std::uint64_t closed_connections{0U};
     std::uint64_t persistent_connections{0U};
     std::uint64_t requests_received{0U};
@@ -59,6 +60,7 @@ struct HttpServerMetrics {
     std::uint64_t graceful_shutdowns{0U};
     std::uint64_t forced_shutdown_connections{0U};
     std::uint64_t log_sink_failures{0U};
+    std::uint64_t write_backpressure_events{0U};
 };
 
 class HttpServer {

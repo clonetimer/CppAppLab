@@ -613,3 +613,43 @@ jobs:
             $errors | Format-List
             exit 1
           }
+
+  package-candidate:
+    name: Build source and learner packages
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Verify packaging toolchain
+        run: |
+          command -v g++
+          command -v cmake
+          command -v tar
+          command -v gzip
+          command -v sha256sum
+      - name: Build relocatable learner CLI
+        run: |
+          cmake -S . -B build-release \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DCPPAPPLAB_FETCH_GTEST=OFF
+          cmake --build build-release --parallel
+      - name: Create source and learner packages
+        run: |
+          bash scripts/package_release.sh build-release/cppapplab dist
+          (cd dist && sha256sum --check SHA256SUMS)
+      - name: Smoke-test relocated learner package
+        run: |
+          learner_archive="$(find dist -maxdepth 1 -type f -name 'CppAppLab-learner-*.tar.gz' -print -quit)"
+          test -n "$learner_archive"
+          bash scripts/smoke_learner_package.sh "$learner_archive"
+      - name: Upload package candidates
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppapplab-packages-${{ github.sha }}
+          path: |
+            dist/*.tar.gz
+            dist/package-manifest.json
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14

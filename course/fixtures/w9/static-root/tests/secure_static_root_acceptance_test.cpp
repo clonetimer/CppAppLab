@@ -177,7 +177,7 @@ TEST(SecureStaticRootAcceptanceTest, RejectsMalformedPercentEncoding) {
     TemporaryTree tree;
     const HttpResponse response =
         StaticFileHandler(tree.root()).handle(make_request("GET", "/bad%GG.txt"));
-    EXPECT_EQ(response.status_code, 405);
+    EXPECT_EQ(response.status_code, 400);
 }
 
 TEST(SecureStaticRootAcceptanceTest, RejectsEncodedSlash) {
@@ -360,5 +360,5 @@ TEST(SecureStaticRootAcceptanceTest, RejectsNonGetMethodBeforeFilesystemLookup) 
     TemporaryTree tree;
     const HttpResponse response =
         StaticFileHandler(tree.root()).handle(make_request("G ET", "/index.html"));
-    EXPECT_EQ(response.status_code, 400);
+    EXPECT_EQ(response.status_code, 405);
 }

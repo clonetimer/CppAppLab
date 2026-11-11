@@ -91,6 +91,16 @@ The fixed fixture contains 35 platform-owned GoogleTests. A root learning-engine
 
 W9-A1 is merged and validated. W9-A2–A5 remain planned stages and are not registered tasks yet.
  
+## W9-A2 — Strict request-target and query parsing (implementation in progress)
+
+**Branch:** `feat/w9-request-target-query`.  
+**Task ID:** `w9.request-target`.  
+**Prerequisite:** current PASS for `w9.http-chunked`.
+
+The new task introduces a standalone request-target parser. It accepts origin-form and OPTIONS asterisk-form, rejects absolute/authority forms for this origin server, decodes percent escapes exactly once, preserves ordered duplicate query parameters, treats plus as a literal plus, rejects fragments/control bytes/dot segments/encoded path separators, and applies explicit target/path/query/component limits.
+
+The learner source boundary is a new request-target header/source pair. The reference fixture contains 39 platform-owned GoogleTests. A root workflow test creates the learner workspace, copies only the declared reference source, disables learner CMake and invokes the real `cppapplab check` path. Hosted CI is pending.
+
 ## Remaining work
 
 1. Complete Windows 11 + WSL2 target acceptance.

@@ -139,6 +139,13 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug
           cmake --build build-w9-http-chunked --parallel
           ctest --test-dir build-w9-http-chunked --output-on-failure --timeout 10
+      - name: W9 request-target acceptance
+        run: |
+          cmake -S course/fixtures/w9/request-target -B build-w9-request-target \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w9/request-target/reference" \
+            -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-w9-request-target --parallel
+          ctest --test-dir build-w9-request-target --output-on-failure --timeout 10
       - name: Environment acceptance smoke test
         run: bash scripts/check_environment.sh
 
@@ -338,6 +345,19 @@ jobs:
           cmake --build build-w9-http-chunked-sanitize --parallel
           ctest --test-dir build-w9-http-chunked-sanitize --output-on-failure --timeout 15
 
+      - name: W9 request-target sanitizer coverage
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1
+        run: |
+          cmake -S course/fixtures/w9/request-target -B build-w9-request-target-sanitize \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w9/request-target/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-w9-request-target-sanitize --parallel
+          ctest --test-dir build-w9-request-target-sanitize --output-on-failure --timeout 15
+
   code-quality:
     name: Formatting and clang-tidy
     runs-on: ubuntu-24.04
@@ -489,3 +509,11 @@ jobs:
             -DCMAKE_CXX_CLANG_TIDY=clang-tidy
           cmake --build build-w9-http-chunked-quality --parallel
           ctest --test-dir build-w9-http-chunked-quality --output-on-failure --timeout 10
+      - name: W9 request-target clang-tidy coverage
+        run: |
+          cmake -S course/fixtures/w9/request-target -B build-w9-request-target-quality \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w9/request-target/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_CLANG_TIDY=clang-tidy
+          cmake --build build-w9-request-target-quality --parallel
+          ctest --test-dir build-w9-request-target-quality --output-on-failure --timeout 10

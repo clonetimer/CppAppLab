@@ -240,6 +240,18 @@ TEST(TaskCatalogTest, ExposesHttpChunkedTransferExercise) {
     EXPECT_EQ(task->prerequisites.front(), "w8.http-operational-load");
 }
 
+TEST(TaskCatalogTest, ExposesHttpRequestTargetExercise) {
+    const cppapplab::Task* task = cppapplab::find_task("w9.request-target");
+    ASSERT_NE(task, nullptr);
+    EXPECT_EQ(task->week, 9U);
+    EXPECT_EQ(task->order, 2U);
+    EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
+    EXPECT_EQ(task->source_files.size(), 2U);
+    EXPECT_EQ(task->expected_test_count, 39U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w9.http-chunked");
+}
+
 TEST(TaskCatalogTest, UnknownTaskDoesNotResolve) {
     EXPECT_EQ(cppapplab::find_task("w99.unknown"), nullptr);
 }

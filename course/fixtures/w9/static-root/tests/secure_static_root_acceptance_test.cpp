@@ -217,8 +217,7 @@ TEST(SecureStaticRootAcceptanceTest, RejectsAbsoluteFormRequestTarget) {
 
 TEST(SecureStaticRootAcceptanceTest, RejectsAsteriskFormForGet) {
     TemporaryTree tree;
-    const HttpResponse response =
-        StaticFileHandler(tree.root()).handle(make_request("GET", "*"));
+    const HttpResponse response = StaticFileHandler(tree.root()).handle(make_request("GET", "*"));
     EXPECT_EQ(response.status_code, 400);
 }
 
@@ -351,8 +350,7 @@ TEST(SecureStaticRootAcceptanceTest, KeepsEncodedPercentInFilenameLiteral) {
 
 TEST(SecureStaticRootAcceptanceTest, ReturnsBadRequestForEmptyTarget) {
     TemporaryTree tree;
-    const HttpResponse response =
-        StaticFileHandler(tree.root()).handle(make_request("GET", ""));
+    const HttpResponse response = StaticFileHandler(tree.root()).handle(make_request("GET", ""));
     EXPECT_EQ(response.status_code, 400);
 }
 

@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <cerrno>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -126,8 +127,13 @@ class TestClient {
     void shutdown_write() const {
         (void)::shutdown(fd_, SHUT_WR);
     }
-    void shutdown_both() const {
-        (void)::shutdown(fd_, SHUT_RDWR);
+    void close_with_reset() {
+        if (fd_ >= 0) {
+            linger reset{1, 0};
+            (void)::setsockopt(fd_, SOL_SOCKET, SO_LINGER, &reset, sizeof(reset));
+            (void)::close(fd_);
+            fd_ = -1;
+        }
     }
     std::string read_all() const {
         std::string result;
@@ -365,6 +371,7 @@ TEST(HttpServerAcceptanceTest, RejectsStaleWorkerCompletionAfterDisconnect) {
     config.max_connections = 1U;
     config.task_queue_capacity = 1U;
     TestServer server(config, std::move(router));
+
     TestClient old_client(server.port());
     ASSERT_TRUE(old_client.send_all(request("GET", "/slow")));
     const auto entered_deadline = std::chrono::steady_clock::now() + 1s;
@@ -373,11 +380,13 @@ TEST(HttpServerAcceptanceTest, RejectsStaleWorkerCompletionAfterDisconnect) {
     }
     ASSERT_TRUE(entered.load());
 
-    // Keep the old client descriptor open while the server observes a full shutdown.
-    // The next accepted server-side descriptor can then reuse the old server fd.
-    old_client.shutdown_both();
+    // An RST makes the server retire the old fd while its worker is still running.
+    old_client.close_with_reset();
     std::this_thread::sleep_for(100ms);
 
+    // Reserve the old client-side fd so accept4 reuses the server-side fd number.
+    const int reserved_fd = ::open("/dev/null", O_RDONLY | O_CLOEXEC);
+    ASSERT_GE(reserved_fd, 0);
     TestClient replacement(server.port());
     ASSERT_TRUE(replacement.send_all("GET /hel"));
     std::this_thread::sleep_for(100ms);
@@ -389,9 +398,10 @@ TEST(HttpServerAcceptanceTest, RejectsStaleWorkerCompletionAfterDisconnect) {
     ASSERT_TRUE(completed.load());
     std::this_thread::sleep_for(20ms);
 
-    ASSERT_TRUE(replacement.send_all("lo HTTP/1.1\r\nHost: localhost\r\n\r\n"));
+    ASSERT_TRUE(replacement.send_all("lo HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n"));
     const auto response = replacement.read_all();
-    EXPECT_EQ(body_of(response), "Hello from C++ HTTP Server!\n");
+    EXPECT_EQ(body_of(response), "Hello from C++ HTTP Server!\\n");
+    (void)::close(reserved_fd);
 }
 
 TEST(HttpServerAcceptanceTest, HandlesFragmentedRequestBody) {

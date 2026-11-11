@@ -230,7 +230,7 @@ void wait_until(Predicate predicate) {
         return false;
     }
     const std::string response = client.read_response();
-    return response.find("HTTP/1.1 200 OK\\r\\n") != std::string::npos &&
+    return response.find("HTTP/1.1 200 OK\r\n") != std::string::npos &&
            response_body(response) == "worked" && client.read_until_eof().empty();
 }
 
@@ -243,8 +243,8 @@ void wait_until(Predicate predicate) {
             return false;
         }
         const std::string response = client.read_response();
-        if (response.find("HTTP/1.1 200 OK\\r\\n") == std::string::npos ||
-            response_body(response) != "{\\\"status\\\":\\\"ok\\\"}") {
+        if (response.find("HTTP/1.1 200 OK\r\n") == std::string::npos ||
+            response_body(response) != "{\"status\":\"ok\"}") {
             return false;
         }
     }
@@ -258,8 +258,8 @@ void wait_until(Predicate predicate) {
         return false;
     }
     const std::string response = client.read_response();
-    if (response.find("HTTP/1.1 200 OK\\r\\n") == std::string::npos ||
-        response_body(response) != "{\\\"status\\\":\\\"ok\\\"}" ||
+    if (response.find("HTTP/1.1 200 OK\r\n") == std::string::npos ||
+        response_body(response) != "{\"status\":\"ok\"}" ||
         !client.read_until_eof().empty()) {
         return false;
     }

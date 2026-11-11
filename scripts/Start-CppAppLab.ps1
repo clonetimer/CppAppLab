@@ -40,7 +40,8 @@ if ([string]::IsNullOrWhiteSpace($Distro)) {
 
         $selection = Read-Host "Ubuntu distribution number"
         $selectedIndex = 0
-        if (-not [int]::TryParse($selection, [ref]$selectedIndex) -or
+        $selectionIsNumeric = [int]::TryParse($selection, [ref]$selectedIndex)
+        if (-not $selectionIsNumeric -or
             $selectedIndex -lt 1 -or $selectedIndex -gt $ubuntuDistros.Count) {
             throw "Invalid Ubuntu distribution selection."
         }

@@ -252,6 +252,18 @@ TEST(TaskCatalogTest, ExposesHttpRequestTargetExercise) {
     EXPECT_EQ(task->prerequisites.front(), "w9.http-chunked");
 }
 
+TEST(TaskCatalogTest, ExposesSecureStaticRootExercise) {
+    const cppapplab::Task* task = cppapplab::find_task("w9.static-root");
+    ASSERT_NE(task, nullptr);
+    EXPECT_EQ(task->week, 9U);
+    EXPECT_EQ(task->order, 3U);
+    EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
+    EXPECT_EQ(task->source_files.size(), 5U);
+    EXPECT_EQ(task->expected_test_count, 34U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w9.request-target");
+}
+
 TEST(TaskCatalogTest, UnknownTaskDoesNotResolve) {
     EXPECT_EQ(cppapplab::find_task("w99.unknown"), nullptr);
 }

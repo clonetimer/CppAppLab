@@ -204,12 +204,12 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ## Next curriculum expansion — W9 to W12
 
-**W9-A1 merged into `main` via PR #27 (`bfb3f3f`).** The task, `w9.http-chunked`, extends the W8 parser with bounded incremental HTTP/1.1 chunked decoding, trailer validation, anti-ambiguity framing and pipeline-safe consumed-byte reporting. Final PR-head run `43006252261` passed all three jobs: root 62/62 and W9 fixture 35/35 under GCC, ASan/UBSan and clang-tidy. The end-to-end learning-engine check passed. W9-A2 (strict request-target/query parsing) merged into main via PR #28 (`cca1c80`). Final PR-head run `43008862704` passed all three jobs: root 64/64, W9-A1 35/35 and W9-A2 39/39 under GCC, ASan/UBSan and clang-tidy. The end-to-end learning-engine checks passed for both W9 tasks. W9-A3–A5 remain roadmap stages until their learner workspaces and fixed fixtures are implemented.
+**W9-A1 merged into `main` via PR #27 (`bfb3f3f`).** The task, `w9.http-chunked`, extends the W8 parser with bounded incremental HTTP/1.1 chunked decoding, trailer validation, anti-ambiguity framing and pipeline-safe consumed-byte reporting. Final PR-head run `43006252261` passed all three jobs: root 62/62 and W9 fixture 35/35 under GCC, ASan/UBSan and clang-tidy. The end-to-end learning-engine check passed. W9-A2 (strict request-target/query parsing) merged into main via PR #28 (`cca1c80`). Final PR-head run `43008862704` passed all three jobs: root 64/64, W9-A1 35/35 and W9-A2 39/39 under GCC, ASan/UBSan and clang-tidy. The end-to-end learning-engine checks passed for both W9 tasks. W9-A3 (`w9.static-root`) is in implementation on `feat/w9-secure-static-root`; its learner workspace, reference handler, 34-case fixed fixture, lesson, task catalog entry and end-to-end `cppapplab check` workflow are staged. GCC, ASan/UBSan, clang-tidy and hosted CI validation are pending. W9-A4 and A5 remain roadmap stages.
 
 The rest of W9 is planned as a cumulative secure-protocol sequence:
 
 - **A2 — Request target and query parsing:** origin-form parsing, strict percent decoding, malformed-escape and control-byte rejection, query multimap.
-- **A3 — Secure static root:** directory-fd confinement, openat component traversal, O_NOFOLLOW, regular-file verification and symlink escape tests.
+- **A3 — Secure static root:** directory-fd confinement, openat component traversal, O_NOFOLLOW, regular-file verification and symlink escape tests (implementation in progress on `feat/w9-secure-static-root`).
 - **A4 — HTTP hardening:** message-framing policy, request-smuggling regressions, resource limits and deterministic protocol errors.
 - **A5 — Parser fuzzing:** sanitizer-backed fuzz target, seed corpus, regression cases and minimized reproductions.
 
@@ -219,6 +219,6 @@ Beyond W9:
 - **W11 — High-performance C++ services:** profiling, std::pmr, buffer reuse, scatter/gather I/O, sendfile, batching, backpressure, cache locality and latency percentiles.
 - **W12 — Production operations:** typed configuration, signal-driven shutdown/reload, health endpoints, correlation IDs, systemd deployment, recovery and release runbooks.
 
-These are curriculum targets, not yet registered learner tasks. Each stage will be added to the task catalog only after its learner source boundary, reference implementation and platform-owned acceptance fixture are ready.
+W9-A1 and W9-A2 are merged and validated. W9-A3 is registered on its feature branch but not yet merged or validated. W9-A4–A5 and W10–W12 remain curriculum targets, not registered learner tasks; each will be added only after its learner source boundary, reference implementation and platform-owned acceptance fixture are ready.
 
 The roadmap is outcome-based. Additional lessons are added only when they improve a demonstrated learning or engineering outcome.

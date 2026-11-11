@@ -118,3 +118,44 @@ TEST(StaticFilesWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImplement
     EXPECT_EQ(evidence->tests_passed, 31U) << diagnostic;
     EXPECT_EQ(evidence->tests_total, 31U) << diagnostic;
 }
+
+TEST(StaticFilesWorkflowTest, W9SecureStaticRootUsesLearnerSourcesInFixedAcceptance) {
+    const cppapplab::Task* task = cppapplab::find_task("w9.static-root");
+    ASSERT_NE(task, nullptr);
+
+    TemporaryDirectory temporary;
+    ScopedEnvironment state_directory("CPPAPPLAB_STATE_DIR", temporary.path() / "state");
+    const auto workspace =
+        cppapplab::create_workspace(*task, temporary.path() / "secure-static-root");
+    const auto reference = cppapplab::data_root() / "labs/w9/static-root/reference";
+    for (const auto& relative_path : task->source_files) {
+        std::filesystem::copy_file(reference / relative_path, workspace.root / relative_path,
+                                   std::filesystem::copy_options::overwrite_existing);
+    }
+
+    write_file(workspace.root / "CMakeLists.txt",
+               "message(FATAL_ERROR \"Learner CMakeLists must not run\")\n");
+
+    std::vector<std::string> arguments{"cppapplab", "check", workspace.root.string()};
+    std::vector<char*> argv;
+    for (auto& argument : arguments) {
+        argv.push_back(argument.data());
+    }
+    const int result = cppapplab::run_cli(static_cast<int>(argv.size()), argv.data());
+
+    std::string diagnostic;
+    if (result != 0) {
+        std::ifstream log(workspace.root / ".cppapplab/last-check.log", std::ios::binary);
+        if (log) {
+            diagnostic.assign(std::istreambuf_iterator<char>(log),
+                              std::istreambuf_iterator<char>());
+        }
+    }
+
+    EXPECT_EQ(result, 0) << diagnostic;
+    const auto evidence = cppapplab::read_evidence(workspace.root);
+    ASSERT_TRUE(evidence.has_value()) << diagnostic;
+    EXPECT_TRUE(evidence->passed) << diagnostic;
+    EXPECT_EQ(evidence->tests_passed, 34U) << diagnostic;
+    EXPECT_EQ(evidence->tests_total, 34U) << diagnostic;
+}

@@ -66,7 +66,8 @@ void validate_config(const HttpLoadProbeConfig& config) {
     }
     if (config.client_count == 0U || config.client_count > 128U ||
         config.requests_per_client == 0U || config.requests_per_client > 10000U) {
-        throw std::invalid_argument("load probe client and request counts are outside their limits");
+        throw std::invalid_argument(
+            "load probe client and request counts are outside their limits");
     }
     if (config.timeout <= std::chrono::milliseconds::zero() ||
         config.timeout > std::chrono::seconds(30)) {
@@ -83,8 +84,8 @@ void validate_config(const HttpLoadProbeConfig& config) {
     descriptor.events = events;
     const auto deadline = Clock::now() + timeout;
     for (;;) {
-        const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
-            deadline - Clock::now());
+        const auto remaining =
+            std::chrono::duration_cast<std::chrono::milliseconds>(deadline - Clock::now());
         if (remaining <= std::chrono::milliseconds::zero()) {
             return false;
         }
@@ -134,8 +135,7 @@ void validate_config(const HttpLoadProbeConfig& config) {
     return socket_fd;
 }
 
-[[nodiscard]] bool send_all(int fd, std::string_view bytes,
-                            std::chrono::milliseconds timeout) {
+[[nodiscard]] bool send_all(int fd, std::string_view bytes, std::chrono::milliseconds timeout) {
     std::size_t offset = 0U;
     const auto deadline = Clock::now() + timeout;
     while (offset < bytes.size()) {
@@ -173,10 +173,9 @@ struct ParsedResponse {
     const auto deadline = Clock::now() + timeout;
     std::size_t header_end = std::string::npos;
     while ((header_end = buffer.find("\r\n\r\n")) == std::string::npos) {
-        const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
-            deadline - Clock::now());
-        if (remaining <= std::chrono::milliseconds::zero() ||
-            !wait_for_fd(fd, POLLIN, remaining)) {
+        const auto remaining =
+            std::chrono::duration_cast<std::chrono::milliseconds>(deadline - Clock::now());
+        if (remaining <= std::chrono::milliseconds::zero() || !wait_for_fd(fd, POLLIN, remaining)) {
             return false;
         }
         char chunk[4096];
@@ -227,8 +226,8 @@ struct ParsedResponse {
             });
             if (name == "content-length") {
                 try {
-                    content_length = static_cast<std::size_t>(
-                        std::stoull(std::string(line.substr(colon + 1U))));
+                    content_length =
+                        static_cast<std::size_t>(std::stoull(std::string(line.substr(colon + 1U))));
                 } catch (...) {
                     return false;
                 }
@@ -243,10 +242,9 @@ struct ParsedResponse {
 
     const std::size_t expected_size = header_end + 4U + content_length;
     while (buffer.size() < expected_size) {
-        const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
-            deadline - Clock::now());
-        if (remaining <= std::chrono::milliseconds::zero() ||
-            !wait_for_fd(fd, POLLIN, remaining)) {
+        const auto remaining =
+            std::chrono::duration_cast<std::chrono::milliseconds>(deadline - Clock::now());
+        if (remaining <= std::chrono::milliseconds::zero() || !wait_for_fd(fd, POLLIN, remaining)) {
             return false;
         }
         char chunk[8192];
@@ -293,9 +291,8 @@ HttpLoadProbeResult run_http_load_probe(const HttpLoadProbeConfig& config) {
     validate_config(config);
 
     const auto started = Clock::now();
-    const std::uint64_t total_requests =
-        static_cast<std::uint64_t>(config.client_count) *
-        static_cast<std::uint64_t>(config.requests_per_client);
+    const std::uint64_t total_requests = static_cast<std::uint64_t>(config.client_count) *
+                                         static_cast<std::uint64_t>(config.requests_per_client);
     std::atomic<std::uint64_t> succeeded{0U};
     std::atomic<std::uint64_t> failed{0U};
     std::mutex latency_mutex;
@@ -312,8 +309,8 @@ HttpLoadProbeResult run_http_load_probe(const HttpLoadProbeConfig& config) {
                 return;
             }
 
-            for (std::size_t request_index = 0U;
-                 request_index < config.requests_per_client; ++request_index) {
+            for (std::size_t request_index = 0U; request_index < config.requests_per_client;
+                 ++request_index) {
                 const bool last_request = request_index + 1U == config.requests_per_client;
                 const std::string wire = make_request(config, last_request);
                 const auto request_started = Clock::now();
@@ -350,10 +347,9 @@ HttpLoadProbeResult run_http_load_probe(const HttpLoadProbeConfig& config) {
         client.join();
     }
 
-    const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
-        Clock::now() - started);
-    const auto elapsed_us =
-        static_cast<std::uint64_t>(std::max<std::int64_t>(1, elapsed.count()));
+    const auto elapsed =
+        std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - started);
+    const auto elapsed_us = static_cast<std::uint64_t>(std::max<std::int64_t>(1, elapsed.count()));
 
     std::sort(latencies.begin(), latencies.end());
     HttpLoadProbeResult result;
@@ -361,9 +357,8 @@ HttpLoadProbeResult run_http_load_probe(const HttpLoadProbeConfig& config) {
     result.requests_succeeded = succeeded.load();
     result.requests_failed = failed.load();
     result.elapsed_microseconds = elapsed_us;
-    result.requests_per_second =
-        static_cast<double>(result.requests_succeeded) * 1000000.0 /
-        static_cast<double>(elapsed_us);
+    result.requests_per_second = static_cast<double>(result.requests_succeeded) * 1000000.0 /
+                                 static_cast<double>(elapsed_us);
     result.p50_latency_microseconds = percentile(latencies, 50U);
     result.p95_latency_microseconds = percentile(latencies, 95U);
     result.p99_latency_microseconds = percentile(latencies, 99U);

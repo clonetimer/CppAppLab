@@ -803,6 +803,7 @@ struct HttpServer::Impl {
         }
     }
 
+    // TODO(student): stop accepting, drain in-flight work, and enforce the shutdown deadline.
     void run_loop() {
         epoll_event events[64]{};
         while (!stop_requested.load()) {

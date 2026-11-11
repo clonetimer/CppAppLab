@@ -20,6 +20,7 @@
 #include <atomic>
 #include <chrono>
 #include <deque>
+#include <iostream>
 #include <mutex>
 #include <queue>
 #include <stdexcept>
@@ -156,12 +157,38 @@ struct HttpServer::Impl {
         DeadlineKind deadline_kind{DeadlineKind::None};
         std::uint64_t deadline_generation{0U};
         Clock::time_point deadline_at{};
+        Clock::time_point request_started_at{};
+        std::string request_method;
+        std::string request_target;
+        int response_status_code{0};
     };
 
     struct Completion {
         int fd{-1};
         std::uint64_t token{0U};
         HttpResponse response;
+        bool handler_failed{false};
+    };
+
+    struct AtomicMetrics {
+        std::atomic<std::uint64_t> accepted_connections{0U};
+        std::atomic<std::uint64_t> rejected_connections{0U};
+        std::atomic<std::uint64_t> active_connections{0U};
+        std::atomic<std::uint64_t> closed_connections{0U};
+        std::atomic<std::uint64_t> persistent_connections{0U};
+        std::atomic<std::uint64_t> requests_received{0U};
+        std::atomic<std::uint64_t> responses_completed{0U};
+        std::atomic<std::uint64_t> response_bytes{0U};
+        std::atomic<std::uint64_t> client_errors{0U};
+        std::atomic<std::uint64_t> server_errors{0U};
+        std::atomic<std::uint64_t> request_timeouts{0U};
+        std::atomic<std::uint64_t> idle_timeouts{0U};
+        std::atomic<std::uint64_t> handler_failures{0U};
+        std::atomic<std::uint64_t> queue_rejections{0U};
+        std::atomic<std::uint64_t> active_jobs{0U};
+        std::atomic<std::uint64_t> graceful_shutdowns{0U};
+        std::atomic<std::uint64_t> forced_shutdown_connections{0U};
+        std::atomic<std::uint64_t> log_sink_failures{0U};
     };
 
     explicit Impl(HttpServerConfig server_config, Router server_router)
@@ -275,10 +302,182 @@ struct HttpServer::Impl {
     std::size_t outstanding_jobs{0U};
     std::size_t persistent_connections{0U};
     std::priority_queue<DeadlineEntry, std::vector<DeadlineEntry>, DeadlineLater> deadlines;
+    AtomicMetrics metric_counters;
     bool shutting_down{false};
     bool shutdown_deadline_expired{false};
     Clock::time_point shutdown_deadline{};
     cppapplab::concurrency::ThreadPool pool;
+
+    [[nodiscard]] static std::string json_quote(std::string_view value) {
+        constexpr char kHex[] = "0123456789abcdef";
+        std::string output;
+        output.reserve(value.size() + 2U);
+        output.push_back('"');
+        for (const unsigned char character : value) {
+            switch (character) {
+                case '"':
+                    output += "\\\"";
+                    break;
+                case '\\':
+                    output += "\\\\";
+                    break;
+                case '\b':
+                    output += "\\b";
+                    break;
+                case '\f':
+                    output += "\\f";
+                    break;
+                case '\n':
+                    output += "\\n";
+                    break;
+                case '\r':
+                    output += "\\r";
+                    break;
+                case '\t':
+                    output += "\\t";
+                    break;
+                default:
+                    if (character < 0x20U) {
+                        output += "\\u00";
+                        output.push_back(kHex[(character >> 4U) & 0x0fU]);
+                        output.push_back(kHex[character & 0x0fU]);
+                    } else {
+                        output.push_back(static_cast<char>(character));
+                    }
+                    break;
+            }
+        }
+        output.push_back('"');
+        return output;
+    }
+
+    [[nodiscard]] static std::string log_prefix(std::string_view level, std::string_view event) {
+        const auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                   std::chrono::system_clock::now().time_since_epoch())
+                                   .count();
+        return "{\"timestamp_ms\":" + std::to_string(timestamp) +
+               ",\"level\":" + json_quote(level) + ",\"event\":" + json_quote(event);
+    }
+
+    void emit_log(const std::string& line, bool access_log) noexcept {
+        if ((access_log && !config.access_log_enabled) ||
+            (!access_log && !config.error_log_enabled)) {
+            return;
+        }
+
+        try {
+            if (config.log_sink) {
+                config.log_sink(line);
+            } else {
+                static std::mutex output_mutex;
+                const std::lock_guard<std::mutex> lock(output_mutex);
+                std::clog << line << '\n';
+            }
+        } catch (...) {
+            metric_counters.log_sink_failures.fetch_add(1U, std::memory_order_relaxed);
+        }
+    }
+
+    void log_server_event(std::string_view event, std::string_view detail = {},
+                          std::uint64_t count = 0U) {
+        std::string line = log_prefix("info", event);
+        if (!detail.empty()) {
+            line += ",\"detail\":" + json_quote(detail);
+        }
+        if (count != 0U) {
+            line += ",\"count\":" + std::to_string(count);
+        }
+        line.push_back('}');
+        emit_log(line, false);
+    }
+
+    void log_error_event(std::string_view event, std::string_view detail, int status_code = 0,
+                         std::uint64_t connection_id = 0U) {
+        std::string line = log_prefix("error", event);
+        if (status_code != 0) {
+            line += ",\"status\":" + std::to_string(status_code);
+        }
+        if (connection_id != 0U) {
+            line += ",\"connection_id\":" + std::to_string(connection_id);
+        }
+        if (!detail.empty()) {
+            line += ",\"detail\":" + json_quote(detail);
+        }
+        line.push_back('}');
+        emit_log(line, false);
+    }
+
+    void log_access(const Connection& connection, std::size_t response_bytes,
+                    std::uint64_t duration_ms) {
+        std::string line = log_prefix("info", "http_access");
+        line += ",\"connection_id\":" + std::to_string(connection.token);
+        line += ",\"method\":" + json_quote(connection.request_method);
+        const std::size_t query_position = connection.request_target.find('?');
+        const std::string_view safe_target(connection.request_target.data(),
+                                           query_position == std::string::npos
+                                               ? connection.request_target.size()
+                                               : query_position);
+        line += ",\"target\":" + json_quote(safe_target);
+        line += std::string(",\"query_present\":") +
+                (query_position == std::string::npos ? "false" : "true");
+        line += ",\"status\":" + std::to_string(connection.response_status_code);
+        line += ",\"duration_ms\":" + std::to_string(duration_ms);
+        line += ",\"response_bytes\":" + std::to_string(response_bytes);
+        line += ",\"connection\":";
+        line += json_quote(connection.close_after_write ? "close" : "keep-alive");
+        line.push_back('}');
+        emit_log(line, true);
+    }
+
+    [[nodiscard]] HttpServerMetrics snapshot_metrics() const noexcept {
+        HttpServerMetrics snapshot;
+        snapshot.accepted_connections = metric_counters.accepted_connections.load();
+        snapshot.rejected_connections = metric_counters.rejected_connections.load();
+        snapshot.active_connections = metric_counters.active_connections.load();
+        snapshot.closed_connections = metric_counters.closed_connections.load();
+        snapshot.persistent_connections = metric_counters.persistent_connections.load();
+        snapshot.requests_received = metric_counters.requests_received.load();
+        snapshot.responses_completed = metric_counters.responses_completed.load();
+        snapshot.response_bytes = metric_counters.response_bytes.load();
+        snapshot.client_errors = metric_counters.client_errors.load();
+        snapshot.server_errors = metric_counters.server_errors.load();
+        snapshot.request_timeouts = metric_counters.request_timeouts.load();
+        snapshot.idle_timeouts = metric_counters.idle_timeouts.load();
+        snapshot.handler_failures = metric_counters.handler_failures.load();
+        snapshot.queue_rejections = metric_counters.queue_rejections.load();
+        snapshot.active_jobs = metric_counters.active_jobs.load();
+        snapshot.graceful_shutdowns = metric_counters.graceful_shutdowns.load();
+        snapshot.forced_shutdown_connections = metric_counters.forced_shutdown_connections.load();
+        snapshot.log_sink_failures = metric_counters.log_sink_failures.load();
+        return snapshot;
+    }
+
+    void record_response(Connection& connection) {
+        const std::size_t bytes = connection.write_buffer.size();
+        const auto elapsed = connection.request_started_at == Clock::time_point{}
+                                 ? std::chrono::milliseconds::zero()
+                                 : std::chrono::duration_cast<std::chrono::milliseconds>(
+                                       Clock::now() - connection.request_started_at);
+        const auto duration_ms =
+            static_cast<std::uint64_t>(std::max<std::int64_t>(0, elapsed.count()));
+
+        metric_counters.responses_completed.fetch_add(1U, std::memory_order_relaxed);
+        metric_counters.response_bytes.fetch_add(static_cast<std::uint64_t>(bytes),
+                                                 std::memory_order_relaxed);
+        if (connection.response_status_code >= 400 && connection.response_status_code < 500) {
+            metric_counters.client_errors.fetch_add(1U, std::memory_order_relaxed);
+        } else if (connection.response_status_code >= 500 &&
+                   connection.response_status_code < 600) {
+            metric_counters.server_errors.fetch_add(1U, std::memory_order_relaxed);
+        }
+
+        log_access(connection, bytes, duration_ms);
+        connection.request_method.clear();
+        connection.request_target.clear();
+        connection.response_status_code = 0;
+        connection.request_started_at =
+            connection.read_buffer.empty() ? Clock::time_point{} : Clock::now();
+    }
 
     void discard_stale_deadlines() {
         while (!deadlines.empty()) {
@@ -405,15 +604,25 @@ struct HttpServer::Impl {
             connection.deadline_kind = DeadlineKind::None;
             ++connection.deadline_generation;
             if (entry.kind == DeadlineKind::Idle) {
+                metric_counters.idle_timeouts.fetch_add(1U, std::memory_order_relaxed);
+                log_error_event("idle_timeout", "idle_deadline_expired", 0, entry.token);
                 close_connection(entry.token);
                 continue;
             }
 
+            metric_counters.request_timeouts.fetch_add(1U, std::memory_order_relaxed);
+            log_error_event(entry.kind == DeadlineKind::Header ? "header_timeout" : "body_timeout",
+                            "request_deadline_expired", 408, entry.token);
             connection.read_buffer.clear();
             queue_error(connection, 408, "Request Timeout", "408 Request Timeout\n");
         }
         if (shutting_down && !shutdown_deadline_expired && shutdown_deadline <= now) {
             shutdown_deadline_expired = true;
+            const auto forced_connections = static_cast<std::uint64_t>(connections.size());
+            metric_counters.forced_shutdown_connections.fetch_add(forced_connections,
+                                                                  std::memory_order_relaxed);
+            log_server_event("shutdown_deadline_expired", "connection_drain_timeout",
+                             forced_connections);
             cleanup_connections();
         }
         schedule_timer();
@@ -428,9 +637,12 @@ struct HttpServer::Impl {
 
     [[nodiscard]] bool update_interest(const Connection& connection) const {
         epoll_event event{};
+        if (!connection.peer_closed) {
+            event.events |= EPOLLRDHUP;
+        }
         if (!connection.processing && connection.write_offset >= connection.write_buffer.size() &&
             !connection.peer_closed && !connection.close_after_write) {
-            event.events |= EPOLLIN | EPOLLRDHUP;
+            event.events |= EPOLLIN;
         }
         if (connection.write_offset < connection.write_buffer.size()) {
             event.events |= EPOLLOUT;
@@ -452,12 +664,18 @@ struct HttpServer::Impl {
         }
         if (found->second.persistent_slot_reserved && persistent_connections > 0U) {
             --persistent_connections;
+            metric_counters.persistent_connections.store(persistent_connections,
+                                                         std::memory_order_relaxed);
         }
         if (fd >= 0) {
             (void)::epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, nullptr);
-            (void)::close(fd);
         }
         connections.erase(found);
+        metric_counters.closed_connections.fetch_add(1U, std::memory_order_relaxed);
+        metric_counters.active_connections.store(connections.size(), std::memory_order_relaxed);
+        if (fd >= 0) {
+            (void)::close(fd);
+        }
     }
 
     void cleanup_connections() noexcept {
@@ -497,6 +715,7 @@ struct HttpServer::Impl {
             wire = serialize_response(response, connection_policy, version);
         }
 
+        connection.response_status_code = response.status_code;
         connection.write_buffer = std::move(wire);
         connection.write_offset = 0U;
         connection.processing = false;
@@ -508,6 +727,7 @@ struct HttpServer::Impl {
     }
 
     void queue_error(Connection& connection, int status, const char* reason, const char* body) {
+        log_error_event("http_error", reason, status, connection.token);
         queue_response(connection, error_response(status, reason, body));
     }
 
@@ -530,6 +750,9 @@ struct HttpServer::Impl {
             return false;
         }
 
+        if (!connection.write_buffer.empty()) {
+            record_response(connection);
+        }
         if (connection.close_after_write) {
             return false;
         }
@@ -577,6 +800,8 @@ struct HttpServer::Impl {
             connection.response_version = request.version;
         }
         if (outstanding_jobs >= config.task_queue_capacity) {
+            metric_counters.queue_rejections.fetch_add(1U, std::memory_order_relaxed);
+            log_error_event("worker_queue_rejected", "task_queue_capacity", 503, token);
             queue_error(connection, 503, "Service Unavailable", "503 Service Unavailable\n");
             return;
         }
@@ -588,19 +813,25 @@ struct HttpServer::Impl {
         }
 
         ++outstanding_jobs;
+        metric_counters.active_jobs.fetch_add(1U, std::memory_order_relaxed);
         try {
             (void)pool.submit([this, fd, token, request = std::move(request)]() mutable {
                 HttpResponse response;
+                bool handler_failed = false;
                 try {
                     response = dispatch_request(request, router, static_files);
                 } catch (...) {
+                    handler_failed = true;
                     response =
                         error_response(500, "Internal Server Error", "500 Internal Server Error\n");
                 }
-                publish_completion(Completion{fd, token, std::move(response)});
+                publish_completion(Completion{fd, token, std::move(response), handler_failed});
             });
         } catch (...) {
             --outstanding_jobs;
+            metric_counters.active_jobs.fetch_sub(1U, std::memory_order_relaxed);
+            metric_counters.queue_rejections.fetch_add(1U, std::memory_order_relaxed);
+            log_error_event("worker_queue_rejected", "thread_pool_submit_failed", 503, token);
             const auto current = connections.find(token);
             if (current != connections.end()) {
                 queue_error(current->second, 503, "Service Unavailable",
@@ -625,7 +856,14 @@ struct HttpServer::Impl {
             return;
         }
 
+        if (connection.request_started_at == Clock::time_point{}) {
+            connection.request_started_at = Clock::now();
+        }
         ParseResult parsed = HttpRequestParser{}.parse(connection.read_buffer);
+        if (!parsed.request.method.empty()) {
+            connection.request_method = parsed.request.method;
+            connection.request_target = parsed.request.target;
+        }
         if (!parsed.request.version.empty()) {
             connection.response_version = parsed.request.version;
         }
@@ -656,6 +894,7 @@ struct HttpServer::Impl {
 
         cancel_deadline(connection);
         ++connection.requests_started;
+        metric_counters.requests_received.fetch_add(1U, std::memory_order_relaxed);
         ConnectionPolicy connection_policy = request_connection_policy(parsed.request);
         const bool request_limit_reached =
             connection.requests_started >= config.max_requests_per_connection;
@@ -669,6 +908,8 @@ struct HttpServer::Impl {
             } else {
                 connection.persistent_slot_reserved = true;
                 ++persistent_connections;
+                metric_counters.persistent_connections.store(persistent_connections,
+                                                             std::memory_order_relaxed);
             }
         }
         connection.read_buffer.erase(0U, parsed.consumed);
@@ -710,6 +951,9 @@ struct HttpServer::Impl {
             const ssize_t received = ::recv(connection.fd, buffer, receive_capacity, 0);
 
             if (received > 0) {
+                if (connection.read_buffer.empty()) {
+                    connection.request_started_at = Clock::now();
+                }
                 connection.read_buffer.append(buffer, static_cast<std::size_t>(received));
                 if (!connection.peer_closed) {
                     try_dispatch(connection);
@@ -738,7 +982,11 @@ struct HttpServer::Impl {
         }
 
         try_dispatch(connection);
-        return connections.find(token) != connections.end();
+        const auto current = connections.find(token);
+        if (current == connections.end()) {
+            return false;
+        }
+        return update_interest(current->second);
     }
 
     void accept_clients() {
@@ -760,6 +1008,8 @@ struct HttpServer::Impl {
 
             UniqueFd client(accepted);
             if (connections.size() >= config.max_connections) {
+                metric_counters.rejected_connections.fetch_add(1U, std::memory_order_relaxed);
+                log_error_event("connection_rejected", "max_connections", 503);
                 const std::string busy = serialize_response(
                     error_response(503, "Service Unavailable", "503 Service Unavailable\n"));
                 send_best_effort(client.get(), busy);
@@ -789,6 +1039,8 @@ struct HttpServer::Impl {
                 close_connection(token);
                 throw;
             }
+            metric_counters.accepted_connections.fetch_add(1U, std::memory_order_relaxed);
+            metric_counters.active_connections.store(connections.size(), std::memory_order_relaxed);
         }
     }
 
@@ -816,6 +1068,11 @@ struct HttpServer::Impl {
         for (auto& completion : ready) {
             if (outstanding_jobs > 0U) {
                 --outstanding_jobs;
+                metric_counters.active_jobs.fetch_sub(1U, std::memory_order_relaxed);
+            }
+            if (completion.handler_failed) {
+                metric_counters.handler_failures.fetch_add(1U, std::memory_order_relaxed);
+                log_error_event("handler_failure", "handler_exception", 500, completion.token);
             }
             const auto found = connections.find(completion.token);
             if (found == connections.end() || found->second.fd != completion.fd) {
@@ -832,6 +1089,9 @@ struct HttpServer::Impl {
         }
         shutting_down = true;
         shutdown_deadline = Clock::now() + config.shutdown_timeout;
+        metric_counters.graceful_shutdowns.fetch_add(1U, std::memory_order_relaxed);
+        log_server_event("server_shutdown_started", "request_stop",
+                         static_cast<std::uint64_t>(connections.size()));
 
         if (listen_fd >= 0) {
             (void)::epoll_ctl(epoll_fd, EPOLL_CTL_DEL, listen_fd, nullptr);
@@ -994,6 +1254,10 @@ bool HttpServer::running() const noexcept {
     return impl_->is_running.load();
 }
 
+HttpServerMetrics HttpServer::metrics() const noexcept {
+    return impl_->snapshot_metrics();
+}
+
 void HttpServer::run() {
     bool expected = false;
     if (!impl_->has_run.compare_exchange_strong(expected, true)) {
@@ -1002,8 +1266,14 @@ void HttpServer::run() {
 
     impl_->is_running.store(true);
     try {
+        impl_->log_server_event("server_started", impl_->config.bind_address, impl_->bound_port);
         impl_->run_loop();
+        impl_->log_server_event("server_stopped");
     } catch (...) {
+        try {
+            impl_->log_error_event("server_loop_failure", "reactor_exception");
+        } catch (...) {
+        }
         impl_->cleanup_connections();
         impl_->is_running.store(false);
         throw;

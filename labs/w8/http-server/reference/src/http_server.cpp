@@ -12,22 +12,29 @@
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #include <sys/socket.h>
+#include <sys/timerfd.h>
+#include <time.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <deque>
 #include <mutex>
+#include <queue>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 namespace cppapplab::http {
 namespace {
 
 constexpr std::uint64_t kListenerToken = 1U;
 constexpr std::uint64_t kWakeToken = 2U;
-constexpr std::uint64_t kFirstConnectionToken = 3U;
+constexpr std::uint64_t kTimerToken = 3U;
+constexpr std::uint64_t kFirstConnectionToken = 4U;
 constexpr std::size_t kResponseHeaderReserve = 256U;
 
 class UniqueFd {
@@ -61,10 +68,16 @@ class UniqueFd {
 }
 
 [[nodiscard]] HttpServerConfig validate_config(HttpServerConfig config) {
+    constexpr auto kMaximumTimeout = std::chrono::hours(24);
+    const auto valid_timeout = [](std::chrono::milliseconds timeout) {
+        return timeout.count() > 0 && timeout <= kMaximumTimeout;
+    };
     if (config.backlog <= 0 || config.worker_count == 0U || config.task_queue_capacity == 0U ||
         config.max_connections == 0U || config.max_request_bytes == 0U ||
-        config.max_response_bytes < 512U) {
-        throw std::invalid_argument("HTTP server limits must be positive");
+        config.max_response_bytes < 512U || config.max_requests_per_connection == 0U ||
+        config.max_persistent_connections == 0U || !valid_timeout(config.idle_timeout) ||
+        !valid_timeout(config.header_timeout) || !valid_timeout(config.body_timeout)) {
+        throw std::invalid_argument("HTTP server limits and timeouts must be positive and bounded");
     }
 
     in_addr parsed{};
@@ -108,6 +121,24 @@ void send_best_effort(int fd, const std::string& bytes) noexcept {
 }  // namespace
 
 struct HttpServer::Impl {
+    using Clock = std::chrono::steady_clock;
+
+    enum class DeadlineKind { None, Idle, Header, Body };
+
+    struct DeadlineEntry {
+        Clock::time_point when;
+        std::uint64_t token{0U};
+        std::uint64_t generation{0U};
+        DeadlineKind kind{DeadlineKind::None};
+    };
+
+    struct DeadlineLater {
+        [[nodiscard]] bool operator()(const DeadlineEntry& left,
+                                      const DeadlineEntry& right) const noexcept {
+            return left.when > right.when;
+        }
+    };
+
     struct Connection {
         int fd{-1};
         std::uint64_t token{0U};
@@ -119,6 +150,11 @@ struct HttpServer::Impl {
         bool close_after_write{false};
         ConnectionPolicy pending_policy{ConnectionPolicy::Close};
         std::string response_version{"HTTP/1.1"};
+        std::size_t requests_started{0U};
+        bool persistent_slot_reserved{false};
+        DeadlineKind deadline_kind{DeadlineKind::None};
+        std::uint64_t deadline_generation{0U};
+        Clock::time_point deadline_at{};
     };
 
     struct Completion {
@@ -170,6 +206,10 @@ struct HttpServer::Impl {
         if (wake.get() < 0) {
             throw_system_error("eventfd");
         }
+        UniqueFd timer(::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC));
+        if (timer.get() < 0) {
+            throw_system_error("timerfd_create");
+        }
 
         epoll_event listener_event{};
         listener_event.events = EPOLLIN;
@@ -185,10 +225,18 @@ struct HttpServer::Impl {
             throw_system_error("epoll_ctl(eventfd)");
         }
 
+        epoll_event timer_event{};
+        timer_event.events = EPOLLIN;
+        timer_event.data.u64 = kTimerToken;
+        if (::epoll_ctl(poller.get(), EPOLL_CTL_ADD, timer.get(), &timer_event) < 0) {
+            throw_system_error("epoll_ctl(timerfd)");
+        }
+
         bound_port = ntohs(bound.sin_port);
         listen_fd = listener.release();
         epoll_fd = poller.release();
         wake_fd = wake.release();
+        timer_fd = timer.release();
     }
 
     ~Impl() {
@@ -203,6 +251,9 @@ struct HttpServer::Impl {
         if (wake_fd >= 0) {
             (void)::close(wake_fd);
         }
+        if (timer_fd >= 0) {
+            (void)::close(timer_fd);
+        }
     }
 
     HttpServerConfig config;
@@ -211,6 +262,7 @@ struct HttpServer::Impl {
     int listen_fd{-1};
     int epoll_fd{-1};
     int wake_fd{-1};
+    int timer_fd{-1};
     std::uint16_t bound_port{0U};
     std::atomic<bool> is_running{false};
     std::atomic<bool> stop_requested{false};
@@ -220,7 +272,135 @@ struct HttpServer::Impl {
     std::mutex completion_mutex;
     std::deque<Completion> completions;
     std::size_t outstanding_jobs{0U};
+    std::size_t persistent_connections{0U};
+    std::priority_queue<DeadlineEntry, std::vector<DeadlineEntry>, DeadlineLater> deadlines;
     cppapplab::concurrency::ThreadPool pool;
+
+    void discard_stale_deadlines() {
+        while (!deadlines.empty()) {
+            const DeadlineEntry& entry = deadlines.top();
+            const auto found = connections.find(entry.token);
+            if (found != connections.end() &&
+                found->second.deadline_generation == entry.generation &&
+                found->second.deadline_kind == entry.kind) {
+                break;
+            }
+            deadlines.pop();
+        }
+    }
+
+    void compact_deadlines_if_needed() {
+        const std::size_t threshold = connections.size() * 4U + 64U;
+        if (deadlines.size() <= threshold) {
+            return;
+        }
+
+        decltype(deadlines) compacted;
+        for (const auto& item : connections) {
+            const Connection& connection = item.second;
+            if (connection.deadline_kind != DeadlineKind::None) {
+                compacted.push(DeadlineEntry{connection.deadline_at, connection.token,
+                                             connection.deadline_generation,
+                                             connection.deadline_kind});
+            }
+        }
+        deadlines.swap(compacted);
+    }
+
+    void schedule_timer() {
+        discard_stale_deadlines();
+
+        itimerspec timer_spec{};
+        if (!deadlines.empty()) {
+            auto nanoseconds =
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    deadlines.top().when.time_since_epoch())
+                    .count();
+            if (nanoseconds <= 0) {
+                nanoseconds = 1;
+            }
+            constexpr std::int64_t kNanosecondsPerSecond = 1000000000LL;
+            timer_spec.it_value.tv_sec =
+                static_cast<time_t>(nanoseconds / kNanosecondsPerSecond);
+            timer_spec.it_value.tv_nsec =
+                static_cast<long>(nanoseconds % kNanosecondsPerSecond);
+        }
+
+        if (::timerfd_settime(timer_fd, TFD_TIMER_ABSTIME, &timer_spec, nullptr) < 0) {
+            throw_system_error("timerfd_settime");
+        }
+    }
+
+    void arm_deadline(Connection& connection, DeadlineKind kind,
+                      std::chrono::milliseconds timeout) {
+        if (connection.deadline_kind == kind) {
+            return;  // Keep the original absolute deadline; trickle traffic cannot extend it.
+        }
+
+        ++connection.deadline_generation;
+        if (connection.deadline_generation == 0U) {
+            ++connection.deadline_generation;
+        }
+        connection.deadline_kind = kind;
+        connection.deadline_at = Clock::now() + timeout;
+        deadlines.push(DeadlineEntry{connection.deadline_at, connection.token,
+                                     connection.deadline_generation, kind});
+        compact_deadlines_if_needed();
+        schedule_timer();
+    }
+
+    void cancel_deadline(Connection& connection) {
+        if (connection.deadline_kind == DeadlineKind::None) {
+            return;
+        }
+        ++connection.deadline_generation;
+        if (connection.deadline_generation == 0U) {
+            ++connection.deadline_generation;
+        }
+        connection.deadline_kind = DeadlineKind::None;
+        schedule_timer();
+    }
+
+    void drain_timer_fd() noexcept {
+        std::uint64_t expirations = 0U;
+        for (;;) {
+            const ssize_t count = ::read(timer_fd, &expirations, sizeof(expirations));
+            if (count == static_cast<ssize_t>(sizeof(expirations))) {
+                continue;
+            }
+            if (count < 0 && errno == EINTR) {
+                continue;
+            }
+            break;
+        }
+    }
+
+    void expire_deadlines() {
+        const auto now = Clock::now();
+        while (!deadlines.empty() && deadlines.top().when <= now) {
+            const DeadlineEntry entry = deadlines.top();
+            deadlines.pop();
+
+            const auto found = connections.find(entry.token);
+            if (found == connections.end() ||
+                found->second.deadline_generation != entry.generation ||
+                found->second.deadline_kind != entry.kind) {
+                continue;
+            }
+
+            Connection& connection = found->second;
+            connection.deadline_kind = DeadlineKind::None;
+            ++connection.deadline_generation;
+            if (entry.kind == DeadlineKind::Idle) {
+                close_connection(entry.token);
+                continue;
+            }
+
+            connection.read_buffer.clear();
+            queue_error(connection, 408, "Request Timeout", "408 Request Timeout\n");
+        }
+        schedule_timer();
+    }
 
     [[nodiscard]] std::uint64_t allocate_token() {
         if (next_token == 0U || next_token == kListenerToken || next_token == kWakeToken) {
@@ -249,6 +429,13 @@ struct HttpServer::Impl {
         }
 
         const int fd = found->second.fd;
+        if (found->second.deadline_kind != DeadlineKind::None) {
+            ++found->second.deadline_generation;
+            found->second.deadline_kind = DeadlineKind::None;
+        }
+        if (found->second.persistent_slot_reserved && persistent_connections > 0U) {
+            --persistent_connections;
+        }
         if (fd >= 0) {
             (void)::epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, nullptr);
             (void)::close(fd);
@@ -264,6 +451,7 @@ struct HttpServer::Impl {
 
     void queue_response(Connection& connection, HttpResponse response,
                         ConnectionPolicy connection_policy = ConnectionPolicy::Close) {
+        cancel_deadline(connection);
         std::string version = connection.response_version;
         if (version != "HTTP/1.0" && version != "HTTP/1.1") {
             version = "HTTP/1.1";
@@ -414,6 +602,8 @@ struct HttpServer::Impl {
         if (connection.read_buffer.empty()) {
             if (connection.peer_closed) {
                 close_connection(token);
+            } else {
+                arm_deadline(connection, DeadlineKind::Idle, config.idle_timeout);
             }
             return;
         }
@@ -427,6 +617,10 @@ struct HttpServer::Impl {
                 queue_error(connection, 400, "Bad Request", "400 Bad Request\n");
             } else if (connection.read_buffer.size() > config.max_request_bytes) {
                 queue_error(connection, 413, "Content Too Large", "413 Content Too Large\n");
+            } else if (connection.read_buffer.find("\r\n\r\n") == std::string::npos) {
+                arm_deadline(connection, DeadlineKind::Header, config.header_timeout);
+            } else {
+                arm_deadline(connection, DeadlineKind::Body, config.body_timeout);
             }
             return;
         }
@@ -443,7 +637,23 @@ struct HttpServer::Impl {
             return;
         }
 
+        cancel_deadline(connection);
+        ++connection.requests_started;
         ConnectionPolicy connection_policy = request_connection_policy(parsed.request);
+        const bool request_limit_reached =
+            connection.requests_started >= config.max_requests_per_connection;
+        if (request_limit_reached) {
+            connection_policy = ConnectionPolicy::Close;
+        }
+        if (connection_policy == ConnectionPolicy::KeepAlive &&
+            !connection.persistent_slot_reserved && !request_limit_reached) {
+            if (persistent_connections >= config.max_persistent_connections) {
+                connection_policy = ConnectionPolicy::Close;
+            } else {
+                connection.persistent_slot_reserved = true;
+                ++persistent_connections;
+            }
+        }
         connection.read_buffer.erase(0U, parsed.consumed);
         if (connection.peer_closed && connection.read_buffer.empty()) {
             connection_policy = ConnectionPolicy::Close;
@@ -553,6 +763,12 @@ struct HttpServer::Impl {
                 continue;
             }
             (void)client.release();
+            try {
+                arm_deadline(inserted.first->second, DeadlineKind::Idle, config.idle_timeout);
+            } catch (...) {
+                close_connection(token);
+                throw;
+            }
         }
     }
 
@@ -611,6 +827,11 @@ struct HttpServer::Impl {
                 if (token == kWakeToken) {
                     drain_wake_fd();
                     drain_completions();
+                    continue;
+                }
+                if (token == kTimerToken) {
+                    drain_timer_fd();
+                    expire_deadlines();
                     continue;
                 }
                 if (token == kListenerToken) {

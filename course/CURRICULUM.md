@@ -175,7 +175,9 @@ D6-B through D6-D2 learner templates include a known completed baseline for the 
 
 **Implemented task:** W9-A2, `w9.request-target`, is merged into `main`. It parses origin-form and OPTIONS asterisk-form targets, decodes percent escapes exactly once, preserves ordered duplicate query keys, rejects dot segments and encoded path separators, and enforces target/path/query/component limits. Its learner workspace and 39-case fixture are part of the main catalog; GCC, ASan/UBSan, clang-tidy and the end-to-end learning-engine check passed.
 
-**Remaining W9 stages:** secure static-file access using directory file descriptors and no-follow semantics; HTTP framing/security hardening; parser fuzzing with a regression corpus. These stages will be registered only when their learner source boundaries and fixed acceptance fixtures are implemented.
+**Implemented task in progress:** W9-A3, `w9.static-root`, is being developed on `feat/w9-secure-static-root`. It reuses the completed W9-A2 target parser, retains a document-root directory descriptor, walks each path component with `openat` and `O_NOFOLLOW`, verifies regular files with `fstat`, and enforces bounded reads. Its 34-case fixture and end-to-end learner check are staged; hosted CI validation is pending.
+
+**Remaining W9 stages:** HTTP framing/security hardening and parser fuzzing with a regression corpus.
 
 ## W10 — TLS and WebSocket services (planned)
 

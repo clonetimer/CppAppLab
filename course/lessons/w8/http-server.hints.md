@@ -33,3 +33,8 @@ The existing response serializer always emits Connection: close. Therefore D5 se
 ## Hint 9 — Error and shutdown paths
 
 Catch handler exceptions in the worker and return 500. Return 503 when capacity is exhausted. request_stop sets the stop flag and writes eventfd; the caller joins run() before destroying HttpServer.
+
+
+## Hint 10 — Concurrent handlers
+
+Router callbacks run on multiple W6 worker threads. Keep handlers stateless where possible. If a callback captures shared mutable state, protect it with a mutex or an appropriate atomic; never capture a Connection or file descriptor.

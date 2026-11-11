@@ -7,6 +7,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <chrono>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -23,6 +24,11 @@ struct HttpServerConfig {
     std::size_t max_connections{64U};
     std::size_t max_request_bytes{16U * 1024U + 1024U * 1024U};
     std::size_t max_response_bytes{2U * 1024U * 1024U};
+    std::chrono::milliseconds idle_timeout{30000};
+    std::chrono::milliseconds header_timeout{10000};
+    std::chrono::milliseconds body_timeout{15000};
+    std::size_t max_requests_per_connection{100U};
+    std::size_t max_persistent_connections{32U};
 };
 
 class HttpServer {

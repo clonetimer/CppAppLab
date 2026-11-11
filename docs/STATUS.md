@@ -2,7 +2,7 @@
 
 ## Current delivery boundary
 
-W1–W7 and W8-D1–D6-D2 are merged into `main`. The platform includes a real Linux TCP HTTP server with incremental parsing, Router/static-file handling, epoll Reactor, bounded W6 ThreadPool, sequential Keep-Alive, absolute connection deadlines, persistent-connection quotas, bounded graceful shutdown, structured JSONL logs and thread-safe runtime metrics.
+W1–W7 and W8-D1–D6-D3 are merged into `main`. The platform includes a real Linux TCP HTTP server with incremental parsing, Router/static-file handling, epoll Reactor, bounded W6 ThreadPool, sequential Keep-Alive, absolute connection deadlines, persistent-connection quotas, bounded graceful shutdown, structured JSONL logs, thread-safe runtime metrics and operational load/soak validation.
 
 **D5 functional merge:** `f503d3f52a9dcaa9dc5a3df1df424e2b7e65e932`.  
 **D5 final-head CI:** run `42956321926`, all three jobs passed.  
@@ -15,7 +15,9 @@ W1–W7 and W8-D1–D6-D2 are merged into `main`. The platform includes a real L
 **D6-D1 final-head CI:** run `42979170395`, all three jobs passed.  
 **D6-D2 merge:** `546f87c669d7cbf88429e87ed1bc7041313dfc63` (PR #24).  
 **D6-D2 final-head CI:** run `42986255957`, all three jobs passed.  
-**D6-D3 branch:** `feat/w8-d6-operational-load-tests`; concurrent-load, slow-reader/backpressure, repeated start/stop and sustained Keep-Alive soak acceptance are being added.  
+**D6-D3 merge:** `597a8a00a3052b70bf1af7f695c63f7310d67563` (PR #25).  
+**D6-D3 final-head CI:** run `42991542424`, all three jobs passed; four operational tests passed under GCC, ASan/UBSan and clang-tidy.  
+**P7 branch:** `feat/p7-wsl2-release-qualification`; local GoogleTest source support, offline bundle scripts and strict WSL2 environment checks are being implemented.  
 **Target-machine status:** Windows 11 + WSL2 acceptance has not yet been performed or claimed. No Release is declared.
 
 ## Verified merged baseline
@@ -31,26 +33,26 @@ W1–W7 and W8-D1–D6-D2 are merged into `main`. The platform includes a real L
 - W8-D6-C connection guards: nine fixed loopback tests for idle/header/body deadlines, absolute trickle-resistant deadlines, idle refresh, request-count cap, persistent-connection quota and invalid configuration. Final-head run `42977367404` passed root GCC/CTest 53/53, root ASan/UBSan 53/53, D6-C fixture 9/9 under GCC and sanitizer, D6-B fixture 8/8 under GCC and sanitizer, D6-A fixture 28/28 under GCC and sanitizer, formatting and clang-tidy across all direct fixtures.
 - W8-D6-D1 graceful shutdown: five fixed loopback tests for idle connection close, in-flight response drain, incomplete-request 503, shutdown deadline and invalid configuration. Final-head run `42979170395` passed all three jobs; D6-D1 fixture 5/5 under GCC, ASan/UBSan and clang-tidy.
 - W8-D6-D2 observability: eight fixed loopback tests for structured access logs, query redaction, connection gauges, handler failures, log-sink exception isolation, timeout counters, connection rejection and worker-queue rejection. Final-head run `42986255957` passed all three jobs; root GCC/CTest 53/53, root ASan/UBSan 53/53, HTTP Server reference workspace 10/10, D6-A 28/28, D6-B 8/8, D6-C 9/9, D6-D1 5/5 and D6-D2 8/8. Formatting and clang-tidy passed for all configured direct fixtures.
+- W8-D6-D3 operational validation: four fixed loopback tests for 16-client concurrent load and worker bounds, 8 MiB slow-reader backpressure, 320-request Keep-Alive soak, and eight repeated server lifecycle cycles. Final tested code head `736a0bac1e859c8cdffbfe7b1883e709cb928eec`; run `42991542424` passed all three jobs. D6-D3 fixture 4/4 under GCC, ASan/UBSan and clang-tidy; root GCC/CTest 53/53 and root ASan/UBSan 53/53.
 
-## W8-D6-D3 — operational load and soak validation (implementation in progress)
+## P7 — delivery and stabilization (implementation in progress)
 
-**Branch:** `feat/w8-d6-operational-load-tests`
+**Branch:** `feat/p7-wsl2-release-qualification`
 
-A dedicated four-case loopback fixture is implemented in `course/fixtures/w8/http-operational`:
+- Add a local GoogleTest source-tree option to CMake so offline builds do not require FetchContent network access.
+- Add `scripts/create_offline_bundle.sh` to package the exact committed source tree and pinned GoogleTest v1.18.0 source with a manifest and SHA-256 sidecar.
+- Add `scripts/build_offline.sh` to configure, compile and run root CTest with CMake package discovery and FetchContent network access disabled.
+- Strengthen `scripts/check_environment.sh --strict-wsl` to require WSL2, Ubuntu 24.04, GCC 11+, CMake 3.18+, GDB, CTest, clang-format, clang-tidy and either system or bundled GoogleTest.
+- Add offline-bundle acceptance to GitHub Actions.
+- Document the offline workflow and release qualification gates.
 
-1. Sixteen concurrent clients; verify handler concurrency remains within the four-worker bound and all responses complete.
-2. An 8 MiB response to a deliberately slow reader; verify non-blocking backpressure, EPOLLOUT recovery and complete body delivery.
-3. Eight concurrent Keep-Alive clients × forty requests (320 total); verify no queue rejection, protocol errors or leaked connections/jobs.
-4. Eight repeated server construction/run/stop/join/destruction cycles with idempotent stop requests.
-
-The tests assert resource recovery and protocol correctness rather than a machine-specific throughput threshold. Final tested head `42c2438f8f52ec204ce2ea0c3c903d9a6516fd69`; GitHub Actions run `42988902800` passed all three jobs. The four-case D6-D3 fixture passed 4/4 under GCC, ASan/UBSan and clang-tidy. The run also passed root GCC/CTest 53/53, root ASan/UBSan 53/53, HTTP Server reference workspace 10/10, D6-A 28/28, D6-B 8/8, D6-C 9/9, D6-D1 5/5 and D6-D2 8/8. PR #25 is ready for merge.
-
-The target is deterministic behavior and resource recovery, not a fragile machine-specific throughput threshold. Hosted GCC, ASan/UBSan, clang-format and clang-tidy results are required before merge.
+**Important boundary:** the offline bundle includes project source and GoogleTest source. It does not package Ubuntu, GCC, CMake, GDB or other system toolchain binaries. Those must be installed on the target WSL2 environment before an offline source build.
 
 ## Remaining work
 
-1. Complete D6-D3 final-head CI, inspect resource counters and close the operational test loop.
-2. Windows 11 + WSL2 target acceptance, reproducible/offline dependency delivery and release qualification.
+1. Complete P7 final-head CI, including a clean extraction and network-disabled build of the offline bundle.
+2. Run target acceptance on the actual Windows 11 + WSL2 + Ubuntu 24.04 environment and record exact toolchain versions and test evidence.
+3. Only after target acceptance, prepare a release candidate, version tag and release notes.
 
 Chunked Transfer-Encoding, TLS, URL decoding, query parameter parsing, route patterns and production-grade canonical/symlink containment remain outside the current scope.
 

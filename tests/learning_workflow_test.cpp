@@ -70,7 +70,6 @@ class EnvironmentOverride {
     bool had_previous_{false};
 };
 
-
 class StdinOverride {
    public:
     explicit StdinOverride(std::string input)
@@ -246,8 +245,8 @@ TEST(MenuWorkflowTest, LetsLearnerChooseATaskWithoutRememberingItsIdentifier) {
     EXPECT_NE(output.find("CppAppLab · Learning home"), std::string::npos);
     EXPECT_NE(output.find("1. [AVAILABLE] w1.hello-world"), std::string::npos);
     EXPECT_NE(output.find("Task: w1.hello-world"), std::string::npos);
-    EXPECT_TRUE(std::filesystem::is_regular_file(
-        home / "cppapplab-work" / "w1.hello-world" / ".cppapplab-workspace"));
+    EXPECT_TRUE(std::filesystem::is_regular_file(home / "cppapplab-work" / "w1.hello-world" /
+                                                 ".cppapplab-workspace"));
 }
 
 TEST(LearningWorkflowTest, FailedCheckShowsCompilerDiagnosticsAndNextSteps) {

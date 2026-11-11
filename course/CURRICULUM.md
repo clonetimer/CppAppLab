@@ -133,7 +133,21 @@ The first-version language baseline is C++17. WSL2 Ubuntu 24.04 is the full acce
 2. `w8.http-parser` — incremental request parser with request line, case-insensitive headers, Content-Length and NeedMoreData/Complete/Error states. This D2 task depends on W8-D1 and reports consumed bytes for pipelined requests.
 3. `w8.static-files` — response serialization integrated with a GET-only static-file handler, MIME types, 404/405 responses and conservative path-traversal rejection. This D3 task depends on W8-D2.
 4. `w8.router` — method + path routing and dynamic endpoints, then integration with static-file fallback. This D4 task follows W8-D3.
-5. `w8.http-server` — connect the parser, router, handler and serializer to a non-blocking TCP/epoll Reactor, bounded W6 ThreadPool, completion queue and eventfd wakeup. One request per connection is retained while the D1 serializer emits `Connection: close`; Keep-Alive is a later stage.
+5. `w8.http-server` — connect the parser, router, handler and serializer to a non-blocking TCP/epoll Reactor, bounded W6 ThreadPool, completion queue and eventfd wakeup. The D5 learner task establishes the real server and bounded dispatch path. The integrated reference server has since been extended through D6-A–D3 with sequential Keep-Alive, connection deadlines and quotas, graceful shutdown, observability, and operational load/soak validation.
+
+
+### W8 advanced engineering extension — D6 connection lifecycle and operations
+
+The D6 stages extend the same reference server beyond the five registered W8 learner tasks:
+
+1. **D6-A — Connection policy:** HTTP/1.0 and HTTP/1.1 persistence rules and authoritative `Connection` response semantics. See [connection policy](lessons/w8/connection-policy.md).
+2. **D6-B — Sequential Keep-Alive:** persistent connections, pipelined request buffering, response ordering and peer half-close draining. See [Keep-Alive lifecycle](lessons/w8/keep-alive.md).
+3. **D6-C — Deadlines and quotas:** idle/header/body deadlines, request-count limits and persistent-connection quotas. See [connection guards](lessons/w8/connection-guards.md).
+4. **D6-D1 — Graceful shutdown:** stop accepting, drain in-flight work and enforce a bounded socket-drain deadline. See [graceful shutdown](lessons/w8/graceful-shutdown.md).
+5. **D6-D2 — Observability:** structured JSONL events, sensitive-query redaction and thread-safe runtime metrics. See [observability](lessons/w8/observability.md).
+6. **D6-D3 — Operational validation:** concurrent clients, slow-reader TCP backpressure, Keep-Alive soak and repeated server lifecycle tests. See [operational load](lessons/w8/operational-load.md).
+
+These extensions are implemented in the reference server and covered by separate platform-owned acceptance fixtures. They are currently advanced reading/design material, not independent entries in `course/tasks.tsv`; they do not yet provide separate learner workspaces, progressive hints and task-level `check` commands. The next curriculum iteration should convert them into staged learner tasks without weakening the existing D5/D6 regression gates.
 
 ## Learning evidence
 

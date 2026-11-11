@@ -74,6 +74,8 @@ bool parse_request_line(std::string_view line, HttpRequest& request) {
     return true;
 }
 
+// TODO(student): implement Connection token parsing, policy selection, and serializer overloads.
+
 std::string serialize_response(const HttpResponse& response) {
     if (response.status_code < 100 || response.status_code > 599) {
         throw std::invalid_argument("HTTP status code must be in the range 100..599");

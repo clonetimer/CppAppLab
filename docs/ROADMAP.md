@@ -198,16 +198,16 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ## P7 — Delivery and stabilization
 
-- source package and learner package
-- offline dependency strategy and reproducible checks
-- interactive learner home and numbered task selection
-- title-keyword task search and granular task-state visibility
-- Windows double-click launcher for the WSL2 Ubuntu 24.04 workflow
-- actionable check-failure diagnostics and retry guidance
-- first-use guide and troubleshooting
-- Linux/WSL2 end-to-end verification
-- version tag and release notes
-- known limitations and evidence archive
+- [ ] source package and learner package
+- [ ] offline dependency strategy and reproducible checks
+- [x] interactive learner home and numbered task selection
+- [x] title-keyword task search and granular task-state visibility
+- [x] Windows double-click launcher for the WSL2 Ubuntu 24.04 workflow
+- [x] actionable check-failure diagnostics and retry guidance
+- [x] first-use guide and troubleshooting
+- [ ] Linux/WSL2 end-to-end verification
+- [ ] version tag and release notes
+- [ ] known limitations and evidence archive
 
 
 ## Next curriculum expansion — W9 to W12

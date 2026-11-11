@@ -19,7 +19,7 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 ## Current learning tasks
 
-The learning engine currently registers 14 hands-on tasks across W1–W8: W1 Hello World and Calculator; W2 persistent Todo CLI; W3 TaskManager refactor; W4 quality gate; W5 Linux systems; W6 thread pool; W7 TCP Echo and epoll chat; and W8 HTTP protocol, incremental parser, static files, Router/dynamic handlers, and the D5 TCP/epoll HTTP server. W8-D6-A through D6-D3 are advanced reference-server extensions with dedicated lessons and acceptance fixtures, but are not yet separate learner task IDs. `course/tasks.tsv` is the authoritative task catalog.
+The learning engine registers 20 hands-on tasks across W1–W8: W1 Hello World and Calculator; W2 persistent Todo CLI; W3 TaskManager refactor; W4 quality gate; W5 Linux systems; W6 thread pool; W7 TCP Echo and epoll chat; and W8 HTTP protocol, incremental parser, static files, Router/dynamic handlers, the D5 TCP/epoll server, and six advanced D6 tasks covering connection policy, Keep-Alive, connection guards, graceful shutdown, observability and an HTTP load probe. `course/tasks.tsv` is the authoritative task catalog.
 
 ```bash
 ./build/cppapplab list
@@ -100,7 +100,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-W1–W7 and W8-D1–D6-D3 are merged into `main`. The HTTP reference server now includes sequential Keep-Alive, connection deadlines and quotas, graceful shutdown, structured JSONL logs, runtime metrics, and operational load/soak regression coverage. PR #25 merged as `597a8a0`; final-head CI run `42991542424` passed all three jobs. The 14-task learning catalog currently ends at W8-D5; D6 is documented and tested as an advanced engineering extension, not yet split into learner tasks. Windows 11 + WSL2 target acceptance, offline dependency packaging, and release qualification remain separate. See:
+W1–W7 and W8-D1–D6-D3 are merged into `main`. The HTTP reference server includes sequential Keep-Alive, connection deadlines and quotas, graceful shutdown, structured JSONL logs, runtime metrics, and operational load/soak regression coverage. PR #25 merged as `597a8a0`; final-head CI run `42991542424` passed all three jobs. The current feature branch `feat/w8-advanced-taskization` converts D6-A through D6-D3 into six formal learner tasks with separate workspaces, progressive hints and platform-owned checks; its task-mode CI is pending. Windows 11 + WSL2 target acceptance, offline dependency packaging, and release qualification remain separate. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)

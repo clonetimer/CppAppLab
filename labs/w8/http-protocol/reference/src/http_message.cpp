@@ -1,7 +1,6 @@
 #include "http_message.hpp"
 
 #include <algorithm>
-#include <cctype>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -40,6 +39,55 @@ constexpr std::string_view kHeaderPunctuation = "!#$%&'*+-.^_`|~";
     return value;
 }
 
+[[nodiscard]] bool ascii_iequals(std::string_view left, std::string_view right) noexcept {
+    if (left.size() != right.size()) {
+        return false;
+    }
+    for (std::size_t index = 0U; index < left.size(); ++index) {
+        unsigned char lhs = static_cast<unsigned char>(left[index]);
+        unsigned char rhs = static_cast<unsigned char>(right[index]);
+        if (lhs >= 'A' && lhs <= 'Z') {
+            lhs = static_cast<unsigned char>(lhs - 'A' + 'a');
+        }
+        if (rhs >= 'A' && rhs <= 'Z') {
+            rhs = static_cast<unsigned char>(rhs - 'A' + 'a');
+        }
+        if (lhs != rhs) {
+            return false;
+        }
+    }
+    return true;
+}
+
+[[nodiscard]] bool contains_connection_option(std::string_view value,
+                                               std::string_view expected) noexcept {
+    std::size_t begin = 0U;
+    while (begin <= value.size()) {
+        const std::size_t comma = value.find(',', begin);
+        const std::size_t end = comma == std::string_view::npos ? value.size() : comma;
+        std::size_t token_begin = begin;
+        std::size_t token_end = end;
+
+        while (token_begin < token_end &&
+               (value[token_begin] == ' ' || value[token_begin] == '\t')) {
+            ++token_begin;
+        }
+        while (token_end > token_begin &&
+               (value[token_end - 1U] == ' ' || value[token_end - 1U] == '\t')) {
+            --token_end;
+        }
+
+        if (ascii_iequals(value.substr(token_begin, token_end - token_begin), expected)) {
+            return true;
+        }
+        if (comma == std::string_view::npos) {
+            break;
+        }
+        begin = comma + 1U;
+    }
+    return false;
+}
+
 void validate_header_value(std::string_view value) {
     for (const unsigned char character : value) {
         const bool line_break = character == '\r' || character == '\n';
@@ -74,7 +122,37 @@ bool parse_request_line(std::string_view line, HttpRequest& request) {
     return true;
 }
 
+ConnectionPolicy request_connection_policy(const HttpRequest& request) noexcept {
+    bool has_close = false;
+    bool has_keep_alive = false;
+
+    for (const auto& header : request.headers) {
+        if (!ascii_iequals(header.first, "connection")) {
+            continue;
+        }
+        has_close = has_close || contains_connection_option(header.second, "close");
+        has_keep_alive = has_keep_alive || contains_connection_option(header.second, "keep-alive");
+    }
+
+    // "close" always wins, including when both options are present.
+    if (has_close) {
+        return ConnectionPolicy::Close;
+    }
+    if (request.version == "HTTP/1.1") {
+        return ConnectionPolicy::KeepAlive;
+    }
+    if (request.version == "HTTP/1.0" && has_keep_alive) {
+        return ConnectionPolicy::KeepAlive;
+    }
+    return ConnectionPolicy::Close;
+}
+
 std::string serialize_response(const HttpResponse& response) {
+    return serialize_response(response, ConnectionPolicy::Close);
+}
+
+std::string serialize_response(const HttpResponse& response,
+                               ConnectionPolicy connection_policy) {
     if (response.status_code < 100 || response.status_code > 599) {
         throw std::invalid_argument("HTTP status code must be in the range 100..599");
     }
@@ -112,7 +190,8 @@ std::string serialize_response(const HttpResponse& response) {
         output += entry.first + ": " + entry.second + "\r\n";
     }
     output += "Content-Length: " + std::to_string(response.body.size()) + "\r\n";
-    output += "Connection: close\r\n";
+    output += connection_policy == ConnectionPolicy::KeepAlive ? "Connection: keep-alive\r\n"
+                                                               : "Connection: close\r\n";
     output += "\r\n";
     output += response.body;
     return output;

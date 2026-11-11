@@ -70,13 +70,13 @@ The tasks form a strict prerequisite chain from D6-A through D6-D3. D6-B through
 
 Task-mode CI configures each fixed fixture with `CPPAPPLAB_LEARNER_SOURCE_DIR` pointing to the corresponding reference implementation. This validates the same CMake path used by `cppapplab check` without pre-filling learner workspaces. Final PR-head run `42998617546` passed the learner-mode 49/49 checks under GCC, ASan/UBSan and clang-tidy. The root workflow test also created each learner workspace, copied its known-good stage implementation, invoked `cppapplab check`, and verified a current PASS for all six tasks.
 
-## W9-A1 — HTTP/1.1 chunked transfer decoding (implementation in progress)
+## W9-A1 — HTTP/1.1 chunked transfer decoding (merged and validated)
 
-**Branch:** `feat/w9-http-protocol-security`.  
+**Merge:** PR #27, commit `bfb3f3f87b526bb4c65adaae19bdacceda76acfe`.  
 **Task ID:** `w9.http-chunked`.  
 **Prerequisite:** current PASS for `w8.http-operational-load`.
 
-The feature branch adds the first W9 task to the catalog (21 tasks on this branch; 20 remain on main until merge). The learner source boundary is the W8 HTTP message model and incremental request parser. The learner template retains the working W8 Content-Length parser and marks the Transfer-Encoding branch as the implementation TODO.
+The merged main catalog now contains 21 tasks. The learner source boundary is the W8 HTTP message model and incremental request parser. The learner template retains the working W8 Content-Length parser and marks the Transfer-Encoding branch as the implementation TODO.
 
 The W9-A1 reference parser implements:
 
@@ -87,9 +87,9 @@ The W9-A1 reference parser implements:
 - 1 MiB decoded-body, 1 KiB chunk-size-line and 16 KiB trailer-section limits.
 - Trailer syntax validation, duplicate rejection and forbidden framing/routing field rejection.
 
-The fixed fixture currently contains 35 platform-owned GoogleTests. A root learning-engine workflow test creates the W9 workspace, copies the known-good reference source, replaces learner CMake with a fatal error and invokes the real `cppapplab check` path. GCC, ASan/UBSan and clang-tidy CI gates have been added but have not yet completed for this branch.
+The fixed fixture contains 35 platform-owned GoogleTests. A root learning-engine workflow test creates the W9 workspace, copies the known-good reference source, replaces learner CMake with a fatal error and invokes the real `cppapplab check` path. Final PR-head run `43006252261` passed all three jobs: root 62/62 and W9 fixture 35/35 under GCC, ASan/UBSan and clang-tidy. The end-to-end W9 learning check also passed.
 
-W9-A1 is not yet merged or claimed as passing. The current branch also adds the W9–W12 curriculum map. W9-A2–A5 are planned but are not registered tasks yet.
+W9-A1 is merged and validated. W9-A2–A5 remain planned stages and are not registered tasks yet.
  
 ## Remaining work
 

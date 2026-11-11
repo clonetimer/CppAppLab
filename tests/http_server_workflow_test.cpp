@@ -116,15 +116,10 @@ TEST(HttpServerWorkflowTest, PlatformCheckUsesFixedFixtureAndReferenceImplementa
     EXPECT_EQ(evidence->tests_total, 34U) << diagnostic;
 }
 
-
 TEST(HttpServerWorkflowTest, D6AdvancedTasksUseLearnerSourcesInFixedAcceptance) {
     const std::vector<std::string> task_ids{
-        "w8.http-connection-policy",
-        "w8.http-keep-alive",
-        "w8.http-connection-guards",
-        "w8.http-graceful-shutdown",
-        "w8.http-observability",
-        "w8.http-operational-load",
+        "w8.http-connection-policy", "w8.http-keep-alive",    "w8.http-connection-guards",
+        "w8.http-graceful-shutdown", "w8.http-observability", "w8.http-operational-load",
     };
 
     TemporaryDirectory temporary;
@@ -134,8 +129,7 @@ TEST(HttpServerWorkflowTest, D6AdvancedTasksUseLearnerSourcesInFixedAcceptance) 
         const cppapplab::Task* task = cppapplab::find_task(task_id);
         ASSERT_NE(task, nullptr) << task_id;
 
-        const auto workspace =
-            cppapplab::create_workspace(*task, temporary.path() / task_id);
+        const auto workspace = cppapplab::create_workspace(*task, temporary.path() / task_id);
         std::filesystem::path reference;
         if (task_id == "w8.http-connection-policy") {
             reference = cppapplab::data_root() / "labs/w8/router/reference";
@@ -150,8 +144,7 @@ TEST(HttpServerWorkflowTest, D6AdvancedTasksUseLearnerSourcesInFixedAcceptance) 
                                        std::filesystem::copy_options::overwrite_existing);
         }
 
-        std::vector<std::string> arguments{
-            "cppapplab", "check", workspace.root.string()};
+        std::vector<std::string> arguments{"cppapplab", "check", workspace.root.string()};
         std::vector<char*> argv;
         for (auto& argument : arguments) {
             argv.push_back(argument.data());

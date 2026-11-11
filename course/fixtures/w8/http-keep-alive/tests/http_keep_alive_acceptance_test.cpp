@@ -126,9 +126,8 @@ class TestClient {
         const std::size_t value_begin = length_position + content_length_prefix.size();
         const std::size_t line_end = headers.find("\r\n", value_begin);
         const std::string length_text =
-            headers.substr(value_begin, line_end == std::string::npos
-                                            ? std::string::npos
-                                            : line_end - value_begin);
+            headers.substr(value_begin, line_end == std::string::npos ? std::string::npos
+                                                                          : line_end - value_begin);
         const std::size_t body_size = static_cast<std::size_t>(std::stoull(length_text));
         const std::size_t response_size = header_end + 4U + body_size;
 

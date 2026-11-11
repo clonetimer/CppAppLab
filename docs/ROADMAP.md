@@ -172,7 +172,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - D2: incremental parser, NeedMoreData/Complete/Error states, strict header syntax, Content-Length and byte-accurate consumed length; 39 checks passed.
 - D3: response serialization, binary static-file reads, MIME types, 400/404/405 handling and conservative path checks; 31 checks passed.
 - D4: method + path Router, dynamic Hello/Echo/Health handlers, 405 Allow, static fallback and byte-exact CLI integration; 43 checks passed.
-- D5: non-blocking TCP listener, single-owner epoll Reactor, W6 ThreadPool handoff, completion queue/eventfd, generation-safe stale completion rejection, bounded buffers and 400/413/500/503 paths. Implementation and fixed fixture are on the feature branch; hosted CI has not yet run.
+- D5: non-blocking TCP listener, single-owner epoll Reactor, W6 ThreadPool handoff, completion queue/eventfd, generation-safe stale completion rejection, bounded buffers and 400/413/500/503 paths. PR #18 is under review; initial head passed GCC, ASan/UBSan, clang-format and clang-tidy. Follow-up adds bounded static-file reads and half-close coverage; final-head CI is pending (23 fixed + 10 reference tests + CLI smoke = 34 checks).
 - D6: Keep-Alive, idle/request deadlines, operational limits, structured logging and graceful server shutdown policy.
 
 - TCP/IP and Linux socket API

@@ -16,13 +16,17 @@ wsl -l -v
 The Ubuntu distribution must show `VERSION 2`. If it shows version 1, convert it from an elevated or normal PowerShell session as appropriate:
 
 ```powershell
-wsl --set-version <distribution-name> 2
+wsl --set-version Ubuntu 2
+# Or use the exact name shown by wsl -l -v:
+wsl --set-version Ubuntu-24.04 2
 ```
 
 Start Ubuntu:
 
 ```powershell
-wsl -d <distribution-name>
+wsl -d Ubuntu
+# Or, if that is the installed name:
+wsl -d Ubuntu-24.04
 ```
 
 Use the exact distribution name shown by `wsl -l -v` (for example, `Ubuntu` or `Ubuntu-24.04`).

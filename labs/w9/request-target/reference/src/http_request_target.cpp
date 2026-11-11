@@ -28,9 +28,8 @@ constexpr std::string_view kTokenPunctuation = "!#$%&'*+-.^_|~";
     if (method.empty()) {
         return false;
     }
-    return std::all_of(method.begin(), method.end(), [](unsigned char character) {
-        return is_token_character(character);
-    });
+    return std::all_of(method.begin(), method.end(),
+                       [](unsigned char character) { return is_token_character(character); });
 }
 
 [[nodiscard]] int hex_value(unsigned char character) noexcept {
@@ -166,11 +165,12 @@ RequestTargetParseResult parse_request_target(std::string_view method,
     }
 
     const std::size_t query_separator = raw_target.find('?');
-    const std::string_view raw_path =
-        query_separator == std::string_view::npos ? raw_target : raw_target.substr(0U, query_separator);
-    const std::string_view raw_query =
-        query_separator == std::string_view::npos ? std::string_view{} :
-                                                    raw_target.substr(query_separator + 1U);
+    const std::string_view raw_path = query_separator == std::string_view::npos
+                                          ? raw_target
+                                          : raw_target.substr(0U, query_separator);
+    const std::string_view raw_query = query_separator == std::string_view::npos
+                                           ? std::string_view{}
+                                           : raw_target.substr(query_separator + 1U);
 
     if (raw_path.empty() || raw_path.front() != '/') {
         return target_error("invalid origin-form path");

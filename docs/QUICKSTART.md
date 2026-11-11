@@ -8,7 +8,9 @@ In PowerShell, list installed distributions and start the exact Ubuntu 24.04 nam
 
 ```powershell
 wsl -l -v
-wsl -d <distribution-name>
+wsl -d Ubuntu
+# If the listed name is Ubuntu-24.04 instead:
+wsl -d Ubuntu-24.04
 ```
 
 The distribution must report WSL version 2. Common names include `Ubuntu` and `Ubuntu-24.04`.

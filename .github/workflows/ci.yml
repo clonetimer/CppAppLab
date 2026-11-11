@@ -36,6 +36,7 @@ jobs:
         run: |
           ./build/cppapplab --version
           ./build/cppapplab --help
+          timeout 5s ./build/cppapplab </dev/null
       - name: Build and test HTTP server reference workspace
         run: |
           cmake -S labs/w8/http-server/reference -B build-http-server-reference \

@@ -29,6 +29,7 @@ struct HttpServerConfig {
     std::chrono::milliseconds body_timeout{15000};
     std::size_t max_requests_per_connection{100U};
     std::size_t max_persistent_connections{32U};
+    std::chrono::milliseconds shutdown_timeout{5000};
 };
 
 class HttpServer {

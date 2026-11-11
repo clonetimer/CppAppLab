@@ -175,8 +175,10 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 - D5: non-blocking TCP listener, single-owner epoll Reactor, W6 ThreadPool handoff, completion queue/eventfd, generation-safe stale completion rejection, bounded buffers and 400/413/500/503 paths. Merged as `f503d3f`; final-head Ubuntu 24.04 run `42956321926` passed all three jobs. Acceptance: 23 platform tests + 10 reference tests + CLI loopback smoke (34 total); root GCC/CTest and ASan/UBSan each 53/53; Router fixture 43/43; formatting and clang-tidy passed. Windows 11 + WSL2 target acceptance remains separate.
 - D6-A: merged as `241059c`; explicit HTTP/1.1/1.0 connection policy, exact case-insensitive Connection token parsing, authoritative response Connection header, and backward-compatible close-only serializer overload. Both maintained protocol copies passed 14 tests each under GCC, ASan/UBSan and clang-tidy.
 - D6-B: merged as `8597a38` (PR #21); sequential Keep-Alive lifecycle, buffered subsequent requests, HTTP/1.0 response-version preservation, peer half-close pipeline draining and strict response ordering. Final-head run `42971917343` passed GCC, ASan/UBSan, clang-format and clang-tidy; loopback fixture 8/8.
-- D6-C (in progress on `feat/w8-d6-connection-guards`): timerfd-backed absolute idle/header/body deadlines, HTTP 408 for incomplete requests, per-connection request cap and persistent-connection quota. Dedicated nine-case loopback fixture and GCC, ASan/UBSan, clang-tidy gates added; hosted CI pending.
-- D6-D: graceful shutdown, structured access/error logging, metrics and load/soak checks.
+- D6-C: merged as `974b3d2` (PR #22); timerfd-backed absolute idle/header/body deadlines, HTTP 408 for incomplete requests, per-connection request cap and persistent-connection quota. Final-head run `42977367404` passed all three jobs; the nine-case loopback fixture passed under GCC, ASan/UBSan and clang-tidy.
+- D6-D1 (in progress on `feat/w8-d6-graceful-shutdown-observability`): stop accepting, close idle clients, return 503 for incomplete requests, drain in-flight handlers with Connection: close, and enforce a monotonic socket-drain deadline. Dedicated five-case loopback fixture and GCC, ASan/UBSan, clang-tidy gates added; hosted CI pending.
+- D6-D2: structured access/error logs and thread-safe runtime metrics.
+- D6-D3: concurrent load, slow-client/backpressure, repeated start/stop and soak tests.
 
 - TCP/IP and Linux socket API
 - blocking and nonblocking I/O

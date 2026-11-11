@@ -2,58 +2,53 @@
 
 ## Current delivery boundary
 
-The project provides a C++17 learning engine and cumulative W1–W8 task packs. W8-D1–D4 provide the HTTP parser, static-file handler, Router, dynamic handlers and serializer. W8-D5 is being implemented on `feat/p5-w8-http-server`: a real TCP listener, epoll Reactor and bounded W6 ThreadPool handoff. Until D5 is merged and validated, `main` still contains only the stdin-to-HTTP-response Router CLI.
+W1–W7 and W8-D1–D5 are merged into `main`. The platform now includes a real Linux TCP HTTP server built from the existing parser, Router, static-file handler, response serializer, W6 bounded ThreadPool and W7 epoll/eventfd patterns.
 
-No Release or target-machine Windows 11 + WSL2 acceptance is declared. Hosted Ubuntu validation and local target acceptance are separate.
+**Latest merge:** `f503d3f52a9dcaa9dc5a3df1df424e2b7e65e932` (2026-11-11).  
+**W8-D5 final-head CI:** Ubuntu 24.04 workflow run `42956321926`, all three jobs passed.  
+**Target-machine status:** Windows 11 + WSL2 acceptance has not yet been performed or claimed. No Release is declared.
 
 ## Verified merged baseline
 
-- W1–W7 learning-engine and task history is preserved in `archive/STATUS-before-w8-router.md` and Git history. That archive is historical and includes superseded status labels; do not treat it as the current status source.
-- W8-D1 HTTP protocol foundations: PR #12; catalog acceptance 33.
-- W8-D2 incremental request parser: PR #13, then strict field validation in PR #14; catalog acceptance 39. Retain the merged hardening rather than the old 37-check contract.
-- W8-D3 responses and static files: PR #16 merged as `f35ffcb7966d0bb002b5ab08c5f21efa804d1332`. Its final tested head was `1be123945704b0b5cc2ebf22389f7528075c95ed`; hosted run `42731934255` passed GCC, ASan/UBSan and formatting/clang-tidy jobs. Fixed acceptance remains 31 (20 platform + 10 reference-as-learner + CLI).
+- W1–W7 learning engine and task packs are merged into `main`.
+- W8-D1 HTTP protocol foundations: 33 fixed acceptance checks.
+- W8-D2 incremental parser and strict HTTP header field validation: 39 checks.
+- W8-D3 responses and static files: 31 checks.
+- W8-D4 Router and dynamic handlers: 43 checks.
+- W8-D5 TCP/epoll + worker-pool HTTP server: 34 fixed checks (23 platform-owned + 10 reference learner tests + one real loopback CLI smoke). Final CI additionally passed root GCC/CTest 53/53, root ASan/UBSan 53/53, D5 fixed fixture under GCC and ASan/UBSan, reference workspace 10/10, Router fixture 43/43, clang-format and root/direct-fixture clang-tidy.
 
-## W8-D4 Router and dynamic handlers
+## W8-D5 implementation boundary
 
-**Branch:** `feat/p5-w8-router`. Implementation and fixed acceptance are included in this change; the associated PR and final-head Actions results are the authority for integration status.
+- Single-Reactor event loop owns listener/client sockets, epoll registrations, connection objects and read/write buffers.
+- Worker tasks receive owned `HttpRequest` values and publish `HttpResponse` completions through a mutex-protected queue and eventfd wakeup.
+- Generation tokens reject stale epoll events and worker completions after fd reuse.
+- Bounded W6 ThreadPool submission is guarded by an event-loop-owned outstanding-job count; overload returns 503 without blocking the Reactor.
+- Incremental request parsing, bounded request/response buffers, bounded static-file reads, partial writes and 400/413/500/503 handling are covered.
+- The serializer still emits `Connection: close`; D5 intentionally serves one request per connection. Keep-Alive and pipelining are not implemented.
 
-- Method + exact path lookup; query stripping for matching without altering the request passed to the callback.
-- GET /hello, POST /echo and GET /health, with the outputs specified by the supplied course.
-- Known dynamic paths return 405 with sorted Allow on method mismatch. A callback's 404 does not cause static fallback.
-- Existing static handling remains the fallback only for absent dynamic paths.
-- Invalid registration and empty handlers are rejected before replacing an existing entry.
-- 32 fixed GoogleTest cases, ten learner tests and one byte-exact CLI integration smoke: 43 checks. Fourteen declared source files participate in the workspace fingerprint.
-- Root workflow checks the real `cppapplab check` path and deliberately disables learner CMake to preserve the fixed-fixture boundary.
+## Next stage: W8-D6
 
-Before hosted integration, local native C++ probes observed Router 0/14 → 14/14 and API/dispatch 0/12 → 12/12, followed by successful direct ASan/UBSan runs. The real parser/dispatch/serializer CLI smoke was observed failing against an empty CLI and passing against the implementation. These probes are not a substitute for the project's full GoogleTest/CTest suite, which runs in hosted CI.
+W8-D6 will evolve the one-request server into a controlled persistent HTTP/1.1 connection model. It must change serializer policy and connection lifecycle together rather than merely removing `Connection: close`.
 
-The CI now also compiles and tests the Router fixed fixture directly with ASan/UBSan and clang-tidy. Root build options do not automatically instrument independently configured nested acceptance projects; a green root sanitizer job must not be described as blanket sanitizer coverage of every lab implementation.
+Planned scope:
+1. Parse and validate `Connection` tokens case-insensitively; implement HTTP/1.1 persistent default and explicit close, with HTTP/1.0 opt-in keep-alive only if fully specified.
+2. Make response serialization accept an explicit connection policy and generate exactly one authoritative Connection header.
+3. After a response is fully written, retain or close the connection according to request/response policy; process already-buffered subsequent requests without losing bytes.
+4. Keep at most one in-flight request per connection initially; preserve ordered responses and avoid pipelined concurrent execution.
+5. Add bounded request count per connection, idle/header/body deadlines, and limits for persistent connections.
+6. Add graceful shutdown: stop accepting, stop dispatching new requests, finish bounded in-flight work until a deadline, then close remaining connections and join workers.
+7. Add structured access/error logging with request metadata while avoiding unbounded body logging.
+8. Extend fixed loopback tests for keep-alive reuse, explicit close, buffered second request, fragmented second request, request-count cap, idle timeout and shutdown under active work.
 
-## W8-D5 HTTP TCP Server — in progress
+D6 will be split into independently testable slices: D6-A connection policy and serializer; D6-B sequential keep-alive lifecycle; D6-C deadlines and per-connection limits; D6-D graceful shutdown and structured logging. The exact protocol behavior and test counts will be frozen before implementation.
 
-**Branch:** `feat/p5-w8-http-server`  
-**Base:** `main` at `dcee35395349104aad31ef1d2f1ad645e4c9fe06`  
-**Status:** design, API, reference implementation, learner scaffold and fixed loopback acceptance fixture are being assembled; hosted run `42953073079` passed all three jobs for tested head `433762deb47cd2bda66ff6e3fce27d65b59615ba`; the follow-up hardening in this branch is being revalidated.
+## Known boundaries
 
-- Single Reactor owns listener/client sockets, epoll registrations, connection maps and read/write buffers.
-- Workers receive owned HttpRequest values and publish HttpResponse completions; they never touch sockets or Connection objects.
-- Generation tokens identify connections and prevent stale completions from being applied after fd reuse.
-- eventfd wakes the event loop after worker completion.
-- W6 ThreadPool is reused unchanged. Since its submit queue blocks, an event-loop-owned outstanding_jobs counter includes queued, running and undrained completions. The server returns 503 before submit at task_queue_capacity, including after disconnected clients, so the event loop never waits for queue space.
-- D5 preserves the existing serializer's Connection: close behavior: one request per TCP connection. Keep-Alive/pipelining is deferred to D6.
-- Fixed acceptance is 23 platform-owned tests + 10 reference tests + one real loopback CLI smoke (34 total).
-- No merge, hosted CI PASS, release, or local WSL2 acceptance is claimed yet.
+- Chunked Transfer-Encoding, TLS, URL decoding, query parameter parsing, route patterns and production-grade canonical/symlink containment remain out of scope unless separately specified.
+- Hosted Ubuntu CI does not replace target-machine Windows 11 + WSL2 acceptance.
+- Passing automated checks proves tested behavior for the recorded source state, not human mastery or production readiness.
+- No release tag is created until local WSL2 acceptance, reproducible build instructions and delivery checks are complete.
 
-## Source and scope
+## Acceptance and contribution workflow
 
-The implementation follows the supplied `快速C++` D4 section. The optional hasPath/405 discussion is adopted consistently, and registration validation, nested-key storage and deterministic Allow are identified as engineering refinements in the lesson. Access to `clonetimer/cpptest` returned 404; its code has not been claimed as incorporated.
-
-Known boundaries remain: no chunked Transfer-Encoding, no query parameter parser or URL decoding, no route patterns, and no production canonical/symlink containment for the carried-forward D3 static handler. Register routes before dispatch; concurrent registration is not supported.
-
-## Remaining work
-
-1. Finish W8-D5 code review, hosted GCC/ASan/UBSan/clang-tidy and merge only after final-head CI passes.
-2. W8-D6: HTTP/1.1 Keep-Alive, deadlines, request limits, logging and graceful shutdown policies.
-3. Full course workflow, reproducible/offline dependency delivery, local Windows/WSL2 acceptance and release qualification.
-
-A repository commit is not passing evidence. Record the final tested SHA, workflow result and target environment before claiming completion; learner progress files remain editable navigation data, not tamper-proof certificates.
+Use focused feature branches from current `main`. Record exact commands, compiler/tool versions, test counts, tested commit SHA and CI run. Merge only after final-head CI passes; keep local WSL2 acceptance separate and explicit.

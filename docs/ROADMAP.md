@@ -166,14 +166,14 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ## P6 — W8: HTTP server engineering
 
-**Status: W8-D1–D4 merged into `main`; W8-D5 implementation is in progress on `feat/p5-w8-http-server`.**
+**Status: W8-D1–D5 merged into `main`; W8-D6 is next.**
 
 - D1: HTTP/1.1 message model, request-line parser and response serializer; 33 fixed acceptance checks passed.
 - D2: incremental parser, NeedMoreData/Complete/Error states, strict header syntax, Content-Length and byte-accurate consumed length; 39 checks passed.
 - D3: response serialization, binary static-file reads, MIME types, 400/404/405 handling and conservative path checks; 31 checks passed.
 - D4: method + path Router, dynamic Hello/Echo/Health handlers, 405 Allow, static fallback and byte-exact CLI integration; 43 checks passed.
-- D5: non-blocking TCP listener, single-owner epoll Reactor, W6 ThreadPool handoff, completion queue/eventfd, generation-safe stale completion rejection, bounded buffers and 400/413/500/503 paths. PR #18 is under review; initial head passed GCC, ASan/UBSan, clang-format and clang-tidy. Follow-up adds bounded static-file reads and half-close coverage; final-head CI is pending (23 fixed + 10 reference tests + CLI smoke = 34 checks).
-- D6: Keep-Alive, idle/request deadlines, operational limits, structured logging and graceful server shutdown policy.
+- D5: non-blocking TCP listener, single-owner epoll Reactor, W6 ThreadPool handoff, completion queue/eventfd, generation-safe stale completion rejection, bounded buffers and 400/413/500/503 paths. Merged as `f503d3f`; final-head Ubuntu 24.04 run `42956321926` passed all three jobs. Acceptance: 23 platform tests + 10 reference tests + CLI loopback smoke (34 total); root GCC/CTest and ASan/UBSan each 53/53; Router fixture 43/43; formatting and clang-tidy passed. Windows 11 + WSL2 target acceptance remains separate.
+- D6-A: explicit HTTP connection policy and response serializer; D6-B: sequential keep-alive lifecycle and buffered subsequent requests; D6-C: idle/header/body deadlines and per-connection limits; D6-D: graceful shutdown and structured access/error logging. Freeze each slice's protocol contract and fixed tests before implementation.
 
 - TCP/IP and Linux socket API
 - blocking and nonblocking I/O

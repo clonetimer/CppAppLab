@@ -19,7 +19,7 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 ## Current learning tasks
 
-The learning engine provides W1 Hello World and Calculator, W2 persistent Todo CLI, W3 TaskManager refactor, W4 quality gate, W5 Linux systems, W6 thread pool, W7 TCP Echo and epoll chat, and W8 HTTP protocol, incremental parser, static files and Router/dynamic handlers; W8-D5 TCP/epoll server integration is under implementation. The catalog is the authoritative task list.
+The learning engine provides W1 Hello World and Calculator, W2 persistent Todo CLI, W3 TaskManager refactor, W4 quality gate, W5 Linux systems, W6 thread pool, W7 TCP Echo and epoll chat, and W8 HTTP protocol, incremental parser, static files, Router/dynamic handlers, and the W8-D5 TCP/epoll HTTP server. The catalog is the authoritative task list.
 
 ```bash
 ./build/cppapplab list
@@ -100,7 +100,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-W1–W7 and W8-D1–D4 are merged into `main`; W8-D5 is under implementation on `feat/p5-w8-http-server`. It adds a real TCP listener and epoll/worker-pool handoff. No release or target WSL2 acceptance has been declared. See:
+W1–W7 and W8-D1–D5 are merged into `main`. W8-D5 adds a real TCP listener and epoll/worker-pool handoff. W8-D6 (Keep-Alive, deadlines, limits, logging and graceful shutdown) is next. No release or target WSL2 acceptance has been declared. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)
@@ -131,7 +131,7 @@ cmake --build build-router --parallel
 printf 'GET /health HTTP/1.1\r\nHost: localhost\r\n\r\n' | ./build-router/http-router parse-stdin
 ```
 
-The Router CLI is a one-request application-layer demonstration. The W8-D5 server target, once merged, binds a real TCP port.
+The Router CLI is a one-request application-layer demonstration. The W8-D5 server target binds a real TCP port; run `./build/http-server server 8080 www` to start it.
 
 ## Scope boundary
 

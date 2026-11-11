@@ -224,6 +224,56 @@ void wait_until(Predicate predicate) {
     }
 }
 
+[[nodiscard]] bool perform_concurrent_work_request(std::uint16_t port) {
+    TestClient client(port);
+    if (!client.send_all(make_request("/work"))) {
+        return false;
+    }
+    const std::string response = client.read_response();
+    return response.find("HTTP/1.1 200 OK\\r\\n") != std::string::npos &&
+           response_body(response) == "worked" && client.read_until_eof().empty();
+}
+
+[[nodiscard]] bool perform_keep_alive_soak_client(std::uint16_t port, int request_count) {
+    TestClient client(port);
+    for (int request_index = 0; request_index < request_count; ++request_index) {
+        const std::string policy =
+            request_index + 1 == request_count ? "close" : "keep-alive";
+        if (!client.send_all(make_request("/health", policy))) {
+            return false;
+        }
+        const std::string response = client.read_response();
+        if (response.find("HTTP/1.1 200 OK\\r\\n") == std::string::npos ||
+            response_body(response) != "{\\\"status\\\":\\\"ok\\\"}") {
+            return false;
+        }
+    }
+    return client.read_until_eof().empty();
+}
+
+[[nodiscard]] bool perform_server_lifecycle_cycle() {
+    TestServer server;
+    TestClient client(server.port());
+    if (!client.send_all(make_request("/health"))) {
+        return false;
+    }
+    const std::string response = client.read_response();
+    if (response.find("HTTP/1.1 200 OK\\r\\n") == std::string::npos ||
+        response_body(response) != "{\\\"status\\\":\\\"ok\\\"}" ||
+        !client.read_until_eof().empty()) {
+        return false;
+    }
+
+    server.request_stop();
+    server.request_stop();
+    server.join();
+
+    const HttpServerMetrics metrics = server.metrics();
+    return metrics.graceful_shutdowns == 1U && metrics.active_connections == 0U &&
+           metrics.active_jobs == 0U && metrics.responses_completed == 1U &&
+           metrics.closed_connections == 1U;
+}
+
 }  // namespace
 
 TEST(HttpOperationalAcceptanceTest, ServesConcurrentClientsWithinWorkerAndQueueBounds) {

@@ -24,7 +24,7 @@ try:
             raise RuntimeError("HTTP server exited before accepting requests")
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=0.25) as client:
-                client.sendall(b"GET /health HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                client.sendall(b"GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
                 chunks = []
                 while True:
                     data = client.recv(4096)

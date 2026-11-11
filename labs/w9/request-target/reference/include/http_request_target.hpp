@@ -26,6 +26,6 @@ struct RequestTargetParseResult {
 };
 
 [[nodiscard]] RequestTargetParseResult parse_request_target(std::string_view method,
-                                                             std::string_view raw_target);
+                                                            std::string_view raw_target);
 
 }  // namespace cppapplab::http

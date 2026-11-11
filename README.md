@@ -19,7 +19,7 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 ## Current learning tasks
 
-The main branch now contains 21 hands-on tasks across W1–W9. W1–W7 cover C++ fundamentals, Linux systems, concurrency and TCP; W8 builds the HTTP server and its six D6 engineering tasks; W9 begins HTTP/1.1 protocol completeness and security with chunked transfer decoding. `course/tasks.tsv` is the authoritative task catalog.
+The main branch now contains 22 hands-on tasks across W1–W9. W1–W7 cover C++ fundamentals, Linux systems, concurrency and TCP; W8 builds the HTTP server and its six D6 engineering tasks; W9 adds chunked transfer decoding and strict request-target/query parsing. `course/tasks.tsv` is the authoritative task catalog.
 
 ```bash
 ./build/cppapplab list
@@ -101,7 +101,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-W1–W7 and W8-D1–D6-D3 are merged into `main`. The HTTP reference server includes sequential Keep-Alive, connection deadlines and quotas, graceful shutdown, structured JSONL logs, runtime metrics, and operational load/soak regression coverage. PR #25 merged as `597a8a0`; final-head CI run `42991542424` passed all three jobs. The six D6 learner tasks were merged via PR #26 (`c8f8e03`). Final PR-head CI run `42998617546` passed GCC, ASan/UBSan and clang-tidy. The 49 task-mode acceptance checks passed in all three configurations, and the root learning-engine suite passed 60/60. Windows 11 + WSL2 target acceptance, offline dependency packaging, and release qualification remain separate. W9-A1 (`w9.http-chunked`) was merged via PR #27 (`bfb3f3f`). Final PR-head CI run `43006252261` passed all three jobs: root 62/62 and W9 fixed fixture 35/35 under GCC, ASan/UBSan and clang-tidy. The real learning-engine workflow also created the W9 workspace, invoked `cppapplab check` and verified current PASS evidence. W9-A2 (`w9.request-target`) is being implemented on `feat/w9-request-target-query`, with 39 fixed tests and its own learner-source check path; CI is pending. See:
+W1–W7 and W8-D1–D6-D3 are merged into `main`. The HTTP reference server includes sequential Keep-Alive, connection deadlines and quotas, graceful shutdown, structured JSONL logs, runtime metrics, and operational load/soak regression coverage. PR #25 merged as `597a8a0`; final-head CI run `42991542424` passed all three jobs. The six D6 learner tasks were merged via PR #26 (`c8f8e03`). Final PR-head CI run `42998617546` passed GCC, ASan/UBSan and clang-tidy. The 49 task-mode acceptance checks passed in all three configurations, and the root learning-engine suite passed 60/60. Windows 11 + WSL2 target acceptance, offline dependency packaging, and release qualification remain separate. W9-A1 (`w9.http-chunked`) was merged via PR #27 (`bfb3f3f`). Final PR-head CI run `43006252261` passed all three jobs: root 62/62 and W9 fixed fixture 35/35 under GCC, ASan/UBSan and clang-tidy. The real learning-engine workflow also created the W9 workspace, invoked `cppapplab check` and verified current PASS evidence. W9-A2 (`w9.request-target`) was merged via PR #28 (`cca1c80`). Final PR-head CI run `43008862704` passed all three jobs: root 64/64, W9-A1 35/35 and W9-A2 39/39 under GCC, ASan/UBSan and clang-tidy. Both W9 learner workspaces passed the real `cppapplab check` workflow. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)

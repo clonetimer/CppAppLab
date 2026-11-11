@@ -52,16 +52,14 @@ TEST(HttpRequestTargetAcceptanceTest, TreatsMissingEqualsAsEmptyValue) {
 }
 
 TEST(HttpRequestTargetAcceptanceTest, PreservesPlusAsLiteralPlus) {
-    const RequestTargetParseResult result =
-        parse_request_target("GET", "/search?q=two+words");
+    const RequestTargetParseResult result = parse_request_target("GET", "/search?q=two+words");
     ASSERT_EQ(result.status, RequestTargetStatus::Complete);
     ASSERT_EQ(result.target.query.size(), 1U);
     EXPECT_EQ(result.target.query[0].value, "two+words");
 }
 
 TEST(HttpRequestTargetAcceptanceTest, DecodesPercentEncodedPathBytes) {
-    const RequestTargetParseResult result =
-        parse_request_target("GET", "/files/a%20b.txt");
+    const RequestTargetParseResult result = parse_request_target("GET", "/files/a%20b.txt");
     ASSERT_EQ(result.status, RequestTargetStatus::Complete);
     EXPECT_EQ(result.target.path, "/files/a b.txt");
 }
@@ -76,8 +74,7 @@ TEST(HttpRequestTargetAcceptanceTest, DecodesPercentEncodedQueryComponents) {
 }
 
 TEST(HttpRequestTargetAcceptanceTest, DecodesPercentEncodingExactlyOnce) {
-    const RequestTargetParseResult result =
-        parse_request_target("GET", "/files/%252e%252e");
+    const RequestTargetParseResult result = parse_request_target("GET", "/files/%252e%252e");
     ASSERT_EQ(result.status, RequestTargetStatus::Complete);
     EXPECT_EQ(result.target.path, "/files/%2e%2e");
 }
@@ -226,8 +223,7 @@ TEST(HttpRequestTargetAcceptanceTest, EnforcesQueryParameterCountLimit) {
 }
 
 TEST(HttpRequestTargetAcceptanceTest, EnforcesTotalTargetSizeLimit) {
-    const RequestTargetParseResult result =
-        parse_request_target("GET", std::string(8193U, 'a'));
+    const RequestTargetParseResult result = parse_request_target("GET", std::string(8193U, 'a'));
     EXPECT_EQ(result.status, RequestTargetStatus::Error);
     EXPECT_EQ(result.error, "request target too large");
 }

@@ -251,6 +251,7 @@ TEST(HttpOperationalAcceptanceTest, ServesConcurrentClientsWithinWorkerAndQueueB
     config.worker_count = kWorkerCount;
     config.task_queue_capacity = 32U;
     config.max_connections = 32U;
+    config.access_log_enabled = false;
     config.error_log_enabled = false;
     TestServer server(config, std::move(router));
 
@@ -312,6 +313,7 @@ TEST(HttpOperationalAcceptanceTest, SlowReaderBackpressureResumesAndCompletesLar
 
     HttpServerConfig config;
     config.max_response_bytes = 10U * 1024U * 1024U;
+    config.access_log_enabled = false;
     config.error_log_enabled = false;
     TestServer server(config, std::move(router));
     TestClient client(server.port());
@@ -348,6 +350,7 @@ TEST(HttpOperationalAcceptanceTest, SustainsConcurrentKeepAliveSoakWithoutLeakin
     config.max_connections = 16U;
     config.max_persistent_connections = 16U;
     config.max_requests_per_connection = 100U;
+    config.access_log_enabled = false;
     config.error_log_enabled = false;
     TestServer server(config);
 

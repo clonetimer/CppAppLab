@@ -44,8 +44,7 @@ struct FileReadResult {
         const std::streamsize received = file.gcount();
         if (received > 0) {
             const std::size_t count = static_cast<std::size_t>(received);
-            if (contents.size() > max_file_bytes ||
-                count > max_file_bytes - contents.size()) {
+            if (contents.size() > max_file_bytes || count > max_file_bytes - contents.size()) {
                 return {FileReadResult::Status::TooLarge, {}};
             }
             contents.append(buffer, count);

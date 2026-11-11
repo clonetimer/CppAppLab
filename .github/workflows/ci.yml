@@ -43,6 +43,26 @@ jobs:
           test "$(HOME="$launcher_home" bash scripts/cppapplab-wsl-launcher.sh --test-normalize-path '~')" = "$launcher_home"
           test "$(HOME="$launcher_home" bash scripts/cppapplab-wsl-launcher.sh --test-normalize-path '/opt/CppAppLab')" = "/opt/CppAppLab"
           test "$(HOME="$launcher_home" bash scripts/cppapplab-wsl-launcher.sh --test-normalize-path '~/work/Cpp App Lab')" = "$launcher_home/work/Cpp App Lab"
+          launcher_repo="$RUNNER_TEMP/cppapplab launcher checkout"
+          mkdir -p "$launcher_repo/build"
+          git -C "$launcher_repo" init -q
+          git -C "$launcher_repo" remote add origin https://github.com/clonetimer/CppAppLab.git
+          printf '#!/usr/bin/env bash\nprintf "CPPAPPLAB_LAUNCHER_SMOKE_OK\\n"\n' > "$launcher_repo/build/cppapplab"
+          chmod +x "$launcher_repo/build/cppapplab"
+          launcher_repo_base64="$(printf '%s' "$launcher_repo" | base64 -w0)"
+          bash scripts/cppapplab-wsl-launcher.sh "$launcher_repo_base64" 0 | grep -Fq "CPPAPPLAB_LAUNCHER_SMOKE_OK"
+          foreign_repo="$RUNNER_TEMP/cppapplab foreign checkout"
+          mkdir -p "$foreign_repo"
+          git -C "$foreign_repo" init -q
+          git -C "$foreign_repo" remote add origin https://github.com/example/not-cppapplab.git
+          foreign_repo_base64="$(printf '%s' "$foreign_repo" | base64 -w0)"
+          if bash scripts/cppapplab-wsl-launcher.sh "$foreign_repo_base64" 0; then
+            echo "[FAIL] Launcher accepted an unrelated Git checkout." >&2
+            exit 1
+          else
+            launcher_status=$?
+            test "$launcher_status" -eq 6
+          fi
       - name: Build and test HTTP server reference workspace
         run: |
           cmake -S labs/w8/http-server/reference -B build-http-server-reference \

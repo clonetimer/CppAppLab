@@ -263,9 +263,9 @@ TEST(HttpKeepAliveAcceptanceTest, HandlesFragmentedSubsequentRequest) {
     const std::string first = client.read_response();
     EXPECT_NE(first.find("Connection: keep-alive\r\n"), std::string::npos);
 
-    ASSERT_TRUE(client.send_all("GET /heal HTTP/1.1\r\nHost: localhost\r\n"));
+    ASSERT_TRUE(client.send_all("GET /heal"));
     std::this_thread::sleep_for(15ms);
-    ASSERT_TRUE(client.send_all("Connection: close\r\n\r\n"));
+    ASSERT_TRUE(client.send_all("th HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"));
 
     const std::string second = client.read_response();
     EXPECT_NE(second.find("HTTP/1.1 200 OK\r\n"), std::string::npos);

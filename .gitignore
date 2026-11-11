@@ -29,3 +29,4 @@ Thumbs.db
 **/.cppapplab/
 *.attempt.json
 *.evidence.json
+/dist/

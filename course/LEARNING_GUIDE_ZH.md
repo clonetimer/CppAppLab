@@ -13,8 +13,8 @@
 
 根据你使用的交付形式，选择对应启动命令；这两个入口功能相同：
 
-- **源码构建版本**：在仓库根目录运行 \`./build/cppapplab\`。
-- **解压的学习者包**：在解压目录运行 \`./cppapplab\`。
+- **源码构建版本**：在仓库根目录运行 `./build/cppapplab`。
+- **解压的学习者包**：在解压目录运行 `./cppapplab`。
 
 第一次选择「继续学习」，程序会自动选择尚未完成、前置条件已满足的任务，并创建独立工作区。**源代码写在工作区，不是写在课程说明或平台的参考实现中。**
 
@@ -22,7 +22,7 @@
 
 1. 阅读本关的「Goal / Your task（目标与要求）」与「Acceptance（通过条件）」。
 2. 修改列出的工作区源码文件；一次解决一个小问题。
-3. 运行程序给出的 \`hint\` 或 \`check\` 命令（保留引号中的工作区路径）。
+3. 运行程序给出的 `hint` 或 `check` 命令（保留引号中的工作区路径）。
 4. 如果失败，优先看第一个编译错误或测试失败，再逐级查看提示。
 5. 验收 PASS 后继续下一关；重新运行「继续学习」会保留已有进度。
 
@@ -32,16 +32,16 @@
 
 ### W1｜第一行 C++ 到多文件程序（2 关）
 
-- **w1.hello-world · First C++ Program**：区分「写源码 → 编译 → 运行 → 比对输出」。只修改 \`src/main.cpp\`；看是否严格输出 \`Hello, CppAppLab!\` 且末尾换行。常见错误是多出提示词、漏换行或输出到错误流。
-- **w1.calculator · Multi-file Calculator**：理解头文件是接口、\`.cpp\` 是实现、\`main\` 是调用者。实现四则运算与除零错误返回；重点是错误分支也有确定行为，不只看正常算式。
+- **w1.hello-world · First C++ Program**：区分「写源码 → 编译 → 运行 → 比对输出」。只修改 `src/main.cpp`；看是否严格输出 `Hello, CppAppLab!` 且末尾换行。常见错误是多出提示词、漏换行或输出到错误流。
+- **w1.calculator · Multi-file Calculator**：理解头文件是接口、`.cpp` 是实现、`main` 是调用者。实现四则运算与除零错误返回；重点是错误分支也有确定行为，不只看正常算式。
 
 ### W2｜用 STL 保存数据（1 关）
 
-- **w2.todo-cli · Persistent Todo CLI**：用 \`vector\` 管理条目、用文件让下一次运行仍能读到数据。先让添加和列表工作，再完成标记、删除、文件转义和坏文件处理。关键自检：读取失败不能清空已有有效数据。
+- **w2.todo-cli · Persistent Todo CLI**：用 `vector` 管理条目、用文件让下一次运行仍能读到数据。先让添加和列表工作，再完成标记、删除、文件转义和坏文件处理。关键自检：读取失败不能清空已有有效数据。
 
 ### W3｜把数据组织成类（1 关）
 
-- **w3.task-manager · Task / TaskManager Refactor**：理解对象与所有权。把 W2 的数据管理封装成类，用 RAII 和 \`unique_ptr\` 管理生命周期；复制要独立，移动要转移所有权，旧数据文件仍能读取。
+- **w3.task-manager · Task / TaskManager Refactor**：理解对象与所有权。把 W2 的数据管理封装成类，用 RAII 和 `unique_ptr` 管理生命周期；复制要独立，移动要转移所有权，旧数据文件仍能读取。
 
 ### W4｜让质量检查成为习惯（1 关）
 
@@ -49,27 +49,27 @@
 
 ### W5｜开始接触 Linux 系统调用（1 关）
 
-- **w5.system-lab · Linux System Programming Lab**：一部分实现有容量上限的线程安全队列；另一部分通过 \`pipe/fork/exec/waitpid\` 执行外部程序。重点观察：队列关闭后谁会被唤醒？子进程超时后是否被回收？
+- **w5.system-lab · Linux System Programming Lab**：一部分实现有容量上限的线程安全队列；另一部分通过 `pipe/fork/exec/waitpid` 执行外部程序。重点观察：队列关闭后谁会被唤醒？子进程超时后是否被回收？
 
 ### W6｜并发任务调度（1 关）
 
-- **w6.thread-pool · Thread Pool and Futures**：把多个工作线程组织成有界线程池。先写任务提交和 \`future\` 结果，再处理异常传播、背压（队列满时不能无限增长）和安全停机；特别留意提交与关闭同时发生的情况。
+- **w6.thread-pool · Thread Pool and Futures**：把多个工作线程组织成有界线程池。先写任务提交和 `future` 结果，再处理异常传播、背压（队列满时不能无限增长）和安全停机；特别留意提交与关闭同时发生的情况。
 
 ### W7｜从单连接走向多客户端（2 关）
 
-- **w7.tcp-echo · TCP Echo Server and Client**：学习 \`socket/connect/accept/send/recv\`。TCP 是字节流，一次接收不保证一条完整消息；用二进制和较大消息验证字节没有丢失。
-- **w7.tcp-chat · Multi-client TCP Chat with epoll**：把单客户端升级成事件驱动聊天室。重点理解注册昵称、消息广播、粘包/拆包、\`EAGAIN\` 与待发送缓冲区；慢客户端不能拖垮其他连接。
+- **w7.tcp-echo · TCP Echo Server and Client**：学习 `socket/connect/accept/send/recv`。TCP 是字节流，一次接收不保证一条完整消息；用二进制和较大消息验证字节没有丢失。
+- **w7.tcp-chat · Multi-client TCP Chat with epoll**：把单客户端升级成事件驱动聊天室。重点理解注册昵称、消息广播、粘包/拆包、`EAGAIN` 与待发送缓冲区；慢客户端不能拖垮其他连接。
 
 ### W8｜逐层构造 HTTP 服务（11 关）
 
 先看它们的依赖顺序，不要从最后的压测任务直接开始。
 
-1. **w8.http-protocol**：HTTP 请求行、响应行、头部、CRLF、\`Content-Length\`；分清字节数与字符数。
+1. **w8.http-protocol**：HTTP 请求行、响应行、头部、CRLF、`Content-Length`；分清字节数与字符数。
 2. **w8.http-parser**：增量解析 TCP 输入；不完整数据应等待，真正非法数据才报错。
 3. **w8.static-files**：静态文件与响应；重点是路径检查、正确状态码和文件内容。
 4. **w8.router**：按方法与路径分配处理器；区分路由未找到与方法不允许。
-5. **w8.http-server**：组合 \`epoll\`、线程池和 HTTP；先保证正确收发，再考虑并发性能。
-6. **w8.http-connection-policy**：根据 HTTP 版本与 \`Connection\` 头决定是否复用连接。这一关只做策略，不提前改服务端生命周期。
+5. **w8.http-server**：组合 `epoll`、线程池和 HTTP；先保证正确收发，再考虑并发性能。
+6. **w8.http-connection-policy**：根据 HTTP 版本与 `Connection` 头决定是否复用连接。这一关只做策略，不提前改服务端生命周期。
 7. **w8.http-keep-alive**：同一 TCP 连接按顺序处理多个请求；确保响应顺序正确。
 8. **w8.http-connection-guards**：连接超时与配额限制；解释为什么空闲连接不能一直占用资源。
 9. **w8.http-graceful-shutdown**：停止接收新请求并排空已有任务；学习有序退出。
@@ -78,9 +78,9 @@
 
 ### W9｜安全的 HTTP 输入与文件边界（已实现 3 关）
 
-- **w9.http-chunked**：解析分块传输。重点是十六进制块长度、分段接收、零长度结束块和 trailer；不能让 \`Transfer-Encoding\` 与 \`Content-Length\` 同时决定正文边界。
+- **w9.http-chunked**：解析分块传输。重点是十六进制块长度、分段接收、零长度结束块和 trailer；不能让 `Transfer-Encoding` 与 `Content-Length` 同时决定正文边界。
 - **w9.request-target**：严格解析请求目标和查询参数。重点是百分号解码只做一次，保留重复查询键，并拒绝路径穿越和非法控制字符。
-- **w9.static-root**：基于已打开的目录描述符访问静态文件，用 \`openat\` / \`O_NOFOLLOW\` 阻止符号链接绕过根目录。重点理解「检查路径字符串」不等于「安全打开文件」。
+- **w9.static-root**：基于已打开的目录描述符访问静态文件，用 `openat` / `O_NOFOLLOW` 阻止符号链接绕过根目录。重点理解「检查路径字符串」不等于「安全打开文件」。
 
 **课程边界：** 目前有 23 个可执行任务，覆盖以上 W1–W9 已实现关卡。路线图中 W9 的 A4/A5 和 W10–W12 仍是规划内容，不应按已实现课程使用。此导航不代替每关完整教材和固定验收规则。
 
@@ -88,13 +88,13 @@
 
 | 看到的现象 | 先检查什么 |
 |---|---|
-| \`error: expected ...\`、缺少分号 | 编译器报出的**第一个**源文件和行号；先修语法，再看后续报错 |
-| \`undefined reference\` | 函数是否只有声明、没有实现；对应 \`.cpp\` 是否被正确编译链接 |
-| \`No such file or directory\` | 正在使用**仓库根目录**还是**学习工作区**；命令中的路径是否保留双引号 |
-| \`Result: FAIL\`，但本地能运行 | 检查平台固定契约：错误分支、边界值、换行、状态码和资源释放 |
-| \`NEEDS WORK\` | 读最近一次验收的错误摘要和完整日志，再用 \`hint\` 逐级求助 |
-| \`STALE\` | 代码在 PASS 后改变；这是提醒重新验收，而不是丢失了源码 |
-| \`LOCKED\` | 按提示先完成前置任务并取得当前 PASS |
-| 运行的是旧程序 | 明确你在运行仓库的 \`./build/cppapplab\`，还是学习包的 \`./cppapplab\`；不要混用二者 |
+| `error: expected ...`、缺少分号 | 编译器报出的**第一个**源文件和行号；先修语法，再看后续报错 |
+| `undefined reference` | 函数是否只有声明、没有实现；对应 `.cpp` 是否被正确编译链接 |
+| `No such file or directory` | 正在使用**仓库根目录**还是**学习工作区**；命令中的路径是否保留双引号 |
+| `Result: FAIL`，但本地能运行 | 检查平台固定契约：错误分支、边界值、换行、状态码和资源释放 |
+| `NEEDS WORK` | 读最近一次验收的错误摘要和完整日志，再用 `hint` 逐级求助 |
+| `STALE` | 代码在 PASS 后改变；这是提醒重新验收，而不是丢失了源码 |
+| `LOCKED` | 按提示先完成前置任务并取得当前 PASS |
+| 运行的是旧程序 | 明确你在运行仓库的 `./build/cppapplab`，还是学习包的 `./cppapplab`；不要混用二者 |
 
 最后提醒：固定验收只能证明当前定义的任务契约通过。读懂设计取舍、能解释关键边界和失败原因，才代表真正掌握本关。

@@ -163,6 +163,8 @@ The interactive task picker now supports number, task-ID and title-keyword selec
 
 The new branch feat/p7-offline-dependency-bundle-20261112 adds:
 
+The offline CI job refreshes only APT package indexes from a repository-pinned Ubuntu snapshot; it does not install packages or modify the dpkg database. The snapshot ID is included in the generated package lock and build metadata.
+
 - Required learner/build toolchain: build-essential, CMake, Git, GDB and GoogleTest.
 - Optional quality tools: clang-format and clang-tidy, stored as an incremental package group.
 - Read-only APT URI resolution using apt-get --print-uris; bundle creation does not run apt-get update or install packages.

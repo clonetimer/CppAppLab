@@ -61,7 +61,11 @@ resolve_uris() {
         echo "[FAIL] APT URI resolution failed. No package installation was attempted." >&2
         return 1
     fi
-    python3 "$ROOT/packaging/resolve_apt_uris.py" --input "$apt_log" --output "$uri_json" >&2
+    if ! python3 "$ROOT/packaging/resolve_apt_uris.py" --input "$apt_log" --output "$uri_json" >&2; then
+        echo "[FAIL] APT --print-uris output could not be parsed; raw resolver output follows:" >&2
+        cat "$apt_log" >&2
+        return 1
+    fi
     printf '%s\n' "$uri_json"
 }
 
@@ -105,8 +109,12 @@ if [[ "${#base_roots[@]}" -eq 0 || "${#quality_roots[@]}" -eq 0 ]]; then
     exit 2
 fi
 
-base_json="$(resolve_uris required "${base_roots[@]}")"
-full_json="$(resolve_uris full "${base_roots[@]}" "${quality_roots[@]}")"
+if ! base_json="$(resolve_uris required "${base_roots[@]}")"; then
+    exit 1
+fi
+if ! full_json="$(resolve_uris full "${base_roots[@]}" "${quality_roots[@]}")"; then
+    exit 1
+fi
 download_uri_json "$base_json"
 download_uri_json "$full_json"
 

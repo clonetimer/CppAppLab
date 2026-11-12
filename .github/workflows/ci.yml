@@ -653,6 +653,8 @@ jobs:
           command -v tar
           command -v gzip
           command -v sha256sum
+      - name: Audit published learner course content (no installation)
+        run: python3 tests/test_course_materials.py
       - name: Build relocatable learner CLI
         run: |
           cmake -S . -B build-release \

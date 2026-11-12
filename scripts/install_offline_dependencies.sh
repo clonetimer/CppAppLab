@@ -116,15 +116,35 @@ if [[ "$VERIFY_ONLY" -eq 1 ]]; then
 fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[INFO] Simulating a clean-target local-only installation; no packages will be changed or downloaded."
-    EMPTY_STATUS="$(mktemp)"
-    trap 'rm -f "$EMPTY_STATUS"' EXIT
+    echo "[INFO] Simulating a clean-target installation using only a temporary local APT repository."
+    TEMP_ROOT="$(mktemp -d)"
+    trap 'rm -rf "$TEMP_ROOT"' EXIT
+    LOCAL_REPO="$TEMP_ROOT/repo"
+    mkdir -p "$LOCAL_REPO" "$TEMP_ROOT/lists/partial" "$TEMP_ROOT/archives/partial"
+    for deb in "${selected_debs[@]}"; do
+        ln -s "$deb" "$LOCAL_REPO/$(basename "$deb")"
+    done
+    python3 "$ROOT/scripts/build_local_apt_index.py" --repo "$LOCAL_REPO"
+    printf 'deb [trusted=yes] file:%s ./\n' "$LOCAL_REPO" > "$TEMP_ROOT/sources.list"
+    EMPTY_STATUS="$TEMP_ROOT/status"
     : > "$EMPTY_STATUS"
-    apt-get --simulate \
-        -o "Dir::State::status=$EMPTY_STATUS" \
-        -o Debug::NoLocking=1 \
-        --no-download --no-install-recommends install "${selected_debs[@]}"
-    echo "[PASS] Clean-target APT dry-run completed; no package installation was performed."
+    APT_OPTIONS=(
+        -o "Dir::State::status=$EMPTY_STATUS"
+        -o "Dir::State::lists=$TEMP_ROOT/lists"
+        -o "Dir::Cache::archives=$TEMP_ROOT/archives"
+        -o "Dir::Etc::sourcelist=$TEMP_ROOT/sources.list"
+        -o "Dir::Etc::sourceparts=-"
+        -o "APT::Get::List-Cleanup=0"
+        -o Debug::NoLocking=1
+    )
+    apt-get "${APT_OPTIONS[@]}" update
+    if [[ "$WITH_QUALITY" -eq 1 ]]; then
+        roots=(build-essential cmake git gdb libgtest-dev clang-format clang-tidy)
+    else
+        roots=(build-essential cmake git gdb libgtest-dev)
+    fi
+    apt-get "${APT_OPTIONS[@]}" --simulate --no-install-recommends install "${roots[@]}"
+    echo "[PASS] Clean-target local-repository APT simulation completed; no packages were installed."
     exit 0
 fi
 

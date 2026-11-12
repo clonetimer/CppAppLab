@@ -19,7 +19,7 @@ Optional code-quality tools:
 - clang-format
 - clang-tidy
 
-The package builder resolves the dependency closure using APT's read-only --print-uris mode and downloads the corresponding .deb files. It does not run apt-get install, does not update the host package database, and does not install packages.
+The package builder refreshes only the ephemeral CI runner's APT package indexes from a pinned Ubuntu archive snapshot, then resolves the dependency closure using APT's read-only --print-uris mode and downloads the corresponding .deb files. It does not run apt-get install, does not modify the dpkg database, and does not install packages. The exact snapshot ID is recorded in BUILD-INFO.txt and packages.lock.json.
 
 ## Verify without installing
 

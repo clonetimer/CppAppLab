@@ -116,9 +116,15 @@ if [[ "$VERIFY_ONLY" -eq 1 ]]; then
 fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[INFO] Simulating local-only installation; no packages will be changed or downloaded."
-    apt-get --simulate -o Debug::NoLocking=1 --no-download --no-install-recommends install "${selected_debs[@]}"
-    echo "[PASS] APT dry-run completed; no package installation was performed."
+    echo "[INFO] Simulating a clean-target local-only installation; no packages will be changed or downloaded."
+    EMPTY_STATUS="$(mktemp)"
+    trap 'rm -f "$EMPTY_STATUS"' EXIT
+    : > "$EMPTY_STATUS"
+    apt-get --simulate \
+        -o "Dir::State::status=$EMPTY_STATUS" \
+        -o Debug::NoLocking=1 \
+        --no-download --no-install-recommends install "${selected_debs[@]}"
+    echo "[PASS] Clean-target APT dry-run completed; no package installation was performed."
     exit 0
 fi
 

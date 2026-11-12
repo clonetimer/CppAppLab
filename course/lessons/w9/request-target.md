@@ -37,12 +37,12 @@ Implement the parser API, preserve repeated query keys and enforce all limits an
 
 **Fixed acceptance:** 39 platform-owned GoogleTests in course/fixtures/w9/request-target. They cover origin/asterisk forms, query ordering, percent decoding, double-encoding behavior, traversal segments, separators, control bytes and resource limits.
 
-\`\`\`bash
+```bash
 ./build/cppapplab start w9.request-target "$HOME/cppapplab-work/w9-request-target"
 ./build/cppapplab lesson "$HOME/cppapplab-work/w9-request-target"
 ./build/cppapplab hint "$HOME/cppapplab-work/w9-request-target" 1
 ./build/cppapplab check "$HOME/cppapplab-work/w9-request-target"
-\`\`\`
+```
 
 ## Explain your design
 

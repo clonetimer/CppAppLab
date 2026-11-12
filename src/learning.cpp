@@ -31,7 +31,6 @@ constexpr std::size_t kMaxHintBytes = 32U * 1024U;
 constexpr std::size_t kMaxCompilerOutput = 128U * 1024U;
 constexpr std::size_t kMaxProgramOutput = 16U * 1024U;
 
-
 std::string suggested_cli_command() {
     const char* launcher = std::getenv("CPPAPPLAB_LAUNCH_COMMAND");
     if (launcher != nullptr && launcher[0] != '\0') {

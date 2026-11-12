@@ -41,6 +41,7 @@ if [[ -n "${CPPAPPLAB_UBUNTU_SNAPSHOT_ID:-}" && "$CPPAPPLAB_UBUNTU_SNAPSHOT_ID" 
     exit 2
 fi
 PACKAGE_NAME="CppAppLab-offline-deps-ubuntu24.04-amd64-v${VERSION}-${SHORT_SHA}"
+export CPPAPPLAB_UBUNTU_SNAPSHOT_ID="$SNAPSHOT_ID"
 
 mkdir -p "$OUTPUT"
 OUTPUT="$(cd "$OUTPUT" && pwd)"
@@ -149,6 +150,7 @@ EOF
 
 python3 - "$BUNDLE_ROOT" <<'PY'
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -195,6 +197,7 @@ manifest = {
     "schema_version": 1,
     "project": "CppAppLab",
     "target": "Ubuntu 24.04 LTS amd64",
+    "ubuntu_archive_snapshot": os.environ.get("CPPAPPLAB_UBUNTU_SNAPSHOT_ID", ""),
     "install_policy": "local deb files only; apt downloads disabled",
     "package_installation_performed_during_build": False,
     "packages": packages,

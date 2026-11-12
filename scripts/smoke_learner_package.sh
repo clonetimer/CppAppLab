@@ -87,6 +87,12 @@ if ! grep -Fq "Result: PASS" "$TEMP_ROOT/check.log"; then
     exit 1
 fi
 
+if ! grep -Fq "Next step: '$PACKAGE_ROOT/cppapplab' learn" "$TEMP_ROOT/check.log"; then
+    echo "[FAIL] Packaged PASS result must show the usable learner launcher." >&2
+    cat "$TEMP_ROOT/check.log" >&2
+    exit 1
+fi
+
 echo "[PASS] Relocated learner package smoke test."
 echo "  CLI version: $VERSION_OUTPUT"
 echo "  Catalog: W1, W8 and W9 tasks discovered."

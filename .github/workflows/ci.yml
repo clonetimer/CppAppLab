@@ -701,6 +701,7 @@ jobs:
           apt-cache policy build-essential cmake git gdb libgtest-dev clang-format clang-tidy
           if [ -r /etc/apt/apt-mirrors.txt ]; then cat /etc/apt/apt-mirrors.txt; fi
           python3 tests/test_apt_uri_parser.py
+          python3 -m py_compile packaging/resolve_apt_uris.py packaging/download_apt_uris.py scripts/build_local_apt_index.py
       - name: Resolve and download .deb closure without installing packages
         run: |
           bash scripts/package_offline_dependencies.sh dist

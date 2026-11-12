@@ -18,6 +18,7 @@ std::string_view usage() noexcept {
            "  cppapplab menu                                   Open interactive learning home\n"
            "  cppapplab --help                                  Show this help\n"
            "  cppapplab --version                               Show version\n"
+           "  cppapplab guide                                   中文学习路线与常见问题\n"
            "  cppapplab list                                    List available tasks\n"
            "  cppapplab progress                                Show course progress\n"
            "  cppapplab learn [task-id]                         Guided start or resume\n"

@@ -71,27 +71,7 @@ resolve_uris() {
 
 download_uri_json() {
     local uri_json="$1"
-    local entries="$TEMP_ROOT/$(basename "$uri_json").tsv"
-    python3 - "$uri_json" > "$entries" <<'PY'
-import json
-import sys
-for entry in json.load(open(sys.argv[1], encoding="utf-8")):
-    mirrors = entry.get("mirrors") or [entry["uri"]]
-    print(f"{'|'.join(mirrors)}\t{entry['filename']}\t{entry['size']}\t{entry.get('sha256', '')}")
-PY
-    while IFS=        if [[ "$actual_size" != "$expected_size" ]]; then
-            echo "[FAIL] Size mismatch for $filename: expected $expected_size, got $actual_size." >&2
-            return 1
-        fi
-        if [[ -n "$expected_sha" ]]; then
-            local actual_sha
-            actual_sha="$(sha256sum "$target" | awk '{print $1}')"
-            if [[ "$actual_sha" != "$expected_sha" ]]; then
-                echo "[FAIL] APT SHA-256 mismatch for $filename." >&2
-                return 1
-            fi
-        fi
-    done < "$entries"
+    python3 "$ROOT/packaging/download_apt_uris.py" --input "$uri_json" --output "$DOWNLOAD_ROOT"
 }
 
 mapfile -t base_roots < <(grep -Ev '^[[:space:]]*(#|$)' "$ROOT/packaging/offline-dependencies.txt" | sed 's/[[:space:]]//g')

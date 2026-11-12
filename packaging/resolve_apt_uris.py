@@ -8,6 +8,7 @@ import shlex
 from pathlib import Path
 
 MIRROR_PREFIX = "mirror+file:/etc/apt/apt-mirrors.txt"
+SNAPSHOT_PREFIX = "https://snapshot.ubuntu.com/ubuntu/"
 
 
 def read_mirrors(path: Path) -> list[str]:
@@ -27,13 +28,24 @@ def read_mirrors(path: Path) -> list[str]:
 
 
 def expand_uri(uri: str, mirror_file: Path) -> list[str]:
-    if uri.startswith(("http://", "https://")):
-        return [uri]
     if uri.startswith(MIRROR_PREFIX):
         suffix = uri[len(MIRROR_PREFIX):].lstrip("/")
         if not suffix:
             raise SystemExit(f"APT mirror URI has no package path: {uri}")
         return [f"{base}/{suffix}" for base in read_mirrors(mirror_file)]
+    if uri.startswith(SNAPSHOT_PREFIX):
+        remainder = uri[len(SNAPSHOT_PREFIX):]
+        snapshot_id, separator, suffix = remainder.partition("/")
+        if not separator or not snapshot_id or not suffix:
+            raise SystemExit(f"Malformed Ubuntu snapshot URI: {uri}")
+        mirrors = [uri]
+        try:
+            mirrors.extend(f"{base}/{suffix}" for base in read_mirrors(mirror_file))
+        except SystemExit:
+            pass
+        return list(dict.fromkeys(mirrors))
+    if uri.startswith(("http://", "https://")):
+        return [uri]
     raise SystemExit(f"Unsupported APT download URI scheme: {uri}")
 
 

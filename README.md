@@ -118,6 +118,10 @@ W1–W7 and W8-D1–D6-D3 are merged into `main`. The HTTP reference server incl
 - [W9-A2 request-target lesson](course/lessons/w9/request-target.md)
 - [W9-A3 secure static-root lesson](course/lessons/w9/static-root.md)
 
+## Delivery status
+
+P7-A source and learner package candidates are merged and verified in [CI run #1183](https://github.com/clonetimer/CppAppLab/actions/runs/43132738098). P7-B is building the offline Ubuntu 24.04 dependency bundle with read-only APT URI resolution and local-only installation; routine CI does not install Ubuntu packages. See [release packaging](docs/RELEASE_PACKAGING.md) and [project status](docs/STATUS.md).
+
 ## Quick start
 
 After cloning the repository inside Ubuntu 24.04 (WSL2 is the target environment), run one command from the repository root:

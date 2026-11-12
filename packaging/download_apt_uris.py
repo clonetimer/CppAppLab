@@ -8,6 +8,7 @@ import json
 import os
 import tempfile
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 
@@ -38,7 +39,7 @@ def download_one(entry: dict[str, object], output: Path) -> None:
         return True
 
     if valid(target):
-        print(f"[SKIP] Verified existing {filename}")
+        print(f"[SKIP] Verified existing {filename}", flush=True)
         return
     target.unlink(missing_ok=True)
 
@@ -51,7 +52,7 @@ def download_one(entry: dict[str, object], output: Path) -> None:
         os.close(fd)
         temp_path = Path(temp_name)
         try:
-            print(f"[INFO] Downloading {filename} from {uri}")
+            print(f"[INFO] Downloading {filename} from {uri}", flush=True)
             request = urllib.request.Request(
                 uri, headers={"User-Agent": "CppAppLab-offline-packager/1"}
             )
@@ -70,7 +71,7 @@ def download_one(entry: dict[str, object], output: Path) -> None:
             if expected_md5 and digest(temp_path, "md5") != expected_md5:
                 raise RuntimeError("MD5 mismatch against signed APT package index")
             temp_path.replace(target)
-            print(f"[PASS] {filename} ({expected_size} bytes)")
+            print(f"[PASS] {filename} ({expected_size} bytes)", flush=True)
             return
         except Exception as exc:
             errors.append(f"{uri}: {exc}")
@@ -85,14 +86,19 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--workers", type=int, default=8)
     args = parser.parse_args()
+    if not 1 <= args.workers <= 32:
+        raise SystemExit("--workers must be between 1 and 32")
     args.output.mkdir(parents=True, exist_ok=True)
     entries = json.loads(args.input.read_text(encoding="utf-8"))
     if not isinstance(entries, list) or not entries:
         raise SystemExit("APT URI manifest is empty or invalid")
-    for entry in entries:
-        download_one(entry, args.output)
-    print(f"[PASS] Downloaded and verified {len(entries)} package archives.")
+    with ThreadPoolExecutor(max_workers=args.workers) as executor:
+        futures = [executor.submit(download_one, entry, args.output) for entry in entries]
+        for future in as_completed(futures):
+            future.result()
+    print(f"[PASS] Downloaded and verified {len(entries)} package archives.", flush=True)
     return 0
 
 

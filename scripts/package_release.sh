@@ -58,6 +58,7 @@ cat > "$LEARNER_ROOT/cppapplab" <<'WRAPPER'
 set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 export CPPAPPLAB_DATA_DIR="$ROOT"
+export CPPAPPLAB_LAUNCH_COMMAND="$ROOT/cppapplab"
 exec "$ROOT/bin/cppapplab.bin" "$@"
 WRAPPER
 chmod 0755 "$LEARNER_ROOT/cppapplab"

@@ -632,7 +632,8 @@ jobs:
           $scripts = @(
             'scripts/package_offline_dependencies.sh',
             'scripts/install_offline_dependencies.sh',
-            'scripts/verify_offline_dependency_bundle.sh'
+            'scripts/verify_offline_dependency_bundle.sh',
+            'scripts/ci_prepare_ubuntu_snapshot.sh'
           )
           foreach ($script in $scripts) {
             & $bash -n $script
@@ -682,9 +683,13 @@ jobs:
   offline-dependency-candidate:
     name: Build and verify offline dependency bundle (no package installation)
     runs-on: ubuntu-24.04
+    env:
+      CPPAPPLAB_UBUNTU_SNAPSHOT_ID: 20261112T000000Z
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+      - name: Refresh package indexes from pinned Ubuntu snapshot (no package installation)
+        run: bash scripts/ci_prepare_ubuntu_snapshot.sh
       - name: Verify preinstalled resolver tools and apt metadata
         run: |
           command -v apt-get

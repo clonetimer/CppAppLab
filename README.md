@@ -2,6 +2,16 @@
 
 **CppAppLab** is a hands-on C++ learning and engineering-practice platform. It takes a learner from the first C++ program to maintainable Linux systems software, concurrent programs, TCP services, and an HTTP/1.1 server.
 
+## 开始学习：先看课程，再做练习
+
+CppAppLab 当前发布了 **23 个可操作的 W1–W9 学习任务**。不必先研究环境安装步骤；已有支持环境的学习者可以直接进入课程：
+
+1. 在源码项目根目录运行 `./build/cppapplab`；如果使用学习者压缩包，在解压目录运行 `./cppapplab`。
+2. 选择“继续学习”自动开始下一关；输入 `guide` 或在首页选择 **5** 可阅读[中文学习导航](course/LEARNING_GUIDE_ZH.md)。
+3. 只修改任务列出的工作区文件；遇到问题按提示逐级求助，最后通过固定验收再继续下一关。
+
+当前发布范围为 W1–W9 已实现任务；W9-A4/A5 及 W10–W12 尚处于路线图中。环境要求与部署说明保留在后文，供确有需要时查询。
+
 ## First-version baseline
 
 - **Host:** Windows 11 with WSL2

@@ -198,40 +198,40 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ## P7 — Delivery and stabilization (in progress)
 
-**P6 exit verification: PASS.** The merged W8 course contains 11 registered tasks, including the six-task D6 prerequisite chain. Final mainline CI run 43031051999 passed root 75/75 under GCC and ASan/UBSan, the W8 D6 task workflow, W9-A1 35/35, W9-A2 39/39 and W9-A3 34/34 under GCC, ASan/UBSan and clang-tidy. P6 is closed; remaining work is release packaging and target-environment qualification.
+**P6 exit verification: PASS.** Mainline CI run #1183 (43132738098) passed all five jobs: root GCC/CTest 75/75, root ASan/UBSan 75/75, formatting/clang-tidy, Windows PowerShell 7/5.1 + WSL handoff, and source/learner package build and relocation smoke test. W8 D6 and W9-A1/A2/A3 regression fixtures passed under GCC, ASan/UBSan and clang-tidy.
 
-### P7-A — Reproducible source and learner packages (implementation started)
+### P7-A — Reproducible source and learner packages
 
-- Build a full source archive from the exact tested Git commit.
-- Build a relocatable Ubuntu 24.04 learner archive containing the prebuilt CLI, course assets, learner templates and fixed acceptance fixtures.
-- Set CPPAPPLAB_DATA_DIR through the package wrapper so the learner archive works after extraction to a different directory.
-- Record source commit, target platform and SHA-256 values in a package manifest.
-- Smoke-test the extracted package by listing W1/W8/W9 tasks, creating a W1 learner workspace and passing its fixed acceptance check.
-- Upload CI package candidates as short-lived workflow artifacts; do not treat them as a formal release.
+**Merged:** PR #35, commit fe06f4c.
+
+- [x] Deterministic source archive and relocatable Ubuntu 24.04 learner archive
+- [x] Package manifest with exact source commit and SHA-256 values
+- [x] Extract-to-new-directory learner package smoke test
+- [x] W1 workspace creation and fixed Hello World PASS using the packaged CLI
+- [x] CI artifact upload for source and learner packages
 
 ### P7-B — Offline dependency bundle
 
-- Package the Ubuntu 24.04 dependency closure for compiler, CMake, GDB and GoogleTest.
-- Verify installation without external network access on a clean target image.
-- Keep optional clang-format/clang-tidy quality tools distinguishable from learner runtime requirements.
+**Implementation branch:** feat/p7-offline-dependency-bundle-20261112.
+
+- [x] Separate required learner/build packages from optional quality tools
+- [x] Resolve dependency closure with read-only apt-get --print-uris
+- [x] Download .deb files without installing Ubuntu packages or updating the host package database
+- [x] Record package names, versions, architecture, dependencies, sizes and SHA-256 values
+- [x] Add local-only installer with checksum verification and --no-download
+- [x] Add --verify-only and APT --dry-run modes
+- [x] Add parser unit tests and Windows Git-Bash syntax validation
+- [ ] Build and verify the actual offline dependency archive in CI
+- [ ] Validate the dependency plan on a clean existing Ubuntu 24.04 base without applying changes
 
 ### P7-C — Target-machine acceptance and release qualification
 
-- Validate Windows 11 + WSL2 + Ubuntu 24.04 launch, package extraction, task execution and persistence.
-- Record exact package SHA-256, environment, commands and test evidence.
-- Publish version tag, release notes, known limitations and evidence archive only after P7-A/B/C pass.
+- [ ] Windows 11 + WSL2 + Ubuntu 24.04 end-to-end launch and learner package extraction
+- [ ] Verify workspace and progress persistence across package replacement
+- [ ] Record package SHA-256, environment, commands and acceptance evidence
+- [ ] Publish version tag, release notes, known limitations and evidence archive
 
-
-- [ ] source package and learner package
-- [ ] offline dependency strategy and reproducible checks
-- [x] interactive learner home and numbered task selection
-- [x] title-keyword task search and granular task-state visibility
-- [x] Windows double-click launcher for the WSL2 Ubuntu 24.04 workflow
-- [x] actionable check-failure diagnostics and retry guidance
-- [x] first-use guide and troubleshooting
-- [ ] Linux/WSL2 end-to-end verification
-- [ ] version tag and release notes
-- [ ] known limitations and evidence archive
+Full GCC/ASan/clang-tidy jobs are now opt-in through workflow_dispatch input run_full_ubuntu_validation. The default P7 push/PR workflow runs Windows checks, source/learner packaging, offline bundle generation and no-install verification. This preserves the full validation path without repeatedly installing build dependencies during routine P7 CI.
 
 
 ## Next curriculum expansion — W9 to W12

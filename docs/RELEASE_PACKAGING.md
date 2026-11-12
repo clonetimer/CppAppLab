@@ -56,4 +56,15 @@ CI uploads the source archive, learner archive, package manifest and SHA256SUMS 
 
 ## Offline dependencies
 
-The learner archive is relocatable, but it does not yet contain Ubuntu .deb packages. P7 tracks the offline dependency bundle separately so its package closure, install order and clean-machine acceptance can be verified rather than implying that a source archive is fully offline.
+P7-B builds a separate Ubuntu 24.04 amd64 dependency archive. Required learner/build packages are separated from optional quality tools:
+
+- Required: build-essential, CMake, Git, GDB and libgtest-dev.
+- Optional: clang-format and clang-tidy.
+
+The CI resolver refreshes APT package indexes from a repository-pinned Ubuntu snapshot using apt-get update. This updates only the ephemeral runner's package indexes; it does not install packages or modify the dpkg database. The exact snapshot ID is stored in the repository and recorded in BUILD-INFO.txt and packages.lock.json.
+
+The resolver then uses read-only apt-get --print-uris mode to calculate the complete .deb dependency closure. Package downloads use the snapshot URLs and verify size plus the checksum published by the signed APT index where available. The final package lock records package names, versions, architectures, dependencies, sizes and locally computed SHA-256 values.
+
+The bundled installer verifies all checksums and installs from local .deb files with --no-download; it never runs apt-get update. --verify-only checks integrity and package metadata without APT operations. --dry-run builds a temporary local APT repository and runs APT simulation against an empty dpkg status database. It makes no system changes and has no network source configured.
+
+The archive targets an existing Ubuntu 24.04 amd64 installation, including WSL2 Ubuntu 24.04. It does not install an Ubuntu operating system. Clean-base package installation remains a separate target-machine acceptance step and is not claimed by the no-install CI checks.

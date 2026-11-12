@@ -716,7 +716,7 @@ int guided_learn(std::string_view requested_task_id) {
     }
 
     if (std::getenv("CPPAPPLAB_LAUNCH_COMMAND") != nullptr) {
-        std::cout << "提示：教程中 ./build/cppapplab 示例适用于源码版本；请使用页面底部自动生成的学习包命令。\\n";
+        std::cout << "提示：教程中 ./build/cppapplab 示例适用于源码版本；请使用页面底部自动生成的学习包命令。\n";
     }
     std::cout << "\n--- Task guide ---\n";
     const auto lesson = data_root() / selected->lesson_path;

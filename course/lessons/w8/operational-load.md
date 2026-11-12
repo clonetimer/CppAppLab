@@ -85,3 +85,11 @@ The result must report attempted/succeeded/failed requests, elapsed microseconds
 ```
 
 The load probe is a measurement tool, not a promise of a particular throughput. Report the environment and workload alongside any performance number.
+
+## Acceptance
+
+- [ ] 非法负载探测配置能够被明确拒绝，避免无意义请求。
+- [ ] 单客户端请求能够得到正确的成功/失败统计。
+- [ ] 多客户端 Keep-Alive 场景能够统计成功数及资源恢复情况。
+- [ ] 预期状态码不匹配与连接失败能够计入失败请求，而不是丢失统计。
+- [ ] 五项平台固定验收测试全部通过；报告测量条件，不将一次测试解释为生产吞吐能力。

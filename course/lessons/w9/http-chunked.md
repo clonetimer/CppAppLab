@@ -20,7 +20,7 @@ This course profile intentionally does not decode transfer-coding chains or expo
 
 ## Chunked wire shape
 
-\`\`\`text
+```text
 Transfer-Encoding: chunked
 
 4;name=value\r\n
@@ -30,7 +30,7 @@ pedia\r\n
 0\r\n
 X-Trace: abc\r\n
 \r\n
-\`\`\`
+```
 
 The decoded body is Wikipedia. The chunk metadata and trailer block are not part of the body.
 
@@ -57,12 +57,12 @@ Implement the chunked framing branch in the parser. Preserve the W8 request mode
 
 **Fixed acceptance:** 35 platform-owned GoogleTests in course/fixtures/w9/http-chunked. They cover multi-chunk and binary payloads, extensions, trailers, incremental boundaries, pipelining, ambiguous framing, malformed input and resource limits.
 
-\`\`\`bash
+```bash
 ./build/cppapplab start w9.http-chunked "$HOME/cppapplab-work/w9-http-chunked"
 ./build/cppapplab lesson "$HOME/cppapplab-work/w9-http-chunked"
 ./build/cppapplab hint "$HOME/cppapplab-work/w9-http-chunked" 1
 ./build/cppapplab check "$HOME/cppapplab-work/w9-http-chunked"
-\`\`\`
+```
 
 ## Explain your design
 

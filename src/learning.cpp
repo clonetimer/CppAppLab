@@ -31,6 +31,28 @@ constexpr std::size_t kMaxHintBytes = 32U * 1024U;
 constexpr std::size_t kMaxCompilerOutput = 128U * 1024U;
 constexpr std::size_t kMaxProgramOutput = 16U * 1024U;
 
+std::string suggested_cli_command() {
+    const char* launcher = std::getenv("CPPAPPLAB_LAUNCH_COMMAND");
+    if (launcher != nullptr && launcher[0] != '\0') {
+        const std::filesystem::path path(launcher);
+        std::error_code ignored;
+        if (path.is_absolute() && std::filesystem::is_regular_file(path, ignored) &&
+            !std::filesystem::is_symlink(path, ignored)) {
+            std::string result{"'"};
+            for (const char character : path.string()) {
+                if (character == '\'') {
+                    result += "'\\''";
+                } else {
+                    result.push_back(character);
+                }
+            }
+            result.push_back('\'');
+            return result;
+        }
+    }
+    return "./build/cppapplab";
+}
+
 std::string read_lesson_file(const std::filesystem::path& path, std::size_t max_bytes) {
     const auto status = std::filesystem::symlink_status(path);
     if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
@@ -140,8 +162,9 @@ std::vector<std::string> diagnostic_excerpt(const std::string& output) {
 }
 
 void print_check_guidance(const Workspace& workspace, bool passed, const std::string& log_output) {
+    const std::string cli = suggested_cli_command();
     if (passed) {
-        std::cout << "Next step: ./build/cppapplab learn\n";
+        std::cout << "Next step: " << cli << " learn\n";
         return;
     }
 
@@ -158,9 +181,9 @@ void print_check_guidance(const Workspace& workspace, bool passed, const std::st
     const auto log_path = workspace.root / ".cppapplab/last-check.log";
     std::cout << "\nSuggested next steps:\n"
               << "  1. Read the full log: cat \"" << log_path.string() << "\"\n"
-              << "  2. Request a hint: ./build/cppapplab hint \"" << workspace.root.string()
+              << "  2. Request a hint: " << cli << " hint \"" << workspace.root.string()
               << "\" 1\n"
-              << "  3. Fix the listed source files and rerun: ./build/cppapplab check \""
+              << "  3. Fix the listed source files and rerun: " << cli << " check \""
               << workspace.root.string() << "\"\n";
 }
 
@@ -691,18 +714,23 @@ int guided_learn(std::string_view requested_task_id) {
         std::cout << "  - " << source.generic_string() << '\n';
     }
 
+    if (std::getenv("CPPAPPLAB_LAUNCH_COMMAND") != nullptr) {
+        std::cout << "提示：教程中 ./build/cppapplab 示例适用于源码版本；请使用页面底部自动生成的学习包命令。\n";
+    }
     std::cout << "\n--- Task guide ---\n";
     const auto lesson = data_root() / selected->lesson_path;
     std::cout << read_lesson_file(lesson, kMaxLessonBytes);
+    const std::string cli = suggested_cli_command();
     std::cout << "\n--- Your next steps ---\n"
+              << "0. 中文学习路线与常见问题：" << cli << " guide\n"
               << "1. Open the workspace in your editor. VS Code users can run:\n"
               << "   code \"" << workspace.root.string() << "\"\n"
               << "2. If you need help, request the first hint:\n"
-              << "   ./build/cppapplab hint \"" << workspace.root.string() << "\" 1\n"
+              << "   " << cli << " hint \"" << workspace.root.string() << "\" 1\n"
               << "3. When your implementation is ready, run the fixed acceptance check:\n"
-              << "   ./build/cppapplab check \"" << workspace.root.string() << "\"\n"
+              << "   " << cli << " check \"" << workspace.root.string() << "\"\n"
               << "4. After PASS, continue with the next available task:\n"
-              << "   ./build/cppapplab learn\n\n"
+              << "   " << cli << " learn\n\n"
               << "Your workspace and progress are saved between sessions. "
                  "Running 'learn' again resumes an incomplete task; after PASS it advances to the "
                  "next task.\n";
@@ -814,6 +842,11 @@ int choose_task_interactively() {
     }
 }
 
+int show_learning_guide() {
+    std::cout << read_lesson_file(data_root() / "course/LEARNING_GUIDE_ZH.md", kMaxLessonBytes);
+    return 0;
+}
+
 int interactive_menu() {
     const auto& tasks = task_catalog();
     while (true) {
@@ -850,6 +883,7 @@ int interactive_menu() {
                   << "  2. Choose or search a task\n"
                   << "  3. View course progress\n"
                   << "  4. Help and commands\n"
+                  << "  5. 中文学习路线 / Course guide\n"
                   << "  0. Exit\n"
                   << "Select [1]: " << std::flush;
 
@@ -867,10 +901,12 @@ int interactive_menu() {
                 (void)show_progress();
             } else if (choice == "4") {
                 std::cout << usage();
+            } else if (choice == "5") {
+                (void)show_learning_guide();
             } else if (choice == "0" || choice == "q" || choice == "Q") {
                 return 0;
             } else {
-                std::cout << "Please enter 1, 2, 3, 4 or 0.\n";
+                std::cout << "Please enter 1, 2, 3, 4, 5 or 0.\n";
             }
         } catch (const std::exception& error) {
             std::cerr << "CppAppLab: " << error.what() << '\n';
@@ -933,6 +969,12 @@ int run_cli(int argc, char* argv[]) {
                 throw std::invalid_argument("Usage: cppapplab learn [task-id]");
             }
             return guided_learn(argc == 3 ? std::string_view(argv[2]) : std::string_view{});
+        }
+        if (command == "guide") {
+            if (argc != 2) {
+                throw std::invalid_argument("Usage: cppapplab guide");
+            }
+            return show_learning_guide();
         }
         if (command == "list") {
             print_task_catalog();

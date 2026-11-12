@@ -128,6 +128,71 @@ void write_source(const std::filesystem::path& workspace, const std::string& sou
 
 }  // namespace
 
+
+TEST(LearningWorkflowTest, ChineseGuideCoversAllRegisteredTasks) {
+    std::string output;
+    {
+        StdoutCapture capture;
+        EXPECT_EQ(invoke({"cppapplab", "guide"}), 0);
+        output = capture.str();
+    }
+    EXPECT_NE(output.find("中文学习导航"), std::string::npos);
+    EXPECT_NE(output.find("AVAILABLE"), std::string::npos);
+    ASSERT_EQ(cppapplab::task_catalog().size(), 23U);
+    for (const auto& task : cppapplab::task_catalog()) {
+        EXPECT_NE(output.find(task.id), std::string::npos) << task.id;
+    }
+}
+
+TEST(MenuWorkflowTest, ShowsChineseGuideWithoutCreatingWorkspaces) {
+    TemporaryDirectory temporary;
+    const auto home = temporary.path() / "home";
+    EnvironmentOverride home_override("HOME", home.string());
+    EnvironmentOverride state_override("CPPAPPLAB_STATE_DIR",
+                                       (temporary.path() / "state").string());
+    StdinOverride input("5\n0\n");
+
+    std::string output;
+    {
+        StdoutCapture capture;
+        EXPECT_EQ(invoke({"cppapplab", "menu"}), 0);
+        output = capture.str();
+    }
+    EXPECT_NE(output.find("中文学习导航"), std::string::npos);
+    EXPECT_FALSE(std::filesystem::exists(home / "cppapplab-work"));
+}
+
+TEST(GuidedLearningWorkflowTest, PrintsExecutablePackagedLauncherCommands) {
+    TemporaryDirectory temporary;
+    const auto home = temporary.path() / "home";
+    const auto launcher_directory = temporary.path() / "learner package with spaces";
+    std::filesystem::create_directories(launcher_directory);
+    const auto launcher = launcher_directory / "cppapplab";
+    {
+        std::ofstream file(launcher);
+        ASSERT_TRUE(file.good());
+        file << "#!/bin/sh\n";
+    }
+    EnvironmentOverride home_override("HOME", home.string());
+    EnvironmentOverride state_override("CPPAPPLAB_STATE_DIR",
+                                       (temporary.path() / "state").string());
+    EnvironmentOverride launcher_override("CPPAPPLAB_LAUNCH_COMMAND", launcher.string());
+
+    std::string output;
+    {
+        StdoutCapture capture;
+        EXPECT_EQ(invoke({"cppapplab", "learn"}), 0);
+        output = capture.str();
+    }
+
+    const auto command = "'" + launcher.string() + "'";
+    EXPECT_NE(output.find(command + " guide"), std::string::npos);
+    EXPECT_NE(output.find(command + " hint"), std::string::npos);
+    EXPECT_NE(output.find(command + " check"), std::string::npos);
+    EXPECT_NE(output.find(command + " learn"), std::string::npos);
+    EXPECT_EQ(output.find("./build/cppapplab hint"), std::string::npos);
+}
+
 TEST(GuidedLearningWorkflowTest, LearnCreatesAndThenResumesTheDefaultWorkspace) {
     TemporaryDirectory temporary;
     const auto home = temporary.path() / "home";

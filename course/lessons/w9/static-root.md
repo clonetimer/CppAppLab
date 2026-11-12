@@ -38,12 +38,12 @@ The completed message and request-target components are staged as known-good bas
 
 **Fixed acceptance:** 34 platform-owned GoogleTests in course/fixtures/w9/static-root. They cover normal and binary files, URL decoding, query isolation, symlink escape, FIFO handling, size limits, descriptor lifetime and invalid request targets.
 
-\`\`\`bash
+```bash
 ./build/cppapplab start w9.static-root "$HOME/cppapplab-work/w9-static-root"
 ./build/cppapplab lesson "$HOME/cppapplab-work/w9-static-root"
 ./build/cppapplab hint "$HOME/cppapplab-work/w9-static-root" 1
 ./build/cppapplab check "$HOME/cppapplab-work/w9-static-root"
-\`\`\`
+```
 
 ## Explain your design
 

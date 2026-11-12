@@ -159,9 +159,9 @@ The interactive task picker now supports number, task-ID and title-keyword selec
 - CI extracts the learner package into a different directory, discovers W1/W8/W9 tasks, creates a W1 workspace and passes its fixed Hello World acceptance check.
 - CI package artifact is available from [run #1183](https://github.com/clonetimer/CppAppLab/actions/runs/43132738098); artifacts have 14-day retention.
 
-### P7-B — Offline dependency bundle (implementation in progress)
+### P7-B — Offline dependency bundle (merged)
 
-The new branch feat/p7-offline-dependency-bundle-20261112 adds:
+PR #36 (`ec5a68f`) merged the offline dependency bundle generation, package integrity and no-install APT simulation workflow. [CI #1249](https://github.com/clonetimer/CppAppLab/actions/runs/43149538317) passed Windows and package checks, including 171 verified packages. The repository now retains this optional capability without requiring users to install Ubuntu.
 
 The offline CI job refreshes only APT package indexes from a repository-pinned Ubuntu snapshot; it does not install packages or modify the dpkg database. The snapshot ID is included in the generated package lock and build metadata.
 
@@ -172,7 +172,7 @@ The offline CI job refreshes only APT package indexes from a repository-pinned U
 - Installer modes --verify-only and --dry-run; dry-run resolves against a temporary local APT repository and empty dpkg status database, while actual installation uses local .deb files with --no-download.
 - Unit tests for APT URI parsing and Windows Git-Bash syntax checks.
 
-The offline archive and dependency-resolution workflow have not yet passed CI. The current acceptance target is package integrity and APT dry-run only; no Ubuntu packages are installed by this validation.
+The archive was built and checked with dry-run simulation; it was not installed on the user's machine.
 
 ### P7-C — Target-machine acceptance and release qualification
 
@@ -181,3 +181,7 @@ The offline archive and dependency-resolution workflow have not yet passed CI. T
 - Record exact package SHA-256, environment, commands and test evidence.
 - Publish version tag, release notes, known limitations and evidence archive only after P7-A/B/C pass.
 
+
+## Course-first usability focus (2026-11-12)
+
+The priority is a complete, understandable experience for the currently released **23 W1–W9 tasks**, not Ubuntu installation. A new course-focused PR adds a Chinese learning route, an interactive `guide` entry, correct launch commands in extracted learner packages, Markdown repairs and an automated content audit. Planned W9-A4/A5 and W10–W12 lessons remain outside the current registered course. The tutorial acceptance uses existing preinstalled CI toolchains and does not install Ubuntu packages.

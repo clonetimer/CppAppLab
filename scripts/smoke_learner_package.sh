@@ -37,8 +37,26 @@ for task_id in w1.hello-world w8.http-operational-load w9.static-root; do
     fi
 done
 
+if ! "$PACKAGE_ROOT/cppapplab" guide > "$TEMP_ROOT/guide.log"; then
+    echo "[FAIL] Packaged Chinese learning guide did not open." >&2
+    exit 1
+fi
+for task_id in w1.hello-world w8.http-operational-load w9.static-root; do
+    if ! grep -Fq "$task_id" "$TEMP_ROOT/guide.log"; then
+        echo "[FAIL] Packaged Chinese guide is missing $task_id." >&2
+        exit 1
+    fi
+done
+
 if ! "$PACKAGE_ROOT/cppapplab" learn w1.hello-world > "$TEMP_ROOT/learn.log"; then
     echo "[FAIL] The relocated package could not open the W1 learner task." >&2
+    cat "$TEMP_ROOT/learn.log" >&2
+    exit 1
+fi
+if ! grep -Fq "'$PACKAGE_ROOT/cppapplab' hint" "$TEMP_ROOT/learn.log" ||
+   ! grep -Fq "'$PACKAGE_ROOT/cppapplab' check" "$TEMP_ROOT/learn.log" ||
+   ! grep -Fq "'$PACKAGE_ROOT/cppapplab' learn" "$TEMP_ROOT/learn.log"; then
+    echo "[FAIL] Packaged learner instructions must use this package's executable launcher." >&2
     cat "$TEMP_ROOT/learn.log" >&2
     exit 1
 fi
@@ -69,8 +87,16 @@ if ! grep -Fq "Result: PASS" "$TEMP_ROOT/check.log"; then
     exit 1
 fi
 
+if ! grep -Fq "Next step: '$PACKAGE_ROOT/cppapplab' learn" "$TEMP_ROOT/check.log"; then
+    echo "[FAIL] Packaged PASS result must show the usable learner launcher." >&2
+    cat "$TEMP_ROOT/check.log" >&2
+    exit 1
+fi
+
 echo "[PASS] Relocated learner package smoke test."
 echo "  CLI version: $VERSION_OUTPUT"
 echo "  Catalog: W1, W8 and W9 tasks discovered."
 echo "  Workspace: created from the packaged learner template."
 echo "  Acceptance: W1 Hello World passed using the packaged runtime."
+echo "  Guide: Chinese 23-task route is accessible from the extracted package."
+echo "  Commands: generated hints/check/continue commands use the packaged launcher."

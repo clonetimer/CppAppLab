@@ -21,6 +21,8 @@ Linux/POSIX topics use real Linux APIs. The first release does not claim full na
 
 The main branch contains 23 hands-on tasks across W1–W9. W1–W7 cover C++ fundamentals, Linux systems, concurrency and TCP; W8 builds the HTTP server and its six D6 engineering tasks; W9 adds chunked transfer decoding, strict request-target/query parsing and descriptor-confined static-file access. `course/tasks.tsv` is the authoritative task catalog.
 
+**推荐先读：** [中文学习导航（23 个任务）](course/LEARNING_GUIDE_ZH.md)；也可以在终端运行 `./build/cppapplab guide`。重点是做题、理解报错与通过固定验收，不必先阅读安装文档。
+
 **Recommended learner entry point — interactive home:**
 
 ```bash

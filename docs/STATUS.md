@@ -146,14 +146,36 @@ The interactive task picker now supports number, task-ID and title-keyword selec
 
 ## P7 — Delivery and stabilization
 
-P6 is closed after final mainline CI run 43031051999: root 75/75 under GCC and ASan/UBSan; W8 D6 task acceptance; W9-A1 35/35, W9-A2 39/39 and W9-A3 34/34 under GCC, ASan/UBSan and clang-tidy. The Windows launcher PR #33 is merged; PR #34 adds an extra Windows-to-WSL command-handoff contract test. Its first Ubuntu CI attempt failed during apt dependency installation because the runner could not resolve azure.archive.ubuntu.com; the Windows handoff job passed. Failed Ubuntu jobs were re-run separately.
+**P6 exit verification: PASS.** Mainline CI run #1183 (43132738098) completed all five jobs successfully on merge commit fe06f4c0ed2d2fb38ca92d5b16117c80939a9ee2: root GCC/CTest 75/75, root ASan/UBSan 75/75, formatting/clang-tidy, Windows PowerShell 7 + 5.1 + WSL command handoff, and source/learner package smoke tests. W8 D6 and W9-A1/A2/A3 fixtures all passed in the GCC, sanitizer and clang-tidy jobs. This is the current P6 exit evidence.
 
-P7-A has started. The package candidate pipeline creates a complete source archive and a relocatable Ubuntu 24.04 learner archive, embeds the exact source commit and SHA-256 manifest, and smoke-tests a relocated learner package by creating and passing the W1 Hello World workspace. It also uploads short-lived CI artifacts. This is not yet a formal release or a complete offline dependency bundle.
+### P7-A — Reproducible source and learner packages (merged)
 
+**PR #35 merged:** fe06f4c0ed2d2fb38ca92d5b16117c80939a9ee2.
 
-1. Complete Windows 11 + WSL2 target acceptance.
-2. Finish reproducible/offline dependency delivery and release qualification.
+- Deterministic source archive from the exact Git commit.
+- Relocatable Ubuntu 24.04 x86_64 learner archive with prebuilt CLI, course content, templates, fixtures, reference baselines and first-use documentation.
+- Wrapper sets CPPAPPLAB_DATA_DIR to the extracted package root.
+- Package manifest records source commit, target, filenames and SHA-256.
+- CI extracts the learner package into a different directory, discovers W1/W8/W9 tasks, creates a W1 workspace and passes its fixed Hello World acceptance check.
+- CI package artifact is available from [run #1183](https://github.com/clonetimer/CppAppLab/actions/runs/43132738098); artifacts have 14-day retention.
 
-W9-A1 chunked-transfer decoding, W9-A2 request-target/query parsing and W9-A3 secure static-root confinement are merged and validated. W9-A4 HTTP hardening and W9-A5 parser fuzzing remain planned; TLS/WebSocket, performance engineering and production operations are planned for W10–W12. These later stages are not complete or release-qualified.
+### P7-B — Offline dependency bundle (implementation in progress)
 
-A repository commit is not passing evidence. Record exact tested SHA, workflow result, test counts and target environment. CI does not certify human understanding or target-machine compatibility.
+The new branch feat/p7-offline-dependency-bundle-20261112 adds:
+
+- Required learner/build toolchain: build-essential, CMake, Git, GDB and GoogleTest.
+- Optional quality tools: clang-format and clang-tidy, stored as an incremental package group.
+- Read-only APT URI resolution using apt-get --print-uris; bundle creation does not run apt-get update or install packages.
+- Downloaded .deb closure with package name/version/architecture/dependency/size/SHA-256 lock metadata.
+- Installer modes --verify-only and --dry-run; actual installation uses local .deb files with --no-download.
+- Unit tests for APT URI parsing and Windows Git-Bash syntax checks.
+
+The offline archive and dependency-resolution workflow have not yet passed CI. The current acceptance target is package integrity and APT dry-run only; no Ubuntu packages are installed by this validation.
+
+### P7-C — Target-machine acceptance and release qualification
+
+- Validate Windows 11 + WSL2 + Ubuntu 24.04 launch and extracted learner package.
+- Verify workspace/progress persistence after package replacement.
+- Record exact package SHA-256, environment, commands and test evidence.
+- Publish version tag, release notes, known limitations and evidence archive only after P7-A/B/C pass.
+

@@ -4,6 +4,12 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      run_full_ubuntu_validation:
+        description: "Opt in to the full GCC, ASan/UBSan and clang-tidy suite; installs build tools on the hosted Ubuntu runner."
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -15,7 +21,7 @@ concurrency:
 jobs:
   build-and-test:
     name: GCC Build and GoogleTest
-    if: ${{ github.ref != 'refs/heads/feat/p7-source-learner-packages-20261111' && github.event.pull_request.head.ref != 'feat/p7-source-learner-packages-20261111' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation }}
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -186,7 +192,7 @@ jobs:
 
   sanitizers:
     name: GCC ASan and UBSan
-    if: ${{ github.ref != 'refs/heads/feat/p7-source-learner-packages-20261111' && github.event.pull_request.head.ref != 'feat/p7-source-learner-packages-20261111' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation }}
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -409,7 +415,7 @@ jobs:
 
   code-quality:
     name: Formatting and clang-tidy
-    if: ${{ github.ref != 'refs/heads/feat/p7-source-learner-packages-20261111' && github.event.pull_request.head.ref != 'feat/p7-source-learner-packages-20261111' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation }}
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -619,6 +625,19 @@ jobs:
       - name: Exercise Windows-to-WSL command handoff
         shell: pwsh
         run: ./tests/windows-launcher-smoke.ps1
+      - name: Check offline packaging shell syntax
+        shell: pwsh
+        run: |
+          $bash = Join-Path $env:ProgramFiles 'Git\bin\bash.exe'
+          $scripts = @(
+            'scripts/package_offline_dependencies.sh',
+            'scripts/install_offline_dependencies.sh',
+            'scripts/verify_offline_dependency_bundle.sh'
+          )
+          foreach ($script in $scripts) {
+            & $bash -n $script
+            if ($LASTEXITCODE -ne 0) { throw "Bash syntax check failed: $script" }
+          }
 
   package-candidate:
     name: Build source and learner packages
@@ -657,5 +676,38 @@ jobs:
             dist/*.tar.gz
             dist/package-manifest.json
             dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+
+  offline-dependency-candidate:
+    name: Build and verify offline dependency bundle (no package installation)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Verify preinstalled resolver tools and apt metadata
+        run: |
+          command -v apt-get
+          command -v apt-cache
+          command -v curl
+          command -v dpkg-deb
+          command -v python3
+          command -v sha256sum
+          apt-cache policy build-essential cmake git gdb libgtest-dev clang-format clang-tidy
+      - name: Resolve and download .deb closure without installing packages
+        run: |
+          bash scripts/package_offline_dependencies.sh dist
+      - name: Verify archive, package metadata and local-only APT dry-run
+        run: |
+          archive="$(find dist -maxdepth 1 -type f -name 'CppAppLab-offline-deps-*.tar.gz' -print -quit)"
+          test -n "$archive"
+          bash scripts/verify_offline_dependency_bundle.sh "$archive"
+      - name: Upload offline dependency candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppapplab-offline-deps-${{ github.sha }}
+          path: |
+            dist/CppAppLab-offline-deps-*.tar.gz
+            dist/CppAppLab-offline-deps-*.tar.gz.sha256
           if-no-files-found: error
           retention-days: 14

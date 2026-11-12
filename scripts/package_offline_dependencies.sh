@@ -220,7 +220,7 @@ find "$BUNDLE_ROOT" -type f -exec touch -d "@$SOURCE_DATE_EPOCH" {} +
 find "$BUNDLE_ROOT" -type d -exec touch -d "@$SOURCE_DATE_EPOCH" {} +
 (
     cd "$BUNDLE_ROOT"
-    find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+    find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
 )
 
 ARCHIVE="$OUTPUT/$PACKAGE_NAME.tar.gz"

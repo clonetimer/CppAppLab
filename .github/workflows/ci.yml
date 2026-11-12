@@ -694,6 +694,7 @@ jobs:
           command -v python3
           command -v sha256sum
           apt-cache policy build-essential cmake git gdb libgtest-dev clang-format clang-tidy
+          if [ -r /etc/apt/apt-mirrors.txt ]; then cat /etc/apt/apt-mirrors.txt; fi
           python3 tests/test_apt_uri_parser.py
       - name: Resolve and download .deb closure without installing packages
         run: |

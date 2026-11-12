@@ -72,6 +72,27 @@ Need to get 80.0 kB of archives.
         )
         self.assertEqual(data[0]["md5"], "abc")
 
+    def test_snapshot_uri_prefers_snapshot_then_configured_mirrors(self) -> None:
+        output = (
+            "'https://snapshot.ubuntu.com/ubuntu/20261112T000000Z/pool/main/e/example/pkg.deb' "
+            "pkg.deb 100 MD5Sum:abc\n"
+        )
+        mirrors = (
+            "https://mirror-one.example/ubuntu/ priority:1\n"
+            "https://mirror-two.example/ubuntu/ priority:2\n"
+        )
+        result, target = self.run_parser(output, mirrors)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(target.read_text(encoding="utf-8"))
+        self.assertEqual(
+            data[0]["mirrors"],
+            [
+                "https://snapshot.ubuntu.com/ubuntu/20261112T000000Z/pool/main/e/example/pkg.deb",
+                "https://mirror-one.example/ubuntu/pool/main/e/example/pkg.deb",
+                "https://mirror-two.example/ubuntu/pool/main/e/example/pkg.deb",
+            ],
+        )
+
     def test_deduplicates_identical_uri_rows(self) -> None:
         line = "'https://example.invalid/pkg.deb' pkg.deb 100 SHA256:abc\n"
         result, target = self.run_parser(line + line)

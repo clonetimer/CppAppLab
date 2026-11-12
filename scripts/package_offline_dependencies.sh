@@ -76,14 +76,198 @@ download_uri_json() {
 import json
 import sys
 for entry in json.load(open(sys.argv[1], encoding="utf-8")):
-    print(f"{entry['uri']}\t{entry['filename']}\t{entry['size']}\t{entry.get('sha256', '')}")
+    mirrors = entry.get("mirrors") or [entry["uri"]]
+    print(f"{'|'.join(mirrors)}\t{entry['filename']}\t{entry['size']}\t{entry.get('sha256', '')}")
 PY
-    while IFS=$'\t' read -r uri filename expected_size expected_sha; do
+    while IFS=        if [[ "$actual_size" != "$expected_size" ]]; then
+            echo "[FAIL] Size mismatch for $filename: expected $expected_size, got $actual_size." >&2
+            return 1
+        fi
+        if [[ -n "$expected_sha" ]]; then
+            local actual_sha
+            actual_sha="$(sha256sum "$target" | awk '{print $1}')"
+            if [[ "$actual_sha" != "$expected_sha" ]]; then
+                echo "[FAIL] APT SHA-256 mismatch for $filename." >&2
+                return 1
+            fi
+        fi
+    done < "$entries"
+}
+
+mapfile -t base_roots < <(grep -Ev '^[[:space:]]*(#|$)' "$ROOT/packaging/offline-dependencies.txt" | sed 's/[[:space:]]//g')
+mapfile -t quality_roots < <(grep -Ev '^[[:space:]]*(#|$)' "$ROOT/packaging/offline-quality-tools.txt" | sed 's/[[:space:]]//g')
+if [[ "${#base_roots[@]}" -eq 0 || "${#quality_roots[@]}" -eq 0 ]]; then
+    echo "[FAIL] Required or optional quality package list is empty." >&2
+    exit 2
+fi
+
+if ! base_json="$(resolve_uris required "${base_roots[@]}")"; then
+    exit 1
+fi
+if ! full_json="$(resolve_uris full "${base_roots[@]}" "${quality_roots[@]}")"; then
+    exit 1
+fi
+download_uri_json "$base_json"
+download_uri_json "$full_json"
+
+copy_group() {
+    local uri_json="$1"
+    local destination="$2"
+    python3 - "$uri_json" "$DOWNLOAD_ROOT" "$destination" <<'PY'
+import json
+import shutil
+import sys
+from pathlib import Path
+entries = json.load(open(sys.argv[1], encoding="utf-8"))
+source = Path(sys.argv[2])
+target = Path(sys.argv[3])
+target.mkdir(parents=True, exist_ok=True)
+for entry in entries:
+    shutil.copy2(source / entry["filename"], target / entry["filename"])
+PY
+}
+
+copy_group "$base_json" "$BUNDLE_ROOT/packages/base"
+python3 - "$base_json" "$full_json" "$DOWNLOAD_ROOT" "$BUNDLE_ROOT/packages/quality" <<'PY'
+import json
+import shutil
+import sys
+from pathlib import Path
+base = {entry["filename"] for entry in json.load(open(sys.argv[1], encoding="utf-8"))}
+full = json.load(open(sys.argv[2], encoding="utf-8"))
+source = Path(sys.argv[3])
+target = Path(sys.argv[4])
+target.mkdir(parents=True, exist_ok=True)
+for entry in full:
+    if entry["filename"] not in base:
+        shutil.copy2(source / entry["filename"], target / entry["filename"])
+PY
+
+install -m 0644 "$ROOT/packaging/OFFLINE-DEPENDENCIES-README.md" "$BUNDLE_ROOT/README.md"
+install -m 0755 "$ROOT/scripts/install_offline_dependencies.sh" "$BUNDLE_ROOT/install.sh"
+cp "$ROOT/packaging/offline-dependencies.txt" "$BUNDLE_ROOT/REQUIRED-PACKAGES.txt"
+cp "$ROOT/packaging/offline-quality-tools.txt" "$BUNDLE_ROOT/OPTIONAL-QUALITY-PACKAGES.txt"
+printf 'amd64\n' > "$BUNDLE_ROOT/ARCHITECTURE"
+
+cat > "$BUNDLE_ROOT/BUILD-INFO.txt" <<EOF
+Project: CppAppLab
+Version: $VERSION
+Source commit: $COMMIT
+Target: Ubuntu 24.04 LTS amd64
+Required roots: ${base_roots[*]}
+Optional quality roots: ${quality_roots[*]}
+Dependency resolver: apt-get --print-uris with an empty dpkg status database
+Package installation performed during bundle creation: no
+Archive target: existing Ubuntu 24.04 installation; this bundle does not install an Ubuntu operating system
+EOF
+
+python3 - "$BUNDLE_ROOT" <<'PY'
+import json
+import subprocess
+import sys
+from pathlib import Path
+root = Path(sys.argv[1])
+packages = []
+for group in ("base", "quality"):
+    for deb in sorted((root / "packages" / group).glob("*.deb")):
+        def field(name):
+            try:
+                return subprocess.check_output(
+                    ["dpkg-deb", "-f", str(deb), name],
+                    text=True, stderr=subprocess.DEVNULL
+                ).strip()
+            except subprocess.CalledProcessError:
+                return ""
+        package = {
+            "group": group,
+            "file": f"packages/{group}/{deb.name}",
+            "name": field("Package"),
+            "version": field("Version"),
+            "architecture": field("Architecture"),
+            "depends": field("Depends"),
+            "pre_depends": field("Pre-Depends"),
+            "size": deb.stat().st_size,
+            "sha256": subprocess.check_output(["sha256sum", str(deb)], text=True).split()[0],
+        }
+        if not package["name"] or not package["version"]:
+            raise SystemExit(f"Invalid Debian package metadata: {deb}")
+        if package["architecture"] not in ("amd64", "all"):
+            raise SystemExit(f"Unexpected package architecture {package['architecture']}: {deb}")
+        packages.append(package)
+
+identities = [(item["group"], item["name"], item["version"]) for item in packages]
+if len(identities) != len(set(identities)):
+    raise SystemExit("Duplicate package identity found in the offline bundle.")
+for required in ("build-essential", "cmake", "git", "gdb", "libgtest-dev"):
+    if not any(item["name"] == required and item["group"] == "base" for item in packages):
+        raise SystemExit(f"Required package {required} is missing.")
+for optional in ("clang-format", "clang-tidy"):
+    if not any(item["name"] == optional and item["group"] == "quality" for item in packages):
+        raise SystemExit(f"Optional quality package {optional} is missing.")
+
+manifest = {
+    "schema_version": 1,
+    "project": "CppAppLab",
+    "target": "Ubuntu 24.04 LTS amd64",
+    "install_policy": "local deb files only; apt downloads disabled",
+    "package_installation_performed_during_build": False,
+    "packages": packages,
+}
+(root / "packages.lock.json").write_text(
+    json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+)
+(root / "PACKAGES.txt").write_text(
+    "Required learner/build packages:\n"
+    + "\n".join(f"  - {name}" for name in ("build-essential", "cmake", "git", "gdb", "libgtest-dev"))
+    + "\n\nOptional quality tools:\n"
+    + "\n".join(f"  - {name}" for name in ("clang-format", "clang-tidy"))
+    + "\n\nExact package names, versions, architectures, dependencies and hashes are in packages.lock.json.\n",
+    encoding="utf-8",
+)
+print(f"[PASS] Inspected {len(packages)} Debian packages; no packages were installed.")
+PY
+
+find "$BUNDLE_ROOT" -type f -exec touch -d "@$SOURCE_DATE_EPOCH" {} +
+find "$BUNDLE_ROOT" -type d -exec touch -d "@$SOURCE_DATE_EPOCH" {} +
+(
+    cd "$BUNDLE_ROOT"
+    find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+)
+
+ARCHIVE="$OUTPUT/$PACKAGE_NAME.tar.gz"
+tar --sort=name \
+    --mtime="@$SOURCE_DATE_EPOCH" \
+    --owner=0 --group=0 --numeric-owner \
+    -C "$TEMP_ROOT" -cf - "$PACKAGE_NAME" | gzip -n > "$ARCHIVE"
+sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
+
+echo "[PASS] Offline dependency bundle created without installing Ubuntu packages."
+echo "  Required .deb count: $(find "$BUNDLE_ROOT/packages/base" -maxdepth 1 -type f -name '*.deb' | wc -l)"
+echo "  Optional .deb count: $(find "$BUNDLE_ROOT/packages/quality" -maxdepth 1 -type f -name '*.deb' | wc -l)"
+echo "  Archive: $ARCHIVE"
+echo "  Size: $(stat -c '%s' "$ARCHIVE") bytes"
+\t' read -r mirror_list filename expected_size expected_sha; do
         local target="$DOWNLOAD_ROOT/$filename"
         if [[ ! -f "$target" ]]; then
-            echo "[INFO] Downloading $filename"
-            curl --fail --location --retry 3 --retry-delay 2 \
-                --output "$target" "$uri"
+            echo "[INFO] Downloading $filename from configured APT mirrors"
+            local downloaded=0
+            local mirror
+            local -a mirror_urls=()
+            IFS='|' read -r -a mirror_urls <<< "$mirror_list"
+            for mirror in "${mirror_urls[@]}"; do
+                if curl --fail --location --retry 1 --retry-delay 1 --connect-timeout 10 --max-time 180 \
+                    --output "$target.part" "$mirror"; then
+                    mv "$target.part" "$target"
+                    downloaded=1
+                    break
+                fi
+                rm -f "$target.part"
+                echo "[WARN] Mirror failed; trying the next configured mirror." >&2
+            done
+            if [[ "$downloaded" -ne 1 ]]; then
+                echo "[FAIL] All configured mirrors failed for $filename." >&2
+                return 1
+            fi
         fi
         local actual_size
         actual_size="$(stat -c '%s' "$target")"

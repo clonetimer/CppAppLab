@@ -14,19 +14,21 @@ PARSER = ROOT / "packaging" / "resolve_apt_uris.py"
 
 
 class AptUriParserTests(unittest.TestCase):
-    def run_parser(self, text: str) -> tuple[subprocess.CompletedProcess[str], Path]:
+    def run_parser(
+        self, text: str, mirror_text: str | None = None
+    ) -> tuple[subprocess.CompletedProcess[str], Path]:
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         root = Path(temp.name)
         source = root / "apt-output.txt"
         target = root / "uris.json"
+        mirror_file = root / "apt-mirrors.txt"
         source.write_text(text, encoding="utf-8")
-        result = subprocess.run(
-            [sys.executable, str(PARSER), "--input", str(source), "--output", str(target)],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        args = [sys.executable, str(PARSER), "--input", str(source), "--output", str(target)]
+        if mirror_text is not None:
+            mirror_file.write_text(mirror_text, encoding="utf-8")
+            args.extend(["--mirror-file", str(mirror_file)])
+        result = subprocess.run(args, capture_output=True, text=True, check=False)
         return result, target
 
     def test_parses_download_uris_and_ignores_non_uri_lines(self) -> None:
@@ -46,6 +48,26 @@ Need to get 80.0 kB of archives.
         self.assertEqual(data[0]["size"], 12345)
         self.assertEqual(data[0]["sha256"], "abcdef")
         self.assertEqual(data[1]["filename"], "libexample2_2.0_all.deb")
+
+    def test_expands_mirror_file_uri_in_priority_order(self) -> None:
+        output = (
+            "'mirror+file:/etc/apt/apt-mirrors.txt/pool/main/e/example/pkg.deb' "
+            "pkg.deb 100 MD5Sum:abc\n"
+        )
+        mirrors = (
+            "https://mirror-one.example/ubuntu/ priority:1\n"
+            "https://mirror-two.example/ubuntu/ priority:2\n"
+        )
+        result, target = self.run_parser(output, mirrors)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(target.read_text(encoding="utf-8"))
+        self.assertEqual(
+            data[0]["mirrors"],
+            [
+                "https://mirror-one.example/ubuntu/pool/main/e/example/pkg.deb",
+                "https://mirror-two.example/ubuntu/pool/main/e/example/pkg.deb",
+            ],
+        )
 
     def test_deduplicates_identical_uri_rows(self) -> None:
         line = "'https://example.invalid/pkg.deb' pkg.deb 100 SHA256:abc\n"

@@ -8,10 +8,45 @@ import shlex
 from pathlib import Path
 
 
+MIRROR_PREFIX = "mirror+file:/etc/apt/apt-mirrors.txt"
+
+
+def read_mirrors(path: Path) -> list[str]:
+    if not path.is_file():
+        raise SystemExit(f"APT mirror list is missing: {path}")
+    mirrors: list[str] = []
+    for raw_line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        fields = raw_line.strip().split()
+        if not fields or fields[0].startswith("#"):
+            continue
+        candidate = fields[0].rstrip("/")
+        if candidate.startswith(("http://", "https://")):
+            mirrors.append(candidate)
+    if not mirrors:
+        raise SystemExit(f"No HTTP(S) mirrors found in {path}")
+    return mirrors
+
+
+def expand_uri(uri: str, mirror_file: Path) -> list[str]:
+    if uri.startswith(("http://", "https://")):
+        return [uri]
+    if uri.startswith(MIRROR_PREFIX):
+        suffix = uri[len(MIRROR_PREFIX):].lstrip("/")
+        if not suffix:
+            raise SystemExit(f"APT mirror URI has no package path: {uri}")
+        return [f"{base}/{suffix}" for base in read_mirrors(mirror_file)]
+    raise SystemExit(f"Unsupported APT download URI scheme: {uri}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument(
+        "--mirror-file",
+        type=Path,
+        default=Path("/etc/apt/apt-mirrors.txt"),
+    )
     args = parser.parse_args()
 
     entries: dict[str, dict[str, object]] = {}
@@ -28,12 +63,13 @@ def main() -> int:
         if len(fields) < 3:
             continue
         uri, filename, size_text = fields[:3]
-        if not uri.startswith(("http://", "https://")) or not filename.endswith(".deb"):
+        if not filename.endswith(".deb"):
             continue
         try:
             size = int(size_text)
         except ValueError:
             continue
+        mirrors = expand_uri(uri, args.mirror_file)
         digest = ""
         for field in fields[3:]:
             if field.startswith("SHA256:"):
@@ -41,13 +77,14 @@ def main() -> int:
                 break
         entry = {
             "uri": uri,
+            "mirrors": mirrors,
             "filename": filename,
             "size": size,
             "sha256": digest,
             "source_line": line_number,
         }
         previous = entries.get(filename)
-        if previous and previous["uri"] != uri:
+        if previous and previous["mirrors"] != mirrors:
             raise SystemExit(f"APT returned conflicting URIs for {filename}")
         entries[filename] = entry
 

@@ -7,7 +7,6 @@ import json
 import shlex
 from pathlib import Path
 
-
 MIRROR_PREFIX = "mirror+file:/etc/apt/apt-mirrors.txt"
 
 
@@ -42,11 +41,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument(
-        "--mirror-file",
-        type=Path,
-        default=Path("/etc/apt/apt-mirrors.txt"),
-    )
+    parser.add_argument("--mirror-file", type=Path, default=Path("/etc/apt/apt-mirrors.txt"))
     args = parser.parse_args()
 
     entries: dict[str, dict[str, object]] = {}
@@ -70,17 +65,19 @@ def main() -> int:
         except ValueError:
             continue
         mirrors = expand_uri(uri, args.mirror_file)
-        digest = ""
+        checksums = {}
         for field in fields[3:]:
             if field.startswith("SHA256:"):
-                digest = field.partition(":")[2]
-                break
+                checksums["sha256"] = field.partition(":")[2]
+            elif field.startswith("MD5Sum:"):
+                checksums["md5"] = field.partition(":")[2]
         entry = {
             "uri": uri,
             "mirrors": mirrors,
             "filename": filename,
             "size": size,
-            "sha256": digest,
+            "sha256": checksums.get("sha256", ""),
+            "md5": checksums.get("md5", ""),
             "source_line": line_number,
         }
         previous = entries.get(filename)
@@ -90,15 +87,13 @@ def main() -> int:
 
     if not entries:
         raise SystemExit(
-            "No .deb download URIs were found. Check that Ubuntu 24.04 apt package indexes "
-            "are available; this tool intentionally does not run apt-get update or install."
+            "No .deb download URIs were found. Check Ubuntu 24.04 APT package indexes; "
+            "this parser does not run apt-get update or install."
         )
 
     result = sorted(entries.values(), key=lambda item: str(item["filename"]))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
-        json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"[PASS] Parsed {len(result)} unique .deb download URIs.")
     return 0
 

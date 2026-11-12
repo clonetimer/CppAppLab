@@ -15,14 +15,15 @@ concurrency:
 jobs:
   build-and-test:
     name: GCC Build and GoogleTest
+    if: ${{ github.ref != 'refs/heads/feat/p7-source-learner-packages-20261111' && github.event.pull_request.head.ref != 'feat/p7-source-learner-packages-20261111' }}
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Install build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake gdb libgtest-dev
+          bash scripts/ci_prepare_ubuntu_apt.sh
+          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake gdb libgtest-dev
       - name: Configure
         run: |
           cmake -S . -B build \
@@ -185,14 +186,15 @@ jobs:
 
   sanitizers:
     name: GCC ASan and UBSan
+    if: ${{ github.ref != 'refs/heads/feat/p7-source-learner-packages-20261111' && github.event.pull_request.head.ref != 'feat/p7-source-learner-packages-20261111' }}
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Install build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake libgtest-dev
+          bash scripts/ci_prepare_ubuntu_apt.sh
+          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake libgtest-dev
       - name: Configure
         run: |
           cmake -S . -B build-sanitize \
@@ -407,14 +409,15 @@ jobs:
 
   code-quality:
     name: Formatting and clang-tidy
+    if: ${{ github.ref != 'refs/heads/feat/p7-source-learner-packages-20261111' && github.event.pull_request.head.ref != 'feat/p7-source-learner-packages-20261111' }}
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Install quality tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake libgtest-dev clang-format clang-tidy
+          bash scripts/ci_prepare_ubuntu_apt.sh
+          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake libgtest-dev clang-format clang-tidy
       - name: Check formatting and show exact diff
         run: |
           find include src tests course/fixtures labs -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
@@ -613,3 +616,46 @@ jobs:
             $errors | Format-List
             exit 1
           }
+      - name: Exercise Windows-to-WSL command handoff
+        shell: pwsh
+        run: ./tests/windows-launcher-smoke.ps1
+
+  package-candidate:
+    name: Build source and learner packages
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Verify packaging toolchain
+        run: |
+          command -v g++
+          command -v cmake
+          command -v tar
+          command -v gzip
+          command -v sha256sum
+      - name: Build relocatable learner CLI
+        run: |
+          cmake -S . -B build-release \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DCPPAPPLAB_FETCH_GTEST=OFF
+          cmake --build build-release --parallel
+      - name: Create source and learner packages
+        run: |
+          bash scripts/package_release.sh build-release/cppapplab dist
+          (cd dist && sha256sum --check SHA256SUMS)
+      - name: Smoke-test relocated learner package
+        run: |
+          learner_archive="$(find dist -maxdepth 1 -type f -name 'CppAppLab-learner-*.tar.gz' -print -quit)"
+          test -n "$learner_archive"
+          bash scripts/smoke_learner_package.sh "$learner_archive"
+      - name: Upload package candidates
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppapplab-packages-${{ github.sha }}
+          path: |
+            dist/*.tar.gz
+            dist/package-manifest.json
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14

@@ -144,7 +144,12 @@ The interactive task picker now supports number, task-ID and title-keyword selec
 
 **Windows launcher merged:** PR #33 (986e9ff) adds the double-click Start-CppAppLab.cmd entry point, PowerShell 5.1/7 distribution detection and WSL2 checks, first-run Linux checkout preparation, safe existing-checkout validation and an explicit rebuild mode. Final CI run 43031051999 passed all four jobs: GCC 75/75, ASan/UBSan 75/75, clang-format/clang-tidy and Windows PowerShell syntax; Bash bootstrap tests also covered path expansion, spaces, launch and rejection of unrelated repositories. Actual WSL2 runtime acceptance on a target Windows machine remains separate.
 
-## Remaining work
+## P7 — Delivery and stabilization
+
+P6 is closed after final mainline CI run 43031051999: root 75/75 under GCC and ASan/UBSan; W8 D6 task acceptance; W9-A1 35/35, W9-A2 39/39 and W9-A3 34/34 under GCC, ASan/UBSan and clang-tidy. The Windows launcher PR #33 is merged; PR #34 adds an extra Windows-to-WSL command-handoff contract test. Its first Ubuntu CI attempt failed during apt dependency installation because the runner could not resolve azure.archive.ubuntu.com; the Windows handoff job passed. Failed Ubuntu jobs were re-run separately.
+
+P7-A has started. The package candidate pipeline creates a complete source archive and a relocatable Ubuntu 24.04 learner archive, embeds the exact source commit and SHA-256 manifest, and smoke-tests a relocated learner package by creating and passing the W1 Hello World workspace. It also uploads short-lived CI artifacts. This is not yet a formal release or a complete offline dependency bundle.
+
 
 1. Complete Windows 11 + WSL2 target acceptance.
 2. Finish reproducible/offline dependency delivery and release qualification.

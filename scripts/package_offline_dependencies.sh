@@ -35,6 +35,11 @@ VERSION="$(awk '$1 == "VERSION" { print $2; exit }' "$ROOT/CMakeLists.txt")"
 COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
 SHORT_SHA="$(printf '%s' "$COMMIT" | cut -c1-12)"
 SOURCE_DATE_EPOCH="$(git -C "$ROOT" log -1 --format=%ct HEAD)"
+SNAPSHOT_ID="$(tr -d '[:space:]' < "$ROOT/packaging/ubuntu-snapshot-id.txt")"
+if [[ -n "${CPPAPPLAB_UBUNTU_SNAPSHOT_ID:-}" && "$CPPAPPLAB_UBUNTU_SNAPSHOT_ID" != "$SNAPSHOT_ID" ]]; then
+    echo "[FAIL] CI snapshot ID does not match the repository-pinned snapshot." >&2
+    exit 2
+fi
 PACKAGE_NAME="CppAppLab-offline-deps-ubuntu24.04-amd64-v${VERSION}-${SHORT_SHA}"
 
 mkdir -p "$OUTPUT"
@@ -134,6 +139,7 @@ Project: CppAppLab
 Version: $VERSION
 Source commit: $COMMIT
 Target: Ubuntu 24.04 LTS amd64
+Ubuntu archive snapshot: $SNAPSHOT_ID
 Required roots: ${base_roots[*]}
 Optional quality roots: ${quality_roots[*]}
 Dependency resolver: apt-get --print-uris with an empty dpkg status database

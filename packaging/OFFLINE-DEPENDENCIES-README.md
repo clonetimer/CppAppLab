@@ -33,7 +33,7 @@ cd CppAppLab-offline-deps-ubuntu24.04-amd64-*/
 ./install.sh --dry-run --with-quality-tools
 ~~~
 
-The dry-run uses APT simulation with --no-download; it does not change installed packages or access the network.
+The dry-run builds a temporary local APT repository from the bundled .deb files and simulates dependency resolution against an empty dpkg status database. It does not change installed packages or access the network.
 
 ## Install on an existing Ubuntu 24.04 system
 

@@ -234,6 +234,22 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 Full GCC/ASan/clang-tidy jobs are now opt-in through workflow_dispatch input run_full_ubuntu_validation. The default P7 push/PR workflow runs Windows checks, source/learner packaging, offline bundle generation and no-install verification. This preserves the full validation path without repeatedly installing build dependencies during routine P7 CI.
 
 
+## Course-first usability acceptance (learner priority)
+
+The product goal is a practical, understandable C++ course rather than an operating-system installer. The released scope is 23 verified learner tasks across W1–W9; W9-A4/A5 and W10–W12 remain planned and are not described as implemented.
+
+Current course-quality pass:
+
+- [x] Check every registered task has a goal, acceptance contract, three progressive hints, learner templates and fixed acceptance assets
+- [x] Add an introductory Chinese route covering all 23 released tasks and common failure recovery
+- [x] Expose the route through the interactive learner home and `cppapplab guide`
+- [x] Correct the Markdown formatting of the W1 calculator and W9 A1–A3 lesson cards
+- [x] Make generated help/check/continue commands work from a relocated learner package
+- [x] Add an automated no-install course-content audit and package smoke checks
+- [ ] Finish CI acceptance and review copyable commands in the release candidate
+
+Routine CI now prioritizes the course audit, learner package smoke test and Windows launcher checks. The large offline dependency bundle audit remains available by explicit manual workflow dispatch; it is not run on every tutorial change.
+
 ## Next curriculum expansion — W9 to W12
 
 **W9-A1 merged into `main` via PR #27 (`bfb3f3f`).** The task, `w9.http-chunked`, extends the W8 parser with bounded incremental HTTP/1.1 chunked decoding, trailer validation, anti-ambiguity framing and pipeline-safe consumed-byte reporting. Final PR-head run `43006252261` passed all three jobs: root 62/62 and W9 fixture 35/35 under GCC, ASan/UBSan and clang-tidy. The end-to-end learning-engine check passed. W9-A2 (strict request-target/query parsing) merged into main via PR #28 (`cca1c80`). Final PR-head run `43008862704` passed all three jobs: root 64/64, W9-A1 35/35 and W9-A2 39/39 under GCC, ASan/UBSan and clang-tidy. The end-to-end learning-engine checks passed for both W9 tasks. W9-A3 (`w9.static-root`) merged via PR #29 (`f741e34`). Final PR-head run `43013017702` passed all three jobs: root 66/66 and W9-A3 34/34 under GCC, ASan/UBSan and clang-tidy; W9-A1 and A2 regression fixtures passed 35/35 and 39/39. The end-to-end `cppapplab check` workflow verified current PASS evidence. W9-A4 and A5 remain roadmap stages.

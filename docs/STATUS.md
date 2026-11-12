@@ -169,7 +169,7 @@ The offline CI job refreshes only APT package indexes from a repository-pinned U
 - Optional quality tools: clang-format and clang-tidy, stored as an incremental package group.
 - Read-only APT URI resolution using apt-get --print-uris; bundle creation does not run apt-get update or install packages.
 - Downloaded .deb closure with package name/version/architecture/dependency/size/SHA-256 lock metadata.
-- Installer modes --verify-only and --dry-run; actual installation uses local .deb files with --no-download.
+- Installer modes --verify-only and --dry-run; dry-run resolves against a temporary local APT repository and empty dpkg status database, while actual installation uses local .deb files with --no-download.
 - Unit tests for APT URI parsing and Windows Git-Bash syntax checks.
 
 The offline archive and dependency-resolution workflow have not yet passed CI. The current acceptance target is package integrity and APT dry-run only; no Ubuntu packages are installed by this validation.

@@ -10,6 +10,11 @@ on:
         required: false
         type: boolean
         default: false
+      run_offline_dependency_validation:
+        description: "Opt in to the offline dependency bundle check; routine course CI does not download Ubuntu packages."
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -684,6 +689,7 @@ jobs:
 
   offline-dependency-candidate:
     name: Build and verify offline dependency bundle (no package installation)
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_offline_dependency_validation }}
     runs-on: ubuntu-24.04
     env:
       CPPAPPLAB_UBUNTU_SNAPSHOT_ID: 20261112T000000Z

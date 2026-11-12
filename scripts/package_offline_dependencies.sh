@@ -49,7 +49,7 @@ TEMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TEMP_ROOT"' EXIT
 DOWNLOAD_ROOT="$TEMP_ROOT/downloads"
 BUNDLE_ROOT="$TEMP_ROOT/$PACKAGE_NAME"
-mkdir -p "$DOWNLOAD_ROOT" "$BUNDLE_ROOT/packages/base" "$BUNDLE_ROOT/packages/quality"
+mkdir -p "$DOWNLOAD_ROOT" "$BUNDLE_ROOT/packages/base" "$BUNDLE_ROOT/packages/quality" "$BUNDLE_ROOT/scripts"
 
 resolve_uris() {
     local label="$1"
@@ -131,6 +131,7 @@ PY
 
 install -m 0644 "$ROOT/packaging/OFFLINE-DEPENDENCIES-README.md" "$BUNDLE_ROOT/README.md"
 install -m 0755 "$ROOT/scripts/install_offline_dependencies.sh" "$BUNDLE_ROOT/install.sh"
+install -m 0755 "$ROOT/scripts/build_local_apt_index.py" "$BUNDLE_ROOT/scripts/build_local_apt_index.py"
 cp "$ROOT/packaging/offline-dependencies.txt" "$BUNDLE_ROOT/REQUIRED-PACKAGES.txt"
 cp "$ROOT/packaging/offline-quality-tools.txt" "$BUNDLE_ROOT/OPTIONAL-QUALITY-PACKAGES.txt"
 printf 'amd64\n' > "$BUNDLE_ROOT/ARCHITECTURE"

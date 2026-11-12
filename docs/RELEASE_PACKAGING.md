@@ -65,6 +65,6 @@ The CI resolver refreshes APT package indexes from a repository-pinned Ubuntu sn
 
 The resolver then uses read-only apt-get --print-uris mode to calculate the complete .deb dependency closure. Package downloads use the snapshot URLs and verify size plus the checksum published by the signed APT index where available. The final package lock records package names, versions, architectures, dependencies, sizes and locally computed SHA-256 values.
 
-The bundled installer verifies all checksums and installs from local .deb files with --no-download; it never runs apt-get update. --verify-only checks integrity and package metadata without APT operations. --dry-run invokes APT simulation with downloads disabled and makes no system changes.
+The bundled installer verifies all checksums and installs from local .deb files with --no-download; it never runs apt-get update. --verify-only checks integrity and package metadata without APT operations. --dry-run builds a temporary local APT repository and runs APT simulation against an empty dpkg status database. It makes no system changes and has no network source configured.
 
 The archive targets an existing Ubuntu 24.04 amd64 installation, including WSL2 Ubuntu 24.04. It does not install an Ubuntu operating system. Clean-base package installation remains a separate target-machine acceptance step and is not claimed by the no-install CI checks.

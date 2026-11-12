@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 import sys
@@ -11,6 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PARSER = ROOT / "packaging" / "resolve_apt_uris.py"
+DOWNLOADER = ROOT / "packaging" / "download_apt_uris.py"
 
 
 class AptUriParserTests(unittest.TestCase):
@@ -68,6 +70,7 @@ Need to get 80.0 kB of archives.
                 "https://mirror-two.example/ubuntu/pool/main/e/example/pkg.deb",
             ],
         )
+        self.assertEqual(data[0]["md5"], "abc")
 
     def test_deduplicates_identical_uri_rows(self) -> None:
         line = "'https://example.invalid/pkg.deb' pkg.deb 100 SHA256:abc\n"
@@ -88,6 +91,52 @@ Need to get 80.0 kB of archives.
         result, _ = self.run_parser("Reading package lists...\nDone\n")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("No .deb download URIs", result.stderr)
+
+    def test_downloader_uses_second_mirror_and_checks_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "source.deb"
+            payload = b"test-deb-payload"
+            source.write_bytes(payload)
+            sha = hashlib.sha256(payload).hexdigest()
+            md5 = hashlib.md5(payload).hexdigest()
+            manifest = root / "uris.json"
+            manifest.write_text(json.dumps([{
+                "filename": "pkg.deb",
+                "size": len(payload),
+                "sha256": sha,
+                "md5": md5,
+                "mirrors": [
+                    (root / "missing.deb").as_uri(),
+                    source.as_uri(),
+                ],
+            }]), encoding="utf-8")
+            output = root / "downloads"
+            result = subprocess.run(
+                [sys.executable, str(DOWNLOADER), "--input", str(manifest), "--output", str(output)],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual((output / "pkg.deb").read_bytes(), payload)
+
+    def test_downloader_rejects_checksum_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "source.deb"
+            source.write_bytes(b"not-the-expected-package")
+            manifest = root / "uris.json"
+            manifest.write_text(json.dumps([{
+                "filename": "pkg.deb",
+                "size": source.stat().st_size,
+                "sha256": "0" * 64,
+                "mirrors": [source.as_uri()],
+            }]), encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(DOWNLOADER), "--input", str(manifest), "--output", str(root / "out")],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("SHA-256 mismatch", result.stderr)
 
 
 if __name__ == "__main__":

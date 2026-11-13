@@ -71,7 +71,10 @@ install -m 0644 "$ROOT/README.md" "$LEARNER_ROOT/README-REPOSITORY.md"
 install -m 0644 "$ROOT/docs/QUICKSTART.md" "$LEARNER_ROOT/docs/QUICKSTART.md"
 install -m 0644 "$ROOT/docs/ENVIRONMENT_WSL2_UBUNTU.md" "$LEARNER_ROOT/docs/ENVIRONMENT_WSL2_UBUNTU.md"
 install -m 0755 "$ROOT/scripts/check_environment.sh" "$LEARNER_ROOT/scripts/check_environment.sh"
-install -m 0644 "$ROOT/packaging/LEARNER-README.md" "$LEARNER_ROOT/README.md"
+mkdir -p "$LEARNER_ROOT/scripts/lib"
+install -m 0644 "$ROOT/scripts/lib/ubuntu-support.sh" "$LEARNER_ROOT/scripts/lib/ubuntu-support.sh"
+sed "s/@TARGET_UBUNTU_VERSION@/$TARGET_UBUNTU_VERSION/g" \
+    "$ROOT/packaging/LEARNER-README.md" > "$LEARNER_ROOT/README.md"
 
 cat > "$LEARNER_ROOT/cppapplab" <<'WRAPPER'
 #!/usr/bin/env bash

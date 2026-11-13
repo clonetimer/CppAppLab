@@ -24,10 +24,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  ubuntu-22.04-compatibility:
+    name: Ubuntu 22.04 source-build compatibility
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Install C++ development toolchain
+        run: |
+          sudo apt-get -o Acquire::Retries=3 update
+          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake git gdb libgtest-dev
+      - name: Verify Ubuntu support matrix and toolchain
+        run: |
+          bash tests/test_ubuntu_support.sh
+          bash scripts/check_environment.sh
+      - name: Run first-use setup, build and platform tests
+        run: bash scripts/quickstart.sh </dev/null
+      - name: Verify learner entry points
+        run: |
+          ./build/cppapplab --version
+          ./build/cppapplab guide
+          bash -n scripts/cppapplab-wsl-launcher.sh
+          bash -n scripts/quickstart.sh
+
   build-and-test:
-    name: GCC Build and GoogleTest
+    name: GCC Build and GoogleTest (${{ matrix.ubuntu }})
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation }}
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.ubuntu }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7

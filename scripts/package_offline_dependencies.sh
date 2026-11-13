@@ -138,7 +138,8 @@ for entry in full:
         shutil.copy2(source / entry["filename"], target / entry["filename"])
 PY
 
-install -m 0644 "$ROOT/packaging/OFFLINE-DEPENDENCIES-README.md" "$BUNDLE_ROOT/README.md"
+sed "s/@TARGET_UBUNTU_VERSION@/$VERSION_ID/g" \
+    "$ROOT/packaging/OFFLINE-DEPENDENCIES-README.md" > "$BUNDLE_ROOT/README.md"
 install -m 0755 "$ROOT/scripts/install_offline_dependencies.sh" "$BUNDLE_ROOT/install.sh"
 install -m 0755 "$ROOT/scripts/build_local_apt_index.py" "$BUNDLE_ROOT/scripts/build_local_apt_index.py"
 cp "$ROOT/packaging/offline-dependencies.txt" "$BUNDLE_ROOT/REQUIRED-PACKAGES.txt"

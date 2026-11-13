@@ -22,11 +22,13 @@ Extract the learner archive on Windows or copy it into the existing WSL distribu
 
 ## 3. Run the acceptance script inside the existing Ubuntu distribution
 
-Copy the repository's scripts/accept_learner_package_wsl.sh into the existing WSL checkout, then run:
+For Ubuntu 24.04, copy the repository's `scripts/accept_learner_package_wsl.sh` into the existing WSL checkout and run the prebuilt-package check:
 
 ~~~bash
-On Ubuntu 24.04, run the prebuilt-package check with `bash scripts/accept_learner_package_wsl.sh /path/to/CppAppLab-learner-ubuntu24.04-x86_64-*.tar.gz`. On Ubuntu 22.04, validate the source checkout with `Start-CppAppLab.cmd -Setup`; this builds and tests the source using the local Ubuntu 22.04 toolchain.
+bash scripts/accept_learner_package_wsl.sh /path/to/CppAppLab-learner-ubuntu24.04-x86_64-*.tar.gz
 ~~~
+
+For Ubuntu 22.04, use the source checkout instead: run `Start-CppAppLab.cmd -Setup` from Windows PowerShell. This builds the project and runs its tests using the local Ubuntu 22.04 toolchain. The prebuilt Ubuntu 24.04 learner archive is not the Ubuntu 22.04 acceptance artifact.
 
 The script uses a temporary HOME and state directory. It:
 

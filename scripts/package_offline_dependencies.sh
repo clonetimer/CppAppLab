@@ -49,7 +49,7 @@ if [[ -n "${CPPAPPLAB_UBUNTU_SNAPSHOT_ID:-}" && "$CPPAPPLAB_UBUNTU_SNAPSHOT_ID" 
     echo "[FAIL] CI snapshot ID does not match the repository-pinned snapshot." >&2
     exit 2
 fi
-PACKAGE_NAME="CppAppLab-offline-deps-ubuntu24.04-amd64-v${VERSION}-${SHORT_SHA}"
+PACKAGE_NAME="CppAppLab-offline-deps-$TARGET_UBUNTU_SLUG-amd64-v${VERSION}-${SHORT_SHA}"
 export CPPAPPLAB_UBUNTU_SNAPSHOT_ID="$SNAPSHOT_ID"
 
 mkdir -p "$OUTPUT"
@@ -155,7 +155,7 @@ Required roots: ${base_roots[*]}
 Optional quality roots: ${quality_roots[*]}
 Dependency resolver: apt-get --print-uris with an empty dpkg status database
 Package installation performed during bundle creation: no
-Archive target: existing Ubuntu 24.04 installation; this bundle does not install an Ubuntu operating system
+Archive target: existing $TARGET_UBUNTU_LABEL installation; this bundle does not install an Ubuntu operating system
 EOF
 
 python3 - "$BUNDLE_ROOT" <<'PY'

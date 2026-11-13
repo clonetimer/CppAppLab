@@ -23,8 +23,8 @@ for package in "${required_packages[@]}"; do
 done
 
 if (( ${#missing_packages[@]} > 0 )); then
-    printf '[INFO] Missing packages: %s\\n' "${missing_packages[*]}"
-    printf 'Install command: sudo apt-get update && sudo apt-get install -y %s\\n' "${missing_packages[*]}"
+    printf '[INFO] Missing packages: %s\n' "${missing_packages[*]}"
+    printf 'Install command: sudo apt-get update && sudo apt-get install -y %s\n' "${missing_packages[*]}"
 
     if cppapplab_prompt_for_confirmation "Install these packages now? [Y/n] "; then
         if [[ "$EUID" -eq 0 ]]; then

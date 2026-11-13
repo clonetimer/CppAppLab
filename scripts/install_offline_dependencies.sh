@@ -43,13 +43,7 @@ if [[ "$ID" != "ubuntu" || ( "$VERSION_ID" != "22.04" && "$VERSION_ID" != "24.04
     echo "[FAIL] This dependency bundle supports an existing Ubuntu 22.04 or 24.04 installation; detected ${PRETTY_NAME:-unknown}." >&2
     exit 2
 fi
-BUNDLE_TARGET="$(python3 - "$ROOT/packages.lock.json" <<'PY'
-import json
-import sys
-with open(sys.argv[1], encoding="utf-8") as source:
-    print(json.load(source)["target"])
-PY
-)"
+BUNDLE_TARGET="$(awk -F': ' '$1 == "Target" { print $2; exit }' "$ROOT/BUILD-INFO.txt")"
 EXPECTED_TARGET="Ubuntu $VERSION_ID LTS amd64"
 if [[ "$BUNDLE_TARGET" != "$EXPECTED_TARGET" ]]; then
     echo "[FAIL] This bundle targets $BUNDLE_TARGET, but the current system is $EXPECTED_TARGET." >&2
@@ -98,7 +92,7 @@ for deb in "${selected_debs[@]}"; do
     package_names["$identity"]=1
 done
 
-for required in build-essential cmake git gdb libgtest-dev; do
+for required in build-essential cmake git gdb libgtest-dev python3; do
     found=0
     for deb in "${base_debs[@]}"; do
         [[ "$(dpkg-deb -f "$deb" Package)" == "$required" ]] && found=1

@@ -13,6 +13,7 @@ Required learner/build toolchain:
 - Git
 - GDB
 - GoogleTest development headers and libraries
+- Python 3 for offline bundle verification and local APT dry-run
 
 Optional code-quality tools:
 

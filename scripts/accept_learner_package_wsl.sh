@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 if [[ $# -ne 1 || ! -f "$1" ]]; then
-    echo "Usage: $0 <CppAppLab-learner-ubuntu24.04-x86_64-*.tar.gz>" >&2
+    echo "Usage: $0 <CppAppLab-learner-ubuntu22.04-x86_64-*.tar.gz | CppAppLab-learner-ubuntu24.04-x86_64-*.tar.gz>" >&2
     exit 64
 fi
 

@@ -51,6 +51,7 @@ if [[ -n "${CPPAPPLAB_UBUNTU_SNAPSHOT_ID:-}" && "$CPPAPPLAB_UBUNTU_SNAPSHOT_ID" 
 fi
 PACKAGE_NAME="CppAppLab-offline-deps-$TARGET_UBUNTU_SLUG-amd64-v${VERSION}-${SHORT_SHA}"
 export CPPAPPLAB_UBUNTU_SNAPSHOT_ID="$SNAPSHOT_ID"
+export CPPAPPLAB_TARGET_UBUNTU_LABEL="$TARGET_UBUNTU_LABEL"
 
 mkdir -p "$OUTPUT"
 OUTPUT="$(cd "$OUTPUT" && pwd)"
@@ -207,7 +208,7 @@ for optional in ("clang-format", "clang-tidy"):
 manifest = {
     "schema_version": 1,
     "project": "CppAppLab",
-    "target": "$TARGET_UBUNTU_LABEL",
+    "target": os.environ["CPPAPPLAB_TARGET_UBUNTU_LABEL"],
     "ubuntu_archive_snapshot": os.environ.get("CPPAPPLAB_UBUNTU_SNAPSHOT_ID", ""),
     "install_policy": "local deb files only; apt downloads disabled",
     "package_installation_performed_during_build": False,

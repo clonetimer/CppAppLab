@@ -58,7 +58,7 @@ CI uploads the source archive, learner archive, package manifest and SHA256SUMS 
 
 P7-B builds a separate Ubuntu 22.04 or Ubuntu 24.04 amd64 dependency archive. Required learner/build packages are separated from optional quality tools:
 
-- Required: build-essential, CMake, Git, GDB and libgtest-dev.
+- Required: build-essential, CMake, Git, GDB, libgtest-dev and Python 3 (offline verification/local APT dry-run).
 - Optional: clang-format and clang-tidy.
 
 The CI resolver refreshes APT package indexes from a repository-pinned Ubuntu snapshot using apt-get update. This updates only the ephemeral runner's package indexes; it does not install packages or modify the dpkg database. The exact snapshot ID is stored in the repository and recorded in BUILD-INFO.txt and packages.lock.json.

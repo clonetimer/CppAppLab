@@ -39,7 +39,24 @@ The script uses a temporary HOME and state directory. It:
 
 The script does not call apt, sudo, wsl --install, or any package installer. It requires the existing Ubuntu distribution to already have the compiler needed by the W1 acceptance fixture.
 
-## 4. Verify the Windows double-click launcher
+## 4. Verify or install the matching offline dependency bundle
+
+If using the offline dependency archive, select the one matching the current distribution:
+
+- Ubuntu 22.04: `CppAppLab-offline-deps-ubuntu22.04-amd64-*.tar.gz`
+- Ubuntu 24.04: `CppAppLab-offline-deps-ubuntu24.04-amd64-*.tar.gz`
+
+Extract the archive and verify it without changing installed packages:
+
+~~~bash
+tar -xzf CppAppLab-offline-deps-ubuntu22.04-amd64-*.tar.gz
+cd CppAppLab-offline-deps-ubuntu22.04-amd64-*/
+./install.sh --verify-only
+~~~
+
+Use the corresponding `ubuntu24.04` filename on Ubuntu 24.04. To install the bundled tools, run `sudo bash install.sh`; add `--with-quality-tools` to include clang-format and clang-tidy. The installer rejects a bundle built for a different Ubuntu release and disables network downloads during installation.
+
+## 5. Verify the Windows double-click launcher
 
 From the existing Windows checkout, double-click Start-CppAppLab.cmd or run it from PowerShell. The launcher must select the existing Ubuntu distribution and open the CppAppLab learner home. To exercise setup mode after a deliberate source update, run:
 

@@ -197,7 +197,7 @@ for group in ("base", "quality"):
 identities = [(item["group"], item["name"], item["version"]) for item in packages]
 if len(identities) != len(set(identities)):
     raise SystemExit("Duplicate package identity found in the offline bundle.")
-for required in ("build-essential", "cmake", "git", "gdb", "libgtest-dev"):
+for required in ("build-essential", "cmake", "git", "gdb", "libgtest-dev", "python3"):
     if not any(item["name"] == required and item["group"] == "base" for item in packages):
         raise SystemExit(f"Required package {required} is missing.")
 for optional in ("clang-format", "clang-tidy"):

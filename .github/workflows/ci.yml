@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ubuntu-22.04-compatibility:
+  ubuntu-2204-compatibility:
     name: Ubuntu 22.04 source-build compatibility
     runs-on: ubuntu-22.04
     steps:

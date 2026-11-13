@@ -1,6 +1,6 @@
 # CppAppLab learner package
 
-This package is a relocatable, prebuilt learner distribution for Ubuntu 24.04 LTS x86_64, including Ubuntu 24.04 under WSL2.
+This package is a relocatable, prebuilt learner distribution for Ubuntu @TARGET_UBUNTU_VERSION@ LTS x86_64, including Ubuntu @TARGET_UBUNTU_VERSION@ under WSL2.
 
 ## Start learning
 
@@ -38,7 +38,7 @@ The prebuilt CppAppLab CLI is included. GCC, CMake and GoogleTest are still requ
 
 ## What is included
 
-- Prebuilt CppAppLab CLI for Ubuntu 24.04 x86_64
+- Prebuilt CppAppLab CLI for Ubuntu @TARGET_UBUNTU_VERSION@ x86_64
 - Course catalog, lessons, progressive hints and platform-owned acceptance fixtures
 - Learner workspace templates and platform reference baselines required by multi-stage acceptance fixtures
 - Environment checker and first-use documentation

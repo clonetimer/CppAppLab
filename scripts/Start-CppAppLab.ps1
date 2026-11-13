@@ -91,7 +91,10 @@ if (-not (Test-Path -LiteralPath $bootstrapScriptPath -PathType Leaf)) {
 }
 $bootstrapScript = [System.IO.File]::ReadAllText($bootstrapScriptPath)
 $bashScriptBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($bootstrapScript))
-$bootstrapCommand = "printf '%s' '$bashScriptBase64' | base64 --decode | bash -s -- '$repoPathBase64' '$forceSetup'"
+# Decode the bootstrap from the command payload into a temporary file instead of
+# piping it to "bash -s". That leaves WSL stdin attached to the user's console,
+# allowing quickstart.sh and sudo to request interactive confirmation/passwords.
+$bootstrapCommand = 'bootstrap_file="$(mktemp)" && trap ''rm -f "$bootstrap_file"'' EXIT && printf ''%s'' ''{0}'' | base64 --decode > "$bootstrap_file" && bash "$bootstrap_file" ''{1}'' ''{2}''' -f $bashScriptBase64, $repoPathBase64, $forceSetup
 
 Write-Host "CppAppLab - Windows / WSL2 launcher"
 Write-Host ("Distribution: {0}" -f $Distro)

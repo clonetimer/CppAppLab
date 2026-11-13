@@ -17,6 +17,21 @@ if [[ -z "$PACKAGE_ROOT" || ! -x "$PACKAGE_ROOT/cppapplab" ]]; then
     echo "[FAIL] Learner package layout or launcher is invalid." >&2
     exit 1
 fi
+if [[ ! -r /etc/os-release ]]; then
+    echo "[FAIL] Cannot identify the target Ubuntu distribution." >&2
+    exit 2
+fi
+# shellcheck disable=SC1091
+source /etc/os-release
+if [[ "$ID" != "ubuntu" || ( "$VERSION_ID" != "22.04" && "$VERSION_ID" != "24.04" ) ]]; then
+    echo "[FAIL] Learner package acceptance supports Ubuntu 22.04 and 24.04; detected ${PRETTY_NAME:-unknown}." >&2
+    exit 2
+fi
+PACKAGE_NAME="$(basename "$PACKAGE_ROOT")"
+if [[ "$PACKAGE_NAME" != "CppAppLab-learner-ubuntu$VERSION_ID-x86_64-"* ]]; then
+    echo "[FAIL] This learner package is not built for the current Ubuntu $VERSION_ID environment: $PACKAGE_NAME" >&2
+    exit 2
+fi
 
 export HOME="$TEMP_ROOT/home"
 export CPPAPPLAB_STATE_DIR="$TEMP_ROOT/state"
@@ -88,7 +103,7 @@ if [[ "$RELOCATED_VERSION" != "$VERSION" ]] ||
     exit 1
 fi
 
-echo "[PASS] Existing Ubuntu 24.04 WSL learner-package acceptance."
+echo "[PASS] Existing Ubuntu $VERSION_ID WSL learner-package acceptance."
 echo "  CLI: $VERSION"
 echo "  Catalog: W1, W8 and W9 tasks discovered."
 echo "  W1: learner workspace created and fixed acceptance passed."

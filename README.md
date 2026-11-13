@@ -132,7 +132,7 @@ W1–W7 and W8-D1–D6-D3 are merged into `main`. The HTTP reference server incl
 
 ## Delivery status
 
-P7-A source and learner package candidates are merged and verified in [CI run #1183](https://github.com/clonetimer/CppAppLab/actions/runs/43132738098). P7-B is building the offline Ubuntu 24.04 dependency bundle with read-only APT URI resolution and local-only installation; routine CI does not install Ubuntu packages. See [release packaging](docs/RELEASE_PACKAGING.md) and [project status](docs/STATUS.md).
+P7-A source and learner package candidates are merged. The Ubuntu 22.04 compatibility follow-up (PR #38) builds native learner packages for both Ubuntu 22.04 and 24.04; it also extends offline dependency bundles to matching Jammy/Noble targets with read-only APT URI resolution and local-only installation. See [release packaging](docs/RELEASE_PACKAGING.md) and [project status](docs/STATUS.md).
 
 ## Quick start
 

@@ -26,7 +26,7 @@ if grep -RqlF "mirror+file:/etc/apt/apt-mirrors.txt" /etc/apt/sources.list.d 2>/
         sudo mv "$source_file" "$source_file.cppapplab-disabled"
     done < <(grep -RlF "mirror+file:/etc/apt/apt-mirrors.txt" /etc/apt/sources.list.d 2>/dev/null || true)
 
-    sudo tee /etc/apt/sources.list.d/cppapplab.sources >/dev/null <<'SOURCES'
+    sudo tee /etc/apt/sources.list.d/cppapplab.sources >/dev/null <<SOURCES
 Types: deb
 URIs: http://archive.ubuntu.com/ubuntu
 Suites: ${ubuntu_codename} ${ubuntu_codename}-updates ${ubuntu_codename}-backports

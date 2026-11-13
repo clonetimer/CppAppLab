@@ -26,6 +26,7 @@ concurrency:
 jobs:
   ubuntu-2204-compatibility:
     name: Ubuntu 22.04 source-build compatibility
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
@@ -49,7 +50,7 @@ jobs:
 
   build-and-test:
     name: GCC Build and GoogleTest (${{ matrix.ubuntu }})
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation }}
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation) }}
     strategy:
       fail-fast: false
       matrix:

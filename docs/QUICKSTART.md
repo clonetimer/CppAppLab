@@ -50,6 +50,8 @@ You can also run the launcher from PowerShell:
 
 The launcher detects installed Ubuntu distributions, verifies WSL2 and supports Ubuntu 22.04 and 24.04 source checkouts. If ~/work/CppAppLab does not exist inside WSL, it clones the private repository there and runs the first-time setup. If more than one Ubuntu distribution is installed, it asks you to choose one.
 
+This Windows launcher uses the source checkout and builds it inside the selected distribution, so it supports both Ubuntu 22.04 and 24.04. The separately published prebuilt learner package and offline dependency bundle remain Ubuntu 24.04-specific.
+
 The first clone requires GitHub authentication inside WSL. Configure Git credentials there; for example, install GitHub CLI and run gh auth login inside Ubuntu before retrying. The launcher checks the checkout origin and refuses to run an unrelated repository.
 
 After pulling project updates inside WSL, rebuild and rerun acceptance checks with:

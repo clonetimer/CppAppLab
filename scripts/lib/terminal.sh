@@ -10,16 +10,16 @@ cppapplab_prompt_for_confirmation() {
 
     if [[ -t 0 ]]; then
         if ! IFS= read -r -p "$prompt" answer; then
-            printf '\\n[FAIL] Could not read the confirmation response from stdin.\\n' >&2
+            printf '\n[FAIL] Could not read the confirmation response from stdin.\n' >&2
             return 2
         fi
     elif ( : </dev/tty ) 2>/dev/null; then
         if ! IFS= read -r -p "$prompt" answer </dev/tty; then
-            printf '\\n[FAIL] Could not read the confirmation response from /dev/tty.\\n' >&2
+            printf '\n[FAIL] Could not read the confirmation response from /dev/tty.\n' >&2
             return 2
         fi
     else
-        printf '[FAIL] No interactive terminal is available to approve package installation.\\n' >&2
+        printf '[FAIL] No interactive terminal is available to approve package installation.\n' >&2
         return 2
     fi
 

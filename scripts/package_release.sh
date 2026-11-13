@@ -19,7 +19,7 @@ if ! git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     exit 2
 fi
 
-VERSION="$(awk '$1 == "VERSION" { print $2; exit }' "$ROOT/CMakeLists.txt")"
+PROJECT_VERSION="$(awk '$1 == "VERSION" { print $2; exit }' "$ROOT/CMakeLists.txt")"
 if [[ ! -r /etc/os-release ]]; then
     echo "[FAIL] Cannot identify the learner-package build target." >&2
     exit 2
@@ -43,7 +43,7 @@ TARGET_UBUNTU_LABEL="Ubuntu $TARGET_UBUNTU_VERSION LTS x86_64"
 COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
 SHORT_SHA="$(printf '%s' "$COMMIT" | cut -c1-12)"
 SOURCE_DATE_EPOCH="$(git -C "$ROOT" log -1 --format=%ct HEAD)"
-if [[ -z "$VERSION" || -z "$COMMIT" ]]; then
+if [[ -z "$PROJECT_VERSION" || -z "$COMMIT" ]]; then
     echo "[FAIL] Cannot determine the package version or source commit." >&2
     exit 2
 fi
@@ -53,8 +53,8 @@ OUTPUT="$(cd "$OUTPUT" && pwd)"
 TEMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TEMP_ROOT"' EXIT
 
-SOURCE_NAME="CppAppLab-source-v$VERSION-$SHORT_SHA"
-LEARNER_NAME="CppAppLab-learner-$TARGET_UBUNTU_SLUG-x86_64-v$VERSION-$SHORT_SHA"
+SOURCE_NAME="CppAppLab-source-v$PROJECT_VERSION-$SHORT_SHA"
+LEARNER_NAME="CppAppLab-learner-$TARGET_UBUNTU_SLUG-x86_64-v$PROJECT_VERSION-$SHORT_SHA"
 SOURCE_ARCHIVE="$OUTPUT/$SOURCE_NAME.tar.gz"
 LEARNER_ARCHIVE="$OUTPUT/$LEARNER_NAME.tar.gz"
 
@@ -88,7 +88,7 @@ chmod 0755 "$LEARNER_ROOT/cppapplab"
 
 cat > "$LEARNER_ROOT/BUILD-INFO.txt" <<EOF
 Project: CppAppLab
-Version: $VERSION
+Version: $PROJECT_VERSION
 Source commit: $COMMIT
 Build target: $TARGET_UBUNTU_LABEL
 Build configuration: Release, BUILD_TESTING=OFF
@@ -112,7 +112,7 @@ cat > "$OUTPUT/package-manifest.json" <<EOF
 {
   "schema_version": 1,
   "project": "CppAppLab",
-  "version": "$VERSION",
+  "version": "$PROJECT_VERSION",
   "source_commit": "$COMMIT",
   "target": "$TARGET_UBUNTU_LABEL",
   "packages": {

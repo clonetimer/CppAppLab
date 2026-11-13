@@ -74,6 +74,7 @@ jobs:
         run: ctest --test-dir build --output-on-failure
       - name: CLI smoke test
         run: |
+          bash tests/test_ubuntu_support.sh
           ./build/cppapplab --version
           ./build/cppapplab --help
           timeout 5s ./build/cppapplab </dev/null
@@ -672,10 +673,15 @@ jobs:
         run: |
           $bash = Join-Path $env:ProgramFiles 'Git\bin\bash.exe'
           $scripts = @(
+            'scripts/package_release.sh',
+            'scripts/smoke_learner_package.sh',
+            'scripts/accept_learner_package_wsl.sh',
             'scripts/package_offline_dependencies.sh',
             'scripts/install_offline_dependencies.sh',
             'scripts/verify_offline_dependency_bundle.sh',
-            'scripts/ci_prepare_ubuntu_snapshot.sh'
+            'scripts/ci_prepare_ubuntu_snapshot.sh',
+            'scripts/lib/ubuntu-support.sh',
+            'tests/test_ubuntu_support.sh'
           )
           foreach ($script in $scripts) {
             & $bash -n $script

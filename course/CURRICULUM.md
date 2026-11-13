@@ -4,7 +4,7 @@
 
 The course follows the eight-week sequence in the supplied *快速C++* learning material. The cumulative work products are kept in the same order so that later lessons reuse earlier code rather than replacing it with unrelated demonstrations.
 
-The first-version language baseline is C++17. WSL2 Ubuntu 24.04 is the full acceptance environment.
+The language baseline is C++17. WSL2 Ubuntu 22.04 LTS and Ubuntu 24.04 LTS are supported source-build and course-acceptance environments.
 
 ## W1 — Toolchain and first programs
 

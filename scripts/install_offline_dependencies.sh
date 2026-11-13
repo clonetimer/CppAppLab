@@ -43,7 +43,13 @@ if [[ "$ID" != "ubuntu" || ( "$VERSION_ID" != "22.04" && "$VERSION_ID" != "24.04
     echo "[FAIL] This dependency bundle supports an existing Ubuntu 22.04 or 24.04 installation; detected ${PRETTY_NAME:-unknown}." >&2
     exit 2
 fi
-BUNDLE_TARGET="$(python3 -c 'import json; print(json.load(open("'"$ROOT"'/packages.lock.json", encoding="utf-8"))["target"])')"
+BUNDLE_TARGET="$(python3 - "$ROOT/packages.lock.json" <<'PY'
+import json
+import sys
+with open(sys.argv[1], encoding="utf-8") as source:
+    print(json.load(source)["target"])
+PY
+)"
 EXPECTED_TARGET="Ubuntu $VERSION_ID LTS amd64"
 if [[ "$BUNDLE_TARGET" != "$EXPECTED_TARGET" ]]; then
     echo "[FAIL] This bundle targets $BUNDLE_TARGET, but the current system is $EXPECTED_TARGET." >&2

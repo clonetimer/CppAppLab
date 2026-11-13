@@ -1,17 +1,17 @@
 # First-use quick start
 
-This guide is for a learner using Windows 11 + WSL2 + Ubuntu 24.04. You do not need to know the task IDs or choose a workspace path to begin.
+This guide is for a learner using Windows 11 + WSL2 + Ubuntu 22.04 LTS or Ubuntu 24.04 LTS. You do not need to know the task IDs or choose a workspace path to begin.
 
 ## 1. Open Ubuntu and get the project
 
-In PowerShell, list installed distributions and start the installed Ubuntu 24.04 distribution:
+In PowerShell, list installed distributions and start your existing Ubuntu 22.04 or Ubuntu 24.04 distribution:
 
 ~~~powershell
 wsl -l -v
 wsl -d Ubuntu
 ~~~
 
-If the listed distribution is named Ubuntu-24.04, use wsl -d Ubuntu-24.04 instead. The distribution must report WSL version 2.
+Use the exact distribution name shown by `wsl -l -v` (for example, `wsl -d Ubuntu-22.04` or `wsl -d Ubuntu-24.04`). The distribution must report WSL version 2.
 
 Inside Ubuntu:
 
@@ -30,7 +30,7 @@ bash scripts/quickstart.sh
 
 The script:
 
-1. Checks that Ubuntu 24.04 and the required toolchain are available.
+1. Checks that Ubuntu 22.04 or 24.04 and the required toolchain are available.
 2. Offers to install missing packages with apt (you approve before installation).
 3. Configures and builds CppAppLab.
 4. Runs the platform's CTest suite.
@@ -48,7 +48,7 @@ You can also run the launcher from PowerShell:
 .\Start-CppAppLab.cmd
 ~~~
 
-The launcher detects installed Ubuntu distributions, verifies WSL2 and Ubuntu 24.04, and opens the Linux checkout. If ~/work/CppAppLab does not exist inside WSL, it clones the private repository there and runs the first-time setup. If more than one Ubuntu distribution is installed, it asks you to choose one.
+The launcher detects installed Ubuntu distributions, verifies WSL2 and supports Ubuntu 22.04 and 24.04 source checkouts. If ~/work/CppAppLab does not exist inside WSL, it clones the private repository there and runs the first-time setup. If more than one Ubuntu distribution is installed, it asks you to choose one.
 
 The first clone requires GitHub authentication inside WSL. Configure Git credentials there; for example, install GitHub CLI and run gh auth login inside Ubuntu before retrying. The launcher checks the checkout origin and refuses to run an unrelated repository.
 
@@ -58,7 +58,7 @@ After pulling project updates inside WSL, rebuild and rerun acceptance checks wi
 .\Start-CppAppLab.cmd -Setup
 ~~~
 
-The launcher deliberately does not run git pull; local changes are preserved. It can also be pointed at another Linux checkout with -RepoPath "~/projects/CppAppLab" or a specific distro with -Distro Ubuntu-24.04.
+The launcher deliberately does not run git pull; local changes are preserved. It can also be pointed at another Linux checkout with -RepoPath "~/projects/CppAppLab" or a specific distro with -Distro Ubuntu-22.04.
 
 ## 3. Start learning
 

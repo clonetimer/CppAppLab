@@ -47,6 +47,7 @@ jobs:
           ./build/cppapplab --version
           ./build/cppapplab guide
           bash -n scripts/cppapplab-wsl-launcher.sh
+          bash -n scripts/lib/terminal.sh
           bash -n scripts/quickstart.sh
 
   build-and-test:
@@ -81,6 +82,8 @@ jobs:
           ./build/cppapplab --help
           timeout 5s ./build/cppapplab </dev/null
           bash -n scripts/cppapplab-wsl-launcher.sh
+          bash -n scripts/lib/terminal.sh
+          bash -n scripts/quickstart.sh
           launcher_home="/tmp/cppapplab-launcher-home"
           test "$(HOME="$launcher_home" bash scripts/cppapplab-wsl-launcher.sh --test-normalize-path '~/work/CppAppLab')" = "$launcher_home/work/CppAppLab"
           test "$(HOME="$launcher_home" bash scripts/cppapplab-wsl-launcher.sh --test-normalize-path '~')" = "$launcher_home"

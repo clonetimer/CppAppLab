@@ -104,7 +104,7 @@ foreach ($distro in @("Ubuntu-22.04", "Ubuntu-24.04")) {
     }
     if ($bootstrap -notmatch "normalize_repo_path" -or
         $bootstrap -notmatch "git clone https://github.com/clonetimer/CppAppLab.git" -or
-        $bootstrap -notmatch "22\.04\|24\.04") {
+        $bootstrap -notmatch "22[.]04[|]24[.]04") {
         throw "The expected WSL bootstrap or Ubuntu support check was not transferred for $distro."
     }
 

@@ -12,13 +12,15 @@ wsl --list --verbose
 
 The source-build target may be Ubuntu 22.04 or Ubuntu 24.04 and must report WSL version 2. If neither is present, stop here; the acceptance script does not create or install a distribution. The prebuilt learner package and offline dependency bundle remain Ubuntu 24.04-specific artifacts.
 
-## 2. Download the P7 learner package
+## 2. Select the delivery type
 
-Download the source/learner package artifact from the P7 CI run:
+The prebuilt learner package and offline dependency bundle are currently built for Ubuntu 24.04 LTS x86_64. Download the source/learner package artifact from the P7 CI run:
 
 https://github.com/clonetimer/CppAppLab/actions/runs/43149538317
 
-Extract the learner archive on Windows or copy it into the existing WSL distribution. Keep the exact archive filename and its SHA-256 sidecar/manifest.
+For Ubuntu 24.04, extract the learner archive on Windows or copy it into the existing WSL distribution. Keep the exact archive filename and its SHA-256 sidecar/manifest.
+
+For Ubuntu 22.04, use the source checkout and the Windows launcher. The launcher clones the repository into WSL when needed, then compiles and tests it with the local Ubuntu 22.04 toolchain. Do not use the Ubuntu 24.04 prebuilt learner archive on Ubuntu 22.04.
 
 ## 3. Run the acceptance script inside the existing Ubuntu distribution
 

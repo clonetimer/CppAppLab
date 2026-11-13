@@ -135,7 +135,7 @@ The learner implements a bounded producer/consumer queue and a POSIX child-proce
 
 The platform fixture runs 20 platform-owned behavior tests, ten learner-authored tests and one CLI smoke test (31 total). Tests cover queue capacity/FIFO/close/wakeup/multiple producers-consumers, process output and exit status, argv safety, argument validation, output bounds, timeout termination, and descriptor write completion.
 
-The task is intentionally Linux/POSIX-specific and is accepted on WSL2 Ubuntu 24.04. It does not claim Windows-native compatibility. The CLI passes an argument vector directly; it does not implicitly interpret a shell command string.
+The task is intentionally Linux/POSIX-specific and is accepted on WSL2 Ubuntu 22.04 or Ubuntu 24.04. It does not claim Windows-native compatibility. The CLI passes an argument vector directly; it does not implicitly interpret a shell command string.
 
 ## W6 ThreadPool contract
 

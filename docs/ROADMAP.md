@@ -194,7 +194,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 **Learner usability milestones merged:** PR #30 (`917b45c`) introduced the guided `learn` workflow and one-command Ubuntu setup; PR #31 (`89ea327`) added the interactive home and actionable check feedback; PR #32 (`991007e`) added task-title search and granular task-state visibility. Final PR #32 CI run `43024884781` passed all three jobs, including root 75/75 under GCC and ASan/UBSan and the configured clang-format/clang-tidy and W8/W9 fixture gates.
 
-**Windows launcher merged via PR #33 (986e9ff).** The Windows entry point detects WSL2 Ubuntu 24.04, prepares the Linux checkout on first launch, opens the interactive learner home on subsequent launches and provides an explicit rebuild mode. Final CI run 43031051999 passed all four jobs, including the Windows PowerShell 5.1/7 syntax gate and Bash bootstrap integration tests. Real WSL2 target-machine acceptance remains a release qualification item.
+**Windows launcher merged via PR #33 (986e9ff).** The Windows entry point detects WSL2 Ubuntu 22.04 or 24.04, prepares the Linux checkout on first launch, opens the interactive learner home on subsequent launches and provides an explicit rebuild mode. Final CI run 43031051999 passed all four jobs, including the Windows PowerShell 5.1/7 syntax gate and Bash bootstrap integration tests. Real WSL2 target-machine acceptance remains a release qualification item.
 
 ## P7 — Delivery and stabilization (in progress)
 
@@ -226,7 +226,7 @@ Hosted Ubuntu 24.04 CI passed 28/28 tests in both ordinary GCC and ASan/UBSan bu
 
 ### P7-C — Target-machine acceptance and release qualification
 
-- [ ] Windows 11 + WSL2 + Ubuntu 24.04 end-to-end launch and learner package extraction
+- [ ] Windows 11 + WSL2 + Ubuntu 22.04 and 24.04 source-checkout launch; verify prebuilt learner package extraction on Ubuntu 24.04
 - [ ] Verify workspace and progress persistence across package replacement
 - [ ] Record package SHA-256, environment, commands and acceptance evidence
 - [ ] Publish version tag, release notes, known limitations and evidence archive

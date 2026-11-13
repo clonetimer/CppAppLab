@@ -7,7 +7,6 @@ import os
 import pty
 import select
 import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -61,11 +60,11 @@ def run_with_controlling_tty(response: str) -> tuple[int, str]:
 
 
 def main() -> int:
-    yes_status, yes_output = run_with_controlling_tty("y\\n")
+    yes_status, yes_output = run_with_controlling_tty("y\n")
     if yes_status != 0:
         raise AssertionError(f"TTY confirmation should accept yes (status={yes_status}): {yes_output}")
 
-    no_status, no_output = run_with_controlling_tty("n\\n")
+    no_status, no_output = run_with_controlling_tty("n\n")
     if no_status != 1:
         raise AssertionError(f"TTY confirmation should return 1 for no (status={no_status}): {no_output}")
 

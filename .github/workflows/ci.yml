@@ -224,9 +224,13 @@ jobs:
         run: bash scripts/check_environment.sh
 
   sanitizers:
-    name: GCC ASan and UBSan
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation }}
-    runs-on: ubuntu-24.04
+    name: GCC ASan and UBSan (${{ matrix.ubuntu }})
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.ubuntu }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -447,9 +451,13 @@ jobs:
           ctest --test-dir build-w9-static-root-sanitize --output-on-failure --timeout 15
 
   code-quality:
-    name: Formatting and clang-tidy
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation }}
-    runs-on: ubuntu-24.04
+    name: Formatting and clang-tidy (${{ matrix.ubuntu }})
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.ubuntu }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -458,6 +466,7 @@ jobs:
           bash scripts/ci_prepare_ubuntu_apt.sh
           sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake libgtest-dev clang-format clang-tidy
       - name: Check formatting and show exact diff
+        if: matrix.ubuntu == 'ubuntu-24.04'
         run: |
           find include src tests course/fixtures labs -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
             | xargs -0 clang-format -i
@@ -674,8 +683,14 @@ jobs:
           }
 
   package-candidate:
-    name: Build source and learner packages
-    runs-on: ubuntu-24.04
+    name: Build source and learner packages (Ubuntu ${{ matrix.ubuntu }})
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: ['22.04', '24.04']
+    runs-on: ubuntu-${{ matrix.ubuntu }}
+    env:
+      CPPAPPLAB_PACKAGE_UBUNTU_VERSION: ${{ matrix.ubuntu }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -707,7 +722,7 @@ jobs:
       - name: Upload package candidates
         uses: actions/upload-artifact@v4
         with:
-          name: cppapplab-packages-${{ github.sha }}
+          name: cppapplab-packages-ubuntu-${{ matrix.ubuntu }}-${{ github.sha }}
           path: |
             dist/*.tar.gz
             dist/package-manifest.json
@@ -716,9 +731,13 @@ jobs:
           retention-days: 14
 
   offline-dependency-candidate:
-    name: Build and verify offline dependency bundle (no package installation)
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_offline_dependency_validation }}
-    runs-on: ubuntu-24.04
+    name: Build and verify offline dependencies (Ubuntu ${{ matrix.ubuntu }}, no installation)
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_offline_dependency_validation) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: ['22.04', '24.04']
+    runs-on: ubuntu-${{ matrix.ubuntu }}
     env:
       CPPAPPLAB_UBUNTU_SNAPSHOT_ID: 20261112T000000Z
     steps:
@@ -749,7 +768,7 @@ jobs:
       - name: Upload offline dependency candidate
         uses: actions/upload-artifact@v4
         with:
-          name: cppapplab-offline-deps-${{ github.sha }}
+          name: cppapplab-offline-deps-ubuntu-${{ matrix.ubuntu }}-${{ github.sha }}
           path: |
             dist/CppAppLab-offline-deps-*.tar.gz
             dist/CppAppLab-offline-deps-*.tar.gz.sha256

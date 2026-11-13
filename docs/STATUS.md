@@ -132,7 +132,7 @@ All symlinks below the configured document root are rejected, including symlinks
 
 ## Usability and first-use experience
 
-The platform now has a guided learner entry point (`cppapplab learn`) and a one-command Ubuntu setup path (`bash scripts/quickstart.sh`). The guided command selects the next unlocked task, resumes a saved workspace or creates a non-overwriting default workspace, displays the task guide and prints the exact next commands. The quick-start script checks the Ubuntu 24.04 toolchain, requests approval before installing missing packages, builds the project and runs CTest before entering the first task. These changes reduce first-use command and workspace-management overhead; they do not replace target-machine acceptance.
+The platform now has a guided learner entry point (`cppapplab learn`) and a one-command Ubuntu setup path (`bash scripts/quickstart.sh`). The guided command selects the next unlocked task, resumes a saved workspace or creates a non-overwriting default workspace, displays the task guide and prints the exact next commands. The quick-start script checks the Ubuntu 22.04 or 24.04 toolchain, requests approval before installing missing packages, builds the project and runs CTest before entering the first task. These changes reduce first-use command and workspace-management overhead; they do not replace target-machine acceptance.
 
 ## Interactive learner experience and feedback
 
@@ -153,7 +153,7 @@ The interactive task picker now supports number, task-ID and title-keyword selec
 **PR #35 merged:** fe06f4c0ed2d2fb38ca92d5b16117c80939a9ee2.
 
 - Deterministic source archive from the exact Git commit.
-- Relocatable Ubuntu 24.04 x86_64 learner archive with prebuilt CLI, course content, templates, fixtures, reference baselines and first-use documentation.
+- Relocatable native Ubuntu 22.04 and Ubuntu 24.04 x86_64 learner archives, each with a matching prebuilt CLI, course content, templates, fixtures, reference baselines and first-use documentation.
 - Wrapper sets CPPAPPLAB_DATA_DIR to the extracted package root.
 - Package manifest records source commit, target, filenames and SHA-256.
 - CI extracts the learner package into a different directory, discovers W1/W8/W9 tasks, creates a W1 workspace and passes its fixed Hello World acceptance check.
@@ -161,7 +161,7 @@ The interactive task picker now supports number, task-ID and title-keyword selec
 
 ### P7-B — Offline dependency bundle (merged)
 
-PR #36 (`ec5a68f`) merged the offline dependency bundle generation, package integrity and no-install APT simulation workflow. [CI #1249](https://github.com/clonetimer/CppAppLab/actions/runs/43149538317) passed Windows and package checks, including 171 verified packages. The repository now retains this optional capability without requiring users to install Ubuntu.
+PR #36 (`ec5a68f`) merged the offline dependency bundle generation, package integrity and no-install APT simulation workflow. The Ubuntu 22.04 compatibility follow-up extends the same bundle format to Jammy while retaining the original Noble target. [CI #1249](https://github.com/clonetimer/CppAppLab/actions/runs/43149538317) passed Windows and package checks, including 171 verified packages. The repository now retains this optional capability without requiring users to install Ubuntu.
 
 The offline CI job refreshes only APT package indexes from a repository-pinned Ubuntu snapshot; it does not install packages or modify the dpkg database. The snapshot ID is included in the generated package lock and build metadata.
 
@@ -176,11 +176,22 @@ The archive was built and checked with dry-run simulation; it was not installed 
 
 ### P7-C — Target-machine acceptance and release qualification
 
-- Validate Windows 11 + WSL2 + Ubuntu 24.04 launch and extracted learner package.
+- Validate Windows 11 + WSL2 + Ubuntu 22.04 and Ubuntu 24.04 launch with the matching prebuilt learner and offline dependency archives.
 - Verify workspace/progress persistence after package replacement.
 - Record exact package SHA-256, environment, commands and test evidence.
 - Publish version tag, release notes, known limitations and evidence archive only after P7-A/B/C pass.
 
+
+## Ubuntu 22.04 compatibility follow-up (PR #38)
+
+**Branch:** `feat/ubuntu-22.04-support-20261113`.
+
+- Source builds, quick start, environment checks and the Windows launcher support Ubuntu 22.04 LTS and Ubuntu 24.04 LTS.
+- The root GCC/GoogleTest suite passed 78/78 on Ubuntu 22.04.
+- PR CI passed the full GCC/GoogleTest matrix on both releases and the Windows launcher syntax/handoff tests.
+- Native learner archives are built on the matching Ubuntu release to avoid shipping a newer libstdc++ runtime to Ubuntu 22.04.
+- Offline dependency archives resolve from the matching Jammy/Noble archive snapshot and validate their target release before installation.
+- ASan/UBSan, clang-tidy and offline dependency packaging are being added to the pull-request matrix; Windows target-machine acceptance remains a separate check.
 
 ## Course-first usability focus (2026-11-12)
 

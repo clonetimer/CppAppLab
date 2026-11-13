@@ -7,7 +7,7 @@ Build a small Linux command runner backed by two reusable components:
 1. a bounded, thread-safe producer/consumer queue
 2. a POSIX child-process runner that captures output and reports process termination
 
-This week connects the C++ concurrency library to real Linux kernel interfaces. The acceptance environment is WSL2 + Ubuntu 24.04 + GCC; this task is intentionally POSIX/Linux-specific.
+This week connects the C++ concurrency library to real Linux kernel interfaces. The acceptance environments are WSL2 + Ubuntu 22.04 or 24.04 + GCC; this task is intentionally POSIX/Linux-specific.
 
 ## Your implementation
 

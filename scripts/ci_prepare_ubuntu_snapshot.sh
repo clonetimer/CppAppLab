@@ -18,10 +18,18 @@ if [[ ! -r /etc/os-release ]]; then
 fi
 # shellcheck disable=SC1091
 source /etc/os-release
-if [[ "$ID" != "ubuntu" || "$VERSION_ID" != "24.04" ]]; then
-    echo "[FAIL] Offline dependency resolution targets Ubuntu 24.04." >&2
+if [[ "$ID" != "ubuntu" ]]; then
+    echo "[FAIL] Offline dependency resolution supports Ubuntu 22.04 and 24.04." >&2
     exit 2
 fi
+case "$VERSION_ID" in
+    22.04) ubuntu_codename="jammy" ;;
+    24.04) ubuntu_codename="noble" ;;
+    *)
+        echo "[FAIL] Offline dependency resolution supports Ubuntu 22.04 and 24.04; detected ${PRETTY_NAME:-unknown}." >&2
+        exit 2
+        ;;
+esac
 
 echo "[INFO] Configuring the pinned Ubuntu archive snapshot: $SNAPSHOT_ID"
 # Keep this CI runner's package sources isolated to the official Ubuntu archive.
@@ -35,7 +43,7 @@ done
 sudo tee /etc/apt/sources.list.d/cppapplab-snapshot.sources >/dev/null <<EOF
 Types: deb
 URIs: https://snapshot.ubuntu.com/ubuntu/$SNAPSHOT_ID
-Suites: noble noble-updates noble-security
+Suites: $ubuntu_codename $ubuntu_codename-updates $ubuntu_codename-security
 Components: main universe restricted multiverse
 Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 Check-Valid-Until: no

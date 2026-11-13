@@ -39,8 +39,14 @@ if [[ ! -r /etc/os-release ]]; then
 fi
 # shellcheck disable=SC1091
 source /etc/os-release
-if [[ "$ID" != "ubuntu" || "$VERSION_ID" != "24.04" ]]; then
-    echo "[FAIL] This dependency bundle targets an existing Ubuntu 24.04 installation; detected ${PRETTY_NAME:-unknown}." >&2
+if [[ "$ID" != "ubuntu" || ( "$VERSION_ID" != "22.04" && "$VERSION_ID" != "24.04" ) ]]; then
+    echo "[FAIL] This dependency bundle supports an existing Ubuntu 22.04 or 24.04 installation; detected ${PRETTY_NAME:-unknown}." >&2
+    exit 2
+fi
+BUNDLE_TARGET="$(awk -F': ' '$1 == "Target" { print $2; exit }' "$ROOT/BUILD-INFO.txt")"
+EXPECTED_TARGET="Ubuntu $VERSION_ID LTS amd64"
+if [[ "$BUNDLE_TARGET" != "$EXPECTED_TARGET" ]]; then
+    echo "[FAIL] This bundle targets $BUNDLE_TARGET, but the current system is $EXPECTED_TARGET." >&2
     exit 2
 fi
 if [[ "$(dpkg --print-architecture)" != "amd64" ]]; then
@@ -86,7 +92,7 @@ for deb in "${selected_debs[@]}"; do
     package_names["$identity"]=1
 done
 
-for required in build-essential cmake git gdb libgtest-dev; do
+for required in build-essential cmake git gdb libgtest-dev python3; do
     found=0
     for deb in "${base_debs[@]}"; do
         [[ "$(dpkg-deb -f "$deb" Package)" == "$required" ]] && found=1

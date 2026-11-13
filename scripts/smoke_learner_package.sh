@@ -16,6 +16,22 @@ if [[ -z "$PACKAGE_ROOT" || ! -x "$PACKAGE_ROOT/cppapplab" ]]; then
     echo "[FAIL] Learner package layout or wrapper is invalid." >&2
     exit 1
 fi
+if [[ ! -r "$PACKAGE_ROOT/scripts/lib/ubuntu-support.sh" ]]; then
+    echo "[FAIL] Packaged Ubuntu support helper is missing." >&2
+    exit 1
+fi
+# shellcheck source=scripts/lib/ubuntu-support.sh
+source "$PACKAGE_ROOT/scripts/lib/ubuntu-support.sh"
+cppapplab_check_ubuntu > "$TEMP_ROOT/platform.log"
+# shellcheck disable=SC1091
+source /etc/os-release
+if [[ "$(basename "$PACKAGE_ROOT")" != "CppAppLab-learner-ubuntu$VERSION_ID-x86_64-"* ]] ||
+   ! grep -Fq "Build target: Ubuntu $VERSION_ID LTS x86_64" "$PACKAGE_ROOT/BUILD-INFO.txt" ||
+   ! grep -Fq "Ubuntu $VERSION_ID LTS" "$PACKAGE_ROOT/README.md"; then
+    echo "[FAIL] Learner package target metadata does not match the build host." >&2
+    cat "$PACKAGE_ROOT/BUILD-INFO.txt" >&2
+    exit 1
+fi
 
 export HOME="$TEMP_ROOT/home"
 export CPPAPPLAB_STATE_DIR="$TEMP_ROOT/state"

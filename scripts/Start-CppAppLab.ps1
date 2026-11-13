@@ -20,14 +20,16 @@ if ($LASTEXITCODE -ne 0) {
 $ubuntuDistros = @(
     $rawDistros |
         ForEach-Object { ($_.ToString() -replace "\x00", "").Trim() } |
-        Where-Object { $_ -match '^Ubuntu(?:[- ].*)?$' }
+        Where-Object { $_ -match '^(Ubuntu|Ubuntu[- ]22[.]04|Ubuntu[- ]24[.]04)$' }
 )
 
 if ([string]::IsNullOrWhiteSpace($Distro)) {
     if ($ubuntuDistros.Count -eq 0) {
-        Write-Host "No Ubuntu distribution was found."
-        Write-Host "Install the supported distribution with: wsl --install -d Ubuntu-24.04"
-        throw "Install Ubuntu 24.04, complete its first-run setup, then run this launcher again."
+        Write-Host "No supported Ubuntu distribution was found."
+        Write-Host "Install either supported distribution:"
+        Write-Host "  wsl --install -d Ubuntu-22.04"
+        Write-Host "  wsl --install -d Ubuntu-24.04"
+        throw "CppAppLab source builds support Ubuntu 22.04 LTS and Ubuntu 24.04 LTS. Complete the distribution's first-run setup, then run this launcher again."
     }
 
     if ($ubuntuDistros.Count -eq 1) {
@@ -48,7 +50,7 @@ if ([string]::IsNullOrWhiteSpace($Distro)) {
         $Distro = $ubuntuDistros[$selectedIndex - 1]
     }
 } elseif ($ubuntuDistros -notcontains $Distro) {
-    throw "The WSL distribution '$Distro' was not found among the installed Ubuntu distributions."
+    throw "The WSL distribution '$Distro' was not found among the supported Ubuntu distributions."
 }
 
 $verboseDistros = @(

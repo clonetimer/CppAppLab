@@ -36,7 +36,10 @@ import sys
 from pathlib import Path
 manifest = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 root = Path(sys.argv[2])
-assert manifest["target"] == "Ubuntu 24.04 LTS amd64"
+assert manifest["target"] in ("Ubuntu 22.04 LTS amd64", "Ubuntu 24.04 LTS amd64")
+build_info = (root / "BUILD-INFO.txt").read_text(encoding="utf-8")
+build_target = next(line.split(": ", 1)[1] for line in build_info.splitlines() if line.startswith("Target: "))
+assert manifest["target"] == build_target
 assert manifest["package_installation_performed_during_build"] is False
 for item in manifest["packages"]:
     deb = root / item["file"]

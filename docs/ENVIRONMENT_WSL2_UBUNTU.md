@@ -1,6 +1,6 @@
-# Development Environment: WSL2 + Ubuntu 24.04
+# Development Environment: WSL2 + Ubuntu 22.04 / 24.04
 
-This is the complete acceptance environment for CppAppLab v1.
+This is the supported source-build environment for CppAppLab: Windows 11 + WSL2 + Ubuntu 22.04 LTS or Ubuntu 24.04 LTS.
 
 For the shortest first-use path, clone the repository in Ubuntu and run bash scripts/quickstart.sh. The script checks required packages, offers to install missing dependencies, builds the platform, runs its tests, and opens the interactive learning home. The detailed manual setup remains below.
 
@@ -19,7 +19,7 @@ The Ubuntu distribution must show VERSION 2. If it shows version 1, convert the 
 wsl --set-version Ubuntu 2
 ~~~
 
-If the installed name is Ubuntu-24.04, use wsl --set-version Ubuntu-24.04 2 instead.
+Use the exact installed distribution name, for example `wsl --set-version Ubuntu-22.04 2` or `wsl --set-version Ubuntu-24.04 2`.
 
 Start Ubuntu:
 
@@ -27,13 +27,13 @@ Start Ubuntu:
 wsl -d Ubuntu
 ~~~
 
-If the installed name is Ubuntu-24.04, use wsl -d Ubuntu-24.04 instead. Always use the exact distribution name shown by wsl -l -v.
+Use the exact distribution name shown by `wsl -l -v`, for example `wsl -d Ubuntu-22.04` or `wsl -d Ubuntu-24.04`.
 
 ## Windows launcher
 
 After cloning the repository inside WSL, run explorer.exe . from the repository root in Ubuntu. Windows Explorer opens the project folder; double-click Start-CppAppLab.cmd to launch the Windows entry point. A Windows-accessible checkout can also be used.
 
-The launcher detects the installed Ubuntu distribution, verifies WSL2 and Ubuntu 24.04, clones into ~/work/CppAppLab only when that checkout is missing, and opens the interactive learning home. Use Start-CppAppLab.cmd -Setup after updating source code to rebuild and rerun CTest. The launcher does not update an existing Git checkout automatically.
+The launcher detects the installed Ubuntu distribution, verifies WSL2 and accepts Ubuntu 22.04 or 24.04 for source builds. It clones into ~/work/CppAppLab only when that checkout is missing, and opens the interactive learning home. Use Start-CppAppLab.cmd -Setup after updating source code to rebuild and rerun CTest. The launcher does not update an existing Git checkout automatically.
 
 ## 2. Verify Ubuntu
 
@@ -44,7 +44,7 @@ cat /etc/os-release
 uname -r
 ~~~
 
-The target distribution is Ubuntu 24.04 LTS and the kernel should identify the WSL2 environment.
+The target distribution may be Ubuntu 22.04 LTS or Ubuntu 24.04 LTS; the kernel should identify the WSL2 environment.
 
 ## 3. Install the toolchain
 
@@ -114,7 +114,7 @@ The VS Code status bar should indicate a WSL: Ubuntu remote session. Keep active
 ## 8. Environment acceptance checklist
 
 - [ ] PowerShell reports Ubuntu distribution version 2.
-- [ ] Ubuntu reports version 24.04.
+- [ ] Ubuntu reports version 22.04 or 24.04.
 - [ ] g++, cmake, git, and gdb are available.
 - [ ] The environment checker passes.
 - [ ] CMake configure and build pass.

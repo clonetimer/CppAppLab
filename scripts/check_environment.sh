@@ -16,16 +16,11 @@ pass() { printf '[PASS] %s\n' "$1"; }
 warn() { printf '[WARN] %s\n' "$1"; warnings=$((warnings + 1)); }
 fail() { printf '[FAIL] %s\n' "$1"; failures=$((failures + 1)); }
 
-if [[ -r /etc/os-release ]]; then
-    # shellcheck disable=SC1091
-    source /etc/os-release
-    if [[ "${ID:-}" == "ubuntu" && "${VERSION_ID:-}" == "24.04" ]]; then
-        pass "Ubuntu 24.04 detected"
-    else
-        fail "Expected Ubuntu 24.04; detected ${PRETTY_NAME:-unknown}"
-    fi
-else
-    fail "Cannot read /etc/os-release"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/lib/ubuntu-support.sh
+source "$SCRIPT_DIR/lib/ubuntu-support.sh"
+if ! cppapplab_check_ubuntu; then
+    failures=$((failures + 1))
 fi
 
 kernel_release="$(uname -r)"

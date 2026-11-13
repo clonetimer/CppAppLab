@@ -19,11 +19,31 @@ if ! git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     exit 2
 fi
 
-VERSION="$(awk '$1 == "VERSION" { print $2; exit }' "$ROOT/CMakeLists.txt")"
+PROJECT_VERSION="$(awk '$1 == "VERSION" { print $2; exit }' "$ROOT/CMakeLists.txt")"
+if [[ ! -r /etc/os-release ]]; then
+    echo "[FAIL] Cannot identify the learner-package build target." >&2
+    exit 2
+fi
+# shellcheck disable=SC1091
+source /etc/os-release
+TARGET_UBUNTU_VERSION="${CPPAPPLAB_PACKAGE_UBUNTU_VERSION:-${VERSION_ID:-}}"
+case "$TARGET_UBUNTU_VERSION" in
+    22.04|24.04) ;;
+    *)
+        echo "[FAIL] Learner packages support Ubuntu 22.04 and 24.04; requested $TARGET_UBUNTU_VERSION." >&2
+        exit 2
+        ;;
+esac
+if [[ "$ID" != "ubuntu" || "$VERSION_ID" != "$TARGET_UBUNTU_VERSION" ]]; then
+    echo "[FAIL] Package target $TARGET_UBUNTU_VERSION does not match build host ${PRETTY_NAME:-unknown}." >&2
+    exit 2
+fi
+TARGET_UBUNTU_SLUG="ubuntu$TARGET_UBUNTU_VERSION"
+TARGET_UBUNTU_LABEL="Ubuntu $TARGET_UBUNTU_VERSION LTS x86_64"
 COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
 SHORT_SHA="$(printf '%s' "$COMMIT" | cut -c1-12)"
 SOURCE_DATE_EPOCH="$(git -C "$ROOT" log -1 --format=%ct HEAD)"
-if [[ -z "$VERSION" || -z "$COMMIT" ]]; then
+if [[ -z "$PROJECT_VERSION" || -z "$COMMIT" ]]; then
     echo "[FAIL] Cannot determine the package version or source commit." >&2
     exit 2
 fi
@@ -33,8 +53,8 @@ OUTPUT="$(cd "$OUTPUT" && pwd)"
 TEMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TEMP_ROOT"' EXIT
 
-SOURCE_NAME="CppAppLab-source-v$VERSION-$SHORT_SHA"
-LEARNER_NAME="CppAppLab-learner-ubuntu24.04-x86_64-v$VERSION-$SHORT_SHA"
+SOURCE_NAME="CppAppLab-source-v$PROJECT_VERSION-$SHORT_SHA"
+LEARNER_NAME="CppAppLab-learner-$TARGET_UBUNTU_SLUG-x86_64-v$PROJECT_VERSION-$SHORT_SHA"
 SOURCE_ARCHIVE="$OUTPUT/$SOURCE_NAME.tar.gz"
 LEARNER_ARCHIVE="$OUTPUT/$LEARNER_NAME.tar.gz"
 
@@ -51,7 +71,10 @@ install -m 0644 "$ROOT/README.md" "$LEARNER_ROOT/README-REPOSITORY.md"
 install -m 0644 "$ROOT/docs/QUICKSTART.md" "$LEARNER_ROOT/docs/QUICKSTART.md"
 install -m 0644 "$ROOT/docs/ENVIRONMENT_WSL2_UBUNTU.md" "$LEARNER_ROOT/docs/ENVIRONMENT_WSL2_UBUNTU.md"
 install -m 0755 "$ROOT/scripts/check_environment.sh" "$LEARNER_ROOT/scripts/check_environment.sh"
-install -m 0644 "$ROOT/packaging/LEARNER-README.md" "$LEARNER_ROOT/README.md"
+mkdir -p "$LEARNER_ROOT/scripts/lib"
+install -m 0644 "$ROOT/scripts/lib/ubuntu-support.sh" "$LEARNER_ROOT/scripts/lib/ubuntu-support.sh"
+sed "s/@TARGET_UBUNTU_VERSION@/$TARGET_UBUNTU_VERSION/g" \
+    "$ROOT/packaging/LEARNER-README.md" > "$LEARNER_ROOT/README.md"
 
 cat > "$LEARNER_ROOT/cppapplab" <<'WRAPPER'
 #!/usr/bin/env bash
@@ -65,9 +88,9 @@ chmod 0755 "$LEARNER_ROOT/cppapplab"
 
 cat > "$LEARNER_ROOT/BUILD-INFO.txt" <<EOF
 Project: CppAppLab
-Version: $VERSION
+Version: $PROJECT_VERSION
 Source commit: $COMMIT
-Build target: Ubuntu 24.04 LTS x86_64
+Build target: $TARGET_UBUNTU_LABEL
 Build configuration: Release, BUILD_TESTING=OFF
 Package type: relocatable learner package
 Reference baselines: included for platform-owned multi-stage acceptance fixtures
@@ -89,9 +112,9 @@ cat > "$OUTPUT/package-manifest.json" <<EOF
 {
   "schema_version": 1,
   "project": "CppAppLab",
-  "version": "$VERSION",
+  "version": "$PROJECT_VERSION",
   "source_commit": "$COMMIT",
-  "target": "Ubuntu 24.04 LTS x86_64",
+  "target": "$TARGET_UBUNTU_LABEL",
   "packages": {
     "source": {
       "file": "$(basename "$SOURCE_ARCHIVE")",

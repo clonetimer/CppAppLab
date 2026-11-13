@@ -1,8 +1,8 @@
 # CppAppLab offline dependency bundle
 
-Target: an existing Ubuntu 24.04 LTS x86_64 (amd64) installation, including Ubuntu 24.04 under WSL2.
+Target: an existing Ubuntu @TARGET_UBUNTU_VERSION@ LTS x86_64 (amd64) installation, including Ubuntu @TARGET_UBUNTU_VERSION@ under WSL2.
 
-**This bundle does not install an Ubuntu operating system.** It supplies the C++ build and debugging tools for an Ubuntu 24.04 installation that already exists.
+**This bundle does not install an Ubuntu operating system.** It supplies the C++ build and debugging tools for an Ubuntu @TARGET_UBUNTU_VERSION@ installation that already exists.
 
 ## Included packages
 
@@ -13,6 +13,7 @@ Required learner/build toolchain:
 - Git
 - GDB
 - GoogleTest development headers and libraries
+- Python 3 for offline bundle verification and local APT dry-run
 
 Optional code-quality tools:
 
@@ -26,8 +27,8 @@ The package builder refreshes only the ephemeral CI runner's APT package indexes
 Extract the archive and run:
 
 ~~~bash
-tar -xzf CppAppLab-offline-deps-ubuntu24.04-amd64-*.tar.gz
-cd CppAppLab-offline-deps-ubuntu24.04-amd64-*/
+tar -xzf CppAppLab-offline-deps-ubuntu@TARGET_UBUNTU_VERSION@-amd64-*.tar.gz
+cd CppAppLab-offline-deps-ubuntu@TARGET_UBUNTU_VERSION@-amd64-*/
 ./install.sh --verify-only
 ./install.sh --dry-run
 ./install.sh --dry-run --with-quality-tools
@@ -35,7 +36,7 @@ cd CppAppLab-offline-deps-ubuntu24.04-amd64-*/
 
 The dry-run builds a temporary local APT repository from the bundled .deb files and simulates dependency resolution against an empty dpkg status database. It does not change installed packages or access the network.
 
-## Install on an existing Ubuntu 24.04 system
+## Install on an existing Ubuntu @TARGET_UBUNTU_VERSION@ system
 
 Required learner/build tools:
 
@@ -58,4 +59,4 @@ The installer verifies SHA-256 checksums and installs only from the bundled loca
 - SHA256SUMS: per-file integrity manifest
 - BUILD-INFO.txt: source commit and package resolution method
 
-The package closure is resolved against the Ubuntu 24.04 amd64 repository metadata available at build time. The target system must already be Ubuntu 24.04 amd64 and have a functioning apt/dpkg installation.
+The package closure is resolved against the Ubuntu @TARGET_UBUNTU_VERSION@ amd64 repository metadata available at build time. The target system must already be Ubuntu @TARGET_UBUNTU_VERSION@ amd64 and have a functioning apt/dpkg installation.

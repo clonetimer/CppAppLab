@@ -24,10 +24,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  ubuntu-2204-compatibility:
+    name: Ubuntu 22.04 source-build compatibility
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Install C++ development toolchain
+        run: |
+          sudo apt-get -o Acquire::Retries=3 update
+          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake git gdb libgtest-dev
+      - name: Verify Ubuntu support matrix and toolchain
+        run: |
+          bash tests/test_ubuntu_support.sh
+          bash scripts/check_environment.sh
+      - name: Run first-use setup, build and platform tests
+        run: bash scripts/quickstart.sh </dev/null
+      - name: Verify learner entry points
+        run: |
+          ./build/cppapplab --version
+          ./build/cppapplab guide
+          bash -n scripts/cppapplab-wsl-launcher.sh
+          bash -n scripts/quickstart.sh
+
   build-and-test:
-    name: GCC Build and GoogleTest
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation }}
-    runs-on: ubuntu-24.04
+    name: GCC Build and GoogleTest (${{ matrix.ubuntu }})
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.ubuntu }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -46,6 +74,7 @@ jobs:
         run: ctest --test-dir build --output-on-failure
       - name: CLI smoke test
         run: |
+          bash tests/test_ubuntu_support.sh
           ./build/cppapplab --version
           ./build/cppapplab --help
           timeout 5s ./build/cppapplab </dev/null
@@ -196,9 +225,13 @@ jobs:
         run: bash scripts/check_environment.sh
 
   sanitizers:
-    name: GCC ASan and UBSan
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation }}
-    runs-on: ubuntu-24.04
+    name: GCC ASan and UBSan (${{ matrix.ubuntu }})
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.ubuntu }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -419,9 +452,13 @@ jobs:
           ctest --test-dir build-w9-static-root-sanitize --output-on-failure --timeout 15
 
   code-quality:
-    name: Formatting and clang-tidy
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation }}
-    runs-on: ubuntu-24.04
+    name: Formatting and clang-tidy (${{ matrix.ubuntu }})
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.ubuntu }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -429,7 +466,8 @@ jobs:
         run: |
           bash scripts/ci_prepare_ubuntu_apt.sh
           sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake libgtest-dev clang-format clang-tidy
-      - name: Check formatting and show exact diff
+      - name: Check repository-wide formatting (manual full validation)
+        if: github.event_name == 'workflow_dispatch'
         run: |
           find include src tests course/fixtures labs -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
             | xargs -0 clang-format -i
@@ -635,10 +673,15 @@ jobs:
         run: |
           $bash = Join-Path $env:ProgramFiles 'Git\bin\bash.exe'
           $scripts = @(
+            'scripts/package_release.sh',
+            'scripts/smoke_learner_package.sh',
+            'scripts/accept_learner_package_wsl.sh',
             'scripts/package_offline_dependencies.sh',
             'scripts/install_offline_dependencies.sh',
             'scripts/verify_offline_dependency_bundle.sh',
-            'scripts/ci_prepare_ubuntu_snapshot.sh'
+            'scripts/ci_prepare_ubuntu_snapshot.sh',
+            'scripts/lib/ubuntu-support.sh',
+            'tests/test_ubuntu_support.sh'
           )
           foreach ($script in $scripts) {
             & $bash -n $script
@@ -646,8 +689,14 @@ jobs:
           }
 
   package-candidate:
-    name: Build source and learner packages
-    runs-on: ubuntu-24.04
+    name: Build source and learner packages (Ubuntu ${{ matrix.ubuntu }})
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: ['22.04', '24.04']
+    runs-on: ubuntu-${{ matrix.ubuntu }}
+    env:
+      CPPAPPLAB_PACKAGE_UBUNTU_VERSION: ${{ matrix.ubuntu }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -679,7 +728,7 @@ jobs:
       - name: Upload package candidates
         uses: actions/upload-artifact@v4
         with:
-          name: cppapplab-packages-${{ github.sha }}
+          name: cppapplab-packages-ubuntu-${{ matrix.ubuntu }}-${{ github.sha }}
           path: |
             dist/*.tar.gz
             dist/package-manifest.json
@@ -688,9 +737,13 @@ jobs:
           retention-days: 14
 
   offline-dependency-candidate:
-    name: Build and verify offline dependency bundle (no package installation)
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_offline_dependency_validation }}
-    runs-on: ubuntu-24.04
+    name: Build and verify offline dependencies (Ubuntu ${{ matrix.ubuntu }}, no installation)
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_offline_dependency_validation) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: ['22.04', '24.04']
+    runs-on: ubuntu-${{ matrix.ubuntu }}
     env:
       CPPAPPLAB_UBUNTU_SNAPSHOT_ID: 20261112T000000Z
     steps:
@@ -721,7 +774,7 @@ jobs:
       - name: Upload offline dependency candidate
         uses: actions/upload-artifact@v4
         with:
-          name: cppapplab-offline-deps-${{ github.sha }}
+          name: cppapplab-offline-deps-ubuntu-${{ matrix.ubuntu }}-${{ github.sha }}
           path: |
             dist/CppAppLab-offline-deps-*.tar.gz
             dist/CppAppLab-offline-deps-*.tar.gz.sha256

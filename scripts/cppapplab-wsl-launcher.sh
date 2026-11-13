@@ -48,10 +48,19 @@ if [[ ! -r /etc/os-release ]]; then
 fi
 # shellcheck disable=SC1091
 source /etc/os-release
-if [[ "${ID:-}" != "ubuntu" || "${VERSION_ID:-}" != "24.04" ]]; then
-    echo "[FAIL] CppAppLab requires Ubuntu 24.04; detected ${PRETTY_NAME:-unknown}." >&2
+if [[ "${ID:-}" != "ubuntu" ]]; then
+    echo "[FAIL] CppAppLab source builds require Ubuntu 22.04 LTS or 24.04 LTS; detected ${PRETTY_NAME:-unknown}." >&2
     exit 2
 fi
+case "${VERSION_ID:-}" in
+    22.04|24.04)
+        echo "[PASS] Supported Ubuntu ${VERSION_ID} detected."
+        ;;
+    *)
+        echo "[FAIL] CppAppLab source builds support Ubuntu 22.04 LTS and 24.04 LTS; detected ${PRETTY_NAME:-unknown}." >&2
+        exit 2
+        ;;
+esac
 
 if ! command -v git >/dev/null 2>&1; then
     echo "[INFO] Git is missing; installing it inside Ubuntu."

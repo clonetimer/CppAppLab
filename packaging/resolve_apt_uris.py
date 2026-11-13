@@ -99,7 +99,7 @@ def main() -> int:
 
     if not entries:
         raise SystemExit(
-            "No .deb download URIs were found. Check Ubuntu 24.04 APT package indexes; "
+            "No .deb download URIs were found. Check the selected Ubuntu APT package indexes; "
             "this parser does not run apt-get update or install."
         )
 

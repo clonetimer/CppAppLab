@@ -18,10 +18,19 @@ if [[ ! -r /etc/os-release ]]; then
 fi
 # shellcheck disable=SC1091
 source /etc/os-release
-if [[ "$ID" != "ubuntu" || "$VERSION_ID" != "24.04" ]]; then
-    echo "[FAIL] Package resolution targets Ubuntu 24.04; detected ${PRETTY_NAME:-unknown}." >&2
+if [[ "$ID" != "ubuntu" ]]; then
+    echo "[FAIL] Package resolution supports Ubuntu 22.04 and 24.04; detected ${PRETTY_NAME:-unknown}." >&2
     exit 2
 fi
+case "$VERSION_ID" in
+    22.04|24.04) ;;
+    *)
+        echo "[FAIL] Package resolution supports Ubuntu 22.04 and 24.04; detected ${PRETTY_NAME:-unknown}." >&2
+        exit 2
+        ;;
+esac
+TARGET_UBUNTU_SLUG="ubuntu$VERSION_ID"
+TARGET_UBUNTU_LABEL="Ubuntu $VERSION_ID LTS amd64"
 if [[ "$(dpkg --print-architecture)" != "amd64" ]]; then
     echo "[FAIL] Package resolution targets amd64." >&2
     exit 2
@@ -40,8 +49,9 @@ if [[ -n "${CPPAPPLAB_UBUNTU_SNAPSHOT_ID:-}" && "$CPPAPPLAB_UBUNTU_SNAPSHOT_ID" 
     echo "[FAIL] CI snapshot ID does not match the repository-pinned snapshot." >&2
     exit 2
 fi
-PACKAGE_NAME="CppAppLab-offline-deps-ubuntu24.04-amd64-v${VERSION}-${SHORT_SHA}"
+PACKAGE_NAME="CppAppLab-offline-deps-$TARGET_UBUNTU_SLUG-amd64-v${VERSION}-${SHORT_SHA}"
 export CPPAPPLAB_UBUNTU_SNAPSHOT_ID="$SNAPSHOT_ID"
+export CPPAPPLAB_TARGET_UBUNTU_LABEL="$TARGET_UBUNTU_LABEL"
 
 mkdir -p "$OUTPUT"
 OUTPUT="$(cd "$OUTPUT" && pwd)"
@@ -129,7 +139,8 @@ for entry in full:
         shutil.copy2(source / entry["filename"], target / entry["filename"])
 PY
 
-install -m 0644 "$ROOT/packaging/OFFLINE-DEPENDENCIES-README.md" "$BUNDLE_ROOT/README.md"
+sed "s/@TARGET_UBUNTU_VERSION@/$VERSION_ID/g" \
+    "$ROOT/packaging/OFFLINE-DEPENDENCIES-README.md" > "$BUNDLE_ROOT/README.md"
 install -m 0755 "$ROOT/scripts/install_offline_dependencies.sh" "$BUNDLE_ROOT/install.sh"
 install -m 0755 "$ROOT/scripts/build_local_apt_index.py" "$BUNDLE_ROOT/scripts/build_local_apt_index.py"
 cp "$ROOT/packaging/offline-dependencies.txt" "$BUNDLE_ROOT/REQUIRED-PACKAGES.txt"
@@ -140,13 +151,13 @@ cat > "$BUNDLE_ROOT/BUILD-INFO.txt" <<EOF
 Project: CppAppLab
 Version: $VERSION
 Source commit: $COMMIT
-Target: Ubuntu 24.04 LTS amd64
+Target: $TARGET_UBUNTU_LABEL
 Ubuntu archive snapshot: $SNAPSHOT_ID
 Required roots: ${base_roots[*]}
 Optional quality roots: ${quality_roots[*]}
 Dependency resolver: apt-get --print-uris with an empty dpkg status database
 Package installation performed during bundle creation: no
-Archive target: existing Ubuntu 24.04 installation; this bundle does not install an Ubuntu operating system
+Archive target: existing $TARGET_UBUNTU_LABEL installation; this bundle does not install an Ubuntu operating system
 EOF
 
 python3 - "$BUNDLE_ROOT" <<'PY'
@@ -187,7 +198,7 @@ for group in ("base", "quality"):
 identities = [(item["group"], item["name"], item["version"]) for item in packages]
 if len(identities) != len(set(identities)):
     raise SystemExit("Duplicate package identity found in the offline bundle.")
-for required in ("build-essential", "cmake", "git", "gdb", "libgtest-dev"):
+for required in ("build-essential", "cmake", "git", "gdb", "libgtest-dev", "python3"):
     if not any(item["name"] == required and item["group"] == "base" for item in packages):
         raise SystemExit(f"Required package {required} is missing.")
 for optional in ("clang-format", "clang-tidy"):
@@ -197,7 +208,7 @@ for optional in ("clang-format", "clang-tidy"):
 manifest = {
     "schema_version": 1,
     "project": "CppAppLab",
-    "target": "Ubuntu 24.04 LTS amd64",
+    "target": os.environ["CPPAPPLAB_TARGET_UBUNTU_LABEL"],
     "ubuntu_archive_snapshot": os.environ.get("CPPAPPLAB_UBUNTU_SNAPSHOT_ID", ""),
     "install_policy": "local deb files only; apt downloads disabled",
     "package_installation_performed_during_build": False,

@@ -8,7 +8,7 @@ project(
 )
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    message(FATAL_ERROR "CppAppLab v1 learning engine requires Linux; use WSL2 + Ubuntu 24.04.")
+    message(FATAL_ERROR "CppAppLab learning engine requires Linux; use WSL2 + Ubuntu 22.04 LTS or 24.04 LTS.")
 endif()
 
 set(CMAKE_CXX_STANDARD 17)

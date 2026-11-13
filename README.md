@@ -15,7 +15,7 @@ CppAppLab 当前发布了 **23 个可操作的 W1–W9 学习任务**。不必�
 ## First-version baseline
 
 - **Host:** Windows 11 with WSL2
-- **Linux:** Ubuntu 24.04 LTS
+- **Linux:** Ubuntu 22.04 LTS or Ubuntu 24.04 LTS
 - **Language:** C++17
 - **Compiler:** GCC / g++
 - **Build:** CMake
@@ -132,17 +132,17 @@ W1–W7 and W8-D1–D6-D3 are merged into `main`. The HTTP reference server incl
 
 ## Delivery status
 
-P7-A source and learner package candidates are merged and verified in [CI run #1183](https://github.com/clonetimer/CppAppLab/actions/runs/43132738098). P7-B is building the offline Ubuntu 24.04 dependency bundle with read-only APT URI resolution and local-only installation; routine CI does not install Ubuntu packages. See [release packaging](docs/RELEASE_PACKAGING.md) and [project status](docs/STATUS.md).
+P7-A source and learner package candidates are merged. The Ubuntu 22.04 compatibility follow-up (PR #38) builds native learner packages for both Ubuntu 22.04 and 24.04; it also extends offline dependency bundles to matching Jammy/Noble targets with read-only APT URI resolution and local-only installation. See [release packaging](docs/RELEASE_PACKAGING.md) and [project status](docs/STATUS.md).
 
 ## Quick start
 
-After cloning the repository inside Ubuntu 24.04 (WSL2 is the target environment), run one command from the repository root:
+After cloning the repository inside Ubuntu 22.04 or Ubuntu 24.04 (WSL2 is the target environment), run one command from the repository root:
 
 ```bash
 bash scripts/quickstart.sh
 ```
 
-The script checks the environment, offers to install missing Ubuntu build dependencies, configures and builds the project, runs the platform tests, and opens the interactive learning home. Windows users can also double-click `Start-CppAppLab.cmd` from a Windows-accessible checkout (including a checkout opened through the WSL share); it detects WSL2 Ubuntu 24.04, clones the private checkout into WSL on first launch when needed, and opens the learner home. It does not overwrite existing learner workspaces. After setup, run `./build/cppapplab` for the interactive home or `./build/cppapplab learn` to continue directly. The task picker accepts a number, task ID or title keyword. Failed checks now show a short diagnostic excerpt and the next hint, log and retry commands. For a manual setup path, see [Environment setup](docs/ENVIRONMENT_WSL2_UBUNTU.md).
+The script checks the environment, offers to install missing Ubuntu build dependencies, configures and builds the project, runs the platform tests, and opens the interactive learning home. Windows users can also double-click `Start-CppAppLab.cmd` from a Windows-accessible checkout (including a checkout opened through the WSL share); it detects supported WSL2 Ubuntu 22.04/24.04 distributions, clones the private checkout into WSL on first launch when needed, and opens the learner home. It does not overwrite existing learner workspaces. After setup, run `./build/cppapplab` for the interactive home or `./build/cppapplab learn` to continue directly. The task picker accepts a number, task ID or title keyword. Failed checks now show a short diagnostic excerpt and the next hint, log and retry commands. For a manual setup path, see [Environment setup](docs/ENVIRONMENT_WSL2_UBUNTU.md).
 
 After satisfying the static-files prerequisite, start `w8.router` like any other learning task. For a reference-only demonstration:
 

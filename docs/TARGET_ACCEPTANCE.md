@@ -1,6 +1,6 @@
 # P7-C — Windows 11 + WSL2 target acceptance
 
-This acceptance procedure is for a Windows 11 machine that already has WSL2 and an Ubuntu 24.04 distribution. It does not install Ubuntu, enable WSL, or install Linux packages.
+This acceptance procedure is for a Windows 11 machine that already has WSL2 and either Ubuntu 22.04 LTS or Ubuntu 24.04 LTS. It does not install Ubuntu or enable WSL. The optional offline dependency step installs only the selected C++ build/debug toolchain from the matching local package bundle.
 
 ## 1. Confirm the existing WSL distribution
 
@@ -10,21 +10,21 @@ In Windows PowerShell:
 wsl --list --verbose
 ~~~
 
-The target distribution must be Ubuntu 24.04 and report WSL version 2. If it is absent, stop here; the acceptance script does not create or install a distribution.
+The source-build target may be Ubuntu 22.04 or Ubuntu 24.04 and must report WSL version 2. If neither is present, stop here; the acceptance script does not create or install a distribution. Learner and offline dependency packages are built separately for each release.
 
-## 2. Download the P7 learner package
+## 2. Select the delivery type
 
-Download the source/learner package artifact from the P7 CI run:
+The prebuilt learner package and offline dependency bundle are built separately for Ubuntu 22.04 LTS x86_64 and Ubuntu 24.04 LTS x86_64. Select the archive whose filename matches the installed WSL distribution. Download the learner and offline dependency artifacts from the matching Ubuntu 22.04 or Ubuntu 24.04 jobs in the latest successful CppAppLab CI run. The two package families are separate artifacts; retain their filenames and SHA-256 sidecars.
 
-https://github.com/clonetimer/CppAppLab/actions/runs/43149538317
-
-Extract the learner archive on Windows or copy it into the existing WSL distribution. Keep the exact archive filename and its SHA-256 sidecar/manifest.
+For either Ubuntu release, extract the matching learner archive on Windows or copy it into the existing WSL distribution. Keep the exact archive filename and its SHA-256 sidecar/manifest. The package name includes `ubuntu22.04` or `ubuntu24.04`; do not use a package built for the other release.
 
 ## 3. Run the acceptance script inside the existing Ubuntu distribution
 
-Copy the repository's scripts/accept_learner_package_wsl.sh into the existing WSL checkout, then run:
+For Ubuntu 22.04 or Ubuntu 24.04, copy the repository's `scripts/accept_learner_package_wsl.sh` into the existing WSL checkout and run the matching prebuilt-package check:
 
 ~~~bash
+bash scripts/accept_learner_package_wsl.sh /path/to/CppAppLab-learner-ubuntu22.04-x86_64-*.tar.gz
+# Or, on Ubuntu 24.04:
 bash scripts/accept_learner_package_wsl.sh /path/to/CppAppLab-learner-ubuntu24.04-x86_64-*.tar.gz
 ~~~
 
@@ -39,7 +39,24 @@ The script uses a temporary HOME and state directory. It:
 
 The script does not call apt, sudo, wsl --install, or any package installer. It requires the existing Ubuntu distribution to already have the compiler needed by the W1 acceptance fixture.
 
-## 4. Verify the Windows double-click launcher
+## 4. Verify or install the matching offline dependency bundle
+
+If using the offline dependency archive, select the one matching the current distribution:
+
+- Ubuntu 22.04: `CppAppLab-offline-deps-ubuntu22.04-amd64-*.tar.gz`
+- Ubuntu 24.04: `CppAppLab-offline-deps-ubuntu24.04-amd64-*.tar.gz`
+
+Extract the archive and verify it without changing installed packages:
+
+~~~bash
+tar -xzf CppAppLab-offline-deps-ubuntu22.04-amd64-*.tar.gz
+cd CppAppLab-offline-deps-ubuntu22.04-amd64-*/
+./install.sh --verify-only
+~~~
+
+Use the corresponding `ubuntu24.04` filename on Ubuntu 24.04. To install the bundled tools, run `sudo bash install.sh`; add `--with-quality-tools` to include clang-format and clang-tidy. The installer rejects a bundle built for a different Ubuntu release and disables network downloads during installation.
+
+## 5. Verify the Windows double-click launcher
 
 From the existing Windows checkout, double-click Start-CppAppLab.cmd or run it from PowerShell. The launcher must select the existing Ubuntu distribution and open the CppAppLab learner home. To exercise setup mode after a deliberate source update, run:
 

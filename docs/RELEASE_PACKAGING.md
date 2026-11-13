@@ -9,11 +9,11 @@ P7 produces two separate archives from one exact Git commit.
 - Generated from git archive HEAD.
 - Contains the complete tracked source tree, engineering tests, course content, CI definitions and development documentation.
 - Does not contain .git, build directories, generated test output or local learner state.
-- Can be rebuilt with the repository's documented Ubuntu 24.04 toolchain.
+- Can be rebuilt with the repository's documented Ubuntu 22.04 or Ubuntu 24.04 toolchain.
 
 ### Learner package
 
-- Contains a prebuilt Release CLI for Ubuntu 24.04 LTS x86_64.
+- Contains a prebuilt Release CLI built natively for either Ubuntu 22.04 LTS or Ubuntu 24.04 LTS x86_64 (one archive per target).
 - Contains the course catalog, lessons, progressive hints, platform-owned acceptance fixtures and learner workspace templates.
 - Contains the environment checker and first-use instructions.
 - Uses a small wrapper that sets CPPAPPLAB_DATA_DIR to the extracted package directory. The package can therefore be moved after extraction without rebuilding the platform CLI.
@@ -23,8 +23,8 @@ The labs tree includes reference baselines used by multi-stage fixed acceptance 
 
 ## Supported target
 
-- Ubuntu 24.04 LTS x86_64
-- Windows 11 through WSL2 running Ubuntu 24.04
+- Ubuntu 22.04 LTS or Ubuntu 24.04 LTS x86_64
+- Windows 11 through WSL2 running Ubuntu 22.04 or Ubuntu 24.04
 - GCC/C++17 and CMake for learner acceptance builds
 - GoogleTest development package for CMake/GoogleTest task fixtures
 - GDB for the environment and debugging lessons
@@ -43,7 +43,8 @@ cmake -S . -B build-release \
 cmake --build build-release --parallel
 bash scripts/package_release.sh build-release/cppapplab dist
 (cd dist && sha256sum --check SHA256SUMS)
-bash scripts/smoke_learner_package.sh dist/CppAppLab-learner-ubuntu24.04-x86_64-v0.1.0-<commit>.tar.gz
+bash scripts/smoke_learner_package.sh dist/CppAppLab-learner-ubuntu22.04-x86_64-v0.1.0-<commit>.tar.gz  # Ubuntu 22.04
+bash scripts/smoke_learner_package.sh dist/CppAppLab-learner-ubuntu24.04-x86_64-v0.1.0-<commit>.tar.gz  # Ubuntu 24.04
 ~~~
 
 The package manifest records the exact source commit, target platform, package names and SHA-256 checksums. Archive metadata is normalized using the source commit timestamp and gzip's no-name mode.
@@ -56,9 +57,9 @@ CI uploads the source archive, learner archive, package manifest and SHA256SUMS 
 
 ## Offline dependencies
 
-P7-B builds a separate Ubuntu 24.04 amd64 dependency archive. Required learner/build packages are separated from optional quality tools:
+P7-B builds a separate Ubuntu 22.04 amd64 and Ubuntu 24.04 amd64 dependency archive; each bundle is matched to its target release. Required learner/build packages are separated from optional quality tools:
 
-- Required: build-essential, CMake, Git, GDB and libgtest-dev.
+- Required: build-essential, CMake, Git, GDB, libgtest-dev and Python 3 (offline verification/local APT dry-run).
 - Optional: clang-format and clang-tidy.
 
 The CI resolver refreshes APT package indexes from a repository-pinned Ubuntu snapshot using apt-get update. This updates only the ephemeral runner's package indexes; it does not install packages or modify the dpkg database. The exact snapshot ID is stored in the repository and recorded in BUILD-INFO.txt and packages.lock.json.
@@ -67,4 +68,4 @@ The resolver then uses read-only apt-get --print-uris mode to calculate the comp
 
 The bundled installer verifies all checksums and installs from local .deb files with --no-download; it never runs apt-get update. --verify-only checks integrity and package metadata without APT operations. --dry-run builds a temporary local APT repository and runs APT simulation against an empty dpkg status database. It makes no system changes and has no network source configured.
 
-The archive targets an existing Ubuntu 24.04 amd64 installation, including WSL2 Ubuntu 24.04. It does not install an Ubuntu operating system. Clean-base package installation remains a separate target-machine acceptance step and is not claimed by the no-install CI checks.
+The archive targets an existing Ubuntu 22.04 or Ubuntu 24.04 amd64 installation, including WSL2 Ubuntu 22.04 or Ubuntu 24.04. It does not install an Ubuntu operating system. Clean-base package installation remains a separate target-machine acceptance step and is not claimed by the no-install CI checks.

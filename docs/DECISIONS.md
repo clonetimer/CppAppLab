@@ -31,3 +31,11 @@
 **Decision:** evidence records identify the exact source state and build configuration checked.
 
 **Reason:** old successful output must not be presented as a pass after the learner changes the implementation.
+
+## ADR-0006 — Support Ubuntu 22.04 and 24.04 for source builds
+
+**Decision:** CppAppLab source builds and course acceptance support Windows 11 + WSL2 with Ubuntu 22.04 LTS or Ubuntu 24.04 LTS.
+
+**Reason:** the course baseline is C++17, the source requires CMake 3.18 or newer, and both supported LTS releases provide a compatible GCC/CMake toolchain and the Linux/POSIX interfaces used by W5–W9. CI verifies the Ubuntu 22.04 source-build path and retains the complete opt-in validation matrix for both releases.
+
+**Consequence:** the Windows launcher, quick-start script, environment checker, and source-build documentation accept both releases. The prebuilt learner package and offline dependency bundle remain separately versioned Ubuntu 24.04 artifacts until a matching Ubuntu 22.04 package is built and qualified.

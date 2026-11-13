@@ -4,14 +4,9 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-if [[ ! -r /etc/os-release ]]; then
-    echo "[FAIL] Cannot identify the Linux distribution." >&2
-    exit 1
-fi
-# shellcheck disable=SC1091
-source /etc/os-release
-if [[ "${ID:-}" != "ubuntu" || "${VERSION_ID:-}" != "24.04" ]]; then
-    echo "[FAIL] CppAppLab v1 targets Ubuntu 24.04; detected ${PRETTY_NAME:-unknown}." >&2
+# shellcheck source=scripts/lib/ubuntu-support.sh
+source "$ROOT/scripts/lib/ubuntu-support.sh"
+if ! cppapplab_check_ubuntu; then
     echo "See docs/ENVIRONMENT_WSL2_UBUNTU.md for the supported environment." >&2
     exit 1
 fi

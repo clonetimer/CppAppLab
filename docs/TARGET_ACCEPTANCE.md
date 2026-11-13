@@ -1,6 +1,6 @@
 # P7-C — Windows 11 + WSL2 target acceptance
 
-This acceptance procedure is for a Windows 11 machine that already has WSL2 and an Ubuntu 24.04 distribution. It does not install Ubuntu, enable WSL, or install Linux packages.
+This acceptance procedure is for a Windows 11 machine that already has WSL2 and either Ubuntu 22.04 LTS or Ubuntu 24.04 LTS. It does not install Ubuntu, enable WSL, or install Linux packages.
 
 ## 1. Confirm the existing WSL distribution
 
@@ -10,7 +10,7 @@ In Windows PowerShell:
 wsl --list --verbose
 ~~~
 
-The target distribution must be Ubuntu 24.04 and report WSL version 2. If it is absent, stop here; the acceptance script does not create or install a distribution.
+The source-build target may be Ubuntu 22.04 or Ubuntu 24.04 and must report WSL version 2. If neither is present, stop here; the acceptance script does not create or install a distribution. The prebuilt learner package and offline dependency bundle remain Ubuntu 24.04-specific artifacts.
 
 ## 2. Download the P7 learner package
 
@@ -25,7 +25,7 @@ Extract the learner archive on Windows or copy it into the existing WSL distribu
 Copy the repository's scripts/accept_learner_package_wsl.sh into the existing WSL checkout, then run:
 
 ~~~bash
-bash scripts/accept_learner_package_wsl.sh /path/to/CppAppLab-learner-ubuntu24.04-x86_64-*.tar.gz
+On Ubuntu 24.04, run the prebuilt-package check with `bash scripts/accept_learner_package_wsl.sh /path/to/CppAppLab-learner-ubuntu24.04-x86_64-*.tar.gz`. On Ubuntu 22.04, validate the source checkout with `Start-CppAppLab.cmd -Setup`; this builds and tests the source using the local Ubuntu 22.04 toolchain.
 ~~~
 
 The script uses a temporary HOME and state directory. It:

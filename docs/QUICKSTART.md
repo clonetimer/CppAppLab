@@ -48,7 +48,7 @@ You can also run the launcher from PowerShell:
 .\Start-CppAppLab.cmd
 ~~~
 
-The launcher detects installed Ubuntu distributions, verifies WSL2 and supports Ubuntu 22.04 and 24.04 source checkouts. If ~/work/CppAppLab does not exist inside WSL, it clones the private repository there and runs the first-time setup. If more than one Ubuntu distribution is installed, it asks you to choose one.
+The launcher detects installed Ubuntu distributions, verifies WSL2 and supports Ubuntu 22.04 and 24.04 source checkouts. If ~/work/CppAppLab does not exist inside WSL, it clones the private repository there and runs the first-time setup. If more than one Ubuntu distribution is installed, it asks you to choose one. The bootstrap is transferred through a temporary file rather than stdin, so the first-use package confirmation and sudo password prompt remain connected to the WSL terminal.
 
 This Windows launcher uses the source checkout and builds it inside the selected distribution, so it supports both Ubuntu 22.04 and 24.04. The published prebuilt learner package and offline dependency bundle are built separately for the selected Ubuntu 22.04 or Ubuntu 24.04 target. Use the archive whose filename matches your WSL distribution.
 
@@ -115,7 +115,7 @@ Your source files, progress and check history are kept between sessions. A chang
 
 ## Troubleshooting
 
-- Missing packages: rerun bash scripts/quickstart.sh and approve the package installation prompt, or install the listed packages manually.
+- Missing packages: rerun bash scripts/quickstart.sh and approve the package installation prompt in the terminal. The prompt reads from the controlling terminal even if stdin was redirected; if no terminal is attached, setup stops without installing anything.
 - GoogleTest not found: install Ubuntu's libgtest-dev package; the quick-start script configures CMake to use the system package.
 - A task is locked: run ./build/cppapplab progress, then complete the named prerequisite and obtain a current PASS.
 - A workspace already exists: the guided command resumes a valid workspace. If the default path belongs to another task or is not a valid workspace, it chooses a numbered sibling path instead of overwriting it.

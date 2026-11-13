@@ -84,12 +84,13 @@ foreach ($distro in @("Ubuntu-22.04", "Ubuntu-24.04")) {
     }
 
     $command = $capturedArgs[5]
-    $match = [regex]::Match(
-        $command,
-        "^printf '%s' '([^']+)' \| base64 --decode \| bash -s -- '([^']+)' '1'$"
-    )
+    $bootstrapPattern = '^bootstrap_file="\$\(mktemp\)" && trap ''rm -f "\$bootstrap_file"'' EXIT && printf ''%s'' ''([^'']+)'' \| base64 --decode > "\$bootstrap_file" && bash "\$bootstrap_file" ''([^'']+)'' ''1''$'
+    $match = [regex]::Match($command, $bootstrapPattern)
     if (-not $match.Success) {
-        throw "The WSL bootstrap command for $distro was not passed as one safely quoted command argument."
+        throw "The WSL bootstrap must be written to a temporary file so the user's stdin remains available."
+    }
+    if ($command -match '\|\s*bash\s+-s') {
+        throw "The WSL bootstrap must not consume stdin through a bash -s pipeline."
     }
 
     $bootstrap = [System.Text.Encoding]::UTF8.GetString(

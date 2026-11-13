@@ -38,6 +38,7 @@ jobs:
       - name: Verify Ubuntu support matrix and toolchain
         run: |
           bash tests/test_ubuntu_support.sh
+          python3 tests/test_interactive_prompt.py
           bash scripts/check_environment.sh
       - name: Run first-use setup, build and platform tests
         run: bash scripts/quickstart.sh </dev/null
@@ -46,6 +47,7 @@ jobs:
           ./build/cppapplab --version
           ./build/cppapplab guide
           bash -n scripts/cppapplab-wsl-launcher.sh
+          bash -n scripts/lib/terminal.sh
           bash -n scripts/quickstart.sh
 
   build-and-test:
@@ -75,10 +77,13 @@ jobs:
       - name: CLI smoke test
         run: |
           bash tests/test_ubuntu_support.sh
+          python3 tests/test_interactive_prompt.py
           ./build/cppapplab --version
           ./build/cppapplab --help
           timeout 5s ./build/cppapplab </dev/null
           bash -n scripts/cppapplab-wsl-launcher.sh
+          bash -n scripts/lib/terminal.sh
+          bash -n scripts/quickstart.sh
           launcher_home="/tmp/cppapplab-launcher-home"
           test "$(HOME="$launcher_home" bash scripts/cppapplab-wsl-launcher.sh --test-normalize-path '~/work/CppAppLab')" = "$launcher_home/work/CppAppLab"
           test "$(HOME="$launcher_home" bash scripts/cppapplab-wsl-launcher.sh --test-normalize-path '~')" = "$launcher_home"
@@ -681,6 +686,7 @@ jobs:
             'scripts/verify_offline_dependency_bundle.sh',
             'scripts/ci_prepare_ubuntu_snapshot.sh',
             'scripts/lib/ubuntu-support.sh',
+            'scripts/lib/terminal.sh',
             'tests/test_ubuntu_support.sh'
           )
           foreach ($script in $scripts) {

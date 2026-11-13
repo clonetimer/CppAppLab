@@ -1,6 +1,6 @@
 # P7-C — Windows 11 + WSL2 target acceptance
 
-This acceptance procedure is for a Windows 11 machine that already has WSL2 and either Ubuntu 22.04 LTS or Ubuntu 24.04 LTS. It does not install Ubuntu, enable WSL, or install Linux packages.
+This acceptance procedure is for a Windows 11 machine that already has WSL2 and either Ubuntu 22.04 LTS or Ubuntu 24.04 LTS. It does not install Ubuntu or enable WSL. The optional offline dependency step installs only the selected C++ build/debug toolchain from the matching local package bundle.
 
 ## 1. Confirm the existing WSL distribution
 

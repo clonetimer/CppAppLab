@@ -75,7 +75,7 @@ The platform should use bounded execution time and output limits when the accept
 ## 6. First-version technical baseline
 
 - C++17
-- GCC on Ubuntu 24.04 LTS under WSL2
+- GCC on Ubuntu 22.04 LTS or Ubuntu 24.04 LTS under WSL2
 - CMake 3.18 or newer
 - GDB
 - GoogleTest / CTest

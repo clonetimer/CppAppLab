@@ -237,7 +237,7 @@ async function main() {
       const response = await fetch("/api/v1/workspaces/w1.hello-world/files/src/main.cpp");
       if (!response.ok) return false;
       const data = await response.json();
-      return data.content.includes("Hello, CppAppLab!");
+      return data.content.includes('std::cout << "Hello, CppAppLab!');
     }, null, { timeout: 10000 });
     const helloSaved = await readWorkspaceFile(page, service.baseUrl, "w1.hello-world", "src/main.cpp");
     assert.equal(helloSaved.content, HELLO_SOURCE, "Monaco autosave must persist the current source");
@@ -388,7 +388,7 @@ async function main() {
       const response = await fetch("/api/v1/workspaces/w1.hello-world/files/src/main.cpp");
       if (!response.ok) return false;
       const data = await response.json();
-      return data.content.includes("Hello, CppAppLab!");
+      return data.content.includes('std::cout << "Hello, CppAppLab!');
     }, null, { timeout: 10000 });
     await fallbackPage.locator("#build-button").click();
     await fallbackPage.waitForFunction(() => document.querySelector("#check-result")?.textContent === "构建成功", null, { timeout: 45000 });

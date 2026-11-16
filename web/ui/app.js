@@ -334,6 +334,10 @@
                 padding: { top: 12, bottom: 12 }
               });
               state.editorInstance.onDidChangeModelContent(handleEditorInput);
+              state.editorInstance.addCommand(
+                state.monaco.KeyMod.CtrlCmd | state.monaco.KeyCode.KeyS,
+                () => saveAllDirtyFiles()
+              );
               ui.monacoContainer.hidden = false;
               ui.editor.hidden = true;
               ui.editorEngineStatus.textContent = "Monaco " + MONACO_VERSION;
@@ -616,7 +620,8 @@
       ui.taskBreadcrumb.textContent = task.id;
       ui.taskTitle.textContent = task.title;
       ui.taskSubtitle.textContent = "W" + task.week + " · " + task.source_files.length + " 个源文件 · " +
-        (task.acceptance_kind === "exact_stdout" ? "直接运行程序" : "CMake / GoogleTest 工程");
+        (task.acceptance_kind === "exact_stdout" ? "单文件 C++ 程序 · 构建 / 运行 / 验收" : "CMake / GoogleTest 工程 · 构建 / 测试 / 验收");
+      ui.runButton.textContent = task.acceptance_kind === "exact_stdout" ? "运行程序" : "运行测试";
       ui.taskState.textContent = stateLabel(task.state);
       ui.taskState.dataset.state = task.state;
       ui.lesson.innerHTML = renderMarkdown(task.lesson_markdown);

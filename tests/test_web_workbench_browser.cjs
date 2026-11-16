@@ -368,6 +368,7 @@ async function main() {
     );
     await fallbackPage.waitForFunction(() =>
       document.querySelector("#editor-engine-status")?.textContent === "基础编辑器（离线）",
+      null,
       { timeout: 15000 }
     );
     assert.equal(await fallbackPage.locator("#source-editor").isVisible(), true,

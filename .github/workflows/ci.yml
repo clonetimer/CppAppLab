@@ -71,6 +71,7 @@ jobs:
         run: |
           python3 -m py_compile web/server/cppapplab_web.py
           python3 -m unittest discover -s web/server/tests -v
+          node --check web/ui/app.js
           bash -n scripts/start-web-workbench.sh
       - name: Install build dependencies
         run: |

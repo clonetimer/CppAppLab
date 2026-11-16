@@ -431,6 +431,7 @@
   function updateDirtyState() {
     const dirty = state.dirtyFiles.size > 0;
     ui.saveState.textContent = dirty ? "有未保存的修改" : "已保存到本地工作区";
+    ui.saveButton.disabled = !dirty || state.busy || !state.workspaceReady;
     renderFileTabs();
   }
 

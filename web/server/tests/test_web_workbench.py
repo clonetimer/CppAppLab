@@ -179,6 +179,8 @@ class WebWorkbenchTests(unittest.TestCase):
             origin=self.base_url,
         )
         self.assertTrue(saved["saved"])
+        reloaded = self.request("/api/v1/workspaces/w1.hello-world/files/src/main.cpp")
+        self.assertEqual(reloaded["content"], "#include <iostream>\\nint main() { return 0; }\\n")
         check = self.request(
             "/api/v1/workspaces/w1.hello-world/check",
             method="POST",
@@ -222,6 +224,26 @@ class WebWorkbenchTests(unittest.TestCase):
                 origin=self.base_url,
             ),
             403,
+        )
+
+    def test_symlink_source_file_is_rejected(self) -> None:
+        self.request(
+            "/api/v1/tasks/w1.hello-world/start",
+            method="POST",
+            body={},
+            token=self.token,
+            origin=self.base_url,
+        )
+        workspace = self.workspace_root / "w1.hello-world"
+        source = workspace / "src" / "main.cpp"
+        source.unlink()
+        source.symlink_to("/etc/passwd")
+        self.assertEqual(
+            self.request_error(
+                "/api/v1/workspaces/w1.hello-world/files/src/main.cpp",
+                "GET",
+            ),
+            400,
         )
 
     def test_unknown_command_route_is_not_exposed(self) -> None:

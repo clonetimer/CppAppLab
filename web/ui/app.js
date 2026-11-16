@@ -1,6 +1,8 @@
 (() => {
   "use strict";
 
+  const MONACO_VERSION = "0.52.2";
+  const MONACO_VS = "https://cdn.jsdelivr.net/npm/monaco-editor@" + MONACO_VERSION + "/min/vs";
   const state = {
     csrfToken: "",
     tasks: [],
@@ -9,8 +11,14 @@
     files: [],
     activeFile: "",
     workspaceReady: false,
-    dirty: false,
-    busy: false
+    dirtyFiles: new Set(),
+    fileContents: new Map(),
+    models: new Map(),
+    monaco: null,
+    editorInstance: null,
+    editorReady: null,
+    busy: false,
+    autosaveTimer: null
   };
 
   const $ = (id) => document.getElementById(id);
@@ -33,11 +41,17 @@
     fileList: $("file-list"),
     activeFile: $("active-file"),
     editor: $("source-editor"),
+    monacoContainer: $("monaco-editor"),
+    editorEngineStatus: $("editor-engine-status"),
+    buildButton: $("build-button"),
+    runButton: $("run-button"),
     saveButton: $("save-button"),
     checkButton: $("check-button"),
     saveState: $("save-state"),
     workspaceState: $("workspace-state"),
+    consoleTitle: $("console-title"),
     console: $("console-output"),
+    diagnostics: $("diagnostics-list"),
     checkResult: $("check-result"),
     toast: $("toast")
   };
@@ -256,33 +270,319 @@
     state.tasks = data.tasks || [];
     updateProgressSummary();
     renderCourseList();
-    const next = state.tasks.find((task) => task.state === "IN PROGRESS" || task.state === "NEEDS WORK" || task.state === "STALE")
+    const next = state.tasks.find((task) => ["IN PROGRESS", "NEEDS WORK", "STALE"].includes(task.state))
       || state.tasks.find((task) => task.state === "AVAILABLE");
     ui.continueButton.disabled = !next;
     ui.continueButton.textContent = next ? "继续学习  →" : "课程已完成";
   }
 
-  async function selectTask(taskId) {
-    if (state.dirty && !window.confirm("当前文件有未保存的修改，仍要切换课程吗？")) return;
-    state.selectedTaskId = taskId;
-    state.task = null;
+  function disposeEditorModels() {
+    if (state.editorInstance) {
+      state.editorInstance.setModel(null);
+    }
+    for (const model of state.models.values()) model.dispose();
+    state.models.clear();
+    state.fileContents.clear();
+    state.dirtyFiles.clear();
+    state.activeFile = "";
+  }
+
+  function fallbackToTextarea() {
+    ui.monacoContainer.hidden = true;
+    ui.editor.hidden = false;
+    ui.editorEngineStatus.textContent = "基础编辑器（离线）";
+    state.monaco = null;
+    state.editorInstance = null;
+  }
+
+  async function ensureEditorReady() {
+    if (state.editorReady) return state.editorReady;
+    state.editorReady = new Promise((resolve) => {
+      const loader = document.createElement("script");
+      loader.src = MONACO_VS + "/loader.js";
+      loader.crossOrigin = "anonymous";
+      loader.onload = () => {
+        try {
+          window.MonacoEnvironment = {
+            getWorkerUrl: () => {
+              const workerCode =
+                "self.MonacoEnvironment = { baseUrl: '" + MONACO_VS + "' }; " +
+                "importScripts('" + MONACO_VS + "/base/worker/workerMain.js');";
+              return "data:text/javascript;charset=utf-8," + encodeURIComponent(workerCode);
+            }
+          };
+          window.require.config({ paths: { vs: MONACO_VS } });
+          window.require(["vs/editor/editor.main"], () => {
+            try {
+              state.monaco = window.monaco;
+              state.editorInstance = state.monaco.editor.create(ui.monacoContainer, {
+                value: "",
+                language: "cpp",
+                theme: "vs-dark",
+                automaticLayout: true,
+                minimap: { enabled: false },
+                fontSize: 13,
+                tabSize: 4,
+                insertSpaces: true,
+                scrollBeyondLastLine: false,
+                renderLineHighlight: "all",
+                smoothScrolling: true,
+                glyphMargin: true,
+                wordWrap: "off",
+                padding: { top: 12, bottom: 12 }
+              });
+              state.editorInstance.onDidChangeModelContent(handleEditorInput);
+              ui.monacoContainer.hidden = false;
+              ui.editor.hidden = true;
+              ui.editorEngineStatus.textContent = "Monaco " + MONACO_VERSION;
+              resolve(true);
+            } catch (error) {
+              console.warn("Monaco editor initialization failed:", error);
+              fallbackToTextarea();
+              resolve(false);
+            }
+          }, () => {
+            fallbackToTextarea();
+            resolve(false);
+          });
+        } catch (error) {
+          console.warn("Monaco loader setup failed:", error);
+          fallbackToTextarea();
+          resolve(false);
+        }
+      };
+      loader.onerror = () => {
+        fallbackToTextarea();
+        resolve(false);
+      };
+      document.head.append(loader);
+    });
+    return state.editorReady;
+  }
+
+  function languageForPath(path) {
+    const extension = path.split(".").pop().toLowerCase();
+    if (["cpp", "cc", "cxx", "hpp", "hh", "hxx", "h"].includes(extension)) return "cpp";
+    if (extension === "c") return "c";
+    if (extension === "json") return "json";
+    if (extension === "md") return "markdown";
+    return "plaintext";
+  }
+
+  function modelUri(path) {
+    const safePath = path.split("/").map((part) => encodeURIComponent(part)).join("/");
+    return state.monaco.Uri.parse("inmemory://cppapplab/" + encodeURIComponent(state.task.id) + "/" + safePath);
+  }
+
+  function editorValueFor(path) {
+    if (state.editorInstance && path === state.activeFile && state.editorInstance.getModel()) {
+      return state.editorInstance.getValue();
+    }
+    const model = state.models.get(path);
+    if (model) return model.getValue();
+    return state.fileContents.get(path) || "";
+  }
+
+  function setEditorValue(path, value) {
+    state.fileContents.set(path, value);
+    if (state.editorInstance && state.monaco) {
+      let model = state.models.get(path);
+      if (!model) {
+        model = state.monaco.editor.createModel(value, languageForPath(path), modelUri(path));
+        state.models.set(path, model);
+      } else if (!state.dirtyFiles.has(path)) {
+        model.setValue(value);
+      }
+      state.editorInstance.setModel(model);
+      state.editorInstance.updateOptions({ readOnly: false });
+    } else {
+      ui.editor.value = value;
+      ui.editor.disabled = false;
+    }
+    state.activeFile = path;
+    ui.activeFile.textContent = path;
+  }
+
+  function renderFileTabs() {
+    ui.fileList.replaceChildren();
+    if (!state.files.length) {
+      const empty = document.createElement("span");
+      empty.className = "empty-files";
+      empty.textContent = "当前任务没有可编辑的源文件";
+      ui.fileList.append(empty);
+      return;
+    }
+    for (const file of state.files) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "file-tab" + (file.path === state.activeFile ? " active" : "");
+      button.title = file.path;
+      const dirty = document.createElement("span");
+      dirty.className = "file-dirty-dot";
+      dirty.textContent = state.dirtyFiles.has(file.path) ? "● " : "";
+      const name = document.createElement("span");
+      name.textContent = file.path;
+      button.append(dirty, name);
+      button.addEventListener("click", () => loadFile(file.path));
+      ui.fileList.append(button);
+    }
+  }
+
+  function updateDirtyState() {
+    const dirty = state.dirtyFiles.size > 0;
+    ui.saveState.textContent = dirty ? "有未保存的修改" : "已保存到本地工作区";
+    renderFileTabs();
+  }
+
+  function clearDiagnosticsForActiveModel() {
+    if (state.editorInstance && state.monaco && state.editorInstance.getModel()) {
+      state.monaco.editor.setModelMarkers(state.editorInstance.getModel(), "cppapplab", []);
+    }
+  }
+
+  function handleEditorInput() {
+    if (!state.activeFile) return;
+    state.dirtyFiles.add(state.activeFile);
+    state.fileContents.set(state.activeFile, editorValueFor(state.activeFile));
+    clearDiagnosticsForActiveModel();
+    updateDirtyState();
+    scheduleAutosave();
+  }
+
+  function scheduleAutosave() {
+    clearTimeout(state.autosaveTimer);
+    ui.saveState.textContent = "自动保存将在片刻后执行…";
+    state.autosaveTimer = setTimeout(() => {
+      saveAllDirtyFiles({ silent: true }).catch((error) => toast(error.message));
+    }, 900);
+  }
+
+  async function saveFile(path, options = {}) {
+    if (!state.task || !path || !state.workspaceReady) return false;
+    const content = editorValueFor(path);
+    const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+    try {
+      await api("/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/files/" + encodedPath, {
+        method: "PUT",
+        body: { content }
+      });
+      state.fileContents.set(path, content);
+      state.dirtyFiles.delete(path);
+      if (state.task.state === "PASSED") updateTaskState(state.task.id, "STALE");
+      updateDirtyState();
+      if (!options.silent) toast("代码已保存。");
+      return true;
+    } catch (error) {
+      ui.saveState.textContent = "保存失败";
+      if (!options.silent) toast(error.message);
+      return false;
+    }
+  }
+
+  async function saveAllDirtyFiles(options = {}) {
+    clearTimeout(state.autosaveTimer);
+    const paths = Array.from(state.dirtyFiles);
+    for (const path of paths) {
+      const saved = await saveFile(path, { silent: true });
+      if (!saved) {
+        if (!options.silent) toast("部分文件保存失败，请检查网络或工作区状态。");
+        return false;
+      }
+    }
+    if (!options.silent && paths.length) toast("所有修改均已保存。");
+    updateDirtyState();
+    return true;
+  }
+
+  async function loadFile(path) {
+    if (!state.task) return;
+    if (state.activeFile && state.dirtyFiles.has(state.activeFile)) {
+      const saved = await saveFile(state.activeFile, { silent: true });
+      if (!saved) return;
+    }
+    await ensureEditorReady();
+    let content = state.fileContents.get(path);
+    if (content === undefined) {
+      const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+      try {
+        const data = await api("/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/files/" + encodedPath);
+        content = data.content;
+        state.fileContents.set(path, content);
+      } catch (error) {
+        toast(error.message);
+        return;
+      }
+    }
+    setEditorValue(path, content);
+    ui.saveButton.disabled = false;
+    ui.buildButton.disabled = false;
+    ui.runButton.disabled = false;
+    ui.checkButton.disabled = false;
+    renderFileTabs();
+    if (state.editorInstance) state.editorInstance.focus();
+    else ui.editor.focus();
+  }
+
+  async function loadWorkspaceFiles() {
+    if (!state.task) return;
+    const data = await api("/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/files");
+    state.files = data.files || [];
+    state.workspaceReady = true;
+    ui.workspaceState.textContent = "工作区已就绪";
+    renderFileTabs();
+    if (!state.files.length) {
+      ui.editor.disabled = true;
+      ui.saveButton.disabled = true;
+      ui.buildButton.disabled = true;
+      ui.runButton.disabled = true;
+      ui.checkButton.disabled = true;
+      return;
+    }
+    if (!state.activeFile || !state.files.some((file) => file.path === state.activeFile)) {
+      await loadFile(state.files[0].path);
+    } else {
+      await loadFile(state.activeFile);
+    }
+  }
+
+  function clearTaskEditorState() {
+    if (state.editorInstance) state.editorInstance.setModel(null);
+    for (const model of state.models.values()) model.dispose();
+    state.models.clear();
+    state.fileContents.clear();
+    state.dirtyFiles.clear();
     state.files = [];
     state.activeFile = "";
     state.workspaceReady = false;
-    state.dirty = false;
+    clearTimeout(state.autosaveTimer);
+    ui.fileList.replaceChildren();
+    ui.activeFile.textContent = "未选择文件";
+    ui.editor.value = "";
+    ui.editor.disabled = true;
+    ui.saveButton.disabled = true;
+    ui.buildButton.disabled = true;
+    ui.runButton.disabled = true;
+    ui.checkButton.disabled = true;
+    ui.workspaceState.textContent = "尚未创建";
+    updateDirtyState();
+  }
+
+  async function selectTask(taskId) {
+    if (state.dirtyFiles.size && !await saveAllDirtyFiles({ silent: true })) {
+      toast("当前代码未能保存，暂不切换课程。");
+      return;
+    }
+    state.selectedTaskId = taskId;
+    state.task = null;
+    clearTaskEditorState();
     ui.welcome.hidden = true;
     ui.workbench.hidden = false;
     ui.lesson.innerHTML = '<div class="loading">正在读取课程讲解…</div>';
     ui.hint.hidden = true;
-    ui.editor.value = "";
-    ui.editor.disabled = true;
-    ui.saveButton.disabled = true;
-    ui.checkButton.disabled = true;
-    ui.fileList.replaceChildren();
-    ui.activeFile.textContent = "未选择文件";
-    ui.workspaceState.textContent = "尚未创建";
-    ui.console.textContent = "开始任务后，可以在这里查看运行与验收输出。";
+    ui.console.textContent = "开始任务后，可以在这里查看构建、运行与验收输出。";
+    ui.diagnostics.hidden = true;
     ui.checkResult.textContent = "等待执行";
+    ui.checkResult.className = "check-result";
     renderCourseList();
     try {
       const task = await api("/api/v1/tasks/" + encodeURIComponent(taskId));
@@ -290,7 +590,7 @@
       ui.taskBreadcrumb.textContent = task.id;
       ui.taskTitle.textContent = task.title;
       ui.taskSubtitle.textContent = "W" + task.week + " · " + task.source_files.length + " 个源文件 · " +
-        (task.acceptance_kind === "exact_stdout" ? "精确输出验收" : "固定 GoogleTest 验收");
+        (task.acceptance_kind === "exact_stdout" ? "直接运行程序" : "CMake / GoogleTest 工程");
       ui.taskState.textContent = stateLabel(task.state);
       ui.taskState.dataset.state = task.state;
       ui.lesson.innerHTML = renderMarkdown(task.lesson_markdown);
@@ -326,100 +626,138 @@
     }
   }
 
-  async function loadWorkspaceFiles() {
-    if (!state.task) return;
-    const data = await api("/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/files");
-    state.files = data.files || [];
-    state.workspaceReady = true;
-    ui.workspaceState.textContent = "工作区已就绪";
-    ui.fileList.replaceChildren();
-    if (!state.files.length) {
-      const empty = document.createElement("span");
-      empty.className = "empty-files";
-      empty.textContent = "当前任务没有可编辑的源文件";
-      ui.fileList.append(empty);
-      return;
+  function declaredSourcePath(pathText) {
+    const normalized = String(pathText).replace(/\\/g, "/");
+    return state.files.map((file) => file.path).find((path) =>
+      normalized === path || normalized.endsWith("/" + path)
+    ) || null;
+  }
+
+  function renderDiagnostics(output) {
+    ui.diagnostics.replaceChildren();
+    const byPath = new Map();
+    const diagnostics = [];
+    const pattern = /^(.+?):(\d+):(\d+):\s*(fatal error|error|warning|note):\s*(.*)$/gm;
+    let match;
+    while ((match = pattern.exec(output)) !== null) {
+      const path = declaredSourcePath(match[1]);
+      const severity = match[4].includes("error") ? "error" :
+        match[4] === "warning" ? "warning" : "note";
+      const item = {
+        path,
+        line: Number(match[2]),
+        column: Number(match[3]),
+        severity,
+        message: match[5],
+        source: match[1]
+      };
+      diagnostics.push(item);
+      if (path) {
+        if (!byPath.has(path)) byPath.set(path, []);
+        byPath.get(path).push({
+          startLineNumber: item.line,
+          startColumn: item.column,
+          endLineNumber: item.line,
+          endColumn: item.column + 1,
+          message: item.message,
+          severity: severity === "error" ? state.monaco.MarkerSeverity.Error :
+            severity === "warning" ? state.monaco.MarkerSeverity.Warning :
+            state.monaco.MarkerSeverity.Info
+        });
+      }
     }
-    for (const file of state.files) {
+    if (state.monaco) {
+      for (const [path, model] of state.models) {
+        state.monaco.editor.setModelMarkers(model, "cppapplab", byPath.get(path) || []);
+      }
+    }
+    for (const item of diagnostics) {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "file-tab" + (file.path === state.activeFile ? " active" : "");
-      button.textContent = file.path;
-      button.title = file.path;
-      button.addEventListener("click", () => loadFile(file.path));
-      ui.fileList.append(button);
+      button.className = "diagnostic-button";
+      const severity = document.createElement("span");
+      severity.className = "diagnostic-severity " + item.severity;
+      severity.textContent = item.severity === "error" ? "错误" : item.severity === "warning" ? "警告" : "提示";
+      const location = document.createElement("span");
+      location.className = "diagnostic-location";
+      location.textContent = item.path ? item.path + ":" + item.line + ":" + item.column :
+        item.source + ":" + item.line + ":" + item.column;
+      const message = document.createElement("span");
+      message.className = "diagnostic-message";
+      message.textContent = item.message;
+      button.append(severity, location, message);
+      button.disabled = !item.path;
+      if (item.path) {
+        button.addEventListener("click", () => openDiagnostic(item.path, item.line, item.column));
+      }
+      ui.diagnostics.append(button);
     }
-    if (!state.activeFile || !state.files.some((file) => file.path === state.activeFile)) {
-      await loadFile(state.files[0].path);
+    ui.diagnostics.hidden = diagnostics.length === 0;
+  }
+
+  async function openDiagnostic(path, line, column) {
+    if (path !== state.activeFile) await loadFile(path);
+    if (state.editorInstance) {
+      state.editorInstance.setPosition({ lineNumber: line, column });
+      state.editorInstance.revealLineInCenter(line);
+      state.editorInstance.focus();
     } else {
-      renderFileTabs();
-    }
-    ui.saveButton.disabled = false;
-    ui.checkButton.disabled = false;
-  }
-
-  function renderFileTabs() {
-    for (const button of ui.fileList.querySelectorAll(".file-tab")) {
-      button.classList.toggle("active", button.textContent === state.activeFile);
+      ui.editor.focus();
     }
   }
 
-  async function loadFile(path) {
-    if (state.dirty && !window.confirm("当前文件有未保存的修改，仍要切换文件吗？")) return;
-    if (!state.task) return;
-    const encodedPath = path.split("/").map(encodeURIComponent).join("/");
-    try {
-      const data = await api("/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/files/" + encodedPath);
-      state.activeFile = path;
-      ui.editor.value = data.content;
-      ui.editor.disabled = false;
-      state.dirty = false;
-      ui.activeFile.textContent = path;
-      ui.saveState.textContent = "已加载";
-      ui.saveButton.disabled = false;
-      ui.checkButton.disabled = false;
-      renderFileTabs();
-    } catch (error) {
-      toast(error.message);
-    }
+  function setBusy(value, saveLabel) {
+    state.busy = value;
+    ui.startButton.disabled = value || !state.task || state.task.state === "LOCKED";
+    ui.saveButton.disabled = value || !state.workspaceReady || state.dirtyFiles.size === 0;
+    ui.buildButton.disabled = value || !state.workspaceReady;
+    ui.runButton.disabled = value || !state.workspaceReady;
+    ui.checkButton.disabled = value || !state.workspaceReady;
+    if (saveLabel) ui.saveState.textContent = saveLabel;
   }
 
-  async function saveFile() {
-    if (!state.task || !state.activeFile || !state.workspaceReady || state.busy) return;
-    setBusy(true, "正在保存…");
-    try {
-      const encodedPath = state.activeFile.split("/").map(encodeURIComponent).join("/");
-      await api("/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/files/" + encodedPath, {
-        method: "PUT", body: { content: ui.editor.value }
-      });
-      state.dirty = false;
-      ui.saveState.textContent = "已保存到本地工作区";
-      toast("代码已保存。");
-      updateTaskState(state.task.id, state.task.state === "PASSED" ? "STALE" : state.task.state);
-    } catch (error) {
-      toast(error.message);
-      ui.saveState.textContent = "保存失败";
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function runCheck() {
+  async function runWorkspaceAction(action) {
     if (!state.task || !state.workspaceReady || state.busy) return;
-    if (state.dirty) await saveFile();
-    if (state.dirty) return;
-    setBusy(true, "正在执行固定验收…");
-    ui.checkResult.textContent = "正在测试";
-    ui.console.textContent = "正在调用本地 GCC / CMake / GoogleTest 验收流程…";
+    setBusy(true, "正在保存代码…");
+    const saved = await saveAllDirtyFiles({ silent: true });
+    if (!saved) {
+      setBusy(false);
+      toast("代码保存失败，已取消本次操作。");
+      return;
+    }
+    const labels = {
+      build: "正在构建项目…",
+      run: "正在运行程序 / 测试…",
+      check: "正在执行平台固定验收…"
+    };
+    ui.consoleTitle.textContent = action === "build" ? "构建输出" :
+      action === "run" ? (state.task.acceptance_kind === "exact_stdout" ? "程序运行输出" : "测试运行输出") :
+      "平台固定验收输出";
+    ui.console.textContent = labels[action];
+    ui.diagnostics.hidden = true;
+    ui.checkResult.textContent = "执行中";
+    ui.checkResult.className = "check-result";
+    setBusy(true, labels[action]);
     try {
-      const result = await api("/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/check", {
-        method: "POST", body: {}
-      });
+      const result = await api(
+        "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/" + action,
+        { method: "POST", body: {} }
+      );
       ui.console.textContent = result.output || "(没有输出)";
-      ui.checkResult.textContent = result.passed ? "PASS" : "未通过";
-      ui.checkResult.className = "check-result " + (result.passed ? "pass" : "fail");
-      updateTaskState(state.task.id, result.passed ? "PASSED" : "NEEDS WORK");
-      toast(result.passed ? "恭喜，固定验收已通过。" : "验收未通过，请查看诊断输出并继续修改。");
+      renderDiagnostics(result.output || "");
+      const passed = result.passed;
+      ui.checkResult.textContent = action === "check" ? (passed ? "PASS" : "未通过") :
+        action === "build" ? (passed ? "构建成功" : "构建失败") :
+        (passed ? "执行成功" : "执行失败");
+      ui.checkResult.className = "check-result " + (passed ? "pass" : "fail");
+      if (action === "check") {
+        updateTaskState(state.task.id, passed ? "PASSED" : "NEEDS WORK");
+        toast(passed ? "平台固定验收已通过，学习记录已更新。" : "验收未通过，请根据诊断继续修改。");
+      } else if (action === "build") {
+        toast(passed ? "构建成功。尚未记录正式验收结果。" : "构建失败，请查看编译诊断。");
+      } else {
+        toast(passed ? "运行 / 测试完成。正式验收需要单独执行。" : "运行 / 测试未通过，请查看输出。");
+      }
     } catch (error) {
       ui.console.textContent = error.message;
       ui.checkResult.textContent = "执行失败";
@@ -442,47 +780,37 @@
     }
   }
 
-  function setBusy(value, saveLabel) {
-    state.busy = value;
-    ui.startButton.disabled = value || !state.task || state.task.state === "LOCKED";
-    ui.saveButton.disabled = value || !state.workspaceReady || !state.activeFile;
-    ui.checkButton.disabled = value || !state.workspaceReady;
-    if (saveLabel) ui.saveState.textContent = saveLabel;
-  }
-
   function bindEvents() {
     ui.search.addEventListener("input", renderCourseList);
     ui.startButton.addEventListener("click", startTask);
-    ui.saveButton.addEventListener("click", saveFile);
-    ui.checkButton.addEventListener("click", runCheck);
+    ui.saveButton.addEventListener("click", () => saveAllDirtyFiles());
+    ui.buildButton.addEventListener("click", () => runWorkspaceAction("build"));
+    ui.runButton.addEventListener("click", () => runWorkspaceAction("run"));
+    ui.checkButton.addEventListener("click", () => runWorkspaceAction("check"));
     ui.continueButton.addEventListener("click", () => {
-      const next = state.tasks.find((task) => task.state === "IN PROGRESS" || task.state === "NEEDS WORK" || task.state === "STALE")
+      const next = state.tasks.find((task) => ["IN PROGRESS", "NEEDS WORK", "STALE"].includes(task.state))
         || state.tasks.find((task) => task.state === "AVAILABLE");
       if (next) selectTask(next.id);
     });
-    ui.editor.addEventListener("input", () => {
-      state.dirty = true;
-      ui.saveState.textContent = "有未保存的修改";
-    });
+    ui.editor.addEventListener("input", handleEditorInput);
     ui.editor.addEventListener("keydown", (event) => {
       if (event.key === "Tab") {
         event.preventDefault();
         const start = ui.editor.selectionStart;
         const end = ui.editor.selectionEnd;
         ui.editor.setRangeText("    ", start, end, "end");
-        state.dirty = true;
-        ui.saveState.textContent = "有未保存的修改";
+        handleEditorInput();
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
-        saveFile();
+        saveAllDirtyFiles();
       }
     });
     document.querySelectorAll("[data-hint]").forEach((button) => {
       button.addEventListener("click", () => showHint(Number(button.dataset.hint)));
     });
     window.addEventListener("beforeunload", (event) => {
-      if (state.dirty) {
+      if (state.dirtyFiles.size) {
         event.preventDefault();
         event.returnValue = "";
       }
@@ -499,14 +827,6 @@
       ui.engine.classList.add("online");
       ui.engine.innerHTML = '<span class="pulse"></span>本地引擎已连接';
       await loadTasks();
-      if (state.tasks.length) {
-        const next = state.tasks.find((task) => ["IN PROGRESS", "NEEDS WORK", "STALE"].includes(task.state))
-          || state.tasks.find((task) => task.state === "AVAILABLE");
-        if (next) {
-          ui.continueButton.disabled = false;
-          ui.continueButton.textContent = "继续学习  →";
-        }
-      }
     } catch (error) {
       ui.engine.textContent = "本地引擎未连接";
       ui.engine.classList.remove("online");

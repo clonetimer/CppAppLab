@@ -281,7 +281,7 @@ The roadmap is outcome-based. Additional lessons are added only when they improv
 
 ## P8 — Browser-first learning workbench
 
-**Status: P8-A implementation in progress on `feat/p8-web-learning-workbench-20261116`.**
+**Status: P8-A validated; P8-B implementation in CI on `feat/p8-web-learning-workbench-20261116`.**
 
 The goal is to move the learner-facing workflow into one browser tab while preserving the existing C++ learning engine and CLI.
 
@@ -294,18 +294,27 @@ The goal is to move the learner-facing workflow into one browser tab while prese
 - [x] Restrict browser file access to task-declared learner source files.
 - [x] Add a responsive Chinese course/workbench shell.
 - [x] Add a local start/status/stop script.
-- [ ] Pass Ubuntu 22.04/24.04 CI API and path-safety tests.
-- [ ] Complete W1 Hello World browser end-to-end acceptance.
-- [ ] Verify source fingerprint invalidation and prerequisite locks through the browser.
-- [ ] Pass the start/status/stop launcher smoke test and review Windows browser startup.
+- [x] Pass Ubuntu 22.04/24.04 API and path-safety tests.
+- [x] Complete W1 Hello World browser-to-real-GCC acceptance.
+- [x] Verify source fingerprint invalidation and prerequisite locks through the browser.
+- [x] Pass the local start/status/stop launcher smoke test.
+- [ ] Complete Windows 11 + WSL2 target-machine browser startup (P8-E).
 
-### P8-B — Editor and learning loop
+### P8-B — Professional editor and learning loop
 
-- Monaco editor and multi-file tabs.
-- Save/autosave, dirty-state protection and keyboard shortcuts.
-- Separate build/run actions from platform acceptance.
-- Structured compiler/test diagnostics and source-line navigation.
-- Progressive hints and task-state refresh.
+- [x] Add pinned Monaco 0.52.2 with a local plain-text fallback.
+- [x] Add per-file editor models and multi-file source tabs.
+- [x] Add debounced autosave, dirty indicators and Ctrl/Cmd+S.
+- [x] Protect in-flight saves against concurrent editor changes.
+- [x] Add separate fixed-profile Build, Run / Tests and Formal Acceptance actions.
+- [x] Add source-fingerprint build stamps and reject stale build execution.
+- [x] Keep build/run results separate from formal acceptance evidence.
+- [x] Parse GCC/CMake diagnostics into clickable source locations and Monaco markers.
+- [ ] Pass Ubuntu 22.04/24.04 C++ build and GoogleTest matrix.
+- [ ] Pass real-engine direct-execution and CMake/GoogleTest browser integration.
+- [ ] Pass ASan/UBSan and clang-tidy matrix after the engine changes.
+- [ ] Complete browser visual acceptance for Monaco workers, multi-file switching, autosave and diagnostics.
+- [ ] Verify the editor fallback with the Monaco CDN unavailable.
 
 ### P8-C — Full course experience
 

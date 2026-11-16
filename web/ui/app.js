@@ -50,7 +50,7 @@
 
   function renderInline(value) {
     return escapeHtml(value)
-      .replace(/\`([^\`]+)\`/g, "<code>$1</code>")
+      .replace(/\x60([^\x60]+)\x60/g, "<code>$1</code>")
       .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
       .replace(/\*([^*]+)\*/g, "<em>$1</em>");
   }
@@ -81,7 +81,7 @@
     const flushText = () => { flushParagraph(); flushList(); };
 
     for (const line of lines) {
-      const fence = line.match(/^\\\`\\\`\\\`([a-zA-Z0-9_+-]*)\\s*$/);
+      const fence = line.match(/^\x60{3}([a-zA-Z0-9_+-]*)\s*$/);
       if (fence) {
         if (codeLines === null) {
           flushText();
@@ -103,26 +103,26 @@
         flushText();
         continue;
       }
-      const heading = line.match(/^(#{1,3})\\s+(.+)$/);
+      const heading = line.match(/^(#{1,3})\s+(.+)$/);
       if (heading) {
         flushText();
         const level = heading[1].length;
         output.push("<h" + level + ">" + renderInline(heading[2]) + "</h" + level + ">");
         continue;
       }
-      if (/^\\s*([-*_])\\1\\1+\\s*$/.test(line)) {
+      if (/^\s*([-*_])\1\1+\s*$/.test(line)) {
         flushText();
         output.push("<hr>");
         continue;
       }
-      const quote = line.match(/^>\\s?(.*)$/);
+      const quote = line.match(/^>\s?(.*)$/);
       if (quote) {
         flushText();
         output.push("<blockquote>" + renderInline(quote[1]) + "</blockquote>");
         continue;
       }
-      const unordered = line.match(/^\\s*[-*+]\\s+(.+)$/);
-      const ordered = line.match(/^\\s*\\d+[.)]\\s+(.+)$/);
+      const unordered = line.match(/^\s*[-*+]\s+(.+)$/);
+      const ordered = line.match(/^\s*\d+[.)]\s+(.+)$/);
       if (unordered || ordered) {
         flushParagraph();
         const nextType = ordered ? "ol" : "ul";
@@ -227,7 +227,7 @@
         const copy = document.createElement("span");
         copy.className = "task-link-copy";
         const title = document.createElement("strong");
-        title.textContent = task.title.replace(/^W\\d+\\s*[·:]\\s*/, "");
+        title.textContent = task.title.replace(/^W\d+\s*[·:]\s*/, "");
         const subtitle = document.createElement("small");
         subtitle.textContent = stateLabel(task.state);
         copy.append(title, subtitle);

@@ -369,7 +369,15 @@ async function main() {
       fullPage: true
     });
 
-    assert.deepEqual(pageErrors, [], "The Monaco workbench must not emit uncaught browser exceptions");
+    // Monaco may reject an in-flight worker request with its documented "Canceled"
+    // sentinel when an editor model is disposed during task switching. It is not an
+    // application exception; all other uncaught page errors remain test failures.
+    const unexpectedPageErrors = pageErrors.filter((message) => message !== "Canceled");
+    assert.deepEqual(
+      unexpectedPageErrors,
+      [],
+      "The Monaco workbench must not emit uncaught application exceptions"
+    );
     await context.close();
 
     fallbackService = await startService("offline");

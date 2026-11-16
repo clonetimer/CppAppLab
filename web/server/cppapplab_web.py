@@ -45,7 +45,7 @@ def safe_relative_path(value: str) -> str:
     if not value or "\\" in value or "\x00" in value or value.startswith("/"):
         raise ValueError("Expected a non-empty relative POSIX path.")
     path = PurePosixPath(value)
-    if any(part in {"", ".", ".."} for part in path.parts):
+    if not path.parts or any(part in {"", ".", ".."} for part in path.parts):
         raise ValueError("Path traversal and dot components are not allowed.")
     if ":" in path.parts[0]:
         raise ValueError("Drive-qualified paths are not allowed.")

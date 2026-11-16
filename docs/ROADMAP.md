@@ -297,7 +297,7 @@ The goal is to move the learner-facing workflow into one browser tab while prese
 - [ ] Pass Ubuntu 22.04/24.04 CI API and path-safety tests.
 - [ ] Complete W1 Hello World browser end-to-end acceptance.
 - [ ] Verify source fingerprint invalidation and prerequisite locks through the browser.
-- [ ] Review local service lifecycle and Windows browser startup.
+- [ ] Pass the start/status/stop launcher smoke test and review Windows browser startup.
 
 ### P8-B — Editor and learning loop
 

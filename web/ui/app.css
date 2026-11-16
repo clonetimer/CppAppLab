@@ -164,3 +164,60 @@ button:disabled { cursor: not-allowed; opacity: .45; }
   .file-toolbar { align-items: flex-start; flex-direction: column; }.file-list { width: 100%; }.editor-actions { width: 100%; }.editor-actions button { flex: 1; }
   .editor-meta { font-size: 8px; }.workbench-footer { flex-direction: column; }
 }
+
+/* P8-B editor, diagnostics and build/run controls */
+.editor-actions { flex-wrap: wrap; }
+.editor-actions button { min-width: 64px; }
+.editor-meta-right { display: flex; align-items: center; gap: 12px; }
+#editor-engine-status { color: #86a9d8; }
+.monaco-editor {
+  width: 100%;
+  height: min(48vh, 520px);
+  min-height: 270px;
+  border-bottom: 1px solid var(--border);
+  background: #0a1323;
+}
+.source-editor {
+  height: min(48vh, 520px);
+  min-height: 270px;
+  flex: 0 0 auto;
+}
+.diagnostics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 130px;
+  overflow: auto;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(10, 19, 35, .9);
+}
+.diagnostic-button {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  border-radius: 5px;
+  padding: 5px 7px;
+  background: transparent;
+  color: #c5d3e8;
+  text-align: left;
+  font: 10px/1.5 "Cascadia Code", Consolas, monospace;
+}
+.diagnostic-button:hover { background: rgba(113, 164, 241, .12); }
+.diagnostic-severity { flex: 0 0 52px; font-weight: 700; }
+.diagnostic-severity.error { color: var(--red); }
+.diagnostic-severity.warning { color: var(--amber); }
+.diagnostic-severity.note { color: #8db6f1; }
+.diagnostic-location { flex: 0 0 auto; color: #8ca7cc; }
+.diagnostic-message { min-width: 0; overflow-wrap: anywhere; }
+.task-link-copy small { font-variant-numeric: tabular-nums; }
+@media (max-width: 820px) {
+  .monaco-editor { height: 330px; min-height: 250px; }
+}
+@media (max-width: 520px) {
+  .editor-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .editor-actions button { width: 100%; }
+  .editor-meta-right { gap: 7px; }
+}

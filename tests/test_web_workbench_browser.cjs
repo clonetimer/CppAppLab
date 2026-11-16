@@ -207,8 +207,13 @@ async function main() {
     );
     await page.waitForFunction(() => document.querySelector("#task-count")?.textContent.trim() === "23");
 
-    const helloTask = page.locator("#course-list .task-link").filter({ hasText: "First C++ Program" });
-    assert.equal(await helloTask.count(), 1, "W1 Hello World task must appear in the course list");
+    const helloTask = page.locator('#course-list .task-link[data-task-id="w1.hello-world"]');
+    assert.equal(
+      await helloTask.count(),
+      1,
+      "W1 Hello World task must appear in the course list. Rendered list: " +
+        await page.locator("#course-list").innerText()
+    );
     await helloTask.click();
     await page.waitForFunction(() =>
       document.querySelector("#task-title")?.textContent.includes("First C++ Program")
@@ -253,7 +258,7 @@ async function main() {
       return button && button.querySelector("small")?.textContent === "可开始";
     }, null, { timeout: 10000 });
 
-    const calculatorTask = page.locator("#course-list .task-link").filter({ hasText: "Multi-file Calculator" });
+    const calculatorTask = page.locator('#course-list .task-link[data-task-id="w1.calculator"]');
     await calculatorTask.click();
     await page.waitForFunction(() =>
       document.querySelector("#task-title")?.textContent.includes("Multi-file Calculator")
@@ -357,7 +362,7 @@ async function main() {
     await fallbackPage.waitForFunction(() =>
       document.querySelector("#engine-status")?.textContent.includes("本地引擎已连接")
     );
-    const fallbackHello = fallbackPage.locator("#course-list .task-link").filter({ hasText: "First C++ Program" });
+    const fallbackHello = fallbackPage.locator('#course-list .task-link[data-task-id="w1.hello-world"]');
     await fallbackHello.click();
     await fallbackPage.waitForFunction(() =>
       document.querySelector("#task-title")?.textContent.includes("First C++ Program")

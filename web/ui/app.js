@@ -257,8 +257,7 @@
     updateProgressSummary();
     renderCourseList();
     const next = state.tasks.find((task) => task.state === "IN PROGRESS" || task.state === "NEEDS WORK" || task.state === "STALE")
-      || state.tasks.find((task) => task.state === "AVAILABLE")
-      || state.tasks.find((task) => task.state === "PASSED");
+      || state.tasks.find((task) => task.state === "AVAILABLE");
     ui.continueButton.disabled = !next;
     ui.continueButton.textContent = next ? "继续学习  →" : "课程已完成";
   }

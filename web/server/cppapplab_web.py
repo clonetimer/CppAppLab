@@ -369,8 +369,12 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header(
             "Content-Security-Policy",
-            "default-src 'self'; script-src 'self'; style-src 'self'; "
-            "connect-src 'self'; img-src 'self' data:; object-src 'none'; "
+            "default-src 'self'; "
+            "script-src 'self' https://cdn.jsdelivr.net 'unsafe-eval'; "
+            "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+            "connect-src 'self' https://cdn.jsdelivr.net; "
+            "font-src 'self' https://cdn.jsdelivr.net data:; "
+            "worker-src blob: data:; img-src 'self' data:; object-src 'none'; "
             "base-uri 'none'; frame-ancestors 'none'",
         )
         self.end_headers()

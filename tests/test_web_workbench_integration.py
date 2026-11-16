@@ -86,7 +86,7 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
                 "content": (
                     "#include <iostream>\n"
                     "int main() {\n"
-                    '    std::cout << "Hello, CppAppLab!\\\\n";\n'
+                    '    std::cout << "Hello, CppAppLab!\\n";\n'
                     "    return 0;\n"
                     "}\n"
                 )

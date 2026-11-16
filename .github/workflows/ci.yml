@@ -82,6 +82,10 @@ jobs:
             -DCPPAPPLAB_FETCH_GTEST=OFF
       - name: Build
         run: cmake --build build --parallel
+      - name: Verify W1 browser workflow against real learning engine
+        env:
+          CPPAPPLAB_TEST_BINARY: ${{ github.workspace }}/build/cppapplab
+        run: python3 tests/test_web_workbench_integration.py
       - name: Test
         run: ctest --test-dir build --output-on-failure
       - name: CLI smoke test

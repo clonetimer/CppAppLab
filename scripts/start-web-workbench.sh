@@ -24,7 +24,7 @@ is_our_process() {
     local pid="$1"
     local command_line
     [[ -r "/proc/$pid/cmdline" ]] || return 1
-    command_line="$(tr '\\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)"
+    command_line="$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)"
     [[ "$command_line" == *"$ROOT/web/server/cppapplab_web.py"* ]]
 }
 

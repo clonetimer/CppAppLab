@@ -370,10 +370,14 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         self.send_header(
             "Content-Security-Policy",
             "default-src 'self'; "
-            "script-src 'self' https://cdn.jsdelivr.net 'unsafe-eval'; "
-            "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
-            "connect-src 'self' https://cdn.jsdelivr.net; "
-            "font-src 'self' https://cdn.jsdelivr.net data:; "
+            "script-src 'self' https://cdn.jsdelivr.net https://gcore.jsdelivr.net "
+            "https://cdnjs.cloudflare.com 'unsafe-eval'; "
+            "style-src 'self' https://cdn.jsdelivr.net https://gcore.jsdelivr.net "
+            "https://cdnjs.cloudflare.com 'unsafe-inline'; "
+            "connect-src 'self' https://cdn.jsdelivr.net https://gcore.jsdelivr.net "
+            "https://cdnjs.cloudflare.com; "
+            "font-src 'self' https://cdn.jsdelivr.net https://gcore.jsdelivr.net "
+            "https://cdnjs.cloudflare.com data:; "
             "worker-src blob: data:; img-src 'self' data:; object-src 'none'; "
             "base-uri 'none'; frame-ancestors 'none'",
         )

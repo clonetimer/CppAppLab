@@ -283,13 +283,22 @@ async function main() {
     );
     const fileTabs = page.locator("#file-list .file-tab");
     assert.equal(await fileTabs.count(), 3, "Calculator task must expose all three declared files");
+    await page.waitForFunction(() =>
+      document.querySelector("#active-file")?.textContent.trim() === "include/calculator.hpp"
+    );
 
     await fileTabs.filter({ hasText: "src/main.cpp" }).click();
-    assert.equal((await page.locator("#active-file").textContent()).trim(), "src/main.cpp");
+    await page.waitForFunction(() =>
+      document.querySelector("#active-file")?.textContent.trim() === "src/main.cpp"
+    );
     await fileTabs.filter({ hasText: "include/calculator.hpp" }).click();
-    assert.equal((await page.locator("#active-file").textContent()).trim(), "include/calculator.hpp");
+    await page.waitForFunction(() =>
+      document.querySelector("#active-file")?.textContent.trim() === "include/calculator.hpp"
+    );
     await fileTabs.filter({ hasText: "src/calculator.cpp" }).click();
-    assert.equal((await page.locator("#active-file").textContent()).trim(), "src/calculator.cpp");
+    await page.waitForFunction(() =>
+      document.querySelector("#active-file")?.textContent.trim() === "src/calculator.cpp"
+    );
     await page.waitForFunction(() => window.monaco && window.monaco.editor.getModels().length === 3);
 
     await replaceMonacoEditor(page, CALCULATOR_INVALID);

@@ -205,7 +205,9 @@ async function main() {
     await page.waitForFunction(() =>
       document.querySelector("#engine-status")?.textContent.includes("本地引擎已连接")
     );
-    await page.waitForFunction(() => document.querySelector("#task-count")?.textContent.trim() === "23");
+    await page.waitForFunction(() =>
+      document.querySelectorAll("#course-list .task-link").length === 23
+    );
 
     const helloTask = page.locator('#course-list .task-link[data-task-id="w1.hello-world"]');
     assert.equal(
@@ -361,6 +363,9 @@ async function main() {
     await fallbackPage.goto(fallbackService.baseUrl + "/", { waitUntil: "domcontentloaded" });
     await fallbackPage.waitForFunction(() =>
       document.querySelector("#engine-status")?.textContent.includes("本地引擎已连接")
+    );
+    await fallbackPage.waitForFunction(() =>
+      document.querySelectorAll("#course-list .task-link").length === 23
     );
     const fallbackHello = fallbackPage.locator('#course-list .task-link[data-task-id="w1.hello-world"]');
     await fallbackHello.click();

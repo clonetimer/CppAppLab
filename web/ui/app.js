@@ -537,6 +537,7 @@
     ui.buildButton.disabled = false;
     ui.runButton.disabled = false;
     ui.checkButton.disabled = false;
+    updateDirtyState();
     renderFileTabs();
     if (state.editorInstance) state.editorInstance.focus();
     else ui.editor.focus();
@@ -569,6 +570,7 @@
     for (const model of state.models.values()) model.dispose();
     state.models.clear();
     state.fileContents.clear();
+    state.fileVersions.clear();
     state.dirtyFiles.clear();
     state.files = [];
     state.activeFile = "";

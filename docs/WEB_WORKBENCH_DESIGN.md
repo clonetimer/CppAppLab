@@ -17,7 +17,7 @@ CppAppLab local web service (Python standard library)
   |-- static learning UI
   |-- course/task read API
   |-- workspace file API (task-declared files only)
-  |-- fixed start / hint / check actions
+  |-- fixed start / hint / build / run / check actions
   |
   v
 Existing CppAppLab CLI and learning engine
@@ -60,7 +60,9 @@ The web service is an adapter, not a second learning engine. It must delegate wo
 | GET | `/api/v1/workspaces/{task_id}/files` | List declared learner files |
 | GET | `/api/v1/workspaces/{task_id}/files/{path}` | Read a declared learner file |
 | PUT | `/api/v1/workspaces/{task_id}/files/{path}` | Atomically save a declared learner file |
-| POST | `/api/v1/workspaces/{task_id}/check` | Run the fixed platform acceptance check |
+| POST | `/api/v1/workspaces/{task_id}/build` | Run the task's fixed compiler/build profile |
+| POST | `/api/v1/workspaces/{task_id}/run` | Run the direct learner program or fixed CTest suite |
+| POST | `/api/v1/workspaces/{task_id}/check` | Run fixed platform acceptance and record evidence |
 
 No route accepts arbitrary shell commands, compiler flags, build directories, or executable paths from the browser.
 
@@ -76,7 +78,10 @@ No route accepts arbitrary shell commands, compiler flags, build directories, or
 - File writes use a temporary sibling file and atomic replacement.
 - Request bodies, lesson files, source files, and process output have explicit size limits.
 - The server uses argument arrays with `subprocess`; it never invokes a shell.
-- Compiler/test execution is only available through the existing fixed `cppapplab check` command.
+- Build, run and acceptance are fixed CppAppLab CLI actions; the browser cannot supply commands, flags, executable paths, CMake arguments or test filters.
+- Direct-execution tasks use a fixed C++17 compiler profile, `/dev/null` stdin, a 30-second build limit, a 5-second run limit and bounded output. CMake/GoogleTest tasks build only the registered platform fixture and run its fixed CTest suite with a 45-second limit.
+- A successful build records a source fingerprint. Run is refused when the current source differs from the built fingerprint. Build/run never create acceptance evidence; only `check` records PASS/FAIL evidence.
+- The enhanced Monaco editor is pinned to a versioned CDN URL; if the CDN is unavailable, the UI falls back to the local plain-text editor. The Python service and course API remain dependency-free.
 - The service is intended for one local learner session, not LAN or multi-tenant hosting.
 
 ## Delivery phases
@@ -85,8 +90,13 @@ No route accepts arbitrary shell commands, compiler flags, build directories, or
 - HTTP service, same-origin API, browser course shell, task start/resume, source file read/write, fixed acceptance endpoint, security and CI smoke coverage.
 
 ### P8-B — Editor and learning loop
-- Monaco editor, multi-file tabs, autosave, compiler/test output, diagnostics-to-source navigation, progressive hints, and responsive layout.
-- Preserve the fixed acceptance contract and keep build/run actions distinct from acceptance.
+- Monaco 0.52.2 editor with a local plain-text fallback, per-file models and multi-file tabs.
+- Debounced autosave, version-aware in-flight save protection, dirty-state indicators and Ctrl/Cmd+S.
+- Separate fixed-profile build, run/test and formal acceptance actions.
+- Source-fingerprint build stamps prevent running binaries built from older source.
+- GCC/CMake diagnostics are parsed into clickable file/line entries and Monaco markers.
+- Progressive hints and responsive layout remain available.
+- Preserve the fixed acceptance contract: build/run do not write PASS evidence; only formal acceptance does.
 
 ### P8-C — Full course experience
 - All 23 released W1–W9 tasks, interactive program input/output, network-service tasks, progress/history views, and task prerequisite visualization.

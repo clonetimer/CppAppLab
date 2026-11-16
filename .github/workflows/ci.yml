@@ -712,7 +712,7 @@ jobs:
 
   browser-workbench:
     name: Chromium browser acceptance (Ubuntu 24.04)
-    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation) }}
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:

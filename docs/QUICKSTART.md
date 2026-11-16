@@ -123,15 +123,15 @@ Your source files, progress and check history are kept between sessions. A chang
 
 Hosted CI is not a substitute for target-machine acceptance. Windows 11 + WSL2 validation and offline dependency packaging remain separate project work.
 
-## Experimental browser workbench (P8-A)
+## Browser learning workbench (P8-A / P8-B preview)
 
-The browser-first workbench is being introduced alongside the existing CLI. After building the project, start the local service with:
+After building the existing CppAppLab project, start the local browser service from the repository root:
 
 ~~~bash
 bash scripts/start-web-workbench.sh
 ~~~
 
-Open http://127.0.0.1:8765/ in your Windows browser. The service binds to loopback only and delegates workspace creation and fixed acceptance to the existing CppAppLab learning engine. It does not expose an arbitrary shell endpoint.
+Open http://127.0.0.1:8765/ in your Windows browser. The service binds to loopback only. It delegates workspace lifecycle, compilation profiles, test execution and formal acceptance to the existing CppAppLab learning engine. It does not expose an arbitrary shell endpoint.
 
 Stop the service with:
 
@@ -139,4 +139,17 @@ Stop the service with:
 bash scripts/start-web-workbench.sh stop
 ~~~
 
-P8-A is an early implementation. The current browser editor is a lightweight source editor; Monaco, richer diagnostics, interactive run/debug, and one-click Windows browser startup are later milestones. The CLI remains the supported fallback while the browser workflow is being validated.
+### Browser learning loop
+
+1. Select a course task and start or resume its workspace.
+2. Read the lesson and edit the task's declared source files in the multi-file editor.
+3. Changes are saved automatically after a short pause; Ctrl+S also saves immediately.
+4. Use **Build** to compile the current source.
+5. Use **Run / Tests** to execute the learner program for direct-execution tasks or the registered CTest suite for CMake/GoogleTest tasks.
+6. Use **Formal Acceptance** to run the platform-owned acceptance contract and record PASS/FAIL evidence.
+
+Build and Run never record formal acceptance evidence. A source edit invalidates the previous build fingerprint; build again before running. Only Formal Acceptance updates the course evidence and prerequisite state.
+
+The enhanced Monaco editor is loaded from the pinned Monaco 0.52.2 CDN package. If the CDN is unreachable, the page falls back to its local plain-text editor; the local Python service and course API do not require third-party Python packages or Node.js.
+
+The browser workbench remains a preview while P8-B CI and browser visual acceptance complete. The existing CLI remains supported and authoritative.

@@ -400,6 +400,9 @@
     if (state.editorInstance && path === state.activeFile && state.editorInstance.getModel()) {
       return state.editorInstance.getValue();
     }
+    if (!state.editorInstance && path === state.activeFile && !ui.editor.hidden) {
+      return ui.editor.value;
+    }
     const model = state.models.get(path);
     if (model) return model.getValue();
     return state.fileContents.get(path) || "";

@@ -20,6 +20,14 @@ Set CPPAPPLAB_WEB_PORT to use another local port.
 EOF
 }
 
+is_our_process() {
+    local pid="$1"
+    local command_line
+    [[ -r "/proc/$pid/cmdline" ]] || return 1
+    command_line="$(tr '\\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || true)"
+    [[ "$command_line" == *"$ROOT/web/server/cppapplab_web.py"* ]]
+}
+
 health_check() {
     python3 - "$HOST" "$PORT" <<'PY'
 import sys
@@ -44,9 +52,9 @@ stop_service() {
     fi
     local pid
     pid="$(cat "$PID_FILE")"
-    if [[ ! "$pid" =~ ^[0-9]+$ ]] || ! kill -0 "$pid" 2>/dev/null; then
+    if [[ ! "$pid" =~ ^[0-9]+$ ]] || ! kill -0 "$pid" 2>/dev/null || ! is_our_process "$pid"; then
         rm -f "$PID_FILE"
-        echo "[INFO] Removed a stale service PID file."
+        echo "[INFO] Removed a stale service PID file without signalling an unrelated process."
         return 0
     fi
     kill "$pid"
@@ -91,7 +99,7 @@ start_service() {
     if [[ -f "$PID_FILE" ]]; then
         local old_pid
         old_pid="$(cat "$PID_FILE")"
-        if [[ "$old_pid" =~ ^[0-9]+$ ]] && kill -0 "$old_pid" 2>/dev/null; then
+        if [[ "$old_pid" =~ ^[0-9]+$ ]] && kill -0 "$old_pid" 2>/dev/null && is_our_process "$old_pid"; then
             echo "[FAIL] PID $old_pid exists but the service is not healthy. Inspect $LOG_FILE." >&2
             return 1
         fi

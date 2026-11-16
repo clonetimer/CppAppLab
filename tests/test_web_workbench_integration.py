@@ -109,11 +109,11 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
             "/api/v1/workspaces/w1.hello-world/files/src/main.cpp",
             method="PUT",
             body={"content": (
-                "#include <iostream>\\n"
-                "int main() {\\n"
-                '    std::cout << "Hello, CppAppLab!\\\\n";\\n'
-                "    return 0;\\n"
-                "}\\n"
+                "#include <iostream>\n"
+                "int main() {\n"
+                '    std::cout << "Hello, CppAppLab!\\n";\n'
+                "    return 0;\n"
+                "}\n"
             )},
         )
         hello_check = self.request(
@@ -124,20 +124,20 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
         started = self.request("/api/v1/tasks/w1.calculator/start", method="POST", body={})
         self.assertTrue(started["workspace_ready"])
         calculator_source = (
-            '#include "calculator.hpp"\\n'
-            "namespace cppapplab::calculator {\\n"
-            "Result calculate(Operation operation, double left, double right) noexcept {\\n"
-            "    switch (operation) {\\n"
-            "    case Operation::Add: return {left + right, Error::None};\\n"
-            "    case Operation::Subtract: return {left - right, Error::None};\\n"
-            "    case Operation::Multiply: return {left * right, Error::None};\\n"
-            "    case Operation::Divide:\\n"
-            "        if (right == 0.0) return {0.0, Error::DivisionByZero};\\n"
-            "        return {left / right, Error::None};\\n"
-            "    }\\n"
-            "    return {0.0, Error::InvalidOperation};\\n"
-            "}\\n"
-            "}  // namespace cppapplab::calculator\\n"
+            '#include "calculator.hpp"\n'
+            "namespace cppapplab::calculator {\n"
+            "Result calculate(Operation operation, double left, double right) noexcept {\n"
+            "    switch (operation) {\n"
+            "    case Operation::Add: return {left + right, Error::None};\n"
+            "    case Operation::Subtract: return {left - right, Error::None};\n"
+            "    case Operation::Multiply: return {left * right, Error::None};\n"
+            "    case Operation::Divide:\n"
+            "        if (right == 0.0) return {0.0, Error::DivisionByZero};\n"
+            "        return {left / right, Error::None};\n"
+            "    }\n"
+            "    return {0.0, Error::InvalidOperation};\n"
+            "}\n"
+            "}  // namespace cppapplab::calculator\n"
         )
         self.request(
             "/api/v1/workspaces/w1.calculator/files/src/calculator.cpp",
@@ -154,7 +154,7 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
         self.request(
             "/api/v1/workspaces/w1.calculator/files/src/calculator.cpp",
             method="PUT",
-            body={"content": calculator_source + "// edit after build\\n"},
+            body={"content": calculator_source + "// edit after build\n"},
         )
         stale_run = self.request(
             "/api/v1/workspaces/w1.calculator/run", method="POST", body={}

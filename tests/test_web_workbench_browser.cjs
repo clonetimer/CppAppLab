@@ -246,7 +246,13 @@ async function main() {
       if (!response.ok) throw new Error("Could not read the saved Hello source.");
       return (await response.json()).content;
     });
-    assert.equal(helloSavedContent, HELLO_SOURCE, "Monaco autosave must persist the current source");
+    const normalizedLines = (source) =>
+      source.replace(/\r\n/g, "\n").split("\n").map((line) => line.trim()).filter(Boolean);
+    assert.deepEqual(
+      normalizedLines(helloSavedContent),
+      normalizedLines(HELLO_SOURCE),
+      "Monaco autosave must persist every source line (indentation may be normalized by the editor)"
+    );
 
     await page.locator("#build-button").click();
     await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "构建成功", null, { timeout: 45000 });

@@ -262,15 +262,16 @@ async function main() {
     await page.waitForFunction(() =>
       document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
     );
-    await page.waitForFunction(() => window.monaco && window.monaco.editor.getModels().length === 3);
-
     const fileTabs = page.locator("#file-list .file-tab");
     assert.equal(await fileTabs.count(), 3, "Calculator task must expose all three declared files");
 
     await fileTabs.filter({ hasText: "src/main.cpp" }).click();
     assert.equal((await page.locator("#active-file").textContent()).trim(), "src/main.cpp");
+    await fileTabs.filter({ hasText: "include/calculator.hpp" }).click();
+    assert.equal((await page.locator("#active-file").textContent()).trim(), "include/calculator.hpp");
     await fileTabs.filter({ hasText: "src/calculator.cpp" }).click();
     assert.equal((await page.locator("#active-file").textContent()).trim(), "src/calculator.cpp");
+    await page.waitForFunction(() => window.monaco && window.monaco.editor.getModels().length === 3);
 
     await setMonacoModel(page, "/src/calculator.cpp", CALCULATOR_INVALID);
     await page.waitForFunction(async () => {

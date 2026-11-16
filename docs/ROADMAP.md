@@ -277,3 +277,53 @@ Beyond W9:
 W9-A1–A3 are merged and validated. W9-A4–A5 and W10–W12 remain curriculum targets, not registered learner tasks; each will be added only after its learner source boundary, reference implementation and platform-owned acceptance fixture are ready.
 
 The roadmap is outcome-based. Additional lessons are added only when they improve a demonstrated learning or engineering outcome.
+
+
+## P8 — Browser-first learning workbench
+
+**Status: P8-A implementation in progress on `feat/p8-web-learning-workbench-20261116`.**
+
+The goal is to move the learner-facing workflow into one browser tab while preserving the existing C++ learning engine and CLI.
+
+### P8-A — Local web foundation
+
+- [x] Define the browser adapter architecture and API/security boundaries.
+- [x] Add a loopback-only Python standard-library service.
+- [x] Read task metadata and lessons from the authoritative course catalog.
+- [x] Delegate start/resume and fixed acceptance to the existing CLI.
+- [x] Restrict browser file access to task-declared learner source files.
+- [x] Add a responsive Chinese course/workbench shell.
+- [x] Add a local start/status/stop script.
+- [ ] Pass Ubuntu 22.04/24.04 CI API and path-safety tests.
+- [ ] Complete W1 Hello World browser end-to-end acceptance.
+- [ ] Verify source fingerprint invalidation and prerequisite locks through the browser.
+- [ ] Review local service lifecycle and Windows browser startup.
+
+### P8-B — Editor and learning loop
+
+- Monaco editor and multi-file tabs.
+- Save/autosave, dirty-state protection and keyboard shortcuts.
+- Separate build/run actions from platform acceptance.
+- Structured compiler/test diagnostics and source-line navigation.
+- Progressive hints and task-state refresh.
+
+### P8-C — Full course experience
+
+- Cover all 23 released W1–W9 tasks.
+- Interactive stdin/stdout for CLI programs and lifecycle controls for network services.
+- Visual course dependencies, progress, history and stale-evidence states.
+- Responsive layout and learner-oriented recovery guidance.
+
+### P8-D — Professional tooling
+
+- clangd completion/diagnostics.
+- GDB debugging with explicit process and session lifecycle controls.
+- Multi-file project navigation and build configuration views.
+
+### P8-E — Windows/WSL2 delivery
+
+- Double-click launch that starts or resumes the local service and opens the browser.
+- Readiness checks, port conflict handling, safe stop/restart and log access.
+- Static frontend assets included in source/learner packages.
+- Target-machine acceptance on Windows 11 + WSL2 with Ubuntu 22.04 and 24.04.
+- Release qualification only after the existing CLI and all course acceptance gates remain green.

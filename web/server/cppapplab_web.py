@@ -13,6 +13,7 @@ import mimetypes
 import os
 import re
 import secrets
+import signal
 import subprocess
 import sys
 import tempfile
@@ -734,12 +735,16 @@ def main() -> int:
     print(f"CppAppLab Web Workbench: http://127.0.0.1:{server.server_port}/", flush=True)
     print(f"Course tasks: {len(server.tasks)}", flush=True)
     print("Bound to loopback only. Press Ctrl+C to stop.", flush=True)
+    def request_shutdown(signum: int, frame: Any) -> None:
+        del signum, frame
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, request_shutdown)
     try:
         server.serve_forever(poll_interval=0.25)
     except KeyboardInterrupt:
         print("\nStopping CppAppLab Web Workbench.", flush=True)
     finally:
-        server.shutdown()
         server.server_close()
     return 0
 

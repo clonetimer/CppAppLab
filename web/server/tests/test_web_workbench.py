@@ -180,7 +180,7 @@ class WebWorkbenchTests(unittest.TestCase):
         )
         self.assertTrue(saved["saved"])
         reloaded = self.request("/api/v1/workspaces/w1.hello-world/files/src/main.cpp")
-        self.assertEqual(reloaded["content"], "#include <iostream>\\nint main() { return 0; }\\n")
+        self.assertEqual(reloaded["content"], "#include <iostream>\nint main() { return 0; }\n")
         check = self.request(
             "/api/v1/workspaces/w1.hello-world/check",
             method="POST",

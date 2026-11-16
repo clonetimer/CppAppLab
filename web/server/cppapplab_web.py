@@ -564,6 +564,9 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "tasks" and parts[4] == "start":
                 self._start_task(parts[3])
                 return
+            if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] in {"build", "run"}:
+                self._run_workspace_action(parts[3], parts[4])
+                return
             if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "check":
                 self._check_workspace(parts[3])
                 return
@@ -643,6 +646,20 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
                 except OSError:
                     pass
         self._send_json(200, {"saved": True, "task_id": task_id, "path": relative})
+
+    def _run_workspace_action(self, task_id: str, action: str) -> None:
+        self._read_json()
+        workspace, _ = self.server.workspace_for_task(task_id)
+        timeout = 150.0 if action == "build" else 60.0
+        exit_code, output = self.server.run_cli([action, str(workspace)], timeout=timeout)
+        self._send_json(200, {
+            "task_id": task_id,
+            "action": action,
+            "passed": exit_code == 0,
+            "exit_code": exit_code,
+            "output": bounded_output(output),
+            "records_acceptance_evidence": False,
+        })
 
     def _check_workspace(self, task_id: str) -> None:
         self._read_json()

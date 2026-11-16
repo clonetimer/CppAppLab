@@ -337,6 +337,7 @@
               ui.monacoContainer.hidden = false;
               ui.editor.hidden = true;
               ui.editorEngineStatus.textContent = "Monaco " + MONACO_VERSION;
+              requestAnimationFrame(() => state.editorInstance && state.editorInstance.layout());
               resolve(true);
             } catch (error) {
               console.warn("Monaco editor initialization failed:", error);

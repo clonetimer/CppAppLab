@@ -439,9 +439,13 @@
   }
 
   function clearDiagnosticsForActiveModel() {
-    if (state.editorInstance && state.monaco && state.editorInstance.getModel()) {
-      state.monaco.editor.setModelMarkers(state.editorInstance.getModel(), "cppapplab", []);
+    if (state.monaco) {
+      for (const model of state.models.values()) {
+        state.monaco.editor.setModelMarkers(model, "cppapplab", []);
+      }
     }
+    ui.diagnostics.replaceChildren();
+    ui.diagnostics.hidden = true;
   }
 
   function handleEditorInput() {
@@ -719,6 +723,7 @@
 
   async function openDiagnostic(path, line, column) {
     if (path !== state.activeFile) await loadFile(path);
+    renderDiagnostics(ui.console.textContent || "");
     if (state.editorInstance) {
       state.editorInstance.setPosition({ lineNumber: line, column });
       state.editorInstance.revealLineInCenter(line);

@@ -385,7 +385,9 @@ async function main() {
       viewport: { width: 1280, height: 900 }
     });
     const fallbackPage = await fallbackContext.newPage();
-    await fallbackPage.route("https://**", (route) => route.abort());
+    // Block the exact Monaco loader path on every configured CDN so the
+    // offline branch is deterministic even if another host is reachable.
+    await fallbackPage.route("**/vs/loader.js", (route) => route.abort());
     const fallbackErrors = [];
     fallbackPage.on("pageerror", (error) => fallbackErrors.push(error.message));
 
@@ -413,12 +415,26 @@ async function main() {
     assert.equal(await fallbackPage.locator("#source-editor").isVisible(), true,
       "Offline fallback textarea must be visible");
     await fallbackPage.locator("#source-editor").fill(HELLO_SOURCE);
-    await fallbackPage.waitForFunction(async () => {
-      const response = await fetch("/api/v1/workspaces/w1.hello-world/files/src/main.cpp");
-      if (!response.ok) return false;
-      const data = await response.json();
-      return data.content.includes('std::cout << "Hello, CppAppLab!');
-    }, null, { timeout: 10000 });
+    await fallbackPage.waitForFunction(() =>
+      document.querySelector("#save-state")?.textContent.includes("自动保存将在片刻后执行")
+    );
+    await fallbackPage.waitForFunction(() =>
+      document.querySelector("#save-state")?.textContent === "已保存到本地工作区",
+      null,
+      { timeout: 10000 }
+    );
+    const fallbackSavedContent = await fallbackPage.evaluate(async () => {
+      const response = await fetch("/api/v1/workspaces/w1.hello-world/files/src/main.cpp", {
+        cache: "no-store"
+      });
+      if (!response.ok) throw new Error("Could not read the saved fallback source.");
+      return (await response.json()).content;
+    });
+    assert.deepEqual(
+      normalizedLines(fallbackSavedContent),
+      normalizedLines(HELLO_SOURCE),
+      "Textarea fallback autosave must persist every source line"
+    );
     await fallbackPage.locator("#build-button").click();
     await fallbackPage.waitForFunction(() => document.querySelector("#check-result")?.textContent === "构建成功", null, { timeout: 45000 });
     await fallbackPage.locator("#run-button").click();

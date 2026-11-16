@@ -259,7 +259,10 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         if not raw_workspace.is_absolute():
             raw_workspace = self.root / raw_workspace
         allowed_root = self.workspace_root.resolve()
-        workspace = Path(os.path.abspath(str(raw_workspace)))
+        try:
+            workspace = raw_workspace.resolve(strict=True)
+        except OSError as exc:
+            raise ApiError(404, "The learner workspace is missing.") from exc
         try:
             relative_workspace = workspace.relative_to(allowed_root)
         except ValueError as exc:

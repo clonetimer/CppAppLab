@@ -653,7 +653,7 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             log_path = state_directory / "last-check.log"
             if log_path.exists() or log_path.is_symlink():
                 log = read_bounded(log_path, MAX_PROCESS_OUTPUT, "Acceptance log")
-                output = (summary + "\\n\\n--- Acceptance log ---\\n" + log).strip()
+                output = (summary + "\n\n--- Acceptance log ---\n" + log).strip()
         self._send_json(200, {
             "task_id": task_id,
             "passed": exit_code == 0,

@@ -103,6 +103,88 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
                 timeout=10, check=False,
             )
 
+    def test_w1_calculator_build_run_and_acceptance_are_separate(self) -> None:
+        self.request("/api/v1/tasks/w1.hello-world/start", method="POST", body={})
+        self.request(
+            "/api/v1/workspaces/w1.hello-world/files/src/main.cpp",
+            method="PUT",
+            body={"content": (
+                "#include <iostream>\\n"
+                "int main() {\\n"
+                '    std::cout << "Hello, CppAppLab!\\\\n";\\n'
+                "    return 0;\\n"
+                "}\\n"
+            )},
+        )
+        hello_check = self.request(
+            "/api/v1/workspaces/w1.hello-world/check", method="POST", body={}
+        )
+        self.assertTrue(hello_check["passed"], hello_check["output"])
+
+        started = self.request("/api/v1/tasks/w1.calculator/start", method="POST", body={})
+        self.assertTrue(started["workspace_ready"])
+        calculator_source = (
+            '#include "calculator.hpp"\\n'
+            "namespace cppapplab::calculator {\\n"
+            "Result calculate(Operation operation, double left, double right) noexcept {\\n"
+            "    switch (operation) {\\n"
+            "    case Operation::Add: return {left + right, Error::None};\\n"
+            "    case Operation::Subtract: return {left - right, Error::None};\\n"
+            "    case Operation::Multiply: return {left * right, Error::None};\\n"
+            "    case Operation::Divide:\\n"
+            "        if (right == 0.0) return {0.0, Error::DivisionByZero};\\n"
+            "        return {left / right, Error::None};\\n"
+            "    }\\n"
+            "    return {0.0, Error::InvalidOperation};\\n"
+            "}\\n"
+            "}  // namespace cppapplab::calculator\\n"
+        )
+        self.request(
+            "/api/v1/workspaces/w1.calculator/files/src/calculator.cpp",
+            method="PUT",
+            body={"content": calculator_source},
+        )
+
+        build = self.request(
+            "/api/v1/workspaces/w1.calculator/build", method="POST", body={}
+        )
+        self.assertTrue(build["passed"], build["output"])
+        self.assertFalse(build["records_acceptance_evidence"])
+
+        self.request(
+            "/api/v1/workspaces/w1.calculator/files/src/calculator.cpp",
+            method="PUT",
+            body={"content": calculator_source + "// edit after build\\n"},
+        )
+        stale_run = self.request(
+            "/api/v1/workspaces/w1.calculator/run", method="POST", body={}
+        )
+        self.assertFalse(stale_run["passed"])
+        self.assertIn("Build is missing or stale", stale_run["output"])
+
+        rebuild = self.request(
+            "/api/v1/workspaces/w1.calculator/build", method="POST", body={}
+        )
+        self.assertTrue(rebuild["passed"], rebuild["output"])
+        run = self.request(
+            "/api/v1/workspaces/w1.calculator/run", method="POST", body={}
+        )
+        self.assertTrue(run["passed"], run["output"])
+        self.assertIn("100% tests passed, 0 tests failed out of 9", run["output"])
+        self.assertFalse(run["records_acceptance_evidence"])
+
+        progress = self.request("/api/v1/tasks")
+        calculator = next(task for task in progress["tasks"] if task["id"] == "w1.calculator")
+        self.assertEqual(calculator["state"], "IN PROGRESS")
+
+        acceptance = self.request(
+            "/api/v1/workspaces/w1.calculator/check", method="POST", body={}
+        )
+        self.assertTrue(acceptance["passed"], acceptance["output"])
+        passed = self.request("/api/v1/tasks")
+        calculator = next(task for task in passed["tasks"] if task["id"] == "w1.calculator")
+        self.assertEqual(calculator["state"], "PASSED")
+
     def test_w1_start_edit_acceptance_and_stale_evidence(self) -> None:
         tasks = self.request("/api/v1/tasks")
         hello = next(task for task in tasks["tasks"] if task["id"] == "w1.hello-world")
@@ -128,6 +210,21 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
             },
         )
         self.assertTrue(saved["saved"])
+
+        build = self.request(
+            "/api/v1/workspaces/w1.hello-world/build", method="POST", body={}
+        )
+        self.assertTrue(build["passed"], build["output"])
+        self.assertFalse(build["records_acceptance_evidence"])
+        run = self.request(
+            "/api/v1/workspaces/w1.hello-world/run", method="POST", body={}
+        )
+        self.assertTrue(run["passed"], run["output"])
+        self.assertFalse(run["records_acceptance_evidence"])
+        self.assertIn("Hello, CppAppLab!", run["output"])
+        in_progress_tasks = self.request("/api/v1/tasks")
+        hello = next(task for task in in_progress_tasks["tasks"] if task["id"] == "w1.hello-world")
+        self.assertEqual(hello["state"], "IN PROGRESS")
 
         result = self.request(
             "/api/v1/workspaces/w1.hello-world/check",

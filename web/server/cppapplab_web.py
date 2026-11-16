@@ -644,12 +644,22 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
     def _check_workspace(self, task_id: str) -> None:
         self._read_json()
         workspace, _ = self.server.workspace_for_task(task_id)
-        exit_code, output = self.server.run_cli(["check", str(workspace)], timeout=180.0)
+        exit_code, summary = self.server.run_cli(["check", str(workspace)], timeout=180.0)
+        output = summary
+        state_directory = workspace / ".cppapplab"
+        if state_directory.exists() or state_directory.is_symlink():
+            if state_directory.is_symlink() or not state_directory.is_dir():
+                raise ApiError(400, "Workspace check state must be a real directory.")
+            log_path = state_directory / "last-check.log"
+            if log_path.exists() or log_path.is_symlink():
+                log = read_bounded(log_path, MAX_PROCESS_OUTPUT, "Acceptance log")
+                output = (summary + "\\n\\n--- Acceptance log ---\\n" + log).strip()
         self._send_json(200, {
             "task_id": task_id,
             "passed": exit_code == 0,
             "exit_code": exit_code,
-            "output": output,
+            "summary": summary,
+            "output": bounded_output(output),
         })
 
 

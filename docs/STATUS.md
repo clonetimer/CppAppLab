@@ -196,3 +196,23 @@ The archive was built and checked with dry-run simulation; it was not installed 
 ## Course-first usability focus (2026-11-12)
 
 The priority is a complete, understandable experience for the currently released **23 W1–W9 tasks**, not Ubuntu installation. A new course-focused PR adds a Chinese learning route, an interactive `guide` entry, correct launch commands in extracted learner packages, Markdown repairs and an automated content audit. Planned W9-A4/A5 and W10–W12 lessons remain outside the current registered course. The tutorial acceptance uses existing preinstalled CI toolchains and does not install Ubuntu packages.
+
+
+## P8 — Browser-first learning workbench (in progress)
+
+**Branch:** `feat/p8-web-learning-workbench-20261116`.
+
+P8-A has started as an additive browser adapter over the existing CppAppLab learning engine. The initial implementation includes:
+
+- A Python-standard-library HTTP service bound to loopback only.
+- Same-origin API requests with an in-memory CSRF token; no CORS and no arbitrary shell/command endpoint.
+- Course and lesson reads from the authoritative `course/tasks.tsv` and Markdown files.
+- Start/resume delegated to `cppapplab learn <task-id>`.
+- Workspace file access restricted to each task's declared `source_files`.
+- Atomic source saves and fixed acceptance delegated to `cppapplab check <workspace>`.
+- A responsive Chinese browser shell with course navigation, lesson reading, source-file tabs, editing, progressive hints, and acceptance output.
+- A local start/status/stop script and API/path-safety tests.
+
+The current browser editor is intentionally a lightweight first slice. Monaco, richer C++ diagnostics, run/debug workflows, Windows one-click browser startup, and packaged static assets are not yet delivered.
+
+**Acceptance status:** implementation and CI validation are in progress. No claim is made yet for Windows 11 + WSL2 target-machine acceptance or release readiness. The existing CLI and fixed acceptance contracts remain authoritative.

@@ -238,6 +238,7 @@
         const button = document.createElement("button");
         button.type = "button";
         button.className = "task-link" + (task.id === state.selectedTaskId ? " active" : "");
+        button.dataset.taskId = task.id;
         button.dataset.state = task.state;
         button.title = task.title;
         const marker = document.createElement("span");

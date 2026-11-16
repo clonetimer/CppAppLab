@@ -534,18 +534,19 @@ int build_workspace(const std::filesystem::path& workspace_path) {
     throw std::runtime_error("Unknown task build profile.");
 }
 
-void require_current_build(const Workspace& workspace,
-                           const std::filesystem::path& build_directory) {
+std::string require_current_build(const Workspace& workspace,
+                                  const std::filesystem::path& build_directory) {
     const auto stamp = read_build_fingerprint(build_fingerprint_path(build_directory));
     const std::string fingerprint = source_fingerprint(*workspace.task, workspace.root);
     if (!stamp.has_value() || *stamp != fingerprint) {
         throw std::runtime_error("Build is missing or stale. Save the current source and build again.");
     }
+    return *stamp;
 }
 
 int run_exact_stdout_workspace(const Workspace& workspace) {
     const auto build_directory = build_directory_for(workspace);
-    require_current_build(workspace, build_directory);
+    const std::string built_fingerprint = require_current_build(workspace, build_directory);
     const auto executable = build_directory / "learner_app";
     const auto status = std::filesystem::symlink_status(executable);
     if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
@@ -556,8 +557,7 @@ int run_exact_stdout_workspace(const Workspace& workspace) {
     const ProcessResult execution = run_process(
         {executable.string()}, workspace.root, std::chrono::seconds(5), kMaxProgramOutput);
     std::cout << execution.output;
-    const bool unchanged = source_fingerprint(*workspace.task, workspace.root) ==
-                           *read_build_fingerprint(build_fingerprint_path(build_directory));
+    const bool unchanged = source_fingerprint(*workspace.task, workspace.root) == built_fingerprint;
     const bool passed = process_succeeded(execution) && unchanged;
     if (execution.timed_out) {
         std::cout << "\n[CppAppLab] Program exceeded the 5-second time limit.\n";
@@ -575,14 +575,13 @@ int run_exact_stdout_workspace(const Workspace& workspace) {
 
 int run_cmake_gtest_workspace(const Workspace& workspace) {
     const auto build_directory = build_directory_for(workspace);
-    require_current_build(workspace, build_directory);
+    const std::string built_fingerprint = require_current_build(workspace, build_directory);
     const ProcessResult tests = run_process(
         {"ctest", "--test-dir", build_directory.string(), "--output-on-failure"},
         workspace.root, std::chrono::seconds(45), kMaxCompilerOutput);
     std::cout << "$ ctest --test-dir " << build_directory.string() << " --output-on-failure\n"
               << tests.output;
-    const bool unchanged = source_fingerprint(*workspace.task, workspace.root) ==
-                           *read_build_fingerprint(build_fingerprint_path(build_directory));
+    const bool unchanged = source_fingerprint(*workspace.task, workspace.root) == built_fingerprint;
     const bool passed = process_succeeded(tests) && unchanged;
     if (tests.timed_out) {
         std::cout << "\n[CppAppLab] Test execution exceeded the 45-second time limit.\n";

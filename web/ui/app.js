@@ -659,8 +659,10 @@
       const result = await api("/api/v1/tasks/" + encodeURIComponent(state.task.id) + "/start", {
         method: "POST", body: {}
       });
+      updateTaskState(state.task.id, state.task.state === "PASSED" ? "PASSED" : "IN PROGRESS");
       state.workspaceReady = true;
       ui.workspaceState.textContent = result.resumed ? "已恢复" : "已创建";
+      ui.startButton.textContent = "工作区已打开";
       await loadWorkspaceFiles();
       toast(result.resumed ? "已恢复上次的学习工作区。" : "学习工作区已创建。");
     } catch (error) {

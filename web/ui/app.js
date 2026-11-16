@@ -13,6 +13,7 @@
     workspaceReady: false,
     dirtyFiles: new Set(),
     fileContents: new Map(),
+    fileVersions: new Map(),
     models: new Map(),
     monaco: null,
     editorInstance: null,
@@ -283,6 +284,7 @@
     for (const model of state.models.values()) model.dispose();
     state.models.clear();
     state.fileContents.clear();
+    state.fileVersions.clear();
     state.dirtyFiles.clear();
     state.activeFile = "";
   }
@@ -444,6 +446,7 @@
   function handleEditorInput() {
     if (!state.activeFile) return;
     state.dirtyFiles.add(state.activeFile);
+    state.fileVersions.set(state.activeFile, (state.fileVersions.get(state.activeFile) || 0) + 1);
     state.fileContents.set(state.activeFile, editorValueFor(state.activeFile));
     clearDiagnosticsForActiveModel();
     updateDirtyState();
@@ -461,14 +464,20 @@
   async function saveFile(path, options = {}) {
     if (!state.task || !path || !state.workspaceReady) return false;
     const content = editorValueFor(path);
+    const savedVersion = state.fileVersions.get(path) || 0;
     const encodedPath = path.split("/").map(encodeURIComponent).join("/");
     try {
       await api("/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/files/" + encodedPath, {
         method: "PUT",
         body: { content }
       });
-      state.fileContents.set(path, content);
-      state.dirtyFiles.delete(path);
+      if ((state.fileVersions.get(path) || 0) === savedVersion) {
+        state.fileContents.set(path, content);
+        state.dirtyFiles.delete(path);
+      } else {
+        state.fileContents.set(path, editorValueFor(path));
+        scheduleAutosave();
+      }
       if (state.task.state === "PASSED") updateTaskState(state.task.id, "STALE");
       updateDirtyState();
       if (!options.silent) toast("代码已保存。");
@@ -482,15 +491,24 @@
 
   async function saveAllDirtyFiles(options = {}) {
     clearTimeout(state.autosaveTimer);
-    const paths = Array.from(state.dirtyFiles);
-    for (const path of paths) {
-      const saved = await saveFile(path, { silent: true });
-      if (!saved) {
-        if (!options.silent) toast("部分文件保存失败，请检查网络或工作区状态。");
-        return false;
+    let savedCount = 0;
+    for (let pass = 0; state.dirtyFiles.size && pass < 5; pass += 1) {
+      const paths = Array.from(state.dirtyFiles);
+      for (const path of paths) {
+        const saved = await saveFile(path, { silent: true });
+        if (!saved) {
+          if (!options.silent) toast("部分文件保存失败，请检查网络或工作区状态。");
+          return false;
+        }
+        savedCount += 1;
       }
     }
-    if (!options.silent && paths.length) toast("所有修改均已保存。");
+    if (state.dirtyFiles.size) {
+      scheduleAutosave();
+      if (!options.silent) toast("代码仍在修改中，请稍后再运行。");
+      return false;
+    }
+    if (!options.silent && savedCount) toast("所有修改均已保存。");
     updateDirtyState();
     return true;
   }

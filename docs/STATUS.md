@@ -211,7 +211,7 @@ P8-A has started as an additive browser adapter over the existing CppAppLab lear
 - Workspace file access restricted to each task's declared `source_files`.
 - Atomic source saves and fixed acceptance delegated to `cppapplab check <workspace>`.
 - A responsive Chinese browser shell with course navigation, lesson reading, source-file tabs, editing, progressive hints, and acceptance output.
-- A local start/status/stop script and API/path-safety tests.
+- A local start/status/stop script, API/path-safety tests, and a post-build lifecycle smoke test.
 
 The current browser editor is intentionally a lightweight first slice. Monaco, richer C++ diagnostics, run/debug workflows, Windows one-click browser startup, and packaged static assets are not yet delivered.
 

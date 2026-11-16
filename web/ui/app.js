@@ -261,7 +261,6 @@
       || state.tasks.find((task) => task.state === "PASSED");
     ui.continueButton.disabled = !next;
     ui.continueButton.textContent = next ? "继续学习  →" : "课程已完成";
-    if (next) ui.continueButton.onclick = () => selectTask(next.id);
   }
 
   async function selectTask(taskId) {
@@ -507,7 +506,6 @@
         if (next) {
           ui.continueButton.disabled = false;
           ui.continueButton.textContent = "继续学习  →";
-          ui.continueButton.onclick = () => selectTask(next.id);
         }
       }
     } catch (error) {

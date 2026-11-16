@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 import threading
 import unittest
@@ -9,6 +10,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from cppapplab_web import CppAppLabWebServer, safe_relative_path
 
 
@@ -30,7 +32,7 @@ elif command == "learn":
     (workspace / "src").mkdir(parents=True, exist_ok=True)
     source = workspace / "src" / "main.cpp"
     if not source.exists():
-        source.write_text('#include <iostream>\\\\nint main() { return 0; }\\\\n', encoding="utf-8")
+        source.write_text('#include <iostream>\\nint main() { return 0; }\\n', encoding="utf-8")
     print("Created your learner workspace")
     print("Workspace: " + str(workspace))
 elif command == "check":
@@ -53,25 +55,25 @@ class WebWorkbenchTests(unittest.TestCase):
         self.home.mkdir()
         self.workspace_root.mkdir(parents=True)
         (self.root / "course" / "lessons" / "w1").mkdir(parents=True)
-        (self.ui_root).mkdir(parents=True)
+        self.ui_root.mkdir(parents=True)
         (self.root / "labs" / "w1" / "hello-world" / "learner" / "src").mkdir(parents=True)
         (self.root / "course" / "lessons" / "w1" / "hello-world.md").write_text(
-            "# Hello World\\n\\nWrite your first C++ program.\\n", encoding="utf-8"
+            "# Hello World\n\nWrite your first C++ program.\n", encoding="utf-8"
         )
         (self.root / "course" / "lessons" / "w1" / "hello-world.hints.md").write_text(
-            "## Hint 1 — Start\\n\\nUse main.\\n\\n## Hint 2 — Output\\n\\nUse cout.\\n\\n## Hint 3 — Build\\n\\nReturn zero.\\n",
+            "## Hint 1 — Start\n\nUse main.\n\n## Hint 2 — Output\n\nUse cout.\n\n## Hint 3 — Build\n\nReturn zero.\n",
             encoding="utf-8",
         )
-        (self.root / "web" / "ui" / "index.html").write_text(
+        (self.ui_root / "index.html").write_text(
             "<!doctype html><title>CppAppLab</title>", encoding="utf-8"
         )
         (self.root / "course" / "tasks.tsv").write_text(
-            "# catalog\\n"
-            "w1.hello-world\\tW1 · First C++ Program\\t1\\t1\\t"
-            "course/lessons/w1/hello-world.md\\t"
-            "course/lessons/w1/hello-world.hints.md\\t"
-            "labs/w1/hello-world/learner\\tsrc/main.cpp\\texact_stdout\\t"
-            "Hello, CppAppLab!\\\\n\\t\\t0\\t\\n",
+            "# catalog\n"
+            "w1.hello-world\tW1 · First C++ Program\t1\t1\t"
+            "course/lessons/w1/hello-world.md\t"
+            "course/lessons/w1/hello-world.hints.md\t"
+            "labs/w1/hello-world/learner\tsrc/main.cpp\texact_stdout\t"
+            "Hello, CppAppLab!\\n\t\t0\t\n",
             encoding="utf-8",
         )
         self.binary = self.base / "cppapplab"
@@ -121,8 +123,14 @@ class WebWorkbenchTests(unittest.TestCase):
                 return json.loads(raw.decode("utf-8"))
             return raw.decode("utf-8")
 
-    def request_error(self, path: str, method: str, body: dict | None = None,
-                      token: str | None = None, origin: str | None = None) -> int:
+    def request_error(
+        self,
+        path: str,
+        method: str,
+        body: dict | None = None,
+        token: str | None = None,
+        origin: str | None = None,
+    ) -> int:
         data = None if body is None else json.dumps(body).encode("utf-8")
         headers = {}
         if body is not None:
@@ -166,7 +174,7 @@ class WebWorkbenchTests(unittest.TestCase):
         saved = self.request(
             "/api/v1/workspaces/w1.hello-world/files/src/main.cpp",
             method="PUT",
-            body={"content": "#include <iostream>\\nint main() { return 0; }\\n"},
+            body={"content": "#include <iostream>\nint main() { return 0; }\n"},
             token=self.token,
             origin=self.base_url,
         )
@@ -238,7 +246,7 @@ class PathValidationTests(unittest.TestCase):
         self.assertEqual(safe_relative_path("src/main.cpp"), "src/main.cpp")
 
     def test_rejects_absolute_traversal_and_windows_paths(self) -> None:
-        for value in ("../secret", "src/../../secret", "/etc/passwd", r"src\\main.cpp", "C:/secret"):
+        for value in ("../secret", "src/../../secret", "/etc/passwd", r"src\main.cpp", "C:/secret"):
             with self.subTest(value=value):
                 with self.assertRaises(ValueError):
                     safe_relative_path(value)

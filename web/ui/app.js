@@ -798,7 +798,15 @@
       ui.checkResult.className = "check-result " + (passed ? "pass" : "fail");
       if (action === "check") {
         updateTaskState(state.task.id, passed ? "PASSED" : "NEEDS WORK");
-        toast(passed ? "平台固定验收已通过，学习记录已更新。" : "验收未通过，请根据诊断继续修改。");
+        if (passed) {
+          try {
+            // Refresh prerequisite-derived states so the next task unlocks immediately.
+            await loadTasks();
+          } catch (refreshError) {
+            toast("验收已记录，但课程状态刷新失败：" + refreshError.message);
+          }
+        }
+        toast(passed ? "平台固定验收已通过，下一任务已更新。" : "验收未通过，请根据诊断继续修改。");
       } else if (action === "build") {
         toast(passed ? "构建成功。尚未记录正式验收结果。" : "构建失败，请查看编译诊断。");
       } else {

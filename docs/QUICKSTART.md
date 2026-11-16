@@ -97,8 +97,10 @@ A task with an unmet prerequisite remains locked. The command reports which prer
 1. Open the displayed workspace in your editor (VS Code users can use the printed code command).
 2. Edit the files listed by the task guide.
 3. If stuck, request a progressive hint (levels 1–3).
-4. Run the printed cppapplab check command. If it fails, CppAppLab shows the relevant compiler or test messages and prints the exact hint, log and retry commands.
-5. After PASS, run ./build/cppapplab learn to continue, or return to the home menu with ./build/cppapplab.
+4. Run `cppapplab build <workspace>` to compile and inspect compiler diagnostics.
+5. Run `cppapplab run <workspace>` to execute the direct learner program or the registered CTest suite. This action does not record formal evidence.
+6. Run `cppapplab check <workspace>` for the platform-owned acceptance contract. A PASS is recorded only by this command.
+7. After PASS, run ./build/cppapplab learn to continue, or return to the home menu with ./build/cppapplab.
 
 Your source files, progress and check history are kept between sessions. A changed source file makes the previous PASS evidence stale; rerun the check after editing.
 
@@ -111,6 +113,9 @@ Your source files, progress and check history are kept between sessions. A chang
 | ./build/cppapplab progress | Review all task states and prerequisite locks |
 | ./build/cppapplab list | Browse the complete task catalog |
 | ./build/cppapplab history <task-id> | Review previous acceptance attempts |
+| ./build/cppapplab build <workspace> | Compile with the task's fixed build profile |
+| ./build/cppapplab run <workspace> | Run the learner program or fixed test suite (no evidence) |
+| ./build/cppapplab check <workspace> | Run formal acceptance and record evidence |
 | bash scripts/check_environment.sh | Recheck the development environment |
 
 ## Troubleshooting

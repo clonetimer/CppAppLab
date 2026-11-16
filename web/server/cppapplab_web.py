@@ -16,8 +16,6 @@ import secrets
 import subprocess
 import sys
 import tempfile
-import threading
-import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -411,17 +409,12 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             normalized = safe_relative_path(relative)
         except ValueError as exc:
             raise ApiError(404, "Static resource not found.") from exc
-        target = self.server.ui_root / normalized
-        try:
-            resolved = target.resolve(strict=True)
-            resolved.relative_to(self.server.ui_root)
-        except (OSError, ValueError) as exc:
-            raise ApiError(404, "Static resource not found.") from exc
-        info = _lstat_regular_file(resolved, "Static resource")
+        target = safe_repo_file(self.server.ui_root, normalized, 2 * 1024 * 1024, "Static resource")
+        info = _lstat_regular_file(target, "Static resource")
         if info.st_size > 2 * 1024 * 1024:
             raise ApiError(413, "Static resource exceeds the size limit.")
-        body = resolved.read_bytes()
-        content_type = mimetypes.guess_type(resolved.name)[0] or "application/octet-stream"
+        body = target.read_bytes()
+        content_type = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
         if content_type.startswith("text/") or content_type in {"application/javascript", "image/svg+xml"}:
             content_type += "; charset=utf-8"
         self._send_bytes(200, content_type, body, head_only=head_only)
@@ -623,7 +616,6 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         target, _ = self.server.resolve_workspace_file(task_id, relative)
         parent = target.parent
         try:
-            parent_info = parent.lstat()
             target_info = target.lstat()
         except OSError as exc:
             raise ApiError(404, "Learner source file was not found.") from exc

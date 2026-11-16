@@ -220,7 +220,7 @@ async function main() {
     await page.waitForFunction(() => {
       const value = document.querySelector("#editor-engine-status")?.textContent || "";
       return value.startsWith("Monaco ") || value === "基础编辑器（离线）";
-    }, { timeout: 45000 });
+    }, null, { timeout: 45000 });
 
     const editorMode = await page.locator("#editor-engine-status").textContent();
     assert.match(editorMode, /^Monaco /, "Primary browser acceptance requires the pinned Monaco editor to load");
@@ -231,27 +231,27 @@ async function main() {
       if (!response.ok) return false;
       const data = await response.json();
       return data.content.includes("Hello, CppAppLab!");
-    }, { timeout: 10000 });
+    }, null, { timeout: 10000 });
     const helloSaved = await readWorkspaceFile(page, service.baseUrl, "w1.hello-world", "src/main.cpp");
     assert.equal(helloSaved.content, HELLO_SOURCE, "Monaco autosave must persist the current source");
 
     await page.locator("#build-button").click();
-    await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "构建成功", { timeout: 45000 });
+    await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "构建成功", null, { timeout: 45000 });
     assert.match(await page.locator("#console-output").textContent(), /Build result: PASS/);
 
     await page.locator("#run-button").click();
-    await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "执行成功", { timeout: 15000 });
+    await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "执行成功", null, { timeout: 15000 });
     assert.match(await page.locator("#console-output").textContent(), /Hello, CppAppLab!/);
     assert.equal(await page.locator("#task-state").textContent(), "进行中",
       "Build and Run must not mark the task as formally passed");
 
     await page.locator("#check-button").click();
-    await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "PASS", { timeout: 45000 });
+    await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "PASS", null, { timeout: 45000 });
     await page.waitForFunction(() => {
       const button = Array.from(document.querySelectorAll("#course-list .task-link"))
         .find((item) => item.textContent.includes("Multi-file Calculator"));
       return button && button.querySelector("small")?.textContent === "可开始";
-    }, { timeout: 10000 });
+    }, null, { timeout: 10000 });
 
     const calculatorTask = page.locator("#course-list .task-link").filter({ hasText: "Multi-file Calculator" });
     await calculatorTask.click();
@@ -278,10 +278,10 @@ async function main() {
       if (!response.ok) return false;
       const data = await response.json();
       return data.content.includes("missing_symbol");
-    }, { timeout: 10000 });
+    }, null, { timeout: 10000 });
 
     await page.locator("#build-button").click();
-    await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "构建失败", { timeout: 45000 });
+    await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "构建失败", null, { timeout: 45000 });
     await page.waitForFunction(() =>
       !document.querySelector("#diagnostics-list")?.hidden &&
       document.querySelectorAll("#diagnostics-list .diagnostic-button").length > 0
@@ -306,23 +306,23 @@ async function main() {
       const data = await response.json();
       return data.content.includes("case Operation::Divide") &&
         !data.content.includes("missing_symbol");
-    }, { timeout: 10000 });
+    }, null, { timeout: 10000 });
 
     await page.locator("#build-button").click();
-    await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "构建成功", { timeout: 60000 });
+    await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "构建成功", null, { timeout: 60000 });
     assert.match(await page.locator("#console-output").textContent(), /Build result: PASS/);
 
     await page.locator("#run-button").click();
-    await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "执行成功", { timeout: 60000 });
+    await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "执行成功", null, { timeout: 60000 });
     assert.match(await page.locator("#console-output").textContent(), /100% tests passed, 0 tests failed out of 9/);
 
     await page.locator("#check-button").click();
-    await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "PASS", { timeout: 60000 });
+    await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "PASS", null, { timeout: 60000 });
     await page.waitForFunction(() => {
       const button = Array.from(document.querySelectorAll("#course-list .task-link"))
         .find((item) => item.textContent.includes("Persistent Todo CLI"));
       return button && button.querySelector("small")?.textContent === "可开始";
-    }, { timeout: 10000 });
+    }, null, { timeout: 10000 });
 
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "cppapplab-workbench-desktop.png"),
@@ -377,11 +377,11 @@ async function main() {
       if (!response.ok) return false;
       const data = await response.json();
       return data.content.includes("Hello, CppAppLab!");
-    }, { timeout: 10000 });
+    }, null, { timeout: 10000 });
     await fallbackPage.locator("#build-button").click();
-    await fallbackPage.waitForFunction(() => document.querySelector("#check-result")?.textContent === "构建成功", { timeout: 45000 });
+    await fallbackPage.waitForFunction(() => document.querySelector("#check-result")?.textContent === "构建成功", null, { timeout: 45000 });
     await fallbackPage.locator("#run-button").click();
-    await fallbackPage.waitForFunction(() => document.querySelector("#check-result")?.textContent === "执行成功", { timeout: 15000 });
+    await fallbackPage.waitForFunction(() => document.querySelector("#check-result")?.textContent === "执行成功", null, { timeout: 15000 });
     assert.match(await fallbackPage.locator("#console-output").textContent(), /Hello, CppAppLab!/);
     assert.deepEqual(fallbackErrors, [], "The offline fallback must not emit uncaught browser exceptions");
 

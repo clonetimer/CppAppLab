@@ -257,23 +257,33 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         match = re.search(r"^Workspace:\s*(.+)$", output, re.MULTILINE)
         if not match:
             raise ApiError(502, "The learning engine did not return a workspace path.")
-        workspace = Path(match.group(1).strip()).expanduser()
-        if not workspace.is_absolute():
-            workspace = (self.root / workspace).resolve()
-        else:
-            workspace = workspace.resolve()
+        raw_workspace = Path(match.group(1).strip()).expanduser()
+        if not raw_workspace.is_absolute():
+            raw_workspace = self.root / raw_workspace
         allowed_root = self.workspace_root.resolve()
+        workspace = Path(os.path.abspath(str(raw_workspace)))
         try:
-            workspace.relative_to(allowed_root)
+            relative_workspace = workspace.relative_to(allowed_root)
         except ValueError as exc:
             raise ApiError(
                 403,
                 "The saved workspace is outside the browser workspace root. "
                 "Use the standard ~/cppapplab-work location or create a browser workspace.",
             ) from exc
-        if workspace == allowed_root or not workspace.is_dir() or workspace.is_symlink():
+        if not relative_workspace.parts:
             raise ApiError(400, "The learning engine returned an invalid workspace directory.")
-        return workspace, output
+        current = allowed_root
+        for part in relative_workspace.parts:
+            current = current / part
+            try:
+                current_info = current.lstat()
+            except OSError as exc:
+                raise ApiError(404, "The learner workspace is missing.") from exc
+            if current.is_symlink():
+                raise ApiError(400, "Workspace paths cannot contain symlinks.")
+        if not current.is_dir():
+            raise ApiError(400, "The learning engine returned an invalid workspace directory.")
+        return current, output
 
     def resolve_workspace_file(self, task_id: str, relative: str) -> tuple[Path, dict[str, Any]]:
         task = self.task_by_id.get(task_id)
@@ -555,9 +565,8 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             self._validate_mutation()
             parsed = urlsplit(self.path)
             parts = [unquote(part) for part in parsed.path.split("/") if part]
-            if len(parts) == 4 and parts[:2] == ["api", "v1"] and parts[2] == "tasks" and parts[3].endswith(":start"):
-                task_id = parts[3][:-6]
-                self._start_task(task_id)
+            if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "tasks" and parts[4] == "start":
+                self._start_task(parts[3])
                 return
             if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "check":
                 self._check_workspace(parts[3])
@@ -596,15 +605,7 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         match = re.search(r"^Workspace:\s*(.+)$", output, re.MULTILINE)
         if not match:
             raise ApiError(502, "The learning engine did not return a workspace path.")
-        workspace = Path(match.group(1).strip()).expanduser()
-        if not workspace.is_absolute():
-            workspace = (self.server.root / workspace).resolve()
-        else:
-            workspace = workspace.resolve()
-        try:
-            workspace.relative_to(self.server.workspace_root.resolve())
-        except ValueError as exc:
-            raise ApiError(403, "The saved workspace is outside the configured browser workspace root.") from exc
+        workspace, _ = self.server.workspace_for_task(task_id)
         self._send_json(200, {
             "task_id": task_id,
             "workspace_ready": True,

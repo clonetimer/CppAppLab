@@ -231,14 +231,22 @@ async function main() {
     assert.match(editorMode, /^Monaco /, "Primary browser acceptance requires the pinned Monaco editor to load");
 
     await replaceMonacoEditor(page, HELLO_SOURCE);
-    await page.waitForFunction(async () => {
-      const response = await fetch("/api/v1/workspaces/w1.hello-world/files/src/main.cpp");
-      if (!response.ok) return false;
-      const data = await response.json();
-      return data.content.includes('std::cout << "Hello, CppAppLab!');
-    }, null, { timeout: 10000 });
-    const helloSaved = await readWorkspaceFile(page, service.baseUrl, "w1.hello-world", "src/main.cpp");
-    assert.equal(helloSaved.content, HELLO_SOURCE, "Monaco autosave must persist the current source");
+    await page.waitForFunction(() =>
+      document.querySelector("#save-state")?.textContent.includes("自动保存将在片刻后执行")
+    );
+    await page.waitForFunction(() =>
+      document.querySelector("#save-state")?.textContent === "已保存到本地工作区",
+      null,
+      { timeout: 10000 }
+    );
+    const helloSavedContent = await page.evaluate(async () => {
+      const response = await fetch("/api/v1/workspaces/w1.hello-world/files/src/main.cpp", {
+        cache: "no-store"
+      });
+      if (!response.ok) throw new Error("Could not read the saved Hello source.");
+      return (await response.json()).content;
+    });
+    assert.equal(helloSavedContent, HELLO_SOURCE, "Monaco autosave must persist the current source");
 
     await page.locator("#build-button").click();
     await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "构建成功", null, { timeout: 45000 });

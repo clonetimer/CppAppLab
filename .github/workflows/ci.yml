@@ -710,6 +710,48 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "Bash syntax check failed: $script" }
           }
 
+  browser-workbench:
+    name: Chromium browser acceptance (Ubuntu 24.04)
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Validate browser workbench sources
+        run: |
+          python3 -m py_compile web/server/cppapplab_web.py
+          node --check web/ui/app.js
+          node --check tests/test_web_workbench_browser.cjs
+          bash -n scripts/start-web-workbench.sh
+      - name: Install C++ development toolchain
+        run: |
+          bash scripts/ci_prepare_ubuntu_apt.sh
+          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake libgtest-dev
+      - name: Build real CppAppLab learning engine
+        run: |
+          cmake -S . -B build-browser \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCPPAPPLAB_FETCH_GTEST=OFF
+          cmake --build build-browser --parallel
+      - name: Install pinned Playwright runner
+        run: npm install --no-save --no-package-lock playwright@1.56.1
+      - name: Install Chromium and system dependencies
+        run: npx playwright install --with-deps chromium
+      - name: Run real-browser workbench acceptance
+        env:
+          CPPAPPLAB_TEST_BINARY: ${{ github.workspace }}/build-browser/cppapplab
+          CPPAPPLAB_BROWSER_ARTIFACT_DIR: ${{ runner.temp }}/cppapplab-browser-artifacts
+        run: node tests/test_web_workbench_browser.cjs
+      - name: Upload browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppapplab-browser-workbench-${{ github.sha }}
+          path: ${{ runner.temp }}/cppapplab-browser-artifacts/*.png
+          if-no-files-found: ignore
+          retention-days: 14
+
   package-candidate:
     name: Build source and learner packages (Ubuntu ${{ matrix.ubuntu }})
     strategy:

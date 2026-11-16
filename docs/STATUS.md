@@ -214,7 +214,7 @@ The priority is a complete, understandable experience for the currently released
 
 ### P8-B — Professional editor and learning loop
 
-Implemented on the feature branch; the latest CI run is validating the new engine and browser workflow.
+Implemented on the feature branch. Latest P8-B CI run **#1488 / 43890141471: PASS**.
 
 - Monaco Editor 0.52.2, loaded from a pinned CDN URL; offline fallback retains the local textarea editor.
 - Per-file editor models and multi-file tabs.
@@ -224,11 +224,13 @@ Implemented on the feature branch; the latest CI run is validating the new engin
 - Build fingerprints prevent running binaries after the source has changed.
 - Build/run do not create acceptance evidence; only `cppapplab check` records the formal PASS/FAIL result.
 - GCC/CMake diagnostics are converted into clickable file/line navigation and Monaco markers.
+- Ubuntu 22.04 and 24.04: GCC build, full GoogleTest/CTest regression, real-engine direct/CMake browser integration, ASan/UBSan, clang-tidy, offline dependency verification and source/learner package builds all PASS.
+- Windows PowerShell launcher syntax/handoff checks PASS.
 
 ### Remaining P8-B acceptance
 
-- Pass the Ubuntu 22.04/24.04 C++ build, GoogleTest, ASan/UBSan and clang-tidy matrix with the new build/run commands.
-- Pass real-engine browser integration for direct-execution and CMake/GoogleTest tasks, including stale-build rejection and evidence separation.
+- [x] Pass the Ubuntu 22.04/24.04 C++ build, GoogleTest, ASan/UBSan and clang-tidy matrix with the new build/run commands.
+- [x] Pass real-engine browser integration for direct-execution and CMake/GoogleTest tasks, including stale-build rejection and evidence separation.
 - Complete browser visual acceptance for Monaco workers, multi-file switching, autosave and diagnostic navigation.
 - Confirm the plain-text editor fallback works when the CDN is unavailable.
 

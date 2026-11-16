@@ -2,7 +2,11 @@
   "use strict";
 
   const MONACO_VERSION = "0.52.2";
-  const MONACO_VS = "https://cdn.jsdelivr.net/npm/monaco-editor@" + MONACO_VERSION + "/min/vs";
+  const MONACO_ROOTS = [
+    "https://cdn.jsdelivr.net/npm/monaco-editor@" + MONACO_VERSION + "/min",
+    "https://gcore.jsdelivr.net/npm/monaco-editor@" + MONACO_VERSION + "/min",
+    "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/" + MONACO_VERSION + "/min"
+  ];
   const state = {
     csrfToken: "",
     tasks: [],
@@ -300,20 +304,17 @@
   async function ensureEditorReady() {
     if (state.editorReady) return state.editorReady;
     state.editorReady = new Promise((resolve) => {
-      const loader = document.createElement("script");
-      loader.src = MONACO_VS + "/loader.js";
-      loader.crossOrigin = "anonymous";
-      loader.onload = () => {
+      const configureAndLoad = (root, next) => {
         try {
           window.MonacoEnvironment = {
             getWorkerUrl: () => {
               const workerCode =
-                "self.MonacoEnvironment = { baseUrl: '" + MONACO_VS + "' }; " +
-                "importScripts('" + MONACO_VS + "/base/worker/workerMain.js');";
+                "self.MonacoEnvironment = { baseUrl: '" + root + "/' }; " +
+                "importScripts('" + root + "/vs/base/worker/workerMain.js');";
               return "data:text/javascript;charset=utf-8," + encodeURIComponent(workerCode);
             }
           };
-          window.require.config({ paths: { vs: MONACO_VS } });
+          window.require.config({ paths: { vs: root + "/vs" } });
           window.require(["vs/editor/editor.main"], () => {
             try {
               state.monaco = window.monaco;
@@ -348,21 +349,34 @@
               fallbackToTextarea();
               resolve(false);
             }
-          }, () => {
-            fallbackToTextarea();
-            resolve(false);
-          });
+          }, () => next());
         } catch (error) {
-          console.warn("Monaco loader setup failed:", error);
-          fallbackToTextarea();
-          resolve(false);
+          console.warn("Monaco CDN configuration failed:", error);
+          next();
         }
       };
-      loader.onerror = () => {
-        fallbackToTextarea();
-        resolve(false);
+
+      const tryLoad = (index) => {
+        if (index >= MONACO_ROOTS.length) {
+          fallbackToTextarea();
+          resolve(false);
+          return;
+        }
+        const root = MONACO_ROOTS[index];
+        const next = () => tryLoad(index + 1);
+        if (window.require && typeof window.require.config === "function") {
+          configureAndLoad(root, next);
+          return;
+        }
+        const loader = document.createElement("script");
+        loader.src = root + "/vs/loader.js";
+        loader.crossOrigin = "anonymous";
+        loader.onload = () => configureAndLoad(root, next);
+        loader.onerror = next;
+        document.head.append(loader);
       };
-      document.head.append(loader);
+
+      tryLoad(0);
     });
     return state.editorReady;
   }

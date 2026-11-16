@@ -310,11 +310,11 @@ The goal is to move the learner-facing workflow into one browser tab while prese
 - [x] Add source-fingerprint build stamps and reject stale build execution.
 - [x] Keep build/run results separate from formal acceptance evidence.
 - [x] Parse GCC/CMake diagnostics into clickable source locations and Monaco markers.
+- [x] Add real Chromium/Playwright acceptance for Monaco multi-file editing, autosave, build/run/evidence separation, CMake diagnostics, source navigation, task unlock, mobile layout and CDN-blocked fallback.
 - [ ] Pass Ubuntu 22.04/24.04 C++ build and GoogleTest matrix.
 - [ ] Pass real-engine direct-execution and CMake/GoogleTest browser integration.
 - [ ] Pass ASan/UBSan and clang-tidy matrix after the engine changes.
-- [ ] Complete browser visual acceptance for Monaco workers, multi-file switching, autosave and diagnostics.
-- [ ] Verify the editor fallback with the Monaco CDN unavailable.
+- [ ] Pass the Chromium browser acceptance job and inspect its desktop/mobile screenshots.
 
 ### P8-C — Full course experience
 

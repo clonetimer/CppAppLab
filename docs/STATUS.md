@@ -226,12 +226,12 @@ Implemented on the feature branch. Latest P8-B CI run **#1488 / 43890141471: PAS
 - GCC/CMake diagnostics are converted into clickable file/line navigation and Monaco markers.
 - Ubuntu 22.04 and 24.04: GCC build, full GoogleTest/CTest regression, real-engine direct/CMake browser integration, ASan/UBSan, clang-tidy, offline dependency verification and source/learner package builds all PASS.
 - Windows PowerShell launcher syntax/handoff checks PASS.
+- Added a real Chromium/Playwright acceptance suite covering Monaco multi-file editing, autosave, build/run/evidence separation, CMake diagnostics and source navigation, automatic prerequisite unlock, mobile overflow and CDN-blocked textarea fallback. The first CI execution is in progress.
 
 ### Remaining P8-B acceptance
 
 - [x] Pass the Ubuntu 22.04/24.04 C++ build, GoogleTest, ASan/UBSan and clang-tidy matrix with the new build/run commands.
 - [x] Pass real-engine browser integration for direct-execution and CMake/GoogleTest tasks, including stale-build rejection and evidence separation.
-- Complete browser visual acceptance for Monaco workers, multi-file switching, autosave and diagnostic navigation.
-- Confirm the plain-text editor fallback works when the CDN is unavailable.
+- Pass the new Chromium browser acceptance job, including Monaco worker startup, multi-file switching, autosave, diagnostic navigation, mobile layout and CDN-blocked fallback.
 
 The CLI remains supported and authoritative. No Windows target-machine acceptance or release-readiness claim is made at this stage.

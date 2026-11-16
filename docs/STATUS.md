@@ -198,21 +198,38 @@ The archive was built and checked with dry-run simulation; it was not installed 
 The priority is a complete, understandable experience for the currently released **23 W1–W9 tasks**, not Ubuntu installation. A new course-focused PR adds a Chinese learning route, an interactive `guide` entry, correct launch commands in extracted learner packages, Markdown repairs and an automated content audit. Planned W9-A4/A5 and W10–W12 lessons remain outside the current registered course. The tutorial acceptance uses existing preinstalled CI toolchains and does not install Ubuntu packages.
 
 
-## P8 — Browser-first learning workbench (in progress)
+## P8 — Browser-first learning workbench (P8-B in progress)
 
-**Branch:** `feat/p8-web-learning-workbench-20261116`.
+**Branch:** `feat/p8-web-learning-workbench-20261116` · **PR:** [#40](https://github.com/clonetimer/CppAppLab/pull/40).
 
-P8-A has started as an additive browser adapter over the existing CppAppLab learning engine. The initial implementation includes:
+### P8-A — Local web foundation
 
-- A Python-standard-library HTTP service bound to loopback only.
-- Same-origin API requests with an in-memory CSRF token; no CORS and no arbitrary shell/command endpoint.
-- Course and lesson reads from the authoritative `course/tasks.tsv` and Markdown files.
-- Start/resume delegated to `cppapplab learn <task-id>`.
-- Workspace file access restricted to each task's declared `source_files`.
-- Atomic source saves and fixed acceptance delegated to `cppapplab check <workspace>`.
-- A responsive Chinese browser shell with course navigation, lesson reading, source-file tabs, editing, progressive hints, and acceptance output.
-- A local start/status/stop script, API/path-safety tests, and a post-build lifecycle smoke test.
+- Loopback-only Python standard-library service with same-origin and CSRF protection.
+- Authoritative course catalog, lesson and progressive-hint API.
+- Task start/resume and workspace file access delegated to the existing CppAppLab engine.
+- Declared-source-only file access, traversal/symlink checks and atomic writes.
+- Responsive Chinese course shell and local start/status/stop launcher.
+- Ubuntu 22.04/24.04 API tests, real W1 browser-to-GCC acceptance, stale-evidence/prerequisite checks and launcher lifecycle smoke test passed in the earlier P8-A CI run.
+- Windows launcher syntax/handoff checks passed. Windows 11 + WSL2 target-machine browser launch remains part of P8-E.
 
-The current browser editor is intentionally a lightweight first slice. Monaco, richer C++ diagnostics, run/debug workflows, Windows one-click browser startup, and packaged static assets are not yet delivered.
+### P8-B — Professional editor and learning loop
 
-**Acceptance status:** implementation and CI validation are in progress. No claim is made yet for Windows 11 + WSL2 target-machine acceptance or release readiness. The existing CLI and fixed acceptance contracts remain authoritative.
+Implemented on the feature branch; the latest CI run is validating the new engine and browser workflow.
+
+- Monaco Editor 0.52.2, loaded from a pinned CDN URL; offline fallback retains the local textarea editor.
+- Per-file editor models and multi-file tabs.
+- Debounced autosave, dirty indicators, Ctrl/Cmd+S and version-aware protection against edits during in-flight saves.
+- Separate **Build**, **Run / Tests**, and **Formal Acceptance** controls.
+- New fixed-profile `cppapplab build` and `cppapplab run` commands. Direct-execution tasks run the learner program; CMake/GoogleTest tasks run the registered platform test suite.
+- Build fingerprints prevent running binaries after the source has changed.
+- Build/run do not create acceptance evidence; only `cppapplab check` records the formal PASS/FAIL result.
+- GCC/CMake diagnostics are converted into clickable file/line navigation and Monaco markers.
+
+### Remaining P8-B acceptance
+
+- Pass the Ubuntu 22.04/24.04 C++ build, GoogleTest, ASan/UBSan and clang-tidy matrix with the new build/run commands.
+- Pass real-engine browser integration for direct-execution and CMake/GoogleTest tasks, including stale-build rejection and evidence separation.
+- Complete browser visual acceptance for Monaco workers, multi-file switching, autosave and diagnostic navigation.
+- Confirm the plain-text editor fallback works when the CDN is unavailable.
+
+The CLI remains supported and authoritative. No Windows target-machine acceptance or release-readiness claim is made at this stage.

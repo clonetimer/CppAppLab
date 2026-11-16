@@ -534,8 +534,18 @@ int build_workspace(const std::filesystem::path& workspace_path) {
     throw std::runtime_error("Unknown task build profile.");
 }
 
+void require_real_directory(const std::filesystem::path& path) {
+    std::error_code error;
+    const auto status = std::filesystem::symlink_status(path, error);
+    if (error || !std::filesystem::is_directory(status) || std::filesystem::is_symlink(status)) {
+        throw std::runtime_error("Expected a real, non-symlink build directory: " + path.string());
+    }
+}
+
 std::string require_current_build(const Workspace& workspace,
                                   const std::filesystem::path& build_directory) {
+    require_real_directory(workspace.root / ".cppapplab");
+    require_real_directory(build_directory);
     const auto stamp = read_build_fingerprint(build_fingerprint_path(build_directory));
     const std::string fingerprint = source_fingerprint(*workspace.task, workspace.root);
     if (!stamp.has_value() || *stamp != fingerprint) {

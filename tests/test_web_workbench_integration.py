@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import tempfile
 import threading
 import urllib.error
@@ -67,6 +68,40 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
             if response.headers.get_content_type() == "application/json":
                 return json.loads(raw.decode("utf-8"))
             return raw.decode("utf-8")
+
+    def test_local_launcher_start_status_stop(self) -> None:
+        runtime_dir = self.base / "runtime"
+        state_dir = self.base / "state"
+        env = os.environ.copy()
+        env.update({
+            "HOME": str(self.home),
+            "XDG_RUNTIME_DIR": str(runtime_dir),
+            "XDG_STATE_HOME": str(state_dir),
+            "CPPAPPLAB_BINARY": os.environ["CPPAPPLAB_TEST_BINARY"],
+            "CPPAPPLAB_WEB_PORT": "18765",
+        })
+        command = ["bash", str(ROOT / "scripts" / "start-web-workbench.sh")]
+        try:
+            started = subprocess.run(
+                command + ["start"], env=env, capture_output=True, text=True,
+                timeout=20, check=True,
+            )
+            self.assertIn("Web Workbench is ready", started.stdout)
+            status = subprocess.run(
+                command + ["status"], env=env, capture_output=True, text=True,
+                timeout=10, check=True,
+            )
+            self.assertIn("is ready", status.stdout)
+            stopped = subprocess.run(
+                command + ["stop"], env=env, capture_output=True, text=True,
+                timeout=10, check=True,
+            )
+            self.assertIn("Web Workbench stopped", stopped.stdout)
+        finally:
+            subprocess.run(
+                command + ["stop"], env=env, capture_output=True, text=True,
+                timeout=10, check=False,
+            )
 
     def test_w1_start_edit_acceptance_and_stale_evidence(self) -> None:
         tasks = self.request("/api/v1/tasks")

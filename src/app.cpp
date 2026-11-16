@@ -27,7 +27,9 @@ std::string_view usage() noexcept {
            "  cppapplab start <task-id> <workspace-directory>   Create learner workspace\n"
            "  cppapplab lesson <workspace-directory>            Read current task card\n"
            "  cppapplab hint <workspace-directory> <1|2|3>       Show a progressive hint\n"
-           "  cppapplab check <workspace-directory>              Build and check current source\n"
+           "  cppapplab build <workspace-directory>              Build current learner source\n"
+           "  cppapplab run <workspace-directory>                Run program or task tests (no evidence)\n"
+           "  cppapplab check <workspace-directory>              Run fixed acceptance and record evidence\n"
            "  cppapplab status <workspace-directory>             Show current evidence status\n"
            "  cppapplab next <workspace-directory>               Show the next learning step\n";
 }

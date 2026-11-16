@@ -122,3 +122,21 @@ Your source files, progress and check history are kept between sessions. A chang
 - WSL2 or Ubuntu version mismatch: follow Environment setup and verify the distribution version in PowerShell with wsl -l -v.
 
 Hosted CI is not a substitute for target-machine acceptance. Windows 11 + WSL2 validation and offline dependency packaging remain separate project work.
+
+## Experimental browser workbench (P8-A)
+
+The browser-first workbench is being introduced alongside the existing CLI. After building the project, start the local service with:
+
+~~~bash
+bash scripts/start-web-workbench.sh
+~~~
+
+Open http://127.0.0.1:8765/ in your Windows browser. The service binds to loopback only and delegates workspace creation and fixed acceptance to the existing CppAppLab learning engine. It does not expose an arbitrary shell endpoint.
+
+Stop the service with:
+
+~~~bash
+bash scripts/start-web-workbench.sh stop
+~~~
+
+P8-A is an early implementation. The current browser editor is a lightweight source editor; Monaco, richer diagnostics, interactive run/debug, and one-click Windows browser startup are later milestones. The CLI remains the supported fallback while the browser workflow is being validated.

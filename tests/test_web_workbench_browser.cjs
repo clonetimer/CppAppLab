@@ -161,13 +161,11 @@ async function waitForText(locator, expected, label, timeout = 30000) {
   });
 }
 
-async function setMonacoModel(page, pathSuffix, value) {
-  await page.evaluate(({ suffix, content }) => {
-    if (!window.monaco) throw new Error("Monaco is not available.");
-    const model = window.monaco.editor.getModels().find((item) => item.uri.path.endsWith(suffix));
-    if (!model) throw new Error("Monaco model not found: " + suffix);
-    model.setValue(content);
-  }, { suffix: pathSuffix, content: value });
+async function replaceMonacoEditor(page, value) {
+  const editorLines = page.locator("#monaco-editor .view-lines");
+  await editorLines.click({ position: { x: 120, y: 10 } });
+  await page.keyboard.press("Control+A");
+  await page.keyboard.insertText(value);
 }
 
 async function readWorkspaceFile(page, baseUrl, taskId, relativePath) {
@@ -232,7 +230,7 @@ async function main() {
     const editorMode = await page.locator("#editor-engine-status").textContent();
     assert.match(editorMode, /^Monaco /, "Primary browser acceptance requires the pinned Monaco editor to load");
 
-    await setMonacoModel(page, "/src/main.cpp", HELLO_SOURCE);
+    await replaceMonacoEditor(page, HELLO_SOURCE);
     await page.waitForFunction(async () => {
       const response = await fetch("/api/v1/workspaces/w1.hello-world/files/src/main.cpp");
       if (!response.ok) return false;
@@ -280,7 +278,7 @@ async function main() {
     assert.equal((await page.locator("#active-file").textContent()).trim(), "src/calculator.cpp");
     await page.waitForFunction(() => window.monaco && window.monaco.editor.getModels().length === 3);
 
-    await setMonacoModel(page, "/src/calculator.cpp", CALCULATOR_INVALID);
+    await replaceMonacoEditor(page, CALCULATOR_INVALID);
     await page.waitForFunction(async () => {
       const response = await fetch("/api/v1/workspaces/w1.calculator/files/src/calculator.cpp");
       if (!response.ok) return false;
@@ -307,7 +305,7 @@ async function main() {
       return model && window.monaco.editor.getModelMarkers({ resource: model.uri }).length > 0;
     });
 
-    await setMonacoModel(page, "/src/calculator.cpp", CALCULATOR_SOLUTION);
+    await replaceMonacoEditor(page, CALCULATOR_SOLUTION);
     await page.waitForFunction(async () => {
       const response = await fetch("/api/v1/workspaces/w1.calculator/files/src/calculator.cpp");
       if (!response.ok) return false;

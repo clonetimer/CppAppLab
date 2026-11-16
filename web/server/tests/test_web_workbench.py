@@ -35,6 +35,10 @@ elif command == "learn":
         source.write_text('#include <iostream>\\nint main() { return 0; }\\n', encoding="utf-8")
     print("Created your learner workspace")
     print("Workspace: " + str(workspace))
+elif command == "build":
+    print("Build result: PASS")
+elif command == "run":
+    print("Run result: PASS")
 elif command == "check":
     print("[PASS] fixed acceptance")
 else:
@@ -190,6 +194,37 @@ class WebWorkbenchTests(unittest.TestCase):
         )
         self.assertTrue(check["passed"])
         self.assertIn("fixed acceptance", check["output"])
+
+    def test_build_and_run_are_separate_from_fixed_acceptance(self) -> None:
+        self.request(
+            "/api/v1/tasks/w1.hello-world/start",
+            method="POST",
+            body={},
+            token=self.token,
+            origin=self.base_url,
+        )
+        build = self.request(
+            "/api/v1/workspaces/w1.hello-world/build",
+            method="POST",
+            body={},
+            token=self.token,
+            origin=self.base_url,
+        )
+        self.assertTrue(build["passed"])
+        self.assertFalse(build["records_acceptance_evidence"])
+        self.assertEqual(build["action"], "build")
+        run = self.request(
+            "/api/v1/workspaces/w1.hello-world/run",
+            method="POST",
+            body={},
+            token=self.token,
+            origin=self.base_url,
+        )
+        self.assertTrue(run["passed"])
+        self.assertFalse(run["records_acceptance_evidence"])
+        self.assertEqual(run["action"], "run")
+        tasks = self.request("/api/v1/tasks")
+        self.assertEqual(tasks["tasks"][0]["state"], "IN PROGRESS")
 
     def test_progressive_hint_is_extracted(self) -> None:
         hint = self.request("/api/v1/tasks/w1.hello-world/hints/2")

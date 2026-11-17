@@ -107,6 +107,21 @@
                   <button id="check-button" class="primary-button compact" disabled>正式验收 <span>✓</span></button>
                 </div>
               </div>
+              <section id="app-runner" class="app-runner" hidden aria-label="应用程序运行面板">
+                <div class="app-runner-heading">
+                  <div><span class="eyebrow">APPLICATION PROFILE</span><strong>程序交互</strong></div>
+                  <span id="app-profile-label" class="subtle-note"></span>
+                </div>
+                <div class="app-runner-controls">
+                  <label class="app-action-label" for="app-action">操作</label>
+                  <select id="app-action" class="app-action-select"></select>
+                  <div id="app-fields" class="app-fields"></div>
+                  <div class="app-runner-buttons">
+                    <button id="app-build-button" class="secondary-button" disabled>构建应用</button>
+                    <button id="app-execute-button" class="primary-button compact" disabled>运行程序</button>
+                  </div>
+                </div>
+              </section>
               <div class="editor-meta">
                 <span id="active-file">未选择文件</span>
                 <span class="editor-meta-right"><span id="editor-engine-status">编辑器准备中</span><span id="save-state">代码保存在本地工作区</span></span>

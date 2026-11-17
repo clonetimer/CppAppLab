@@ -1,6 +1,21 @@
 # W3 · Task / TaskManager Refactor
 
 ## Goal
+## Start here
+
+W3 changes the internal design, not the Todo commands the learner sees. Think of it as moving from a list of records to objects with clear ownership.
+
+1. Read the `Task` public operations first. A `Task` represents one Todo item.
+2. Read the `TaskManager` operations. It owns and coordinates multiple `Task` objects.
+3. Implement construction and simple getters before copy/move operations.
+4. Implement add, find, mark-done and remove. Confirm the same CLI behavior as W2.
+5. Add deep copy and move semantics, then test that copied managers do not share owned objects.
+6. Finish with persistence compatibility so a W2 data file still loads correctly.
+
+**Ownership in plain language:** the manager is responsible for the lifetime of its tasks. `unique_ptr` expresses one clear owner; a returned raw pointer from `find` is only a temporary way to look at an object, not to own or delete it.
+
+Do not implement every advanced rule at once. Make the simple object lifecycle correct first, then add copy, move and exception-safety guarantees.
+
 
 Refactor the W2 Todo CLI core into an object-oriented design without changing its command-line behavior or on-disk data format. The task focuses on class invariants, encapsulation, RAII, smart-pointer ownership, copy/move semantics, and operator overloading.
 

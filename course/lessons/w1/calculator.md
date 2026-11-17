@@ -1,6 +1,20 @@
 # W1 · Multi-file Calculator
 
 ## Goal
+## Start here
+
+You are not expected to understand every C++ header immediately. First follow one value through the program.
+
+1. Open `src/main.cpp` and find where it calls `calculate`.
+2. Open `include/calculator.hpp` to see the function's input and output types.
+3. Implement the function in `src/calculator.cpp`; do not rewrite the provided command-line front end.
+4. Test one easy case first: `add 2 3`. Then test subtraction, multiplication and division.
+5. Test the important error case: `divide 1 0`. A correct program must report the error rather than crash or return an ordinary number.
+
+**Useful mental model:** the header describes what callers can ask for; the source file contains how the answer is calculated. The compiler links both files into one program.
+
+If the compiler reports an undefined reference, check whether the function definition matches the namespace, name, parameters and return type in the header.
+
 
 Extend the first C++ program into a multi-file application. Separate a public interface from its implementation, compile multiple translation units, and handle an arithmetic error explicitly.
 

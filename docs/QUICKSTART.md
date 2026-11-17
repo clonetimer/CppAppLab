@@ -128,7 +128,7 @@ Your source files, progress and check history are kept between sessions. A chang
 
 Hosted CI is not a substitute for target-machine acceptance. Windows 11 + WSL2 validation and offline dependency packaging remain separate project work.
 
-## Browser learning workbench (P8-A / P8-B preview)
+## Browser learning workbench (P8-A / P8-B validated)
 
 After building the existing CppAppLab project, start the local browser service from the repository root:
 
@@ -157,4 +157,4 @@ Build and Run never record formal acceptance evidence. A source edit invalidates
 
 The enhanced Monaco editor is loaded from the pinned Monaco 0.52.2 CDN package. If the CDN is unreachable, the page falls back to its local plain-text editor; the local Python service and course API do not require third-party Python packages or Node.js.
 
-The browser workbench remains a preview while P8-B CI and browser visual acceptance complete. The existing CLI remains supported and authoritative.
+P8-A/P8-B have passed the Ubuntu build/test matrix and real Chromium browser acceptance, including the forced-offline editor fallback. The existing CLI remains supported and authoritative. Windows 11 + WSL2 target-machine browser startup is a separate P8-E acceptance item.

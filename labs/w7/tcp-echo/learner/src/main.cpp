@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
         }
         if (std::string(argv[1]) == "client" && argc == 4) {
             if (port == 0U) {
-                std::cerr << "port must be in the range 1..65535\\n";
+                std::cerr << "port must be in the range 1..65535\n";
                 return 2;
             }
             const int socket_fd = cppapplab::net::connect_tcp("127.0.0.1", port);

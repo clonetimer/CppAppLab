@@ -671,6 +671,20 @@ async function main() {
       if (taskId === "w7.tcp-echo") {
         assert.equal(await page.locator("#service-echo-message").count(), 1);
         assert.equal(await page.locator("#service-echo-send").isDisabled(), true);
+      } else if (taskId === "w7.tcp-chat") {
+        assert.equal(await page.locator("#service-chat-nickname").count(), 1);
+        assert.equal(await page.locator("#service-chat-connect").isDisabled(), true);
+        assert.equal(await page.locator("#service-chat-client").count(), 1);
+        assert.equal(await page.locator("#service-chat-message").count(), 1);
+        assert.equal(await page.locator("#service-chat-output").count(), 1);
+      } else if (taskId === "w8.http-server") {
+        assert.equal(await page.locator("#service-http-method").count(), 1);
+        assert.deepEqual(await page.locator("#service-http-method option").evaluateAll((items) =>
+          items.map((item) => item.value)
+        ), ["GET", "HEAD", "POST"]);
+        assert.equal(await page.locator("#service-http-target").inputValue(), "/");
+        assert.equal(await page.locator("#service-http-body").isDisabled(), true);
+        assert.equal(await page.locator("#service-http-send").isDisabled(), true);
       }
     }
 

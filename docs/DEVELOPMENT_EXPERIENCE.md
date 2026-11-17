@@ -136,6 +136,12 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Normalize compiler errors as part of learning: teach the learner to inspect the first error, file and line, fix one issue, and request progressive hints before searching unrelated files.
 - Validate tutorial changes with a first-time learner path in Chromium and keep the CLI guide and browser guide semantically consistent.
 
+## 27. Re-select the task before asserting task-scoped UI after a full reload
+
+- A browser reload reconstructs the workbench and may return to its default task selection; persisted workspace files and course state can be correct while the task subtitle/panel still reflects the default view.
+- Separate persistence assertions from selected-view assertions: first query the workspace API to verify saved file content, then explicitly select the task and wait for its breadcrumb and authoritative state before checking task-scoped labels, prerequisites or diagnostics.
+- Do not treat an unselected task's stale or empty subtitle as evidence that prerequisite metadata was lost. The browser test must establish the UI context it is asserting.
+
 ## 25. Browser editor persistence tests must account for editor-managed indentation
 
 - Monaco can apply auto-indent when a test replaces source through keyboard input. The persisted source may therefore differ in leading whitespace even though the intended code edit is correct.

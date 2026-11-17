@@ -23,7 +23,8 @@
     editorInstance: null,
     editorReady: null,
     busy: false,
-    autosaveTimer: null
+    autosaveTimer: null,
+    serviceSnapshot: null
   };
 
   const $ = (id) => document.getElementById(id);
@@ -57,6 +58,16 @@
     appFields: $("app-fields"),
     appBuildButton: $("app-build-button"),
     appExecuteButton: $("app-execute-button"),
+    serviceRunner: $("service-runner"),
+    serviceProfileLabel: $("service-profile-label"),
+    serviceRunnerHelp: $("service-runner-help"),
+    serviceControls: $("service-controls"),
+    serviceState: $("service-state"),
+    servicePort: $("service-port"),
+    serviceStartButton: $("service-start-button"),
+    serviceRefreshButton: $("service-refresh-button"),
+    serviceStopButton: $("service-stop-button"),
+    serviceLogs: $("service-logs"),
     saveButton: $("save-button"),
     checkButton: $("check-button"),
     saveState: $("save-state"),

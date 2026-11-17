@@ -824,7 +824,7 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
 
     const auto build_directory = application_build_directory(workspace);
     ensure_real_directory(workspace.root / ".cppapplab");
-    require_real_directory(build_directory);
+    ensure_real_directory(build_directory);
     const auto stamp = read_build_fingerprint(application_fingerprint_path(build_directory));
     const std::string fingerprint = source_fingerprint(task, workspace.root);
     if (!stamp.has_value() || *stamp != fingerprint) {

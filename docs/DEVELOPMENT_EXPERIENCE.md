@@ -119,6 +119,14 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 20. Keyboard focus and service-crash recovery are explicit workbench contracts
+
+- When a modal-like history panel opens from a keyboard action, move focus into the panel; Escape closes it and returns focus to the invoking control. A close button alone is not sufficient keyboard support.
+- Verify Enter/Escape behavior in a real browser journey and assert the underlying task state is unchanged.
+- A service supervisor must detect an unexpectedly exited child from `poll()`, expose FAILED plus its exit code in status, and permit a new start without leaving the stale process/session in the active set.
+- Test the crash path by killing the real supervised child, polling the public status endpoint until FAILED, then restarting and verifying a new live process/port. A mocked `Popen` does not validate child lifecycle behavior.
+- Keep interrupted web-server shutdown and browser refresh during an active request as separate recovery gates; do not claim them covered by a service crash test.
+
 ## 19. Cross-course browser coverage must be driven by the authoritative task catalog
 
 - Keep the 23-task ID list in the Chromium journey aligned with `course/tasks.tsv`; assert exact count, unique presence and successful selection for every task.

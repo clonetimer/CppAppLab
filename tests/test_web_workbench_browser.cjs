@@ -663,6 +663,15 @@ async function main() {
       );
       assert.equal(await page.locator("#app-runner").isVisible(), false,
         taskId + " must wait for a real network-service profile");
+      assert.equal(await page.locator("#service-runner").isVisible(), true,
+        taskId + " must expose its registered network-service lifecycle panel");
+      assert.equal(await page.locator("#service-start-button").isDisabled(), true,
+        taskId + " must remain disabled until prerequisites and workspace are ready");
+      assert.equal(await page.locator("#service-stop-button").isDisabled(), true);
+      if (taskId === "w7.tcp-echo") {
+        assert.equal(await page.locator("#service-echo-message").count(), 1);
+        assert.equal(await page.locator("#service-echo-send").isDisabled(), true);
+      }
     }
 
     // A locked later task may display its instructional action schema, but

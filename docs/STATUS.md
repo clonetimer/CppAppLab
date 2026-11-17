@@ -236,18 +236,7 @@ The CLI remains supported and authoritative. P8-A/P8-B do not claim Windows 11 +
 
 ### P8-C — Full course experience
 
-**C1/C2 merged in PR #41; C3 merged in PR #42. P8-C4 implementation is active on `feat/p8-c4-course-history-20261117`.**
-
-P8-C3 final CI #1721 passed all required jobs, including Ubuntu 22.04/24.04 offline dependency bundle verification after adding bounded retry/fallback for transient mirror failures. Repository-wide formatting remains manual/opt-in; clang-tidy passed on both Ubuntu versions.
-
-P8-C4 adds:
-- Read-only per-task history API backed by the learning engine's existing append-only attempt records.
-- In-workbench attempt timeline with result, timestamp, test count, workspace and source fingerprint.
-- Explicit task-state explanations for STALE, NEEDS WORK and LOCKED.
-- Prerequisite task context in the selected lesson header.
-- Regression tests for history API parsing, unknown tasks and non-acceptance operations remaining outside evidence.
-
-Next: P8-C5 full 23-task browser recovery journey.
+**C1/C2 merged in PR #41; C3 merged in PR #42. P8-C4 merged in PR #43 (`ffd25b4`), with CI #1738 passing all required jobs. P8-C5 is now active on `feat/p8-c5-full-course-browser-20261117`: the Chromium journey includes a catalog-driven sweep across all 23 task IDs and verifies each lesson, state and prerequisite API, followed by browser-refresh recovery of a formal PASS and history record. CI validation is pending.
 
 P8-D (clangd/GDB) and P8-E (Windows/WSL2 packaging and target-machine acceptance) remain separate milestones.
 P8-D (clangd/GDB) and P8-E (Windows/WSL2 packaging and target-machine acceptance) remain separate milestones.

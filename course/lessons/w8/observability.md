@@ -1,5 +1,19 @@
 # W8-D6-D2 · Structured Logs and Runtime Metrics
 
+## Start here
+
+Use one request to understand what the server records.
+
+1. Send one successful request and inspect the JSON-lines access log.
+2. Send a request that returns an HTTP error and inspect the status fields.
+3. Trigger a handler or parser error and inspect the error log.
+4. Compare counters before and after a request.
+5. Verify secrets and sensitive request values are not written to routine logs.
+6. Disable access and error channels independently and confirm the configuration works.
+
+**Mental model:** logs explain individual events; metrics summarize behavior over time. Observability must not change the request result or expose secrets.
+
+
 ## Goal
 
 Make the HTTP server observable without allowing worker threads to mutate Reactor-owned state or exposing request secrets in routine logs.

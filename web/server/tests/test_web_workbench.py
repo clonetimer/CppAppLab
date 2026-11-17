@@ -19,6 +19,7 @@ FAKE_ENGINE = """#!/usr/bin/env python3
 import os
 import pathlib
 import sys
+import time
 
 command = sys.argv[1] if len(sys.argv) > 1 else ""
 home = pathlib.Path(os.environ["HOME"])
@@ -44,6 +45,11 @@ elif command == "app-run-stdin":
     payload = sys.stdin.buffer.read()
     print("stdin-bytes=" + str(len(payload)))
     print("argv-count=" + str(len(sys.argv)))
+elif command == "app-build":
+    print("Application build result: PASS")
+elif command == "server":
+    print("fake service listening", flush=True)
+    time.sleep(30)
 elif command == "check":
     print("[PASS] fixed acceptance")
 else:
@@ -379,6 +385,76 @@ class WebWorkbenchTests(unittest.TestCase):
                 origin=self.base_url,
             ),
             404,
+        )
+
+    def test_service_supervisor_starts_reports_and_stops_registered_loopback_process(self) -> None:
+        workspace = self.workspace_root / "w7.tcp-echo"
+        workspace.mkdir(parents=True, exist_ok=True)
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ), patch.object(
+            self.server, "run_cli", return_value=(0, "Application build result: PASS")
+        ):
+            started = self.request(
+                "/api/v1/workspaces/w7.tcp-echo/service/start",
+                method="POST",
+                body={},
+                token=self.token,
+                origin=self.base_url,
+            )
+            self.assertEqual(started["state"], "RUNNING")
+            self.assertEqual(started["kind"], "tcp_echo")
+            self.assertGreaterEqual(started["port"], 1)
+            self.assertLessEqual(started["port"], 65535)
+            self.assertIn("fake service listening", started["logs"])
+
+            session = self.server.service_sessions["w7.tcp-echo"]
+            self.assertIsNone(session.process.poll())
+            status = self.request("/api/v1/workspaces/w7.tcp-echo/service/status")
+            self.assertEqual(status["state"], "RUNNING")
+            self.assertEqual(status["port"], started["port"])
+
+            stopped = self.request(
+                "/api/v1/workspaces/w7.tcp-echo/service/stop",
+                method="POST",
+                body={},
+                token=self.token,
+                origin=self.base_url,
+            )
+            self.assertEqual(stopped["state"], "STOPPED")
+            self.assertIsNotNone(session.process.poll())
+            self.assertIn("Stopped by learner", stopped["logs"])
+
+    def test_service_build_failure_does_not_launch_a_child_process(self) -> None:
+        workspace = self.workspace_root / "w7.tcp-chat"
+        workspace.mkdir(parents=True, exist_ok=True)
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ), patch.object(
+            self.server, "run_cli", return_value=(1, "learner compile error")
+        ), patch("cppapplab_web.subprocess.Popen") as process:
+            result = self.request(
+                "/api/v1/workspaces/w7.tcp-chat/service/start",
+                method="POST",
+                body={},
+                token=self.token,
+                origin=self.base_url,
+            )
+        self.assertEqual(result["state"], "BUILD_FAILED")
+        self.assertIn("learner compile error", result["logs"])
+        process.assert_not_called()
+        self.assertNotIn("w7.tcp-chat", self.server.service_sessions)
+
+    def test_service_routes_reject_unregistered_application_tasks(self) -> None:
+        self.assertEqual(
+            self.request_error(
+                "/api/v1/workspaces/w1.hello-world/service/start",
+                "POST",
+                {},
+                token=self.token,
+                origin=self.base_url,
+            ),
+            409,
         )
 
     def test_static_shell_is_served(self) -> None:

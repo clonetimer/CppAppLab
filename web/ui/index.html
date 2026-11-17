@@ -78,8 +78,20 @@
               <div class="title-row"><h1 id="task-title">课程标题</h1><span id="task-state" class="state-pill">未开始</span></div>
               <p id="task-subtitle" class="task-subtitle"></p>
             </div>
-            <button id="start-button" class="primary-button">开始学习 <span>→</span></button>
+            <div class="workbench-heading-actions">
+              <button id="history-button" class="secondary-button">验收历史</button>
+              <button id="start-button" class="primary-button">开始学习 <span>→</span></button>
+            </div>
           </div>
+
+          <section id="history-panel" class="history-panel panel" hidden aria-label="课程验收历史">
+            <div class="history-heading">
+              <div><span class="eyebrow">ACCEPTANCE HISTORY</span><h2>验收记录</h2></div>
+              <button id="history-close" class="secondary-button">收起</button>
+            </div>
+            <p id="history-summary" class="history-summary">读取历史记录…</p>
+            <div id="history-list" class="history-list"></div>
+          </section>
 
           <div class="workbench-grid">
             <section class="lesson-panel panel">

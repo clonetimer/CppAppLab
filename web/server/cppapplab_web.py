@@ -321,6 +321,32 @@ def bounded_output(value: str) -> str:
     clipped = encoded[:MAX_PROCESS_OUTPUT].decode("utf-8", errors="ignore")
     return clipped + "\n[CppAppLab Web] Output truncated at the configured limit.\n"
 
+def reserve_loopback_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+        listener.bind(("127.0.0.1", 0))
+        return int(listener.getsockname()[1])
+
+
+def ensure_workspace_directory(root: Path, *parts: str) -> Path:
+    current = root
+    for part in parts:
+        if not part or part in {".", ".."} or "/" in part or "\\" in part:
+            raise ApiError(400, "Workspace runtime directory contains an unsafe component.")
+        current = current / part
+        try:
+            status = current.lstat()
+        except FileNotFoundError:
+            try:
+                current.mkdir()
+                status = current.lstat()
+            except OSError as exc:
+                raise ApiError(500, f"Cannot create workspace runtime directory: {exc}") from exc
+        except OSError as exc:
+            raise ApiError(500, f"Cannot inspect workspace runtime directory: {exc}") from exc
+        if current.is_symlink() or not current.is_dir():
+            raise ApiError(400, "Workspace runtime directories must be real directories.")
+    return current
+
 
 class CppAppLabWebServer(ThreadingHTTPServer):
     daemon_threads = True

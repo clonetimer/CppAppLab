@@ -119,6 +119,14 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 26. Put a task-first walkthrough inside the lesson, not only in a global guide
+
+- A global beginner guide is useful but learners often arrive directly at a selected task. Put the immediate next actions inside the lesson itself.
+- The first screen of a lesson should answer: what am I building, which file do I change, what is the first small step, how do I run it, and what does success look like?
+- Keep advanced interface contracts, persistence limits, ownership rules and security constraints in the rest of the lesson. Lowering the barrier must reorder and explain material, not delete engineering depth.
+- For cumulative tasks, sequence the work from a small working path to edge cases and robustness. Explicitly tell learners which complexity can wait until the basic loop works.
+- Verify the rendered lesson in Chromium and assert that task-first guidance is actually visible for the first beginner lessons; markdown-file existence alone is insufficient.
+
 ## 24. Lower the first-use barrier with a task-first path and a plain-language glossary
 
 - Beginners should not have to understand the full course architecture, task IDs, build systems or acceptance model before they can complete the first exercise.

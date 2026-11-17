@@ -1289,6 +1289,9 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         if len(parts) == 2 and parts[0] == "tasks":
             self._get_task(parts[1])
             return
+        if len(parts) == 3 and parts[0] == "tasks" and parts[2] == "history":
+            self._get_task_history(parts[1])
+            return
         if len(parts) == 4 and parts[0] == "tasks" and parts[2] == "hints":
             self._get_hint(parts[1], parts[3])
             return
@@ -1329,6 +1332,41 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             "service_profile": SERVICE_PROFILES.get(task_id),
             "state": states.get(task_id, "UNKNOWN"),
             "lesson_markdown": lesson,
+        })
+
+    def _get_task_history(self, task_id: str) -> None:
+        if task_id not in self.server.task_by_id:
+            raise ApiError(404, "Unknown task ID.")
+        exit_code, output = self.server.run_cli(["history", task_id], timeout=10.0)
+        if exit_code != 0:
+            raise ApiError(503, "Course history is temporarily unavailable.")
+        records: list[dict[str, str]] = []
+        current: dict[str, str] | None = None
+        for line in output.splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("Check history:") or stripped.startswith("No check history"):
+                continue
+            if "  PASS  " in line or "  FAIL  " in line:
+                parts = stripped.split()
+                if len(parts) >= 3:
+                    current = {
+                        "timestamp": parts[0],
+                        "result": parts[1],
+                        "tests": parts[2],
+                        "workspace": "",
+                        "fingerprint": "",
+                    }
+                    records.append(current)
+            elif current is not None and stripped.startswith("Workspace:"):
+                current["workspace"] = stripped.partition(":")[2].strip()
+            elif current is not None and stripped.startswith("Fingerprint:"):
+                current["fingerprint"] = stripped.partition(":")[2].strip()
+        progress = self.server.progress_states()
+        self._send_json(200, {
+            "task_id": task_id,
+            "records": records,
+            "count": len(records),
+            "current_state": progress.get(task_id, "UNKNOWN"),
         })
 
     def _get_hint(self, task_id: str, level_text: str) -> None:

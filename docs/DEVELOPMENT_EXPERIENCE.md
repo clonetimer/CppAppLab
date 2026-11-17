@@ -119,6 +119,18 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 14. Let the learner service own ephemeral port allocation
+
+**Observed failure mode:** the TCP Echo server already supports binding to port `0`, but its reference CLI rejected `0` before the server constructor could bind. The service adapter therefore cannot safely assume that every service accepts a preselected concrete port.
+
+**Required design:**
+
+- Pass port `0` to the learner service and let the kernel allocate the listening port.
+- Require the service to flush a readiness line containing its actual bound port; the supervisor validates and records that port before reporting `RUNNING`.
+- Do not reserve a port in the adapter, close the reservation, and then launch a second process to bind it. That creates a time-of-check/time-of-use race.
+- Keep port parsing consistent between learner starter and reference CLI entry points so the starter compiles and reaches the intended runtime TODO rather than failing on an unrelated argument check.
+- Add a regression assertion that the launched learner process receives `0`, while the session status exposes a valid non-zero kernel-assigned port.
+
 ## 13. Keep Pimpl starter code compilable while preserving the TODO
 
 When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that throws before `Impl` is defined can fail to compile: exception cleanup instantiates the member destructor and requires the pointee type to be complete. Define a minimal `Impl` in the starter translation unit before the throwing constructor. The application should compile and then report the intentional TODO at runtime; do not let an incomplete-type error masquerade as a learner implementation failure.

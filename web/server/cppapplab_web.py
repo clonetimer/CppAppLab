@@ -534,9 +534,52 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 pass
 
     @staticmethod
+    def _terminate_service_process_group(session: ServiceSession, grace_seconds: float = 2.0) -> bool:
+        process_group = session.process.pid
+        try:
+            os.killpg(process_group, signal.SIGTERM)
+        except ProcessLookupError:
+            if session.process.poll() is None:
+                try:
+                    session.process.wait(timeout=grace_seconds)
+                except subprocess.TimeoutExpired:
+                    pass
+            return session.process.poll() is not None
+
+        deadline = time.monotonic() + grace_seconds
+        while time.monotonic() < deadline:
+            if session.process.poll() is None:
+                try:
+                    session.process.wait(timeout=0.05)
+                except subprocess.TimeoutExpired:
+                    pass
+            try:
+                os.killpg(process_group, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.05)
+
+        try:
+            os.killpg(process_group, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        if session.process.poll() is None:
+            try:
+                session.process.wait(timeout=1.0)
+            except subprocess.TimeoutExpired:
+                return False
+        try:
+            os.killpg(process_group, 0)
+        except ProcessLookupError:
+            return True
+        return False
+
+    @staticmethod
     def _refresh_service_state(session: ServiceSession) -> None:
         exit_code = session.process.poll()
         if exit_code is not None:
+            if session.state in {"STARTING", "RUNNING"}:
+                CppAppLabWebServer._terminate_service_process_group(session, 0.25)
             session.exit_code = exit_code
             if session.state not in {"STOPPED", "EXPIRED"}:
                 session.state = "STOPPED" if exit_code == 0 else "FAILED"
@@ -686,26 +729,11 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             if ready and session.process.poll() is None:
                 session.state = "RUNNING"
             else:
-                if session.process.poll() is None:
-                    self._append_service_log(
-                        session,
-                        "\n[CppAppLab Web] Service did not report loopback readiness within 3 seconds.\n",
-                    )
-                    try:
-                        os.killpg(session.process.pid, signal.SIGTERM)
-                    except ProcessLookupError:
-                        pass
-                    try:
-                        session.process.wait(timeout=1.0)
-                    except subprocess.TimeoutExpired:
-                        try:
-                            os.killpg(session.process.pid, signal.SIGKILL)
-                        except ProcessLookupError:
-                            pass
-                        try:
-                            session.process.wait(timeout=1.0)
-                        except subprocess.TimeoutExpired:
-                            pass
+                self._append_service_log(
+                    session,
+                    "\n[CppAppLab Web] Service did not report loopback readiness within 3 seconds.\n",
+                )
+                self._terminate_service_process_group(session, 1.0)
                 session.exit_code = session.process.poll()
                 session.state = "FAILED"
                 if session.log_thread is not None:
@@ -1013,24 +1041,11 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                     pass
             session.clients.clear()
             self._append_service_log(session, f"\n[CppAppLab Web] {reason}.\n")
-            if session.process.poll() is None:
-                try:
-                    os.killpg(session.process.pid, signal.SIGTERM)
-                except ProcessLookupError:
-                    pass
-                try:
-                    session.process.wait(timeout=2.0)
-                except subprocess.TimeoutExpired:
-                    try:
-                        os.killpg(session.process.pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
-                    try:
-                        session.process.wait(timeout=2.0)
-                    except subprocess.TimeoutExpired:
-                        self._append_service_log(
-                            session, "\n[CppAppLab Web] Service process did not exit after SIGKILL.\n"
-                        )
+            stopped = self._terminate_service_process_group(session, 2.0)
+            if not stopped:
+                self._append_service_log(
+                    session, "\n[CppAppLab Web] Service process group did not exit after SIGKILL.\n"
+                )
             session.exit_code = session.process.poll()
             session.state = "STOPPED"
             session.last_activity = time.monotonic()

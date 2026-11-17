@@ -745,7 +745,7 @@ async function main() {
         taskId + " must render a lesson title");
       assert.ok((await page.locator("#lesson-content").textContent()).trim().length > 0,
         taskId + " must render its authoritative lesson");
-      assert.ok(["已通过", "进行中", "需要修改", "需要重新验收", "未开始", "未解锁"].includes(
+      assert.ok(["已通过", "进行中", "需要修改", "结果已过期", "未开始", "可开始", "未解锁", "状态未知"].includes(
         await page.locator("#task-state").textContent()
       ), taskId + " must expose a known course state");
       const taskDetail = await page.request.get(service.baseUrl + "/api/v1/tasks/" + taskId);

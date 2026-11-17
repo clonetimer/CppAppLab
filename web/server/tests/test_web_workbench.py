@@ -488,7 +488,7 @@ class WebWorkbenchTests(unittest.TestCase):
                 self.request_error(
                     "/api/v1/workspaces/w7.tcp-echo/service/echo",
                     "POST",
-                    {"message": "hello\\nworld"},
+                    {"message": "hello\nworld"},
                     token=self.token,
                     origin=self.base_url,
                 ),

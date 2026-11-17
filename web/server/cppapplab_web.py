@@ -160,6 +160,7 @@ class ServiceSession:
     logs: deque[str] = field(default_factory=deque)
     log_bytes: int = 0
     log_lock: threading.Lock = field(default_factory=threading.Lock)
+    log_thread: threading.Thread | None = None
 
 
 

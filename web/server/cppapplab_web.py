@@ -774,9 +774,9 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                     disconnected.append(client.client_id)
                     continue
                 client.buffer += data.decode("utf-8", errors="replace")
-                while "\\n" in client.buffer:
-                    line, client.buffer = client.buffer.split("\\n", 1)
-                    if line.endswith("\\r"):
+                while "\n" in client.buffer:
+                    line, client.buffer = client.buffer.split("\n", 1)
+                    if line.endswith("\r"):
                         line = line[:-1]
                     if line:
                         client.inbox.append(line)

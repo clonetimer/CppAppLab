@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 import mimetypes
 import os
 import re
+import select
 import secrets
 import signal
 import socket
@@ -740,6 +741,240 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             "output": bounded_output(output),
             "service": snapshot,
         }
+
+    @staticmethod
+    def _collect_chat_messages(session: ServiceSession, timeout: float = 0.15) -> dict[str, list[str]]:
+        deadline = time.monotonic() + max(0.0, timeout)
+        while session.clients:
+            connections = [client.connection for client in session.clients.values()]
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            try:
+                readable, _, _ = select.select(connections, [], [], remaining)
+            except (OSError, ValueError):
+                break
+            if not readable:
+                break
+            for connection in readable:
+                client = next(
+                    (item for item in session.clients.values() if item.connection is connection),
+                    None,
+                )
+                if client is None:
+                    continue
+                try:
+                    data = connection.recv(4096)
+                except (BlockingIOError, InterruptedError):
+                    continue
+                except OSError:
+                    data = b""
+                if not data:
+                    continue
+                client.buffer += data.decode("utf-8", errors="replace")
+                while "\\n" in client.buffer:
+                    line, client.buffer = client.buffer.split("\\n", 1)
+                    if line.endswith("\\r"):
+                        line = line[:-1]
+                    if line:
+                        client.inbox.append(line)
+                        while len(client.inbox) > 100:
+                            client.inbox.popleft()
+
+        result: dict[str, list[str]] = {}
+        for client_id, client in session.clients.items():
+            if client.inbox:
+                result[client_id] = list(client.inbox)
+                client.inbox.clear()
+        return result
+
+    def connect_chat_client(self, task_id: str, nickname: str) -> dict[str, Any]:
+        profile = SERVICE_PROFILES.get(task_id)
+        if profile is None or profile["kind"] != "tcp_chat":
+            raise ApiError(409, "This task does not expose a TCP Chat client.")
+        if not isinstance(nickname, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,24}", nickname):
+            raise ApiError(400, "Nickname must be 1–24 ASCII letters, digits, '_' or '-'.")
+        with self.service_lock:
+            session = self.service_sessions.get(task_id)
+            if session is None:
+                raise ApiError(409, "Start the TCP Chat service before connecting a client.")
+            self._refresh_service_state(session)
+            if session.state != "RUNNING" or session.process.poll() is not None:
+                raise ApiError(409, "The TCP Chat service is not running.")
+            if len(session.clients) >= 8:
+                raise ApiError(429, "The browser workbench supports at most eight Chat clients.")
+            port = session.port
+            session.last_activity = time.monotonic()
+
+        try:
+            connection = socket.create_connection(("127.0.0.1", port), timeout=2.0)
+            connection.settimeout(1.0)
+            connection.sendall(("NICK " + nickname + "\\n").encode("ascii"))
+            connection.setblocking(False)
+        except OSError as exc:
+            raise ApiError(502, f"Could not connect the local Chat client: {exc}") from exc
+
+        client_id = uuid.uuid4().hex[:12]
+        client = ServiceChatClient(client_id, nickname, connection)
+        with self.service_lock:
+            if self.service_sessions.get(task_id) is not session or session.process.poll() is not None:
+                connection.close()
+                raise ApiError(409, "The TCP Chat service stopped while the client was connecting.")
+            session.clients[client_id] = client
+            session.last_activity = time.monotonic()
+            messages = self._collect_chat_messages(session, 0.25)
+            own_messages = messages.get(client_id, [])
+            if not any(message == "OK NICK " + nickname for message in own_messages):
+                session.clients.pop(client_id, None)
+                connection.close()
+                raise ApiError(502, "The learner Chat server did not acknowledge the nickname.")
+            return {
+                "task_id": task_id,
+                "client_id": client_id,
+                "nickname": nickname,
+                "messages": messages,
+                "service": self._service_snapshot(session, task_id),
+            }
+
+    def send_chat_message(self, task_id: str, client_id: str, message: str) -> dict[str, Any]:
+        profile = SERVICE_PROFILES.get(task_id)
+        if profile is None or profile["kind"] != "tcp_chat":
+            raise ApiError(409, "This task does not expose a TCP Chat client.")
+        if not isinstance(message, str) or not message or len(message.encode("utf-8")) > 1024:
+            raise ApiError(400, "Chat message must contain 1–1024 UTF-8 bytes.")
+        if any(character in message for character in "\\r\\n\\t\\x00"):
+            raise ApiError(400, "Chat message must be a single line.")
+        with self.service_lock:
+            session = self.service_sessions.get(task_id)
+            client = session.clients.get(client_id) if session is not None else None
+            if session is None or client is None:
+                raise ApiError(404, "Chat client was not found; connect it again.")
+            self._refresh_service_state(session)
+            if session.state != "RUNNING" or session.process.poll() is not None:
+                raise ApiError(409, "The TCP Chat service is not running.")
+            try:
+                client.connection.sendall(("MSG " + message + "\\n").encode("utf-8"))
+            except OSError as exc:
+                raise ApiError(502, f"Could not send the Chat message: {exc}") from exc
+            session.last_activity = time.monotonic()
+            messages = self._collect_chat_messages(session, 0.2)
+            return {
+                "task_id": task_id,
+                "client_id": client_id,
+                "messages": messages,
+                "service": self._service_snapshot(session, task_id),
+            }
+
+    def poll_chat_messages(self, task_id: str, client_id: str) -> dict[str, Any]:
+        profile = SERVICE_PROFILES.get(task_id)
+        if profile is None or profile["kind"] != "tcp_chat":
+            raise ApiError(409, "This task does not expose a TCP Chat client.")
+        with self.service_lock:
+            session = self.service_sessions.get(task_id)
+            if session is None or client_id not in session.clients:
+                raise ApiError(404, "Chat client was not found; connect it again.")
+            self._refresh_service_state(session)
+            session.last_activity = time.monotonic()
+            messages = self._collect_chat_messages(session, 0.1)
+            return {
+                "task_id": task_id,
+                "client_id": client_id,
+                "messages": messages,
+                "service": self._service_snapshot(session, task_id),
+            }
+
+    def disconnect_chat_client(self, task_id: str, client_id: str) -> dict[str, Any]:
+        with self.service_lock:
+            session = self.service_sessions.get(task_id)
+            if session is None:
+                raise ApiError(404, "Chat service session was not found.")
+            client = session.clients.pop(client_id, None)
+            if client is None:
+                raise ApiError(404, "Chat client was not found.")
+            try:
+                client.connection.sendall(b"QUIT\\n")
+            except OSError:
+                pass
+            try:
+                client.connection.close()
+            except OSError:
+                pass
+            session.last_activity = time.monotonic()
+            messages = self._collect_chat_messages(session, 0.1)
+            return {
+                "task_id": task_id,
+                "client_id": client_id,
+                "messages": messages,
+                "service": self._service_snapshot(session, task_id),
+            }
+
+    def proxy_http_request(
+        self, task_id: str, method: str, target: str, body: str = ""
+    ) -> dict[str, Any]:
+        profile = SERVICE_PROFILES.get(task_id)
+        if profile is None or profile["kind"] != "http_server":
+            raise ApiError(409, "This task does not expose an HTTP request proxy.")
+        if method not in {"GET", "HEAD", "POST"}:
+            raise ApiError(400, "HTTP method must be GET, HEAD or POST.")
+        if not isinstance(target, str) or not target.startswith("/") or len(target) > 2048:
+            raise ApiError(400, "HTTP target must be a relative path beginning with '/'.")
+        parsed = urlsplit(target)
+        if parsed.scheme or parsed.netloc or parsed.fragment or target.startswith("//"):
+            raise ApiError(400, "Absolute URLs, authorities and fragments are not allowed.")
+        if "\\\\" in target or any(part in {".", ".."} for part in parsed.path.split("/")):
+            raise ApiError(400, "HTTP target contains an unsafe path component.")
+        if any(character in target for character in "\\r\\n\\x00"):
+            raise ApiError(400, "HTTP target contains invalid control characters.")
+        if not isinstance(body, str) or len(body.encode("utf-8")) > 64 * 1024:
+            raise ApiError(413, "HTTP request body exceeds the 64 KiB limit.")
+
+        with self.service_lock:
+            session = self.service_sessions.get(task_id)
+            if session is None:
+                raise ApiError(409, "Start the HTTP Server before sending a request.")
+            self._refresh_service_state(session)
+            if session.state != "RUNNING" or session.process.poll() is not None:
+                raise ApiError(409, "The HTTP Server is not running.")
+            port = session.port
+            session.last_activity = time.monotonic()
+
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3.0)
+        try:
+            body_bytes = body.encode("utf-8")
+            headers = {
+                "Host": f"127.0.0.1:{port}",
+                "Connection": "close",
+                "Content-Length": str(len(body_bytes)),
+            }
+            connection.request(method, target, body=body_bytes if method != "HEAD" else None, headers=headers)
+            response = connection.getresponse()
+            response_body = response.read(256 * 1024 + 1)
+            if len(response_body) > 256 * 1024:
+                raise ApiError(413, "HTTP response body exceeds the 256 KiB limit.")
+            safe_headers = {
+                name.lower(): value
+                for name, value in response.getheaders()
+                if name.lower() in {"content-type", "content-length", "cache-control"}
+            }
+            with self.service_lock:
+                session.last_activity = time.monotonic()
+                self._refresh_service_state(session)
+                snapshot = self._service_snapshot(session, task_id)
+            return {
+                "task_id": task_id,
+                "status_code": response.status,
+                "reason": response.reason,
+                "headers": safe_headers,
+                "body": response_body.decode("utf-8", errors="replace"),
+                "body_bytes": len(response_body),
+                "service": snapshot,
+            }
+        except ApiError:
+            raise
+        except (OSError, http.client.HTTPException) as exc:
+            raise ApiError(502, f"Could not proxy the request to the learner HTTP Server: {exc}") from exc
+        finally:
+            connection.close()
 
     def stop_service(self, task_id: str, reason: str = "Stopped by learner") -> dict[str, Any]:
         if task_id not in SERVICE_PROFILES:

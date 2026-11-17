@@ -783,6 +783,10 @@
     const hasApplicationProfile = Boolean(state.task && state.task.runtime_profile);
     ui.appBuildButton.disabled = value || !state.workspaceReady || !hasApplicationProfile;
     ui.appExecuteButton.disabled = value || !state.workspaceReady || !hasApplicationProfile;
+    ui.appAction.disabled = value || !hasApplicationProfile;
+    ui.appFields.querySelectorAll("input, select, textarea").forEach((control) => {
+      control.disabled = value;
+    });
     ui.checkButton.disabled = value || !state.workspaceReady;
     if (saveLabel) ui.saveState.textContent = saveLabel;
   }
@@ -827,6 +831,12 @@
           option.textContent = value;
           control.append(option);
         }
+      } else if (field.type === "multiline") {
+        control = document.createElement("textarea");
+        control.rows = 5;
+        control.maxLength = 262144;
+        control.value = field.default || "";
+        control.placeholder = field.placeholder || "";
       } else {
         control = document.createElement("input");
         control.type = field.type === "number" ? "number" : field.type === "id" ? "number" : "text";
@@ -838,6 +848,7 @@
         if (field.type === "text") control.maxLength = 200;
       }
       control.dataset.field = field.name;
+      control.dataset.fieldType = field.type;
       control.autocomplete = "off";
       control.required = true;
       label.append(control);
@@ -888,7 +899,9 @@
       return;
     }
     const values = Array.from(ui.appFields.querySelectorAll("[data-field]"))
-      .map((control) => control.value);
+      .map((control) => control.dataset.fieldType === "multiline"
+        ? control.value.replace(/\r?\n/g, "\r\n")
+        : control.value);
     setBusy(true, "正在保存代码…");
     const saved = await saveAllDirtyFiles({ silent: true });
     if (!saved) {

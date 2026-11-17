@@ -18,6 +18,7 @@ struct ProcessResult {
 [[nodiscard]] ProcessResult run_process(const std::vector<std::string>& arguments,
                                         const std::filesystem::path& working_directory,
                                         std::chrono::milliseconds timeout,
-                                        std::size_t max_output_bytes);
+                                        std::size_t max_output_bytes,
+                                        const std::string& standard_input = {});
 
 }  // namespace cppapplab

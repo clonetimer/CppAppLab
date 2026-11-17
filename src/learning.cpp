@@ -633,6 +633,16 @@ std::optional<ApplicationBuildProfile> application_build_profile(const Task& tas
         return ApplicationBuildProfile{
             {"src/main.cpp", "src/http_message.cpp", "src/static_file_handler.cpp"}, false};
     }
+    if (task.id == "w8.http-parser") {
+        return ApplicationBuildProfile{
+            {"src/main.cpp", "src/http_message.cpp", "src/http_request_parser.cpp"}, false};
+    }
+    if (task.id == "w8.router") {
+        return ApplicationBuildProfile{
+            {"src/main.cpp", "src/http_message.cpp", "src/http_request_parser.cpp",
+             "src/static_file_handler.cpp", "src/router.cpp", "src/api_handlers.cpp",
+             "src/dispatcher.cpp"}, false};
+    }
     return std::nullopt;
 }
 
@@ -787,6 +797,7 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
     }
 
     std::vector<std::string> application_arguments;
+    std::string standard_input;
     const std::string& action = requested.front();
     if (task.id == "w1.calculator") {
         if (action != "calculate" || requested.size() != 4U) {
@@ -852,6 +863,19 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
             throw std::invalid_argument("Static-files target must be short, non-empty and single-line.");
         }
         application_arguments = {"handle", method, target};
+    } else if (task.id == "w8.http-parser" || task.id == "w8.router") {
+        const std::string expected_action =
+            task.id == "w8.http-parser" ? "parse" : "dispatch";
+        if (action != expected_action || requested.size() != 2U) {
+            throw std::invalid_argument("This HTTP tool requires one bounded request payload.");
+        }
+        standard_input = requested[1];
+        constexpr std::size_t kMaxHttpInputBytes = 256U * 1024U;
+        if (standard_input.empty() || standard_input.size() > kMaxHttpInputBytes ||
+            standard_input.find('\0') != std::string::npos) {
+            throw std::invalid_argument("HTTP request input must be non-empty and at most 256 KiB.");
+        }
+        application_arguments = {"parse-stdin"};
     } else {
         throw std::runtime_error("The registered application profile is not enabled for this task yet.");
     }
@@ -874,7 +898,7 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
 
     const auto runtime_directory = build_directory / "runtime";
     ensure_real_directory(runtime_directory);
-    if (task.id == "w8.static-files") {
+    if (task.id == "w8.static-files" || task.id == "w8.router") {
         const auto document_root = runtime_directory / "www";
         ensure_real_directory(document_root);
         const auto sample_index = document_root / "index.html";
@@ -921,7 +945,7 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
     std::vector<std::string> command{executable.string()};
     command.insert(command.end(), application_arguments.begin(), application_arguments.end());
     const ProcessResult result = run_process(
-        command, runtime_directory, std::chrono::seconds(10), kMaxProgramOutput);
+        command, runtime_directory, std::chrono::seconds(10), kMaxProgramOutput, standard_input);
     std::cout << result.output;
     const bool unchanged = source_fingerprint(task, workspace.root) == fingerprint;
     const bool passed = process_succeeded(result) && unchanged;

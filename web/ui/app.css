@@ -135,6 +135,21 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .app-action-select, .app-fields input { min-width: 112px; min-height: 32px; padding: 7px 9px; border: 1px solid rgba(142, 169, 210, .2); border-radius: 6px; outline: none; background: #101e31; color: #dbe8fa; font: inherit; font-size: 10px; }
 .app-fields { display: flex; align-items: end; flex-wrap: wrap; gap: 8px; }
 .app-fields input:focus, .app-action-select:focus { border-color: rgba(117, 166, 239, .7); }
+.app-fields textarea {
+  width: min(100%, 480px);
+  min-width: 260px;
+  min-height: 112px;
+  padding: 9px 10px;
+  border: 1px solid rgba(142, 169, 210, .2);
+  border-radius: 6px;
+  outline: none;
+  resize: vertical;
+  background: #101e31;
+  color: #dbe8fa;
+  font: 10px/1.55 "Cascadia Code", Consolas, monospace;
+}
+.app-fields textarea:focus { border-color: rgba(117, 166, 239, .7); }
+
 .app-runner-buttons { display: flex; flex-wrap: wrap; gap: 7px; margin-left: auto; }
 .app-runner-buttons button { min-height: 32px; padding: 7px 10px; font-size: 9px; }
 .editor-meta { height: 31px; padding: 0 13px; display: flex; justify-content: space-between; align-items: center; color: #7185a3; font-size: 9px; border-bottom: 1px solid var(--border); }

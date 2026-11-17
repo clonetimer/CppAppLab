@@ -35,12 +35,27 @@ void append_limited(ProcessResult& result, const char* data, std::size_t size, s
 
 ProcessResult run_process(const std::vector<std::string>& arguments,
                           const std::filesystem::path& working_directory,
-                          std::chrono::milliseconds timeout, std::size_t max_output_bytes) {
+                          std::chrono::milliseconds timeout, std::size_t max_output_bytes,
+                          const std::string& standard_input) {
     if (arguments.empty() || arguments.front().empty()) {
         throw std::invalid_argument("run_process requires a non-empty executable");
     }
     if (timeout.count() <= 0) {
         throw std::invalid_argument("run_process timeout must be positive");
+    }
+
+    FILE* input_file = nullptr;
+    if (!standard_input.empty()) {
+        input_file = std::tmpfile();
+        if (input_file == nullptr) {
+            throw_system_error("tmpfile");
+        }
+        if (std::fwrite(standard_input.data(), 1U, standard_input.size(), input_file) !=
+                standard_input.size() ||
+            std::fflush(input_file) != 0 || std::fseek(input_file, 0L, SEEK_SET) != 0) {
+            (void)std::fclose(input_file);
+            throw std::runtime_error("Cannot prepare standard input for child process.");
+        }
     }
 
     std::vector<char*> raw_arguments;
@@ -52,6 +67,9 @@ ProcessResult run_process(const std::vector<std::string>& arguments,
 
     int pipe_fds[2]{};
     if (::pipe(pipe_fds) != 0) {
+        if (input_file != nullptr) {
+            (void)std::fclose(input_file);
+        }
         throw_system_error("pipe");
     }
 
@@ -60,6 +78,9 @@ ProcessResult run_process(const std::vector<std::string>& arguments,
         const int saved_errno = errno;
         ::close(pipe_fds[0]);
         ::close(pipe_fds[1]);
+        if (input_file != nullptr) {
+            (void)std::fclose(input_file);
+        }
         errno = saved_errno;
         throw_system_error("fork");
     }
@@ -68,12 +89,15 @@ ProcessResult run_process(const std::vector<std::string>& arguments,
         (void)::setpgid(0, 0);
         ::close(pipe_fds[0]);
 
-        const int null_input = ::open("/dev/null", O_RDONLY);
-        if (null_input < 0 || ::dup2(null_input, STDIN_FILENO) < 0 ||
+        const int child_input =
+            input_file != nullptr ? ::fileno(input_file) : ::open("/dev/null", O_RDONLY);
+        if (child_input < 0 || ::dup2(child_input, STDIN_FILENO) < 0 ||
             ::dup2(pipe_fds[1], STDOUT_FILENO) < 0 || ::dup2(pipe_fds[1], STDERR_FILENO) < 0) {
             _exit(126);
         }
-        ::close(null_input);
+        if (child_input != STDIN_FILENO) {
+            ::close(child_input);
+        }
         ::close(pipe_fds[1]);
 
         if (!working_directory.empty() && ::chdir(working_directory.c_str()) != 0) {
@@ -86,6 +110,9 @@ ProcessResult run_process(const std::vector<std::string>& arguments,
         _exit(127);
     }
 
+    if (input_file != nullptr) {
+        (void)std::fclose(input_file);
+    }
     (void)::setpgid(child, child);
     ::close(pipe_fds[1]);
 

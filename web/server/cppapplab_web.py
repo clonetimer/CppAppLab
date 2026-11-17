@@ -97,6 +97,28 @@ RUNTIME_PROFILES: dict[str, dict[str, Any]] = {
             ],
         }],
     },
+    "w8.http-parser": {
+        "label": "HTTP 请求解析器",
+        "actions": [{
+            "id": "parse", "label": "解析 HTTP 请求",
+            "fields": [{
+                "name": "request", "label": "HTTP 请求报文", "type": "multiline",
+                "default": "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n",
+                "placeholder": "GET / HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n",
+            }],
+        }],
+    },
+    "w8.router": {
+        "label": "HTTP 路由与分发",
+        "actions": [{
+            "id": "dispatch", "label": "分发 HTTP 请求",
+            "fields": [{
+                "name": "request", "label": "HTTP 请求报文", "type": "multiline",
+                "default": "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n",
+                "placeholder": "GET / HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n",
+            }],
+        }],
+    },
 }
 
 
@@ -775,9 +797,12 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
 
         arguments: list[str] = []
         for field, raw in zip(fields, values):
-            if not isinstance(raw, str) or len(raw.encode("utf-8")) > 512:
-                raise ApiError(400, "Application values must be short text fields.")
+            if not isinstance(raw, str):
+                raise ApiError(400, "Application values must be text.")
             field_type = field["type"]
+            max_bytes = 256 * 1024 if field_type == "multiline" else 512
+            if len(raw.encode("utf-8")) > max_bytes:
+                raise ApiError(400, "Application input exceeds the configured size limit.")
             if field_type == "select":
                 if raw not in field["options"]:
                     raise ApiError(400, "The selected application option is not allowed.")
@@ -790,6 +815,9 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             elif field_type == "text":
                 if not raw or any(character in raw for character in "\r\n\t\x00"):
                     raise ApiError(400, "Text values must be non-empty single-line text.")
+            elif field_type == "multiline":
+                if not raw or "\x00" in raw:
+                    raise ApiError(400, "HTTP request input must be non-empty text without NUL bytes.")
             else:
                 raise ApiError(500, "The registered application profile contains an unknown field type.")
             arguments.append(raw)

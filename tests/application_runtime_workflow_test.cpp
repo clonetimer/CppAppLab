@@ -242,6 +242,42 @@ TEST(ApplicationRuntimeWorkflowTest, StaticFilesProfileUsesWorkspaceLocalDocumen
     EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
 }
 
+TEST(ApplicationRuntimeWorkflowTest, HttpParserProfilePassesRequestThroughStandardInput) {
+    const cppapplab::Task* task = cppapplab::find_task("w8.http-parser");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "http-parser");
+    int result = -1;
+    std::string output = invoke_capture({"cppapplab", "app-build", workspace.root.string()}, result);
+    ASSERT_EQ(result, 0) << output;
+    const std::string request = "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n";
+    output = invoke_capture(
+        {"cppapplab", "app-run", workspace.root.string(), "parse", request}, result);
+    EXPECT_NE(result, 0) << output;
+    EXPECT_NE(output.find("TODO: implement incremental HTTP request parsing"), std::string::npos);
+}
+
+TEST(ApplicationRuntimeWorkflowTest, RouterProfilePassesRequestThroughStandardInput) {
+    const cppapplab::Task* task = cppapplab::find_task("w8.router");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "router");
+    int result = -1;
+    std::string output = invoke_capture({"cppapplab", "app-build", workspace.root.string()}, result);
+    ASSERT_EQ(result, 0) << output;
+    const std::string request = "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n";
+    output = invoke_capture(
+        {"cppapplab", "app-run", workspace.root.string(), "dispatch", request}, result);
+    EXPECT_NE(result, 0) << output;
+    EXPECT_NE(output.find("TODO: implement incremental HTTP request parsing"), std::string::npos);
+    EXPECT_TRUE(std::filesystem::is_regular_file(
+        workspace.root / ".cppapplab" / "application" / "runtime" / "www" / "index.html"));
+}
+
 TEST(ApplicationRuntimeWorkflowTest, LibraryOnlyTaskHasNoApplicationExecutionProfile) {
     const cppapplab::Task* task = cppapplab::find_task("w8.http-connection-policy");
     ASSERT_NE(task, nullptr);

@@ -626,6 +626,13 @@ std::optional<ApplicationBuildProfile> application_build_profile(const Task& tas
     if (task.id == "w6.thread-pool") {
         return ApplicationBuildProfile{{"src/main.cpp", "src/thread_pool.cpp"}, true};
     }
+    if (task.id == "w8.http-protocol") {
+        return ApplicationBuildProfile{{"src/main.cpp", "src/http_message.cpp"}, false};
+    }
+    if (task.id == "w8.static-files") {
+        return ApplicationBuildProfile{
+            {"src/main.cpp", "src/http_message.cpp", "src/static_file_handler.cpp"}, false};
+    }
     return std::nullopt;
 }
 
@@ -725,7 +732,7 @@ int build_application_workspace(const std::filesystem::path& workspace_path) {
     arguments.push_back("-o");
     arguments.push_back(executable.string());
 
-    std::cout << "$ g++ -std=c++17 -Wall -Wextra -Wpedantic -Wshadow -Werror -g";
+    std::cout << "$ g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -g";
     if (profile->link_threads) {
         std::cout << " -pthread";
     }
@@ -818,6 +825,33 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
         if (action != "demo" || requested.size() != 1U) {
             throw std::invalid_argument("Thread-pool task supports only the fixed demo action.");
         }
+    } else if (task.id == "w8.http-protocol") {
+        if (action == "parse-line" && requested.size() == 2U) {
+            const auto& request_line = requested[1];
+            if (request_line.empty() || request_line.size() > 512U ||
+                request_line.find_first_of("\\r\\n\\t") != std::string::npos) {
+                throw std::invalid_argument("HTTP request line must be short, non-empty and single-line.");
+            }
+            application_arguments = {"parse-line", request_line};
+        } else if (action == "response" && requested.size() == 1U) {
+            application_arguments = {"response"};
+        } else {
+            throw std::invalid_argument("HTTP protocol action must be parse-line <request-line> or response.");
+        }
+    } else if (task.id == "w8.static-files") {
+        if (action != "handle" || requested.size() != 3U) {
+            throw std::invalid_argument("Static-files action requires handle <GET|HEAD|POST> <target>.");
+        }
+        const auto& method = requested[1];
+        const auto& target = requested[2];
+        if (method != "GET" && method != "HEAD" && method != "POST") {
+            throw std::invalid_argument("Static-files method is not registered.");
+        }
+        if (target.empty() || target.size() > 512U ||
+            target.find_first_of("\\r\\n\\t") != std::string::npos) {
+            throw std::invalid_argument("Static-files target must be short, non-empty and single-line.");
+        }
+        application_arguments = {"handle", method, target};
     } else {
         throw std::runtime_error("The registered application profile is not enabled for this task yet.");
     }
@@ -840,6 +874,27 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
 
     const auto runtime_directory = build_directory / "runtime";
     ensure_real_directory(runtime_directory);
+    if (task.id == "w8.static-files") {
+        const auto document_root = runtime_directory / "www";
+        ensure_real_directory(document_root);
+        const auto sample_index = document_root / "index.html";
+        if (std::filesystem::exists(sample_index) || std::filesystem::is_symlink(sample_index)) {
+            const auto status = std::filesystem::symlink_status(sample_index);
+            if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
+                throw std::runtime_error("The application document-root sample is unsafe.");
+            }
+        } else {
+            std::ofstream sample(sample_index, std::ios::binary | std::ios::trunc);
+            if (!sample) {
+                throw std::runtime_error("Cannot create the application document-root sample.");
+            }
+            sample << "CppAppLab local document root\\n";
+            sample.flush();
+            if (!sample) {
+                throw std::runtime_error("Cannot write the application document-root sample.");
+            }
+        }
+    }
     if (task.id == "w2.todo-cli" || task.id == "w3.task-manager" ||
         task.id == "w4.quality-gate") {
         ScopedEnvironmentValue todo_file(

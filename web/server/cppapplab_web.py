@@ -655,7 +655,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 self.service_failures[task_id] = {
                     "task_id": task_id, "kind": profile["kind"], "state": "FAILED",
                     "port": None, "exit_code": None, "clients_count": 0,
-                    "logs": bounded_output(build_output + "\\n[CppAppLab Web] " + message + "\\n"),
+                    "logs": bounded_output(build_output + "\n[CppAppLab Web] " + message + "\n"),
                 }
                 raise ApiError(409, message) from exc
             if executable.is_symlink() or not executable.is_file() or not os.access(executable, os.X_OK):
@@ -663,7 +663,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 self.service_failures[task_id] = {
                     "task_id": task_id, "kind": profile["kind"], "state": "FAILED",
                     "port": None, "exit_code": None, "clients_count": 0,
-                    "logs": bounded_output(build_output + "\\n[CppAppLab Web] " + message + "\\n"),
+                    "logs": bounded_output(build_output + "\n[CppAppLab Web] " + message + "\n"),
                 }
                 raise ApiError(409, message)
             command = [str(executable), "server", str(port)]
@@ -704,7 +704,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 self.service_failures[task_id] = {
                     "task_id": task_id, "kind": profile["kind"], "state": "FAILED",
                     "port": None, "exit_code": None, "clients_count": 0,
-                    "logs": bounded_output(build_output + "\\n[CppAppLab Web] " + message + "\\n"),
+                    "logs": bounded_output(build_output + "\n[CppAppLab Web] " + message + "\n"),
                 }
                 raise ApiError(503, message) from exc
 

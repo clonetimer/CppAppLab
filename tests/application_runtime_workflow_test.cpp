@@ -292,6 +292,55 @@ TEST(ApplicationRuntimeWorkflowTest, ThreadPoolDemoRunsThroughItsFixedApplicatio
     EXPECT_NE(output.find("Application result: FAIL"), std::string::npos);
 }
 
+TEST(ApplicationRuntimeWorkflowTest, TcpEchoProfileBuildsAndValidatesItsFixedClientAction) {
+    const cppapplab::Task* task = cppapplab::find_task("w7.tcp-echo");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "tcp-echo");
+
+    int result = -1;
+    std::string output = invoke_capture({"cppapplab", "app-build", workspace.root.string()}, result);
+    ASSERT_EQ(result, 0) << output;
+    EXPECT_NE(output.find("src/tcp_echo.cpp"), std::string::npos);
+
+    output = invoke_capture(
+        {"cppapplab", "app-run", workspace.root.string(), "client", "0", "hello"}, result);
+    EXPECT_EQ(result, 2);
+    EXPECT_NE(output.find("port must be in the range 1..65535"), std::string::npos);
+    EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
+}
+
+TEST(ApplicationRuntimeWorkflowTest, TcpChatProfileBuildsTheDeclaredLearnerServer) {
+    const cppapplab::Task* task = cppapplab::find_task("w7.tcp-chat");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "tcp-chat");
+
+    int result = -1;
+    const std::string output = invoke_capture(
+        {"cppapplab", "app-build", workspace.root.string()}, result);
+    EXPECT_EQ(result, 0) << output;
+    EXPECT_NE(output.find("src/tcp_chat.cpp"), std::string::npos);
+    EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
+}
+
+TEST(ApplicationRuntimeWorkflowTest, HttpServerProfileUsesPlatformOwnedRouterAndThreadPoolSupport) {
+    const cppapplab::Task* task = cppapplab::find_task("w8.http-server");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "http-server");
+
+    int result = -1;
+    const std::string output = invoke_capture(
+        {"cppapplab", "app-build", workspace.root.string()}, result);
+    EXPECT_EQ(result, 0) << output;
+    EXPECT_NE(output.find("[platform] labs/w8/router/reference/src/router.cpp"), std::string::npos);
+    EXPECT_NE(output.find("[platform] labs/w6/thread-pool/reference/src/thread_pool.cpp"), std::string::npos);
+    EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
+}
 TEST(ApplicationRuntimeWorkflowTest, HttpProtocolProfileBuildsAndRunsRegisteredRequestLineAction) {
     const cppapplab::Task* task = cppapplab::find_task("w8.http-protocol");
     ASSERT_NE(task, nullptr);

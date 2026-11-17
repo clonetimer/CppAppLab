@@ -200,10 +200,11 @@ The priority is a complete, understandable experience for the currently released
 
 ## P8 — Browser-first learning workbench
 
-**P8-A and P8-B validated on feature branch** `feat/p8-web-learning-workbench-20261116` · **PR:** [#40](https://github.com/clonetimer/CppAppLab/pull/40).  
-**Validated head:** `e58227d06b7252fc5023339064637512f5954ae0`.  
-**PR CI:** run [#1524 / 43904815195](https://github.com/clonetimer/CppAppLab/actions/runs/43904815195), all required PR jobs passed.  
-**Push CI:** run [#1523 / 43904797238](https://github.com/clonetimer/CppAppLab/actions/runs/43904797238), including Ubuntu 22.04 source-build compatibility, passed.  
+**P8-A and P8-B merged into `main` via PR #40.**  
+**Merge commit:** `d4cadbfcb68fc10bb146558ef892e8d828b16c89`.  
+**Code implementation head:** `e58227d06b7252fc5023339064637512f5954ae0`; final documentation-synchronized PR head: `20c499a3cdace4f2257023a8d1872b624fa94d3d`.  
+**Final PR CI:** run [#1530 / 43991188150](https://github.com/clonetimer/CppAppLab/actions/runs/43991188150), all required PR jobs passed.  
+**Final push CI:** run [#1529 / 43991178228](https://github.com/clonetimer/CppAppLab/actions/runs/43991178228), including Ubuntu 22.04 source-build compatibility, passed.  
 **Browser evidence:** artifact `14246430386`, desktop 1440px and mobile 390px screenshots; both visually reviewed.
 
 ### P8-A — Local web foundation (validated)
@@ -233,13 +234,16 @@ The priority is a complete, understandable experience for the currently released
 
 The CLI remains supported and authoritative. P8-A/P8-B do not claim Windows 11 + WSL2 target-machine acceptance or release readiness.
 
-### Next: P8-C — Full course experience
+### P8-C — Full course experience
 
-Proceed in small acceptance-backed slices:
-1. C1: audit all 23 registered tasks and define interaction contracts by task type (direct CLI, multi-file/CMake, long-running network service).
-2. C2: add browser-managed stdin/stdout and process lifecycle for direct CLI programs, without exposing arbitrary commands.
-3. C3: add fixed-profile start/stop/status/log controls for registered network-service tasks.
-4. C4: expose acceptance history, stale-evidence reasons and prerequisite dependencies from the existing learning-engine records.
-5. C5: complete responsive recovery guidance and cross-task user-journey regression.
+**C1 runtime-contract audit: complete** in [`docs/WEB_WORKBENCH_P8_C_PLAN.md`](WEB_WORKBENCH_P8_C_PLAN.md).
+
+- 14 tasks have learner application entry points; 9 tasks are library/test-only.
+- Runtime classes: two one-shot demos, six structured CLI apps, two stdin-driven tools, one restricted process-runner demo and three network services.
+- W5 System Lab will expose only platform-owned sample invocations; arbitrary command execution is prohibited.
+- W7 TCP Echo, W7 TCP Chat and W8 HTTP Server require explicit loopback-only service lifecycle controls.
+- Library/test-only tasks retain the existing fixed Build, Run Tests and Formal Acceptance path.
+
+**Next implementation slice: P8-C2 — fixed application profiles and browser-managed CLI interaction.**
 
 P8-D (clangd/GDB) and P8-E (Windows/WSL2 packaging and target-machine acceptance) remain separate milestones.

@@ -50,6 +50,13 @@
     editorEngineStatus: $("editor-engine-status"),
     buildButton: $("build-button"),
     runButton: $("run-button"),
+    appRunner: $("app-runner"),
+    appProfileLabel: $("app-profile-label"),
+    appRunnerHelp: $("app-runner-help"),
+    appAction: $("app-action"),
+    appFields: $("app-fields"),
+    appBuildButton: $("app-build-button"),
+    appExecuteButton: $("app-execute-button"),
     saveButton: $("save-button"),
     checkButton: $("check-button"),
     saveState: $("save-state"),
@@ -325,7 +332,7 @@
                 theme: "vs-dark",
                 automaticLayout: true,
                 minimap: { enabled: false },
-                fontSize: 13,
+                fontSize: 14,
                 tabSize: 4,
                 insertSpaces: true,
                 scrollBeyondLastLine: false,
@@ -576,6 +583,10 @@
     state.files = data.files || [];
     state.workspaceReady = true;
     ui.workspaceState.textContent = "工作区已就绪";
+    updateApplicationGuidance();
+    const hasApplicationProfile = Boolean(state.task && state.task.runtime_profile);
+    ui.appBuildButton.disabled = !hasApplicationProfile || state.busy;
+    ui.appExecuteButton.disabled = !hasApplicationProfile || state.busy;
     renderFileTabs();
     if (!state.files.length) {
       ui.editor.disabled = true;
@@ -610,6 +621,11 @@
     ui.saveButton.disabled = true;
     ui.buildButton.disabled = true;
     ui.runButton.disabled = true;
+    ui.appBuildButton.disabled = true;
+    ui.appExecuteButton.disabled = true;
+    ui.appRunner.hidden = true;
+    ui.appAction.replaceChildren();
+    ui.appFields.replaceChildren();
     ui.checkButton.disabled = true;
     ui.workspaceState.textContent = "尚未创建";
     updateDirtyState();
@@ -635,11 +651,13 @@
     try {
       const task = await api("/api/v1/tasks/" + encodeURIComponent(taskId));
       state.task = task;
+      renderApplicationRunner();
       ui.taskBreadcrumb.textContent = task.id;
       ui.taskTitle.textContent = task.title;
       ui.taskSubtitle.textContent = "W" + task.week + " · " + task.source_files.length + " 个源文件 · " +
-        (task.acceptance_kind === "exact_stdout" ? "单文件 C++ 程序 · 构建 / 运行 / 验收" : "CMake / GoogleTest 工程 · 构建 / 测试 / 验收");
-      ui.runButton.textContent = task.acceptance_kind === "exact_stdout" ? "运行程序" : "运行测试";
+        (task.acceptance_kind === "exact_stdout" ? "单文件 C++ 程序 · 构建 / 运行 / 验收" : "CMake / GoogleTest 工程 · 课程测试 / 正式验收");
+      ui.buildButton.textContent = task.acceptance_kind === "exact_stdout" ? "构建" : "构建测试工程";
+      ui.runButton.textContent = task.acceptance_kind === "exact_stdout" ? "运行程序" : "运行课程测试";
       ui.taskState.textContent = stateLabel(task.state);
       ui.taskState.dataset.state = task.state;
       ui.lesson.innerHTML = renderMarkdown(task.lesson_markdown);
@@ -764,8 +782,172 @@
     ui.saveButton.disabled = value || !state.workspaceReady || state.dirtyFiles.size === 0;
     ui.buildButton.disabled = value || !state.workspaceReady;
     ui.runButton.disabled = value || !state.workspaceReady;
+    const hasApplicationProfile = Boolean(state.task && state.task.runtime_profile);
+    ui.appBuildButton.disabled = value || !state.workspaceReady || !hasApplicationProfile;
+    ui.appExecuteButton.disabled = value || !state.workspaceReady || !hasApplicationProfile;
+    ui.appAction.disabled = value || !hasApplicationProfile;
+    ui.appFields.querySelectorAll("input, select, textarea").forEach((control) => {
+      control.disabled = value;
+    });
     ui.checkButton.disabled = value || !state.workspaceReady;
     if (saveLabel) ui.saveState.textContent = saveLabel;
+  }
+
+  function updateApplicationGuidance() {
+    if (!state.task || !state.task.runtime_profile) return;
+    if (state.task.state === "LOCKED") {
+      ui.appRunnerHelp.textContent = "当前课程尚未解锁。先完成前置课程的正式验收，才能构建和运行此程序。";
+    } else if (!state.workspaceReady) {
+      ui.appRunnerHelp.textContent = "先点击“开始学习”创建工作区，然后构建应用、选择操作并运行。";
+    } else {
+      ui.appRunnerHelp.textContent = "运行的是当前工作区里的学习者代码。输出和错误显示在下方，不会改变正式验收状态。";
+    }
+  }
+
+  function renderApplicationRunner() {
+    const profile = state.task && state.task.runtime_profile;
+    if (!profile) {
+      ui.appRunner.hidden = true;
+      ui.appBuildButton.disabled = true;
+      ui.appExecuteButton.disabled = true;
+      return;
+    }
+    ui.appRunner.hidden = false;
+    ui.appProfileLabel.textContent = profile.label || "固定应用配置";
+    updateApplicationGuidance();
+    ui.appAction.replaceChildren();
+    for (const action of profile.actions || []) {
+      const option = document.createElement("option");
+      option.value = action.id;
+      option.textContent = action.label || action.id;
+      ui.appAction.append(option);
+    }
+    renderApplicationFields();
+    ui.appBuildButton.disabled = !state.workspaceReady || state.busy;
+    ui.appExecuteButton.disabled = !state.workspaceReady || state.busy;
+  }
+
+  function renderApplicationFields() {
+    ui.appFields.replaceChildren();
+    const profile = state.task && state.task.runtime_profile;
+    if (!profile) return;
+    const action = (profile.actions || []).find((item) => item.id === ui.appAction.value);
+    if (!action) return;
+    for (const field of action.fields || []) {
+      const label = document.createElement("label");
+      label.textContent = field.label || field.name;
+      let control;
+      if (field.type === "select") {
+        control = document.createElement("select");
+        for (const value of field.options || []) {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = (field.option_labels && field.option_labels[value]) || value;
+          control.append(option);
+        }
+      } else if (field.type === "multiline") {
+        control = document.createElement("textarea");
+        control.rows = 5;
+        control.maxLength = 262144;
+        control.value = field.default || "";
+        control.placeholder = field.placeholder || "";
+      } else {
+        control = document.createElement("input");
+        control.type = field.type === "number" ? "number" : field.type === "id" ? "number" : "text";
+        if (field.type === "number") control.step = "any";
+        if (field.type === "id") {
+          control.min = "1";
+          control.step = "1";
+        }
+        if (field.type === "text") control.maxLength = 200;
+      }
+      control.dataset.field = field.name;
+      control.dataset.fieldType = field.type;
+      control.autocomplete = "off";
+      control.required = true;
+      label.append(control);
+      ui.appFields.append(label);
+    }
+  }
+
+  async function runApplicationBuild() {
+    if (!state.task || !state.task.runtime_profile || !state.workspaceReady || state.busy) return;
+    setBusy(true, "正在保存代码…");
+    const saved = await saveAllDirtyFiles({ silent: true });
+    if (!saved) {
+      setBusy(false);
+      toast("代码保存失败，已取消应用构建。");
+      return;
+    }
+    ui.consoleTitle.textContent = "应用程序构建输出";
+    ui.console.textContent = "正在构建当前任务的固定应用配置…";
+    ui.diagnostics.hidden = true;
+    ui.checkResult.textContent = "执行中";
+    ui.checkResult.className = "check-result";
+    try {
+      const result = await api(
+        "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/app-build",
+        { method: "POST", body: {} }
+      );
+      ui.console.textContent = result.output || "(没有输出)";
+      renderDiagnostics(result.output || "");
+      ui.checkResult.textContent = result.success ? "应用构建成功" : "应用构建失败";
+      ui.checkResult.className = "check-result " + (result.success ? "pass" : "fail");
+      toast(result.success ? "应用程序构建成功；正式验收状态未改变。" : "应用构建失败，请查看编译诊断。");
+    } catch (error) {
+      ui.console.textContent = error.message;
+      ui.checkResult.textContent = "应用构建失败";
+      ui.checkResult.className = "check-result fail";
+      toast(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runApplication() {
+    if (!state.task || !state.task.runtime_profile || !state.workspaceReady || state.busy) return;
+    const profile = state.task.runtime_profile;
+    const action = (profile.actions || []).find((item) => item.id === ui.appAction.value);
+    if (!action) {
+      toast("当前任务没有可运行的应用操作。");
+      return;
+    }
+    const values = Array.from(ui.appFields.querySelectorAll("[data-field]"))
+      .map((control) => control.dataset.fieldType === "multiline"
+        ? control.value.replace(/\r?\n/g, "\r\n")
+        : control.value);
+    setBusy(true, "正在保存代码…");
+    const saved = await saveAllDirtyFiles({ silent: true });
+    if (!saved) {
+      setBusy(false);
+      toast("代码保存失败，已取消程序运行。");
+      return;
+    }
+    ui.consoleTitle.textContent = "程序交互输出";
+    ui.console.textContent = "正在执行：" + (action.label || action.id);
+    ui.diagnostics.hidden = true;
+    ui.checkResult.textContent = "执行中";
+    ui.checkResult.className = "check-result";
+    try {
+      const result = await api(
+        "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/app-run",
+        { method: "POST", body: { action: action.id, values } }
+      );
+      ui.console.textContent = result.output || "(没有输出)";
+      renderDiagnostics(result.output || "");
+      ui.checkResult.textContent = result.success ? "程序运行成功" : "程序运行失败";
+      ui.checkResult.className = "check-result " + (result.success ? "pass" : "fail");
+      toast(result.success
+        ? "程序运行完成；没有写入正式验收记录。"
+        : "程序运行失败；请根据输出修改代码后重试。");
+    } catch (error) {
+      ui.console.textContent = error.message;
+      ui.checkResult.textContent = "程序运行失败";
+      ui.checkResult.className = "check-result fail";
+      toast(error.message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function runWorkspaceAction(action) {
@@ -846,6 +1028,9 @@
     ui.saveButton.addEventListener("click", () => saveAllDirtyFiles());
     ui.buildButton.addEventListener("click", () => runWorkspaceAction("build"));
     ui.runButton.addEventListener("click", () => runWorkspaceAction("run"));
+    ui.appBuildButton.addEventListener("click", runApplicationBuild);
+    ui.appExecuteButton.addEventListener("click", runApplication);
+    ui.appAction.addEventListener("change", renderApplicationFields);
     ui.checkButton.addEventListener("click", () => runWorkspaceAction("check"));
     ui.continueButton.addEventListener("click", () => {
       const next = state.tasks.find((task) => ["IN PROGRESS", "NEEDS WORK", "STALE"].includes(task.state))

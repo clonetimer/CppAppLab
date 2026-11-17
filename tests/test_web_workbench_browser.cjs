@@ -177,6 +177,48 @@ async function readWorkspaceFile(page, baseUrl, taskId, relativePath) {
   return response.json();
 }
 
+async function writeWorkspaceFile(page, baseUrl, taskId, relativePath, sourceContent) {
+  const sessionResponse = await page.request.get(baseUrl + "/api/v1/session");
+  assert.equal(sessionResponse.status(), 200, "workbench session must be available");
+  const session = await sessionResponse.json();
+  const encoded = relativePath.split("/").map(encodeURIComponent).join("/");
+  const response = await page.request.put(
+    baseUrl + "/api/v1/workspaces/" + encodeURIComponent(taskId) + "/files/" + encoded,
+    {
+      data: { content: sourceContent },
+      headers: { Origin: baseUrl, "X-CppAppLab-Token": session.csrf_token }
+    }
+  );
+  if (response.status() !== 200) {
+    throw new Error("Could not stage reference source " + taskId + "/" + relativePath + ": " + await response.text());
+  }
+  assert.equal((await response.json()).saved, true);
+}
+
+async function copyReferenceSources(page, baseUrl, taskId, referenceRoot, relativePaths) {
+  for (const relativePath of relativePaths) {
+    const sourcePath = path.join(ROOT, referenceRoot, relativePath);
+    assert.ok(fs.existsSync(sourcePath), "missing reference source: " + sourcePath);
+    await writeWorkspaceFile(page, baseUrl, taskId, relativePath, fs.readFileSync(sourcePath, "utf8"));
+  }
+}
+
+async function runApplicationAction(page, action, fields, expectedOutput) {
+  await page.locator("#app-action").selectOption(action);
+  for (const [name, value] of Object.entries(fields || {})) {
+    await page.locator('[data-field="' + name + '"]').fill(value);
+  }
+  await page.locator("#app-execute-button").click();
+  await page.waitForFunction(
+    () => document.querySelector("#check-result")?.textContent === "程序运行成功",
+    null,
+    { timeout: 15000 }
+  );
+  const output = await page.locator("#console-output").textContent();
+  assert.ok(output.includes(expectedOutput), "unexpected " + action + " output: " + output);
+  return output;
+}
+
 async function main() {
   assert.ok(BINARY && fs.existsSync(BINARY), "CPPAPPLAB_TEST_BINARY must point to the built learning engine");
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
@@ -353,21 +395,295 @@ async function main() {
       return button && button.querySelector("small")?.textContent === "可开始";
     }, null, { timeout: 10000 });
 
+    // The structured application profile is a separate learner-facing run path.
+    // It must execute the current learner implementation without changing
+    // the formal acceptance state.
+    assert.equal(await page.locator("#app-runner").isVisible(), true);
+    assert.equal(await page.locator("#app-profile-label").textContent(), "命令行计算器");
+    await page.locator("#app-build-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "应用构建成功",
+      null,
+      { timeout: 60000 }
+    );
+    await page.locator('[data-field="left"]').fill("20");
+    await page.locator('[data-field="right"]').fill("22");
+    await page.locator("#app-execute-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "程序运行成功",
+      null,
+      { timeout: 15000 }
+    );
+    assert.match(await page.locator("#console-output").textContent(), /42/);
+    assert.equal(await page.locator("#task-state").textContent(), "已通过",
+      "Application build/run must not alter the formal acceptance result");
+
+    const editorBoxDesktop = await page.locator(".editor-panel").boundingBox();
+    const lessonBoxDesktop = await page.locator(".lesson-panel").boundingBox();
+    assert.ok(editorBoxDesktop && lessonBoxDesktop);
+    assert.ok(editorBoxDesktop.x < lessonBoxDesktop.x,
+      "Desktop places the active code editor to the left of contextual lesson guidance");
+
+    // Avoid distorted full-page evidence from a sticky header captured while
+    // the browser is scrolled to an editor control.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForFunction(() => window.scrollY === 0);
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "cppapplab-workbench-desktop.png"),
       fullPage: true
     });
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.waitForTimeout(500);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForFunction(() => window.scrollY === 0);
+    await page.waitForTimeout(200);
     const mobileOverflow = await page.evaluate(() =>
       document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
     );
     assert.equal(mobileOverflow, false, "Mobile workbench must not introduce horizontal page overflow");
+    const lessonBoxMobile = await page.locator(".lesson-panel").boundingBox();
+    const editorBoxMobile = await page.locator(".editor-panel").boundingBox();
+    assert.ok(lessonBoxMobile && editorBoxMobile);
+    assert.ok(lessonBoxMobile.y < editorBoxMobile.y,
+      "Mobile retains the instructional sequence: lesson before source editor");
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "cppapplab-workbench-mobile.png"),
       fullPage: true
     });
+
+    // W2 Todo is unlocked by the real W1 calculator acceptance above.
+    // First verify that the incomplete learner implementation surfaces its TODO.
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.locator('#course-list .task-link[data-task-id="w2.todo-cli"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w2.todo-cli"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "持久化 Todo CLI");
+    await page.locator("#start-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+    );
+    await page.locator("#app-build-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "应用构建成功",
+      null, { timeout: 60000 }
+    );
+    await page.locator("#app-action").selectOption("list");
+    await page.locator("#app-execute-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "程序运行失败",
+      null, { timeout: 15000 }
+    );
+    assert.match(await page.locator("#console-output").textContent(), /not implemented/);
+    assert.equal(await page.locator("#task-state").textContent(), "进行中",
+      "Failed Todo demo must not write formal acceptance evidence");
+
+    // The browser test harness stages known-good sources only into this disposable
+    // CI workspace. The product never pre-fills or replaces learner code.
+    await copyReferenceSources(
+      page, service.baseUrl, "w2.todo-cli", "labs/w2/todo/reference", ["src/todo.cpp"]
+    );
+    await page.locator('#course-list .task-link[data-task-id="w2.todo-cli"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w2.todo-cli" &&
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+    );
+    await page.locator("#app-build-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "应用构建成功",
+      null, { timeout: 60000 }
+    );
+    await runApplicationAction(page, "add", { title: "browser todo" }, "Added #1: browser todo");
+    await runApplicationAction(page, "list", {}, "#1 [ ] browser todo");
+    await runApplicationAction(page, "done", { id: "1" }, "Completed #1");
+    await runApplicationAction(page, "list", {}, "#1 [x] browser todo");
+    await runApplicationAction(page, "remove", { id: "1" }, "Removed #1");
+    await runApplicationAction(page, "list", {}, "No tasks.");
+    assert.equal(await page.locator("#task-state").textContent(), "进行中",
+      "Todo application CRUD must not write formal acceptance evidence");
+
+    await page.locator("#check-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "PASS",
+      null, { timeout: 60000 }
+    );
+    await page.waitForFunction(() => {
+      const button = document.querySelector('#course-list .task-link[data-task-id="w3.task-manager"]');
+      return button && button.querySelector("small")?.textContent === "可开始";
+    }, null, { timeout: 10000 });
+
+    // W3 TaskManager runs its real application profile in the browser.
+    // Reload after adding a task to prove workspace-local persistence.
+    await page.locator('#course-list .task-link[data-task-id="w3.task-manager"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w3.task-manager"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "TaskManager CLI");
+    await page.locator("#start-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+    );
+    await copyReferenceSources(
+      page, service.baseUrl, "w3.task-manager", "labs/w3/task-manager/reference",
+      ["src/task.cpp", "src/task_manager.cpp"]
+    );
+    await page.locator('#course-list .task-link[data-task-id="w3.task-manager"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w3.task-manager" &&
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+    );
+    await page.locator("#app-build-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "应用构建成功",
+      null, { timeout: 60000 }
+    );
+    await runApplicationAction(page, "add", { title: "browser task" }, "Added #1: browser task");
+    await runApplicationAction(page, "list", {}, "#1 [ ] browser task");
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() =>
+      document.querySelector("#engine-status")?.textContent.includes("本地引擎已连接")
+    );
+    await page.waitForFunction(() =>
+      document.querySelectorAll("#course-list .task-link").length === 23
+    );
+    await page.locator('#course-list .task-link[data-task-id="w3.task-manager"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w3.task-manager" &&
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+    );
+    await runApplicationAction(page, "list", {}, "#1 [ ] browser task");
+    await runApplicationAction(page, "done", { id: "1" }, "Completed #1");
+    await runApplicationAction(page, "list", {}, "#1 [x] browser task");
+    await runApplicationAction(page, "remove", { id: "1" }, "Removed #1");
+    await runApplicationAction(page, "list", {}, "No tasks.");
+    assert.equal(await page.locator("#task-state").textContent(), "进行中",
+      "TaskManager application CRUD must not write formal acceptance evidence");
+
+    await page.locator("#check-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "PASS",
+      null, { timeout: 60000 }
+    );
+    await page.waitForFunction(() => {
+      const button = document.querySelector('#course-list .task-link[data-task-id="w4.quality-gate"]');
+      return button && button.querySelector("small")?.textContent === "可开始";
+    }, null, { timeout: 10000 });
+
+    // W4 Quality Gate deliberately separates a complete TaskManager runtime
+    // implementation from learner-authored quality tests that still contain TODOs.
+    // The app should work; formal acceptance must still fail until tests are written.
+    await page.locator('#course-list .task-link[data-task-id="w4.quality-gate"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w4.quality-gate"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "TaskManager Quality Gate CLI");
+    await page.locator("#start-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+    );
+    await page.locator("#app-build-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "应用构建成功",
+      null, { timeout: 60000 }
+    );
+    await runApplicationAction(page, "add", { title: "quality gate task" }, "Added #1: quality gate task");
+    await runApplicationAction(page, "list", {}, "#1 [ ] quality gate task");
+    await runApplicationAction(page, "done", { id: "1" }, "Completed #1");
+    await runApplicationAction(page, "list", {}, "#1 [x] quality gate task");
+    await runApplicationAction(page, "remove", { id: "1" }, "Removed #1");
+    await runApplicationAction(page, "list", {}, "No tasks.");
+    assert.equal(await page.locator("#task-state").textContent(), "进行中",
+      "Quality Gate application runs must not write formal acceptance evidence");
+
+    await page.locator("#check-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "未通过",
+      null, { timeout: 60000 }
+    );
+    assert.match(await page.locator("#console-output").textContent(), /TODO\(W4-TEST-/);
+    assert.equal(await page.locator("#task-state").textContent(), "需要修改",
+      "Incomplete learner-authored quality tests must block formal acceptance");
+    // Other one-shot and structured profiles expose finite browser schemas.
+    // They remain non-executable until their prerequisites have passed.
+    await page.locator('#course-list .task-link[data-task-id="w5.system-lab"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w5.system-lab"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "受限进程运行演示");
+    assert.deepEqual(await page.locator("#app-action option").evaluateAll((items) =>
+      items.map((item) => item.value)
+    ), ["echo"]);
+    assert.equal(await page.locator("#app-fields input, #app-fields textarea").count(), 0);
+    assert.equal(await page.locator("#app-build-button").isDisabled(), true);
+    assert.equal(await page.locator("#app-execute-button").isDisabled(), true);
+    assert.match(await page.locator("#app-runner-help").textContent(), /前置课程/);
+
+    await page.locator('#course-list .task-link[data-task-id="w6.thread-pool"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w6.thread-pool"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "Thread Pool Demo");
+    assert.deepEqual(await page.locator("#app-action option").evaluateAll((items) =>
+      items.map((item) => item.value)
+    ), ["demo"]);
+    assert.equal(await page.locator("#app-execute-button").isDisabled(), true);
+
+    await page.locator('#course-list .task-link[data-task-id="w8.http-protocol"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w8.http-protocol"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "HTTP 协议消息");
+    assert.deepEqual(await page.locator("#app-action option").evaluateAll((items) =>
+      items.map((item) => item.value)
+    ), ["parse-line", "response"]);
+    await page.locator("#app-action").selectOption("parse-line");
+    assert.equal(await page.locator('[data-field="request_line"]').count(), 1);
+    await page.locator("#app-action").selectOption("response");
+    assert.equal(await page.locator("#app-fields input, #app-fields textarea").count(), 0);
+    assert.equal(await page.locator("#app-execute-button").isDisabled(), true);
+
+    await page.locator('#course-list .task-link[data-task-id="w8.static-files"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w8.static-files"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "HTTP 静态文件服务");
+    assert.deepEqual(await page.locator('[data-field="method"] option').evaluateAll((items) =>
+      items.map((item) => item.value)
+    ), ["GET", "HEAD", "POST"]);
+    assert.equal(await page.locator('[data-field="target"]').count(), 1);
+    assert.equal(await page.locator("#app-execute-button").isDisabled(), true);
+
+    // Network-service tasks wait for P8-C3; do not fabricate one-shot runners.
+    for (const taskId of ["w7.tcp-echo", "w7.tcp-chat", "w8.http-server"]) {
+      await page.locator('#course-list .task-link[data-task-id="' + taskId + '"]').click();
+      await page.waitForFunction((id) =>
+        document.querySelector("#task-breadcrumb")?.textContent.trim() === id,
+        taskId
+      );
+      assert.equal(await page.locator("#app-runner").isVisible(), false,
+        taskId + " must wait for a real network-service profile");
+    }
+
+    // A locked later task may display its instructional action schema, but
+    // must not permit launching an application before prerequisites pass.
+    await page.locator('#course-list .task-link[data-task-id="w8.http-parser"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w8.http-parser"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "HTTP 请求解析器");
+    assert.equal(await page.locator("#app-fields textarea").count(), 1);
+    assert.match(await page.locator("#app-fields textarea").inputValue(), /Host: localhost/);
+    assert.equal(await page.locator("#app-execute-button").isDisabled(), true,
+      "Locked parser tasks must not be executed from the browser");
+    assert.match(await page.locator("#app-runner-help").textContent(), /前置课程/);
+    await page.locator('#course-list .task-link[data-task-id="w8.router"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w8.router"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "HTTP 路由与分发");
+    assert.equal(await page.locator("#app-fields textarea").count(), 1);
+    assert.equal(await page.locator("#app-execute-button").isDisabled(), true);
 
     // Monaco may reject an in-flight worker request with its documented "Canceled"
     // sentinel when an editor model is disposed during task switching. It is not an

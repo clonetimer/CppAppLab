@@ -9,6 +9,7 @@ import unittest
 import urllib.error
 import urllib.request
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from cppapplab_web import CppAppLabWebServer, safe_relative_path
@@ -39,6 +40,10 @@ elif command == "build":
     print("Build result: PASS")
 elif command == "run":
     print("Run result: PASS")
+elif command == "app-run-stdin":
+    payload = sys.stdin.buffer.read()
+    print("stdin-bytes=" + str(len(payload)))
+    print("argv-count=" + str(len(sys.argv)))
 elif command == "check":
     print("[PASS] fixed acceptance")
 else:
@@ -280,6 +285,89 @@ class WebWorkbenchTests(unittest.TestCase):
             ),
             400,
         )
+
+    def test_http_input_uses_stdin_not_argv(self) -> None:
+        request_body = "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n"
+        workspace = self.workspace_root / "w8.http-parser"
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ), patch.object(
+            self.server, "run_cli", return_value=(1, "learner TODO")
+        ) as engine:
+            result = self.request(
+                "/api/v1/workspaces/w8.http-parser/app-run",
+                method="POST",
+                body={"action": "parse", "values": [request_body]},
+                token=self.token,
+                origin=self.base_url,
+            )
+            self.assertFalse(result["success"])
+            self.assertFalse(result["records_evidence"])
+            self.assertEqual(result["output"], "learner TODO")
+            args, kwargs = engine.call_args
+            self.assertEqual(
+                args[0], ["app-run-stdin", str(workspace), "parse"]
+            )
+            self.assertEqual(kwargs["input_data"], request_body)
+            self.assertNotIn(request_body, str(args))
+
+    def test_large_http_input_reaches_real_subprocess_stdin(self) -> None:
+        # Linux caps individual argv strings at around 128 KiB. This regression
+        # must pass with a payload larger than that cap, without mocking the
+        # subprocess runner or injecting the payload into argv.
+        request_body = "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n" + ("x" * 140000)
+        workspace = self.workspace_root / "w8.http-parser"
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ):
+            result = self.request(
+                "/api/v1/workspaces/w8.http-parser/app-run",
+                method="POST",
+                body={"action": "parse", "values": [request_body]},
+                token=self.token,
+                origin=self.base_url,
+            )
+        self.assertTrue(result["success"])
+        self.assertFalse(result["records_evidence"])
+        self.assertIn(
+            f"stdin-bytes={len(request_body.encode('utf-8'))}",
+            result["output"],
+        )
+        self.assertIn("argv-count=4", result["output"])
+
+    def test_http_input_rejects_unsupported_action(self) -> None:
+        with patch.object(self.server, "run_cli") as engine:
+            response = self.request_error(
+                "/api/v1/workspaces/w8.http-parser/app-run",
+                "POST",
+                {"action": "shell", "values": ["/bin/sh -c whoami"]},
+                token=self.token,
+                origin=self.base_url,
+            )
+            self.assertEqual(response, 400)
+            engine.assert_not_called()
+
+    def test_http_input_enforces_256_kib_size_limit(self) -> None:
+        with patch.object(self.server, "run_cli") as engine:
+            response = self.request_error(
+                "/api/v1/workspaces/w8.http-parser/app-run",
+                "POST",
+                {"action": "parse", "values": ["x" * (256 * 1024 + 1)]},
+                token=self.token,
+                origin=self.base_url,
+            )
+            self.assertEqual(response, 400)
+            engine.assert_not_called()
+
+    def test_unregistered_application_profile_is_rejected(self) -> None:
+        response = self.request_error(
+            "/api/v1/workspaces/w8.http-keep-alive/app-run",
+            "POST",
+            {"action": "parse", "values": ["GET / HTTP/1.1"]},
+            token=self.token,
+            origin=self.base_url,
+        )
+        self.assertEqual(response, 409)
 
     def test_unknown_command_route_is_not_exposed(self) -> None:
         self.assertEqual(

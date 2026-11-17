@@ -29,6 +29,8 @@ std::string_view usage() noexcept {
            "  cppapplab hint <workspace-directory> <1|2|3>       Show a progressive hint\n"
            "  cppapplab build <workspace-directory>              Build current learner source\n"
            "  cppapplab run <workspace-directory>                Run program or task tests (no evidence)\n"
+           "  cppapplab app-build <workspace-directory>          Build the registered learner application profile\n"
+           "  cppapplab app-run <workspace-directory> <action>   Run a registered application action (no evidence)\n"
            "  cppapplab check <workspace-directory>              Run fixed acceptance and record evidence\n"
            "  cppapplab status <workspace-directory>             Show current evidence status\n"
            "  cppapplab next <workspace-directory>               Show the next learning step\n";

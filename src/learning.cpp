@@ -7,6 +7,7 @@
 #include "cppapplab/workspace.hpp"
 
 #include <chrono>
+#include <charconv>
 #include <cctype>
 #include <cstdlib>
 #include <ctime>
@@ -604,6 +605,366 @@ int run_cmake_gtest_workspace(const Workspace& workspace) {
         std::cout << "\n[CppAppLab] Source changed during test execution; rebuild before running again.\n";
     }
     std::cout << "Run tests result: " << (passed ? "PASS" : "FAIL") << '\n';
+    return passed ? 0 : 1;
+}
+
+struct ApplicationBuildProfile {
+    std::vector<std::string> sources;
+    bool link_threads{false};
+};
+
+std::optional<ApplicationBuildProfile> application_build_profile(const Task& task) {
+    if (task.id == "w1.calculator") {
+        return ApplicationBuildProfile{{"src/main.cpp", "src/calculator.cpp"}, false};
+    }
+    if (task.id == "w2.todo-cli") {
+        return ApplicationBuildProfile{{"src/main.cpp", "src/todo.cpp"}, false};
+    }
+    if (task.id == "w3.task-manager" || task.id == "w4.quality-gate") {
+        return ApplicationBuildProfile{{"src/main.cpp", "src/task.cpp", "src/task_manager.cpp"}, false};
+    }
+    if (task.id == "w5.system-lab") {
+        return ApplicationBuildProfile{{"src/main.cpp", "src/process_runner.cpp"}, false};
+    }
+    if (task.id == "w6.thread-pool") {
+        return ApplicationBuildProfile{{"src/main.cpp", "src/thread_pool.cpp"}, true};
+    }
+    if (task.id == "w8.http-protocol") {
+        return ApplicationBuildProfile{{"src/main.cpp", "src/http_message.cpp"}, false};
+    }
+    if (task.id == "w8.static-files") {
+        return ApplicationBuildProfile{
+            {"src/main.cpp", "src/http_message.cpp", "src/static_file_handler.cpp"}, false};
+    }
+    if (task.id == "w8.http-parser") {
+        return ApplicationBuildProfile{{"src/main.cpp", "src/http_request_parser.cpp"}, false};
+    }
+    if (task.id == "w8.router") {
+        return ApplicationBuildProfile{
+            {"src/main.cpp", "src/http_message.cpp", "src/http_request_parser.cpp",
+             "src/static_file_handler.cpp", "src/router.cpp", "src/api_handlers.cpp",
+             "src/dispatcher.cpp"}, false};
+    }
+    return std::nullopt;
+}
+
+std::filesystem::path application_build_directory(const Workspace& workspace) {
+    return workspace.root / ".cppapplab" / "application";
+}
+
+std::filesystem::path application_fingerprint_path(const std::filesystem::path& directory) {
+    return directory / "cppapplab-app-source.fingerprint";
+}
+
+class ScopedEnvironmentValue {
+   public:
+    ScopedEnvironmentValue(std::string name, std::string value) : name_(std::move(name)) {
+        if (const char* previous = std::getenv(name_.c_str())) {
+            previous_ = previous;
+            had_previous_ = true;
+        }
+        if (::setenv(name_.c_str(), value.c_str(), 1) != 0) {
+            throw std::runtime_error("Cannot set application runtime environment.");
+        }
+    }
+
+    ~ScopedEnvironmentValue() {
+        if (had_previous_) {
+            (void)::setenv(name_.c_str(), previous_.c_str(), 1);
+        } else {
+            (void)::unsetenv(name_.c_str());
+        }
+    }
+
+    ScopedEnvironmentValue(const ScopedEnvironmentValue&) = delete;
+    ScopedEnvironmentValue& operator=(const ScopedEnvironmentValue&) = delete;
+
+   private:
+    std::string name_;
+    std::string previous_;
+    bool had_previous_{false};
+};
+
+bool declared_source(const Task& task, const std::string& relative) {
+    for (const auto& source : task.source_files) {
+        if (source.generic_string() == relative) {
+            return true;
+        }
+    }
+    return false;
+}
+
+int build_application_workspace(const std::filesystem::path& workspace_path) {
+    const Workspace workspace = open_workspace(workspace_path);
+    const Task& task = *workspace.task;
+    const auto profile = application_build_profile(task);
+    if (!profile.has_value()) {
+        throw std::runtime_error("This task has no registered browser application profile.");
+    }
+
+    const std::string fingerprint_before = source_fingerprint(task, workspace.root);
+    const auto state_directory = workspace.root / ".cppapplab";
+    ensure_real_directory(state_directory);
+    const auto build_directory = application_build_directory(workspace);
+    ensure_real_directory(build_directory);
+    const auto stamp_path = application_fingerprint_path(build_directory);
+    remove_build_fingerprint(stamp_path);
+
+    const auto executable = build_directory / "learner_app";
+    if (std::filesystem::exists(executable) || std::filesystem::is_symlink(executable)) {
+        const auto status = std::filesystem::symlink_status(executable);
+        if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
+            throw std::runtime_error("Refusing to replace a non-regular application build output.");
+        }
+        std::filesystem::remove(executable);
+    }
+
+    std::vector<std::string> arguments{
+        "g++", "-std=c++17", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-g"};
+    const auto include_directory = workspace.root / "include";
+    if (std::filesystem::is_directory(include_directory) && !std::filesystem::is_symlink(include_directory)) {
+        arguments.push_back("-I");
+        arguments.push_back(include_directory.string());
+    }
+
+    for (const std::string& relative : profile->sources) {
+        if (!declared_source(task, relative)) {
+            throw std::runtime_error("Application profile references an undeclared learner source: " + relative);
+        }
+        const auto source = workspace.root / relative;
+        const auto status = std::filesystem::symlink_status(source);
+        if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
+            throw std::runtime_error("Application source is missing or unsafe: " + relative);
+        }
+        arguments.push_back(source.string());
+    }
+    if (profile->link_threads) {
+        arguments.push_back("-pthread");
+    }
+    arguments.push_back("-o");
+    arguments.push_back(executable.string());
+
+    std::cout << "$ g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -g";
+    if (profile->link_threads) {
+        std::cout << " -pthread";
+    }
+    for (const std::string& relative : profile->sources) {
+        std::cout << " " << relative;
+    }
+    std::cout << " -o .cppapplab/application/learner_app\n";
+
+    const ProcessResult compilation = run_process(
+        arguments, workspace.root, std::chrono::seconds(60), kMaxCompilerOutput);
+    std::cout << compilation.output;
+    const std::string fingerprint_after = source_fingerprint(task, workspace.root);
+    const bool passed = process_succeeded(compilation) && fingerprint_after == fingerprint_before;
+    if (compilation.timed_out) {
+        std::cout << "\n[CppAppLab] Application compilation exceeded the 60-second time limit.\n";
+    } else if (compilation.output_truncated) {
+        std::cout << "\n[CppAppLab] Application compiler output exceeded the capture limit.\n";
+    } else if (compilation.exit_code != 0) {
+        std::cout << "\n[CppAppLab] Application compilation failed with exit code "
+                  << compilation.exit_code << ".\n";
+    }
+    if (fingerprint_after != fingerprint_before) {
+        std::cout << "\n[CppAppLab] Source changed during application build; rebuild before running.\n";
+    }
+    if (passed) {
+        write_build_fingerprint(stamp_path, fingerprint_before);
+    }
+    std::cout << "Application build result: " << (passed ? "PASS" : "FAIL") << '\n'
+              << "Source fingerprint: " << fingerprint_before << '\n';
+    return passed ? 0 : 1;
+}
+
+bool valid_positive_id(const std::string& value) {
+    if (value.empty() || value.size() > 20U) {
+        return false;
+    }
+    std::uint64_t parsed = 0U;
+    const auto result = std::from_chars(value.data(), value.data() + value.size(), parsed);
+    return result.ec == std::errc{} && result.ptr == value.data() + value.size() && parsed != 0U;
+}
+
+int run_application_workspace(const std::filesystem::path& workspace_path,
+                              const std::vector<std::string>& requested) {
+    const Workspace workspace = open_workspace(workspace_path);
+    const Task& task = *workspace.task;
+    const auto profile = application_build_profile(task);
+    if (!profile.has_value()) {
+        throw std::runtime_error("This task has no registered browser application profile.");
+    }
+    if (requested.empty()) {
+        throw std::invalid_argument("An application action is required.");
+    }
+
+    std::vector<std::string> application_arguments;
+    std::string standard_input;
+    const std::string& action = requested.front();
+    if (task.id == "w1.calculator") {
+        if (action != "calculate" || requested.size() != 4U) {
+            throw std::invalid_argument("Calculator action requires: calculate <add|subtract|multiply|divide> <left> <right>.");
+        }
+        const std::string& operation = requested[1];
+        if (operation != "add" && operation != "subtract" &&
+            operation != "multiply" && operation != "divide") {
+            throw std::invalid_argument("Unsupported calculator operation.");
+        }
+        for (std::size_t index = 2U; index < requested.size(); ++index) {
+            if (requested[index].empty() || requested[index].size() > 128U ||
+                requested[index].find_first_of("\r\n\t") != std::string::npos) {
+                throw std::invalid_argument("Calculator operands must be short single-line values.");
+            }
+        }
+        application_arguments = {operation, requested[2], requested[3]};
+    } else if (task.id == "w2.todo-cli" || task.id == "w3.task-manager" ||
+               task.id == "w4.quality-gate") {
+        if (action == "list" && requested.size() == 1U) {
+            application_arguments = {"list"};
+        } else if (action == "add" && requested.size() == 2U) {
+            const std::string& title = requested[1];
+            if (title.empty() || title.size() > 200U ||
+                title.find_first_of("\r\n\t") != std::string::npos) {
+                throw std::invalid_argument("Todo title must be 1–200 characters on one line.");
+            }
+            application_arguments = {"add", title};
+        } else if ((action == "done" || action == "remove") && requested.size() == 2U &&
+                   valid_positive_id(requested[1])) {
+            application_arguments = {action, requested[1]};
+        } else {
+            throw std::invalid_argument("Todo action must be add <title>, list, done <id>, or remove <id>.");
+        }
+    } else if (task.id == "w5.system-lab") {
+        if (action != "echo" || requested.size() != 1U) {
+            throw std::invalid_argument("System Lab supports only the fixed echo demonstration.");
+        }
+        application_arguments = {"/bin/echo", "CppAppLab W5 fixed process demo"};
+    } else if (task.id == "w6.thread-pool") {
+        if (action != "demo" || requested.size() != 1U) {
+            throw std::invalid_argument("Thread-pool task supports only the fixed demo action.");
+        }
+    } else if (task.id == "w8.http-protocol") {
+        if (action == "parse-line" && requested.size() == 2U) {
+            const auto& request_line = requested[1];
+            if (request_line.empty() || request_line.size() > 512U ||
+                request_line.find_first_of("\r\n\t") != std::string::npos) {
+                throw std::invalid_argument("HTTP request line must be short, non-empty and single-line.");
+            }
+            application_arguments = {"parse-line", request_line};
+        } else if (action == "response" && requested.size() == 1U) {
+            application_arguments = {"response"};
+        } else {
+            throw std::invalid_argument("HTTP protocol action must be parse-line <request-line> or response.");
+        }
+    } else if (task.id == "w8.static-files") {
+        if (action != "handle" || requested.size() != 3U) {
+            throw std::invalid_argument("Static-files action requires handle <GET|HEAD|POST> <target>.");
+        }
+        const auto& method = requested[1];
+        const auto& target = requested[2];
+        if (method != "GET" && method != "HEAD" && method != "POST") {
+            throw std::invalid_argument("Static-files method is not registered.");
+        }
+        if (target.empty() || target.size() > 512U ||
+            target.find_first_of("\r\n\t") != std::string::npos) {
+            throw std::invalid_argument("Static-files target must be short, non-empty and single-line.");
+        }
+        application_arguments = {"handle", method, target};
+    } else if (task.id == "w8.http-parser" || task.id == "w8.router") {
+        const std::string expected_action =
+            task.id == "w8.http-parser" ? "parse" : "dispatch";
+        if (action != expected_action || requested.size() != 2U) {
+            throw std::invalid_argument("This HTTP tool requires one bounded request payload.");
+        }
+        standard_input = requested[1];
+        constexpr std::size_t kMaxHttpInputBytes = 256U * 1024U;
+        if (standard_input.empty() || standard_input.size() > kMaxHttpInputBytes ||
+            standard_input.find('\0') != std::string::npos) {
+            throw std::invalid_argument("HTTP request input must be non-empty and at most 256 KiB.");
+        }
+        application_arguments = {"parse-stdin"};
+    } else {
+        throw std::runtime_error("The registered application profile is not enabled for this task yet.");
+    }
+
+    const auto build_directory = application_build_directory(workspace);
+    ensure_real_directory(workspace.root / ".cppapplab");
+    ensure_real_directory(build_directory);
+    const auto stamp = read_build_fingerprint(application_fingerprint_path(build_directory));
+    const std::string fingerprint = source_fingerprint(task, workspace.root);
+    if (!stamp.has_value() || *stamp != fingerprint) {
+        throw std::runtime_error("Application build is missing or stale. Build the current source first.");
+    }
+
+    const auto executable = build_directory / "learner_app";
+    const auto executable_status = std::filesystem::symlink_status(executable);
+    if (!std::filesystem::is_regular_file(executable_status) ||
+        std::filesystem::is_symlink(executable_status)) {
+        throw std::runtime_error("The learner application is missing or unsafe. Build the task first.");
+    }
+
+    const auto runtime_directory = build_directory / "runtime";
+    ensure_real_directory(runtime_directory);
+    if (task.id == "w8.static-files" || task.id == "w8.router") {
+        const auto document_root = runtime_directory / "www";
+        ensure_real_directory(document_root);
+        const auto sample_index = document_root / "index.html";
+        if (std::filesystem::exists(sample_index) || std::filesystem::is_symlink(sample_index)) {
+            const auto status = std::filesystem::symlink_status(sample_index);
+            if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
+                throw std::runtime_error("The application document-root sample is unsafe.");
+            }
+        } else {
+            std::ofstream sample(sample_index, std::ios::binary | std::ios::trunc);
+            if (!sample) {
+                throw std::runtime_error("Cannot create the application document-root sample.");
+            }
+            sample << "CppAppLab local document root\n";
+            sample.flush();
+            if (!sample) {
+                throw std::runtime_error("Cannot write the application document-root sample.");
+            }
+        }
+    }
+    if (task.id == "w2.todo-cli" || task.id == "w3.task-manager" ||
+        task.id == "w4.quality-gate") {
+        ScopedEnvironmentValue todo_file(
+            "CPPAPPLAB_TODO_FILE", (runtime_directory / "todos.tsv").string());
+        std::vector<std::string> command{executable.string()};
+        command.insert(command.end(), application_arguments.begin(), application_arguments.end());
+        const ProcessResult result = run_process(
+            command, runtime_directory, std::chrono::seconds(10), kMaxProgramOutput);
+        std::cout << result.output;
+        const bool unchanged = source_fingerprint(task, workspace.root) == fingerprint;
+        const bool passed = process_succeeded(result) && unchanged;
+        if (result.timed_out) {
+            std::cout << "\n[CppAppLab] Application exceeded the 10-second time limit.\n";
+        } else if (result.output_truncated) {
+            std::cout << "\n[CppAppLab] Application output exceeded the capture limit.\n";
+        }
+        if (!unchanged) {
+            std::cout << "\n[CppAppLab] Source changed during application execution.\n";
+        }
+        std::cout << "Application result: " << (passed ? "PASS" : "FAIL") << '\n';
+        return passed ? 0 : 1;
+    }
+
+    std::vector<std::string> command{executable.string()};
+    command.insert(command.end(), application_arguments.begin(), application_arguments.end());
+    const ProcessResult result = run_process(
+        command, runtime_directory, std::chrono::seconds(10), kMaxProgramOutput, standard_input);
+    std::cout << result.output;
+    const bool unchanged = source_fingerprint(task, workspace.root) == fingerprint;
+    const bool passed = process_succeeded(result) && unchanged;
+    if (result.timed_out) {
+        std::cout << "\n[CppAppLab] Application exceeded the 10-second time limit.\n";
+    } else if (result.output_truncated) {
+        std::cout << "\n[CppAppLab] Application output exceeded the capture limit.\n";
+    }
+    if (!unchanged) {
+        std::cout << "\n[CppAppLab] Source changed during application execution.\n";
+    }
+    std::cout << "Application result: " << (passed ? "PASS" : "FAIL") << '\n';
     return passed ? 0 : 1;
 }
 
@@ -1343,6 +1704,49 @@ int run_cli(int argc, char* argv[]) {
                 throw std::invalid_argument("Usage: cppapplab build <workspace-directory>");
             }
             return build_workspace(argv[2]);
+        }
+        if (command == "app-build") {
+            if (argc != 3) {
+                throw std::invalid_argument("Usage: cppapplab app-build <workspace-directory>");
+            }
+            return build_application_workspace(argv[2]);
+        }
+        if (command == "app-run") {
+            if (argc < 4) {
+                throw std::invalid_argument("Usage: cppapplab app-run <workspace-directory> <action> [values...]");
+            }
+            std::vector<std::string> requested;
+            requested.reserve(static_cast<std::size_t>(argc - 3));
+            for (int index = 3; index < argc; ++index) {
+                requested.emplace_back(argv[index]);
+            }
+            return run_application_workspace(argv[2], requested);
+        }
+        if (command == "app-run-stdin") {
+            if (argc != 4) {
+                throw std::invalid_argument(
+                    "Usage: cppapplab app-run-stdin <workspace-directory> <parse|dispatch>");
+            }
+            const Workspace workspace = open_workspace(argv[2]);
+            if ((workspace.task->id != "w8.http-parser" || std::string_view(argv[3]) != "parse") &&
+                (workspace.task->id != "w8.router" || std::string_view(argv[3]) != "dispatch")) {
+                throw std::invalid_argument("Only registered HTTP stdin actions are supported.");
+            }
+            constexpr std::size_t kMaxHttpInputBytes = 256U * 1024U;
+            std::string input;
+            char buffer[4096];
+            while (std::cin) {
+                std::cin.read(buffer, sizeof(buffer));
+                const auto bytes = static_cast<std::size_t>(std::cin.gcount());
+                if (bytes > kMaxHttpInputBytes - input.size()) {
+                    throw std::invalid_argument("HTTP input exceeds the 256 KiB limit.");
+                }
+                input.append(buffer, bytes);
+            }
+            if (!std::cin.eof()) {
+                throw std::runtime_error("Unable to read HTTP input from standard input.");
+            }
+            return run_application_workspace(argv[2], {argv[3], input});
         }
         if (command == "run") {
             if (argc != 3) {

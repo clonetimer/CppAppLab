@@ -34,6 +34,101 @@ PROGRESS_RE = re.compile(r"^\[(?P<state>[^\]]+)\]\s+(?P<task>[a-z0-9][a-z0-9._-]
 HINT_RE = re.compile(r"^## Hint ([1-3])(?:\s|$)", re.MULTILINE)
 ALLOWED_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
+RUNTIME_PROFILES: dict[str, dict[str, Any]] = {
+    "w1.calculator": {
+        "label": "命令行计算器",
+        "actions": [{
+            "id": "calculate", "label": "执行计算",
+            "fields": [
+                {"name": "operation", "label": "运算", "type": "select",
+                 "options": ["add", "subtract", "multiply", "divide"],
+                 "option_labels": {
+                     "add": "加法（add）", "subtract": "减法（subtract）",
+                     "multiply": "乘法（multiply）", "divide": "除法（divide）",
+                 }},
+                {"name": "left", "label": "左操作数", "type": "number"},
+                {"name": "right", "label": "右操作数", "type": "number"},
+            ],
+        }],
+    },
+    "w2.todo-cli": {
+        "label": "持久化 Todo CLI",
+        "actions": [
+            {"id": "add", "label": "添加待办", "fields": [{"name": "title", "label": "待办内容", "type": "text"}]},
+            {"id": "list", "label": "查看列表", "fields": []},
+            {"id": "done", "label": "完成待办", "fields": [{"name": "id", "label": "待办编号", "type": "id"}]},
+            {"id": "remove", "label": "删除待办", "fields": [{"name": "id", "label": "待办编号", "type": "id"}]},
+        ],
+    },
+    "w3.task-manager": {
+        "label": "TaskManager CLI",
+        "actions": [
+            {"id": "add", "label": "添加任务", "fields": [{"name": "title", "label": "任务内容", "type": "text"}]},
+            {"id": "list", "label": "查看任务", "fields": []},
+            {"id": "done", "label": "完成任务", "fields": [{"name": "id", "label": "任务编号", "type": "id"}]},
+            {"id": "remove", "label": "删除任务", "fields": [{"name": "id", "label": "任务编号", "type": "id"}]},
+        ],
+    },
+    "w4.quality-gate": {
+        "label": "TaskManager Quality Gate CLI",
+        "actions": [
+            {"id": "add", "label": "添加任务", "fields": [{"name": "title", "label": "任务内容", "type": "text"}]},
+            {"id": "list", "label": "查看任务", "fields": []},
+            {"id": "done", "label": "完成任务", "fields": [{"name": "id", "label": "任务编号", "type": "id"}]},
+            {"id": "remove", "label": "删除任务", "fields": [{"name": "id", "label": "任务编号", "type": "id"}]},
+        ],
+    },
+    "w5.system-lab": {
+        "label": "受限进程运行演示",
+        "actions": [{"id": "echo", "label": "运行固定 Echo 示例", "fields": []}],
+    },
+    "w6.thread-pool": {
+        "label": "Thread Pool Demo",
+        "actions": [{"id": "demo", "label": "运行线程池示例", "fields": []}],
+    },
+    "w8.http-protocol": {
+        "label": "HTTP 协议消息",
+        "actions": [
+            {"id": "parse-line", "label": "解析请求行",
+             "fields": [{"name": "request_line", "label": "HTTP 请求行", "type": "text"}]},
+            {"id": "response", "label": "生成示例响应", "fields": []},
+        ],
+    },
+    "w8.static-files": {
+        "label": "HTTP 静态文件服务",
+        "actions": [{
+            "id": "handle", "label": "处理静态文件请求",
+            "fields": [
+                {"name": "method", "label": "HTTP 方法", "type": "select",
+                 "options": ["GET", "HEAD", "POST"]},
+                {"name": "target", "label": "请求路径", "type": "text"},
+            ],
+        }],
+    },
+    "w8.http-parser": {
+        "label": "HTTP 请求解析器",
+        "actions": [{
+            "id": "parse", "label": "解析 HTTP 请求",
+            "fields": [{
+                "name": "request", "label": "HTTP 请求报文", "type": "multiline",
+                "default": "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n",
+                "placeholder": "GET / HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n",
+            }],
+        }],
+    },
+    "w8.router": {
+        "label": "HTTP 路由与分发",
+        "actions": [{
+            "id": "dispatch", "label": "分发 HTTP 请求",
+            "fields": [{
+                "name": "request", "label": "HTTP 请求报文", "type": "multiline",
+                "default": "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n",
+                "placeholder": "GET / HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n",
+            }],
+        }],
+    },
+}
+
 
 class ApiError(Exception):
     def __init__(self, status: int, message: str):
@@ -220,13 +315,16 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         self.task_by_id = {task["id"]: task for task in self.tasks}
         super().__init__(address, CppAppLabRequestHandler)
 
-    def run_cli(self, arguments: list[str], timeout: float = 20.0) -> tuple[int, str]:
+    def run_cli(
+        self, arguments: list[str], timeout: float = 20.0, input_data: str | None = None
+    ) -> tuple[int, str]:
         try:
             result = subprocess.run(
                 [str(self.binary), *arguments],
                 cwd=self.root,
                 env=self.child_env,
-                stdin=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL if input_data is None else None,
+                input=input_data,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -514,6 +612,7 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             "source_files": task["source_files"],
             "acceptance_kind": task["acceptance_kind"],
             "expected_test_count": task["expected_test_count"],
+            "runtime_profile": RUNTIME_PROFILES.get(task_id),
             "state": states.get(task_id, "UNKNOWN"),
             "lesson_markdown": lesson,
         })
@@ -575,6 +674,12 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
                 return
             if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] in {"build", "run"}:
                 self._run_workspace_action(parts[3], parts[4])
+                return
+            if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "app-build":
+                self._build_application(parts[3])
+                return
+            if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "app-run":
+                self._run_application(parts[3])
                 return
             if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "check":
                 self._check_workspace(parts[3])
@@ -668,6 +773,86 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             "exit_code": exit_code,
             "output": bounded_output(output),
             "records_acceptance_evidence": False,
+        })
+
+    def _build_application(self, task_id: str) -> None:
+        if task_id not in RUNTIME_PROFILES:
+            raise ApiError(409, "This task has no browser application profile.")
+        self._read_json()
+        workspace, _ = self.server.workspace_for_task(task_id)
+        exit_code, output = self.server.run_cli(
+            ["app-build", str(workspace)], timeout=75.0
+        )
+        self._send_json(200, {
+            "task_id": task_id,
+            "exit_code": exit_code,
+            "success": exit_code == 0,
+            "output": output,
+        })
+
+    def _run_application(self, task_id: str) -> None:
+        profile = RUNTIME_PROFILES.get(task_id)
+        if profile is None:
+            raise ApiError(409, "This task has no browser application profile.")
+        value = self._read_json()
+        action_id = value.get("action")
+        values = value.get("values", [])
+        if not isinstance(action_id, str) or not isinstance(values, list):
+            raise ApiError(400, "Application action and values must be valid.")
+        action = next((item for item in profile["actions"] if item["id"] == action_id), None)
+        if action is None:
+            raise ApiError(400, "This application action is not registered for the selected task.")
+        fields = action["fields"]
+        if len(values) != len(fields):
+            raise ApiError(400, "The application action has an incorrect number of values.")
+
+        arguments: list[str] = []
+        for field, raw in zip(fields, values):
+            if not isinstance(raw, str):
+                raise ApiError(400, "Application values must be text.")
+            field_type = field["type"]
+            max_bytes = 256 * 1024 if field_type == "multiline" else 512
+            if len(raw.encode("utf-8")) > max_bytes:
+                raise ApiError(400, "Application input exceeds the configured size limit.")
+            if field_type == "select":
+                if raw not in field["options"]:
+                    raise ApiError(400, "The selected application option is not allowed.")
+            elif field_type == "number":
+                if not re.fullmatch(r"-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?", raw):
+                    raise ApiError(400, "Numeric operands must be valid decimal numbers.")
+            elif field_type == "id":
+                if not re.fullmatch(r"[1-9]\d{0,19}", raw):
+                    raise ApiError(400, "Record IDs must be positive integers.")
+            elif field_type == "text":
+                if not raw or any(character in raw for character in "\r\n\t\x00"):
+                    raise ApiError(400, "Text values must be non-empty single-line text.")
+            elif field_type == "multiline":
+                if not raw or "\x00" in raw:
+                    raise ApiError(400, "HTTP request input must be non-empty text without NUL bytes.")
+            else:
+                raise ApiError(500, "The registered application profile contains an unknown field type.")
+            arguments.append(raw)
+
+        workspace, _ = self.server.workspace_for_task(task_id)
+        if any(field["type"] == "multiline" for field in fields):
+            # HTTP request bodies are passed over stdin instead of argv: Linux
+            # limits a single argv entry and also exposes arguments in ps output.
+            exit_code, output = self.server.run_cli(
+                ["app-run-stdin", str(workspace), action_id],
+                timeout=20.0,
+                input_data=arguments[0],
+            )
+        else:
+            exit_code, output = self.server.run_cli(
+                ["app-run", str(workspace), action_id, *arguments], timeout=20.0
+            )
+        self._send_json(200, {
+            "task_id": task_id,
+            "action": action_id,
+            "exit_code": exit_code,
+            "success": exit_code == 0,
+            "records_evidence": False,
+            "output": output,
         })
 
     def _check_workspace(self, task_id: str) -> None:

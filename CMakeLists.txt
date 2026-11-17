@@ -126,6 +126,7 @@ if(BUILD_TESTING)
         tests/process_test.cpp
         tests/workspace_test.cpp
         tests/learning_workflow_test.cpp
+        tests/application_runtime_workflow_test.cpp
         tests/calculator_workflow_test.cpp
         tests/todo_workflow_test.cpp
         tests/task_manager_workflow_test.cpp

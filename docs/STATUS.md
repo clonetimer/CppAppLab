@@ -200,10 +200,11 @@ The priority is a complete, understandable experience for the currently released
 
 ## P8 — Browser-first learning workbench
 
-**P8-A and P8-B validated on feature branch** `feat/p8-web-learning-workbench-20261116` · **PR:** [#40](https://github.com/clonetimer/CppAppLab/pull/40).  
-**Validated head:** `e58227d06b7252fc5023339064637512f5954ae0`.  
-**PR CI:** run [#1524 / 43904815195](https://github.com/clonetimer/CppAppLab/actions/runs/43904815195), all required PR jobs passed.  
-**Push CI:** run [#1523 / 43904797238](https://github.com/clonetimer/CppAppLab/actions/runs/43904797238), including Ubuntu 22.04 source-build compatibility, passed.  
+**P8-A and P8-B merged into `main` via PR #40.**  
+**Merge commit:** `d4cadbfcb68fc10bb146558ef892e8d828b16c89`.  
+**Code implementation head:** `e58227d06b7252fc5023339064637512f5954ae0`; final documentation-synchronized PR head: `20c499a3cdace4f2257023a8d1872b624fa94d3d`.  
+**Final PR CI:** run [#1530 / 43991188150](https://github.com/clonetimer/CppAppLab/actions/runs/43991188150), all required PR jobs passed.  
+**Final push CI:** run [#1529 / 43991178228](https://github.com/clonetimer/CppAppLab/actions/runs/43991178228), including Ubuntu 22.04 source-build compatibility, passed.  
 **Browser evidence:** artifact `14246430386`, desktop 1440px and mobile 390px screenshots; both visually reviewed.
 
 ### P8-A — Local web foundation (validated)
@@ -233,13 +234,22 @@ The priority is a complete, understandable experience for the currently released
 
 The CLI remains supported and authoritative. P8-A/P8-B do not claim Windows 11 + WSL2 target-machine acceptance or release readiness.
 
-### Next: P8-C — Full course experience
+### P8-C — Full course experience
 
-Proceed in small acceptance-backed slices:
-1. C1: audit all 23 registered tasks and define interaction contracts by task type (direct CLI, multi-file/CMake, long-running network service).
-2. C2: add browser-managed stdin/stdout and process lifecycle for direct CLI programs, without exposing arbitrary commands.
-3. C3: add fixed-profile start/stop/status/log controls for registered network-service tasks.
-4. C4: expose acceptance history, stale-evidence reasons and prerequisite dependencies from the existing learning-engine records.
-5. C5: complete responsive recovery guidance and cross-task user-journey regression.
+**C1 runtime-contract audit: complete. C2 one-shot/CLI interaction: validated in PR #41.**
+**Validated head:** `37fb25edcdc3125c4da9b23b04bb05c631da326a`.
+**Final PR CI:** [run #1589](https://github.com/clonetimer/CppAppLab/actions/runs/44026443959). All 12 required jobs passed; the Ubuntu 22.04 source-build compatibility job was skipped by workflow configuration. The repository-wide formatting step remains a manual skipped step; clang-tidy passed on both Ubuntu releases.
 
+C2 delivered:
+
+- Fixed application build/run profiles for Calculator, Todo, TaskManager, Quality Gate, System Lab, Thread Pool, HTTP Protocol, HTTP Parser, Static Files and Router.
+- Browser-managed structured forms with no arbitrary shell, executable path, compiler options or user-controlled argv.
+- Source-declared build inputs, source-fingerprint stale-build rejection, workspace-local Todo/TaskManager persistence, and bounded 256 KiB stdin transport for HTTP Parser/Router.
+- Separate application Build/Run and Formal Acceptance semantics. Only `cppapplab check` writes course evidence.
+- Chromium workflows for Calculator, Todo and TaskManager; CRUD and persistence checks; W4 runtime-versus-quality-gate separation; locked-profile UI checks; desktop/mobile and offline-editor coverage.
+- Reusable development lessons in `docs/DEVELOPMENT_EXPERIENCE.md`.
+
+**Next implementation slice: P8-C3 — loopback-only TCP Echo, TCP Chat and HTTP Server sessions.** It will add fixed service profiles, readiness/status/log/stop controls, bounded clients and deterministic process-group cleanup. P8-C4 history and P8-C5 full-course journeys remain separate.
+
+P8-D (clangd/GDB) and P8-E (Windows/WSL2 packaging and target-machine acceptance) remain separate milestones.
 P8-D (clangd/GDB) and P8-E (Windows/WSL2 packaging and target-machine acceptance) remain separate milestones.

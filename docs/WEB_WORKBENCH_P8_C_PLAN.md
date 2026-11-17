@@ -79,7 +79,7 @@ The W7 Chat and W8 HTTP Server learner templates are deliberately incomplete unt
 - [x] Add a fixed Echo demonstration for System Lab; the browser cannot submit executable names or arbitrary arguments.
 - [x] Keep application output, errors, exit status, timeout and source fingerprint visible; application runs never write formal acceptance evidence.
 - [x] Verify per-workspace Todo persistence isolation and stale-build rejection in C++ workflow tests.
-- [ ] Add Chromium user-journey tests for every structured CLI and stdin interaction class; Calculator and Todo run against the real learning engine, while W8 Parser/Router forms are rendered and locked-state behavior verified in Chromium. Remaining task types have engine-level coverage but do not yet have full browser journeys.
+- [x] Add Chromium journeys for Calculator, Todo and TaskManager using the real learning engine; exercise Todo/TaskManager add-list-done-remove operations, workspace persistence, incomplete learner diagnostics, and separation between application runs and formal acceptance. Verify Quality Gate's real TODO failure and render remaining one-shot/structured profile forms with prerequisite-aware controls. W8 Parser/Router forms are verified in Chromium while bounded stdin transport is covered by real Python subprocess and C++ process tests.
 
 ### P8-C3 — Network-service interaction
 

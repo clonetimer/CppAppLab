@@ -177,6 +177,48 @@ async function readWorkspaceFile(page, baseUrl, taskId, relativePath) {
   return response.json();
 }
 
+async function writeWorkspaceFile(page, baseUrl, taskId, relativePath, sourceContent) {
+  const sessionResponse = await page.request.get(baseUrl + "/api/v1/session");
+  assert.equal(sessionResponse.status(), 200, "workbench session must be available");
+  const session = await sessionResponse.json();
+  const encoded = relativePath.split("/").map(encodeURIComponent).join("/");
+  const response = await page.request.put(
+    baseUrl + "/api/v1/workspaces/" + encodeURIComponent(taskId) + "/files/" + encoded,
+    {
+      data: { content: sourceContent },
+      headers: { Origin: baseUrl, "X-CppAppLab-Token": session.csrf_token }
+    }
+  );
+  if (response.status() !== 200) {
+    throw new Error("Could not stage reference source " + taskId + "/" + relativePath + ": " + await response.text());
+  }
+  assert.equal((await response.json()).saved, true);
+}
+
+async function copyReferenceSources(page, baseUrl, taskId, referenceRoot, relativePaths) {
+  for (const relativePath of relativePaths) {
+    const sourcePath = path.join(ROOT, referenceRoot, relativePath);
+    assert.ok(fs.existsSync(sourcePath), "missing reference source: " + sourcePath);
+    await writeWorkspaceFile(page, baseUrl, taskId, relativePath, fs.readFileSync(sourcePath, "utf8"));
+  }
+}
+
+async function runApplicationAction(page, action, fields, expectedOutput) {
+  await page.locator("#app-action").selectOption(action);
+  for (const [name, value] of Object.entries(fields || {})) {
+    await page.locator('[data-field="' + name + '"]').fill(value);
+  }
+  await page.locator("#app-execute-button").click();
+  await page.waitForFunction(
+    () => document.querySelector("#check-result")?.textContent === "程序运行成功",
+    null,
+    { timeout: 15000 }
+  );
+  const output = await page.locator("#console-output").textContent();
+  assert.ok(output.includes(expectedOutput), "unexpected " + action + " output: " + output);
+  return output;
+}
+
 async function main() {
   assert.ok(BINARY && fs.existsSync(BINARY), "CPPAPPLAB_TEST_BINARY must point to the built learning engine");
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });

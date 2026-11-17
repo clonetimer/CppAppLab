@@ -182,6 +182,28 @@ TEST(ApplicationRuntimeWorkflowTest, TodoApplicationStateIsIsolatedToItsWorkspac
     EXPECT_FALSE(std::filesystem::exists(global_todo_file));
 }
 
+TEST(ApplicationRuntimeWorkflowTest, SystemLabOnlyRunsItsFixedEchoDemonstration) {
+    const cppapplab::Task* task = cppapplab::find_task("w5.system-lab");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "system-lab");
+    int result = -1;
+    std::string output = invoke_capture({"cppapplab", "app-build", workspace.root.string()}, result);
+    ASSERT_EQ(result, 0) << output;
+
+    output = invoke_capture({"cppapplab", "app-run", workspace.root.string(), "echo"}, result);
+    EXPECT_NE(result, 0) << output;
+    EXPECT_NE(output.find("Application result: FAIL"), std::string::npos);
+
+    output = invoke_capture(
+        {"cppapplab", "app-run", workspace.root.string(), "execute", "/bin/sh", "-c", "id"},
+        result);
+    EXPECT_EQ(result, 2);
+    EXPECT_NE(output.find("System Lab supports only the fixed echo demonstration"), std::string::npos);
+}
+
 TEST(ApplicationRuntimeWorkflowTest, ThreadPoolDemoRunsThroughItsFixedApplicationProfile) {
     const cppapplab::Task* task = cppapplab::find_task("w6.thread-pool");
     ASSERT_NE(task, nullptr);

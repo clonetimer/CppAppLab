@@ -74,6 +74,10 @@ RUNTIME_PROFILES: dict[str, dict[str, Any]] = {
             {"id": "remove", "label": "删除任务", "fields": [{"name": "id", "label": "任务编号", "type": "id"}]},
         ],
     },
+    "w5.system-lab": {
+        "label": "受限进程运行演示",
+        "actions": [{"id": "echo", "label": "运行固定 Echo 示例", "fields": []}],
+    },
     "w6.thread-pool": {
         "label": "Thread Pool Demo",
         "actions": [{"id": "demo", "label": "运行线程池示例", "fields": []}],

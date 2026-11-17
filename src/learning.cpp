@@ -623,6 +623,9 @@ std::optional<ApplicationBuildProfile> application_build_profile(const Task& tas
     if (task.id == "w3.task-manager" || task.id == "w4.quality-gate") {
         return ApplicationBuildProfile{{"src/main.cpp", "src/task.cpp", "src/task_manager.cpp"}, false};
     }
+    if (task.id == "w5.system-lab") {
+        return ApplicationBuildProfile{{"src/main.cpp", "src/process_runner.cpp"}, false};
+    }
     if (task.id == "w6.thread-pool") {
         return ApplicationBuildProfile{{"src/main.cpp", "src/thread_pool.cpp"}, true};
     }
@@ -831,6 +834,11 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
         } else {
             throw std::invalid_argument("Todo action must be add <title>, list, done <id>, or remove <id>.");
         }
+    } else if (task.id == "w5.system-lab") {
+        if (action != "echo" || requested.size() != 1U) {
+            throw std::invalid_argument("System Lab supports only the fixed echo demonstration.");
+        }
+        application_arguments = {"/bin/echo", "CppAppLab W5 fixed process demo"};
     } else if (task.id == "w6.thread-pool") {
         if (action != "demo" || requested.size() != 1U) {
             throw std::invalid_argument("Thread-pool task supports only the fixed demo action.");

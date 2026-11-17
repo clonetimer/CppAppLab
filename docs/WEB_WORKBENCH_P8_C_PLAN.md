@@ -72,13 +72,13 @@ The W7 Chat and W8 HTTP Server learner templates are deliberately incomplete unt
 
 ### P8-C2 — One-shot and CLI interaction
 
-- [ ] Add fixed application build profiles for eligible tasks, using only declared learner sources.
-- [ ] Add structured action forms for Calculator, Todo, TaskManager, Quality Gate, HTTP Protocol and Static Files.
-- [ ] Add bounded stdin submission for HTTP Parser and Router.
-- [ ] Add fixed safe demonstration cases for System Lab; no arbitrary command input.
-- [ ] Keep one-shot output, stderr, exit code, timeout and source fingerprint visible in the browser.
-- [ ] Verify per-workspace Todo/TaskManager data isolation.
-- [ ] Add real Chromium tests for each distinct one-shot/CLI interaction class.
+- [x] Add fixed application build profiles for Calculator, Todo, TaskManager, Quality Gate, System Lab, Thread Pool, HTTP Protocol, HTTP Parser, Static Files and Router, using only declared learner sources.
+- [x] Add structured action forms for Calculator, Todo, TaskManager, Quality Gate, System Lab, HTTP Protocol and Static Files.
+- [x] Add bounded stdin submission for HTTP Parser and Router; the process runner uses a bounded temporary input file rather than an unbounded stdin pipe.
+- [x] Add a fixed Echo demonstration for System Lab; the browser cannot submit executable names or arbitrary arguments.
+- [x] Keep application output, errors, exit status, timeout and source fingerprint visible; application runs never write formal acceptance evidence.
+- [x] Verify per-workspace Todo persistence isolation and stale-build rejection in C++ workflow tests.
+- [ ] Add Chromium user-journey tests for every structured CLI and stdin interaction class; calculator is currently covered end-to-end, the remaining profiles have engine-level coverage.
 
 ### P8-C3 — Network-service interaction
 

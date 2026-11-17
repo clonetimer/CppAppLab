@@ -646,7 +646,9 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             runtime_directory = ensure_workspace_directory(
                 workspace, ".cppapplab", "application", "runtime"
             )
-            port = 0
+            # TCP Echo's learner CLI requires a concrete non-zero port. Chat and
+            # HTTP accept port 0 and report the kernel-assigned ephemeral port.
+            port = reserve_loopback_port() if profile["kind"] == "tcp_echo" else 0
             executable = workspace / ".cppapplab" / "application" / "learner_app"
             try:
                 executable_status = executable.lstat()

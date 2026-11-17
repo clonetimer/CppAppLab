@@ -41,7 +41,11 @@ RUNTIME_PROFILES: dict[str, dict[str, Any]] = {
             "id": "calculate", "label": "执行计算",
             "fields": [
                 {"name": "operation", "label": "运算", "type": "select",
-                 "options": ["add", "subtract", "multiply", "divide"]},
+                 "options": ["add", "subtract", "multiply", "divide"],
+                 "option_labels": {
+                     "add": "加法（add）", "subtract": "减法（subtract）",
+                     "multiply": "乘法（multiply）", "divide": "除法（divide）",
+                 }},
                 {"name": "left", "label": "左操作数", "type": "number"},
                 {"name": "right", "label": "右操作数", "type": "number"},
             ],

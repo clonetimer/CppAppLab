@@ -52,6 +52,7 @@
     runButton: $("run-button"),
     appRunner: $("app-runner"),
     appProfileLabel: $("app-profile-label"),
+    appRunnerHelp: $("app-runner-help"),
     appAction: $("app-action"),
     appFields: $("app-fields"),
     appBuildButton: $("app-build-button"),
@@ -331,7 +332,7 @@
                 theme: "vs-dark",
                 automaticLayout: true,
                 minimap: { enabled: false },
-                fontSize: 13,
+                fontSize: 14,
                 tabSize: 4,
                 insertSpaces: true,
                 scrollBeyondLastLine: false,
@@ -582,6 +583,7 @@
     state.files = data.files || [];
     state.workspaceReady = true;
     ui.workspaceState.textContent = "工作区已就绪";
+    updateApplicationGuidance();
     const hasApplicationProfile = Boolean(state.task && state.task.runtime_profile);
     ui.appBuildButton.disabled = !hasApplicationProfile || state.busy;
     ui.appExecuteButton.disabled = !hasApplicationProfile || state.busy;
@@ -791,6 +793,17 @@
     if (saveLabel) ui.saveState.textContent = saveLabel;
   }
 
+  function updateApplicationGuidance() {
+    if (!state.task || !state.task.runtime_profile) return;
+    if (state.task.state === "LOCKED") {
+      ui.appRunnerHelp.textContent = "当前课程尚未解锁。先完成前置课程的正式验收，才能构建和运行此程序。";
+    } else if (!state.workspaceReady) {
+      ui.appRunnerHelp.textContent = "先点击“开始学习”创建工作区，然后构建应用、选择操作并运行。";
+    } else {
+      ui.appRunnerHelp.textContent = "运行的是当前工作区里的学习者代码。输出和错误显示在下方，不会改变正式验收状态。";
+    }
+  }
+
   function renderApplicationRunner() {
     const profile = state.task && state.task.runtime_profile;
     if (!profile) {
@@ -801,6 +814,7 @@
     }
     ui.appRunner.hidden = false;
     ui.appProfileLabel.textContent = profile.label || "固定应用配置";
+    updateApplicationGuidance();
     ui.appAction.replaceChildren();
     for (const action of profile.actions || []) {
       const option = document.createElement("option");
@@ -828,7 +842,7 @@
         for (const value of field.options || []) {
           const option = document.createElement("option");
           option.value = value;
-          option.textContent = value;
+          option.textContent = (field.option_labels && field.option_labels[value]) || value;
           control.append(option);
         }
       } else if (field.type === "multiline") {

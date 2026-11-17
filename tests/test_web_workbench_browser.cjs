@@ -421,6 +421,7 @@ async function main() {
       document.querySelector("#check-result")?.textContent === "应用构建成功",
       null, { timeout: 60000 }
     );
+    assert.match(await page.locator("#app-runner-help").textContent(), /当前工作区/);
     await page.locator("#app-action").selectOption("list");
     assert.equal(await page.locator("#app-fields input").count(), 0);
     await page.locator("#app-execute-button").click();
@@ -447,6 +448,7 @@ async function main() {
     assert.match(await page.locator("#app-fields textarea").inputValue(), /Host: localhost/);
     assert.equal(await page.locator("#app-execute-button").isDisabled(), true,
       "Locked parser tasks must not be executed from the browser");
+    assert.match(await page.locator("#app-runner-help").textContent(), /前置课程/);
     await page.locator('#course-list .task-link[data-task-id="w8.router"]').click();
     await page.waitForFunction(() =>
       document.querySelector("#task-breadcrumb")?.textContent.trim() === "w8.router"

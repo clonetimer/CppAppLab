@@ -334,15 +334,6 @@ def bounded_output(value: str) -> str:
     clipped = encoded[:MAX_PROCESS_OUTPUT].decode("utf-8", errors="ignore")
     return clipped + "\n[CppAppLab Web] Output truncated at the configured limit.\n"
 
-def reserve_loopback_port() -> int:
-    # TCP Echo's CLI requires a concrete port rather than port 0. Release the
-    # reservation immediately before exec; the learner server still owns bind.
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
-        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        listener.bind(("127.0.0.1", 0))
-        return int(listener.getsockname()[1])
-
-
 def ensure_workspace_directory(root: Path, *parts: str) -> Path:
     current = root
     for part in parts:
@@ -655,9 +646,9 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             runtime_directory = ensure_workspace_directory(
                 workspace, ".cppapplab", "application", "runtime"
             )
-            # TCP Echo's learner CLI requires a concrete non-zero port. Chat and
-            # HTTP accept port 0 and report the kernel-assigned ephemeral port.
-            port = reserve_loopback_port() if profile["kind"] == "tcp_echo" else 0
+            # All registered services request a kernel-assigned ephemeral port
+            # and report the actual bound port through their readiness line.
+            port = 0
             executable = workspace / ".cppapplab" / "application" / "learner_app"
             try:
                 executable_status = executable.lstat()

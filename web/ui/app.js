@@ -1580,6 +1580,12 @@
       if (state.task) loadTaskHistory(state.task.id);
     });
     ui.historyClose.addEventListener("click", () => { ui.historyPanel.hidden = true; });
+    ui.historyPanel.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        ui.historyPanel.hidden = true;
+        ui.historyButton.focus();
+      }
+    });
     ui.continueButton.addEventListener("click", () => {
       const next = state.tasks.find((task) => ["IN PROGRESS", "NEEDS WORK", "STALE"].includes(task.state))
         || state.tasks.find((task) => task.state === "AVAILABLE");

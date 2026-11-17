@@ -1319,6 +1319,15 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         )
         lesson = read_bounded(lesson_path, MAX_LESSON_BYTES, "Task lesson")
         states = self.server.progress_states()
+        current_state = states.get(task_id, "UNKNOWN")
+        state_reason = ""
+        if current_state == "STALE":
+            state_reason = "此前通过的源码指纹与当前工作区不再一致，或原工作区已不可用；请重新检查当前源码。"
+        elif current_state == "NEEDS WORK":
+            state_reason = "最近一次正式验收未通过；查看验收历史和诊断日志后修复并重新验收。"
+        elif current_state == "LOCKED":
+            missing = next((item for item in task["prerequisites"] if states.get(item) != "PASSED"), "")
+            state_reason = f"需要先通过前置任务 {missing} 的当前源码验收。" if missing else "前置任务尚未全部通过。"
         self._send_json(200, {
             "id": task["id"],
             "title": task["title"],
@@ -1330,7 +1339,8 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             "expected_test_count": task["expected_test_count"],
             "runtime_profile": RUNTIME_PROFILES.get(task_id),
             "service_profile": SERVICE_PROFILES.get(task_id),
-            "state": states.get(task_id, "UNKNOWN"),
+            "state": current_state,
+            "state_reason": state_reason,
             "lesson_markdown": lesson,
         })
 

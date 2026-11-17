@@ -281,7 +281,7 @@ The roadmap is outcome-based. Additional lessons are added only when they improv
 
 ## P8 — Browser-first learning workbench
 
-**Status: P8-A and P8-B validated on `feat/p8-web-learning-workbench-20261116`; P8-C is next.**  
+**Status: P8-A/P8-B merged into `main` via PR #40 (`d4cadbf`); P8-C1 runtime audit complete on `feat/p8-c-full-course-experience-20261117`.**  
 **P8-B validated head:** `e58227d06b7252fc5023339064637512f5954ae0`.  
 **Final PR CI:** [#1524](https://github.com/clonetimer/CppAppLab/actions/runs/43904815195) passed the required GCC/GoogleTest, ASan/UBSan, clang-format/clang-tidy, offline-dependency, package, Windows launcher and Chromium browser jobs.  
 **Final push CI:** [#1523](https://github.com/clonetimer/CppAppLab/actions/runs/43904797238) also passed Ubuntu 22.04 source-build compatibility.
@@ -321,8 +321,8 @@ The goal is to move the learner-facing workflow into one browser tab while prese
 
 ### P8-C — Full course experience (next)
 
-- [ ] C1: audit all 23 registered W1–W9 tasks and classify their interaction contracts: direct CLI program, multi-file/CMake project, or long-running network service.
-- [ ] C2: add browser-managed stdin/stdout and process lifecycle for direct CLI programs, using task-declared fixed execution profiles only.
+- [x] C1: audit all 23 registered W1–W9 tasks and classify their interaction contracts. See `docs/WEB_WORKBENCH_P8_C_PLAN.md`.
+- [ ] C2: add fixed application build profiles and browser-managed structured CLI/stdin interaction for eligible tasks; never expose arbitrary commands.
 - [ ] C3: add fixed-profile start/stop/status/log controls for registered network-service tasks; no arbitrary shell or user-supplied executable/argument surface.
 - [ ] C4: expose acceptance history, stale-evidence reasons and prerequisite dependencies from the existing learning-engine records.
 - [ ] C5: complete responsive recovery guidance and cross-task user-journey regression.

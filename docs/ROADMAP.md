@@ -277,3 +277,66 @@ Beyond W9:
 W9-A1–A3 are merged and validated. W9-A4–A5 and W10–W12 remain curriculum targets, not registered learner tasks; each will be added only after its learner source boundary, reference implementation and platform-owned acceptance fixture are ready.
 
 The roadmap is outcome-based. Additional lessons are added only when they improve a demonstrated learning or engineering outcome.
+
+
+## P8 — Browser-first learning workbench
+
+**Status: P8-A and P8-B validated on `feat/p8-web-learning-workbench-20261116`; P8-C is next.**  
+**P8-B validated head:** `e58227d06b7252fc5023339064637512f5954ae0`.  
+**Final PR CI:** [#1524](https://github.com/clonetimer/CppAppLab/actions/runs/43904815195) passed the required GCC/GoogleTest, ASan/UBSan, clang-format/clang-tidy, offline-dependency, package, Windows launcher and Chromium browser jobs.  
+**Final push CI:** [#1523](https://github.com/clonetimer/CppAppLab/actions/runs/43904797238) also passed Ubuntu 22.04 source-build compatibility.
+
+The goal is to move the learner-facing workflow into one browser tab while preserving the existing C++ learning engine and CLI.
+
+### P8-A — Local web foundation (validated)
+
+- [x] Define the browser adapter architecture and API/security boundaries.
+- [x] Add a loopback-only Python standard-library service.
+- [x] Read task metadata and lessons from the authoritative course catalog.
+- [x] Delegate start/resume and fixed acceptance to the existing CLI.
+- [x] Restrict browser file access to task-declared learner source files.
+- [x] Add a responsive Chinese course/workbench shell.
+- [x] Add a local start/status/stop script.
+- [x] Pass Ubuntu 22.04/24.04 API and path-safety tests.
+- [x] Complete W1 Hello World browser-to-real-GCC acceptance.
+- [x] Verify source fingerprint invalidation and prerequisite locks through the browser.
+- [x] Pass the local start/status/stop launcher smoke test.
+- [ ] Complete Windows 11 + WSL2 target-machine browser startup (P8-E).
+
+### P8-B — Professional editor and learning loop (validated)
+
+- [x] Add pinned Monaco 0.52.2 with a local plain-text fallback.
+- [x] Add per-file editor models and multi-file source tabs.
+- [x] Add debounced autosave, dirty indicators and Ctrl/Cmd+S.
+- [x] Protect in-flight saves against concurrent editor changes.
+- [x] Add separate fixed-profile Build, Run / Tests and Formal Acceptance actions.
+- [x] Add source-fingerprint build stamps and reject stale build execution.
+- [x] Keep build/run results separate from formal acceptance evidence.
+- [x] Parse GCC/CMake diagnostics into clickable source locations and Monaco markers.
+- [x] Pass real Chromium/Playwright acceptance for Monaco multi-file editing, autosave, build/run/evidence separation, CMake diagnostics, source navigation, task unlock, 390px mobile layout and forced-CDN-failure textarea fallback.
+- [x] Pass Ubuntu 22.04/24.04 GCC/GoogleTest, ASan/UBSan, clang-format/clang-tidy, offline dependency verification and source/learner package builds.
+- [x] Pass Windows launcher syntax/handoff checks.
+- [x] Review desktop and mobile browser screenshots; verify mobile page has no horizontal overflow.
+- [ ] Complete Windows 11 + WSL2 target-machine browser startup (P8-E).
+
+### P8-C — Full course experience (next)
+
+- [ ] C1: audit all 23 registered W1–W9 tasks and classify their interaction contracts: direct CLI program, multi-file/CMake project, or long-running network service.
+- [ ] C2: add browser-managed stdin/stdout and process lifecycle for direct CLI programs, using task-declared fixed execution profiles only.
+- [ ] C3: add fixed-profile start/stop/status/log controls for registered network-service tasks; no arbitrary shell or user-supplied executable/argument surface.
+- [ ] C4: expose acceptance history, stale-evidence reasons and prerequisite dependencies from the existing learning-engine records.
+- [ ] C5: complete responsive recovery guidance and cross-task user-journey regression.
+
+### P8-D — Professional tooling
+
+- clangd completion/diagnostics.
+- GDB debugging with explicit process and session lifecycle controls.
+- Multi-file project navigation and build configuration views.
+
+### P8-E — Windows/WSL2 delivery
+
+- Double-click launch that starts or resumes the local service and opens the browser.
+- Readiness checks, port conflict handling, safe stop/restart and log access.
+- Static frontend assets included in source/learner packages.
+- Target-machine acceptance on Windows 11 + WSL2 with Ubuntu 22.04 and 24.04.
+- Release qualification only after the existing CLI and all course acceptance gates remain green.

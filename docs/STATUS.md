@@ -196,3 +196,50 @@ The archive was built and checked with dry-run simulation; it was not installed 
 ## Course-first usability focus (2026-11-12)
 
 The priority is a complete, understandable experience for the currently released **23 W1–W9 tasks**, not Ubuntu installation. A new course-focused PR adds a Chinese learning route, an interactive `guide` entry, correct launch commands in extracted learner packages, Markdown repairs and an automated content audit. Planned W9-A4/A5 and W10–W12 lessons remain outside the current registered course. The tutorial acceptance uses existing preinstalled CI toolchains and does not install Ubuntu packages.
+
+
+## P8 — Browser-first learning workbench
+
+**P8-A and P8-B validated on feature branch** `feat/p8-web-learning-workbench-20261116` · **PR:** [#40](https://github.com/clonetimer/CppAppLab/pull/40).  
+**Validated head:** `e58227d06b7252fc5023339064637512f5954ae0`.  
+**PR CI:** run [#1524 / 43904815195](https://github.com/clonetimer/CppAppLab/actions/runs/43904815195), all required PR jobs passed.  
+**Push CI:** run [#1523 / 43904797238](https://github.com/clonetimer/CppAppLab/actions/runs/43904797238), including Ubuntu 22.04 source-build compatibility, passed.  
+**Browser evidence:** artifact `14246430386`, desktop 1440px and mobile 390px screenshots; both visually reviewed.
+
+### P8-A — Local web foundation (validated)
+
+- Loopback-only Python standard-library service with same-origin and CSRF protection.
+- Authoritative course catalog, lesson and progressive-hint API.
+- Task start/resume and workspace file access delegated to the existing CppAppLab engine.
+- Declared-source-only file access, traversal/symlink checks and atomic writes.
+- Responsive Chinese course shell and local start/status/stop launcher.
+- Ubuntu 22.04/24.04 API tests, real W1 browser-to-GCC acceptance, stale-evidence/prerequisite checks and launcher lifecycle smoke test passed.
+- Windows launcher syntax/handoff checks passed. Windows 11 + WSL2 target-machine browser launch remains part of P8-E.
+
+### P8-B — Professional editor and learning loop (validated)
+
+- Monaco Editor 0.52.2, loaded from pinned CDN URLs; deterministic offline fallback to the local textarea editor.
+- Per-file editor models and multi-file tabs.
+- Debounced autosave, dirty indicators, Ctrl/Cmd+S and version-aware protection against edits during in-flight saves.
+- Separate **Build**, **Run / Tests**, and **Formal Acceptance** controls.
+- Fixed-profile `cppapplab build` and `cppapplab run` commands. Direct-execution tasks run the learner program; CMake/GoogleTest tasks run the registered platform test suite.
+- Build fingerprints prevent running binaries after the source has changed.
+- Build/run do not create acceptance evidence; only `cppapplab check` records the formal PASS/FAIL result.
+- GCC/CMake diagnostics are converted into clickable file/line navigation and Monaco markers.
+- Real Chromium/Playwright acceptance covers Monaco multi-file editing, autosave, build/run/evidence separation, CMake diagnostics and source navigation, automatic prerequisite unlock, 390px mobile layout and forced-CDN-failure textarea fallback.
+- Browser testing exposed and fixed a real textarea autosave defect; the corrected fallback passed autosave, build and run.
+- Ubuntu 22.04/24.04 GCC/GoogleTest, ASan/UBSan, clang-format/clang-tidy, offline dependency verification, source/learner package builds, Windows launcher checks and browser acceptance all passed across the final PR and push CI runs.
+- Desktop and mobile screenshots were visually reviewed. The layout is two-column on desktop and vertically stacked on mobile; the editor retains its own horizontal code scrolling without page-level horizontal overflow.
+
+The CLI remains supported and authoritative. P8-A/P8-B do not claim Windows 11 + WSL2 target-machine acceptance or release readiness.
+
+### Next: P8-C — Full course experience
+
+Proceed in small acceptance-backed slices:
+1. C1: audit all 23 registered tasks and define interaction contracts by task type (direct CLI, multi-file/CMake, long-running network service).
+2. C2: add browser-managed stdin/stdout and process lifecycle for direct CLI programs, without exposing arbitrary commands.
+3. C3: add fixed-profile start/stop/status/log controls for registered network-service tasks.
+4. C4: expose acceptance history, stale-evidence reasons and prerequisite dependencies from the existing learning-engine records.
+5. C5: complete responsive recovery guidance and cross-task user-journey regression.
+
+P8-D (clangd/GDB) and P8-E (Windows/WSL2 packaging and target-machine acceptance) remain separate milestones.

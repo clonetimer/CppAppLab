@@ -334,6 +334,290 @@ bool process_succeeded(const ProcessResult& result) {
     return !result.timed_out && !result.output_truncated && result.exit_code == 0;
 }
 
+std::filesystem::path build_directory_for(const Workspace& workspace) {
+    const auto state_directory = workspace.root / ".cppapplab";
+    if (workspace.task->acceptance_kind == AcceptanceKind::ExactStdout) {
+        return state_directory / "build";
+    }
+    return state_directory / (workspace.task->id + "-build");
+}
+
+std::filesystem::path build_fingerprint_path(const std::filesystem::path& build_directory) {
+    return build_directory / "cppapplab-source.fingerprint";
+}
+
+void remove_build_fingerprint(const std::filesystem::path& path) {
+    if (!std::filesystem::exists(path) && !std::filesystem::is_symlink(path)) {
+        return;
+    }
+    const auto status = std::filesystem::symlink_status(path);
+    if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
+        throw std::runtime_error("Refusing to use an unsafe build fingerprint: " + path.string());
+    }
+    std::filesystem::remove(path);
+}
+
+void write_build_fingerprint(const std::filesystem::path& path, const std::string& fingerprint) {
+    remove_build_fingerprint(path);
+    auto temporary = path;
+    temporary += ".tmp";
+    if (std::filesystem::is_symlink(temporary)) {
+        throw std::runtime_error("Refusing to write through a build fingerprint symlink.");
+    }
+    {
+        std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+        if (!output) {
+            throw std::runtime_error("Cannot create build fingerprint: " + temporary.string());
+        }
+        output << fingerprint << '\n';
+        output.flush();
+        if (!output) {
+            throw std::runtime_error("Cannot write build fingerprint: " + temporary.string());
+        }
+    }
+    std::error_code error;
+    std::filesystem::rename(temporary, path, error);
+    if (error) {
+        std::filesystem::remove(temporary);
+        throw std::runtime_error("Cannot publish build fingerprint: " + error.message());
+    }
+}
+
+std::optional<std::string> read_build_fingerprint(const std::filesystem::path& path) {
+    if (!std::filesystem::exists(path) && !std::filesystem::is_symlink(path)) {
+        return std::nullopt;
+    }
+    const auto status = std::filesystem::symlink_status(path);
+    if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status) ||
+        std::filesystem::file_size(path) > 256U) {
+        throw std::runtime_error("Build fingerprint is missing, oversized, or unsafe.");
+    }
+    std::ifstream input(path, std::ios::binary);
+    if (!input) {
+        throw std::runtime_error("Cannot read build fingerprint: " + path.string());
+    }
+    std::string value;
+    std::getline(input, value);
+    if (!input.eof() && input.fail()) {
+        throw std::runtime_error("Failed while reading build fingerprint.");
+    }
+    return value;
+}
+
+int build_exact_stdout_workspace(const Workspace& workspace) {
+    const Task& task = *workspace.task;
+    if (task.source_files.size() != 1U) {
+        throw std::runtime_error("The direct-run build profile requires exactly one declared source file.");
+    }
+    const std::string fingerprint_before = source_fingerprint(task, workspace.root);
+    const auto state_directory = workspace.root / ".cppapplab";
+    ensure_real_directory(state_directory);
+    const auto build_directory = build_directory_for(workspace);
+    ensure_real_directory(build_directory);
+    const auto stamp_path = build_fingerprint_path(build_directory);
+    remove_build_fingerprint(stamp_path);
+
+    const auto executable = build_directory / "learner_app";
+    if (std::filesystem::exists(executable) || std::filesystem::is_symlink(executable)) {
+        const auto status = std::filesystem::symlink_status(executable);
+        if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
+            throw std::runtime_error("Refusing to replace a non-regular build output.");
+        }
+        std::filesystem::remove(executable);
+    }
+
+    const auto source = workspace.root / task.source_files.front();
+    const std::vector<std::string> arguments{
+        "g++", "-std=c++17", "-Wall", "-Wextra", "-Wpedantic",
+        "-Werror", "-g", source.string(), "-o", executable.string()};
+    std::cout << "$ g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -g "
+              << task.source_files.front().generic_string()
+              << " -o .cppapplab/build/learner_app\n";
+
+    const ProcessResult compilation = run_process(
+        arguments, workspace.root, std::chrono::seconds(30), kMaxCompilerOutput);
+    std::cout << compilation.output;
+    const std::string fingerprint_after = source_fingerprint(task, workspace.root);
+    const bool passed = process_succeeded(compilation) && fingerprint_after == fingerprint_before;
+    if (fingerprint_after != fingerprint_before) {
+        std::cout << "\n[CppAppLab] Source changed during build; rebuild before running.\n";
+    } else if (compilation.timed_out) {
+        std::cout << "\n[CppAppLab] Compilation exceeded the 30-second time limit.\n";
+    } else if (compilation.output_truncated) {
+        std::cout << "\n[CppAppLab] Compiler output exceeded the capture limit.\n";
+    } else if (compilation.exit_code != 0) {
+        std::cout << "\n[CppAppLab] Compilation failed with exit code "
+                  << compilation.exit_code << ".\n";
+    }
+    if (passed) {
+        write_build_fingerprint(stamp_path, fingerprint_before);
+    }
+    std::cout << "Build result: " << (passed ? "PASS" : "FAIL") << '\n'
+              << "Source fingerprint: " << fingerprint_before << '\n';
+    return passed ? 0 : 1;
+}
+
+int build_cmake_gtest_workspace(const Workspace& workspace) {
+    const Task& task = *workspace.task;
+    if (task.expected_test_count == 0U) {
+        throw std::runtime_error("This task has no configured CMake/GoogleTest build profile.");
+    }
+    const std::string fingerprint_before = source_fingerprint(task, workspace.root);
+    const auto state_directory = workspace.root / ".cppapplab";
+    ensure_real_directory(state_directory);
+    const auto build_directory = build_directory_for(workspace);
+    ensure_real_directory(build_directory);
+    const auto stamp_path = build_fingerprint_path(build_directory);
+    remove_build_fingerprint(stamp_path);
+
+    const auto fixture = data_root() / task.acceptance_fixture;
+    const auto fixture_status = std::filesystem::symlink_status(fixture);
+    if (!std::filesystem::is_directory(fixture_status) ||
+        std::filesystem::is_symlink(fixture_status)) {
+        throw std::runtime_error("Platform acceptance fixture is missing or unsafe.");
+    }
+
+    const auto staged_sources = stage_declared_cpp_sources(task, workspace.root, build_directory);
+    const std::vector<std::string> configure_arguments{
+        "cmake", "-S", fixture.string(), "-B", build_directory.string(),
+        "-DCMAKE_BUILD_TYPE=Debug",
+        "-DCPPAPPLAB_LEARNER_SOURCE_DIR=" + staged_sources.string()};
+    std::cout << "$ cmake -S " << fixture.string() << " -B " << build_directory.string()
+              << " -DCPPAPPLAB_LEARNER_SOURCE_DIR=" << staged_sources.string() << '\n';
+
+    const ProcessResult configure = run_process(
+        configure_arguments, workspace.root, std::chrono::seconds(30), kMaxCompilerOutput);
+    std::cout << configure.output;
+    bool passed = process_succeeded(configure);
+    if (passed) {
+        std::cout << "\n$ cmake --build " << build_directory.string() << " --parallel 2\n";
+        const ProcessResult build = run_process(
+            {"cmake", "--build", build_directory.string(), "--parallel", "2"},
+            workspace.root, std::chrono::seconds(90), kMaxCompilerOutput);
+        std::cout << build.output;
+        passed = process_succeeded(build);
+        if (build.timed_out) {
+            std::cout << "\n[CppAppLab] Build exceeded the 90-second time limit.\n";
+        } else if (build.output_truncated) {
+            std::cout << "\n[CppAppLab] Build output exceeded the capture limit.\n";
+        } else if (build.exit_code != 0) {
+            std::cout << "\n[CppAppLab] CMake build failed with exit code "
+                      << build.exit_code << ".\n";
+        }
+    } else if (configure.timed_out) {
+        std::cout << "\n[CppAppLab] CMake configure exceeded the 30-second time limit.\n";
+    } else if (configure.output_truncated) {
+        std::cout << "\n[CppAppLab] CMake configure output exceeded the capture limit.\n";
+    }
+
+    const std::string fingerprint_after = source_fingerprint(task, workspace.root);
+    if (fingerprint_after != fingerprint_before) {
+        passed = false;
+        std::cout << "\n[CppAppLab] Source changed during build; rebuild before running.\n";
+    }
+    if (passed) {
+        write_build_fingerprint(stamp_path, fingerprint_before);
+    }
+    std::cout << "Build result: " << (passed ? "PASS" : "FAIL") << '\n'
+              << "Source fingerprint: " << fingerprint_before << '\n';
+    return passed ? 0 : 1;
+}
+
+int build_workspace(const std::filesystem::path& workspace_path) {
+    const Workspace workspace = open_workspace(workspace_path);
+    switch (workspace.task->acceptance_kind) {
+        case AcceptanceKind::ExactStdout:
+            return build_exact_stdout_workspace(workspace);
+        case AcceptanceKind::CMakeGoogleTest:
+            return build_cmake_gtest_workspace(workspace);
+    }
+    throw std::runtime_error("Unknown task build profile.");
+}
+
+void require_real_directory(const std::filesystem::path& path) {
+    std::error_code error;
+    const auto status = std::filesystem::symlink_status(path, error);
+    if (error || !std::filesystem::is_directory(status) || std::filesystem::is_symlink(status)) {
+        throw std::runtime_error("Expected a real, non-symlink build directory: " + path.string());
+    }
+}
+
+std::string require_current_build(const Workspace& workspace,
+                                  const std::filesystem::path& build_directory) {
+    require_real_directory(workspace.root / ".cppapplab");
+    require_real_directory(build_directory);
+    const auto stamp = read_build_fingerprint(build_fingerprint_path(build_directory));
+    const std::string fingerprint = source_fingerprint(*workspace.task, workspace.root);
+    if (!stamp.has_value() || *stamp != fingerprint) {
+        throw std::runtime_error("Build is missing or stale. Save the current source and build again.");
+    }
+    return *stamp;
+}
+
+int run_exact_stdout_workspace(const Workspace& workspace) {
+    const auto build_directory = build_directory_for(workspace);
+    const std::string built_fingerprint = require_current_build(workspace, build_directory);
+    const auto executable = build_directory / "learner_app";
+    const auto status = std::filesystem::symlink_status(executable);
+    if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
+        throw std::runtime_error("The learner executable is missing or unsafe. Build the task first.");
+    }
+
+    std::cout << "$ .cppapplab/build/learner_app\n";
+    const ProcessResult execution = run_process(
+        {executable.string()}, workspace.root, std::chrono::seconds(5), kMaxProgramOutput);
+    std::cout << execution.output;
+    const bool unchanged = source_fingerprint(*workspace.task, workspace.root) == built_fingerprint;
+    const bool passed = process_succeeded(execution) && unchanged;
+    if (execution.timed_out) {
+        std::cout << "\n[CppAppLab] Program exceeded the 5-second time limit.\n";
+    } else if (execution.output_truncated) {
+        std::cout << "\n[CppAppLab] Program output exceeded the capture limit.\n";
+    } else if (execution.exit_code != 0) {
+        std::cout << "\n[CppAppLab] Program exited with code " << execution.exit_code << ".\n";
+    }
+    if (!unchanged) {
+        std::cout << "\n[CppAppLab] Source changed during execution; rebuild before running again.\n";
+    }
+    std::cout << "Run result: " << (passed ? "PASS" : "FAIL") << '\n';
+    return passed ? 0 : 1;
+}
+
+int run_cmake_gtest_workspace(const Workspace& workspace) {
+    const auto build_directory = build_directory_for(workspace);
+    const std::string built_fingerprint = require_current_build(workspace, build_directory);
+    const ProcessResult tests = run_process(
+        {"ctest", "--test-dir", build_directory.string(), "--output-on-failure"},
+        workspace.root, std::chrono::seconds(45), kMaxCompilerOutput);
+    std::cout << "$ ctest --test-dir " << build_directory.string() << " --output-on-failure\n"
+              << tests.output;
+    const bool unchanged = source_fingerprint(*workspace.task, workspace.root) == built_fingerprint;
+    const bool passed = process_succeeded(tests) && unchanged;
+    if (tests.timed_out) {
+        std::cout << "\n[CppAppLab] Test execution exceeded the 45-second time limit.\n";
+    } else if (tests.output_truncated) {
+        std::cout << "\n[CppAppLab] Test output exceeded the capture limit.\n";
+    } else if (tests.exit_code != 0) {
+        std::cout << "\n[CppAppLab] Test runner failed with exit code " << tests.exit_code << ".\n";
+    }
+    if (!unchanged) {
+        std::cout << "\n[CppAppLab] Source changed during test execution; rebuild before running again.\n";
+    }
+    std::cout << "Run tests result: " << (passed ? "PASS" : "FAIL") << '\n';
+    return passed ? 0 : 1;
+}
+
+int run_workspace(const std::filesystem::path& workspace_path) {
+    const Workspace workspace = open_workspace(workspace_path);
+    switch (workspace.task->acceptance_kind) {
+        case AcceptanceKind::ExactStdout:
+            return run_exact_stdout_workspace(workspace);
+        case AcceptanceKind::CMakeGoogleTest:
+            return run_cmake_gtest_workspace(workspace);
+    }
+    throw std::runtime_error("Unknown task run profile.");
+}
+
 int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
     const Workspace workspace = open_workspace(workspace_path);
     const Task& task = *workspace.task;
@@ -1053,6 +1337,18 @@ int run_cli(int argc, char* argv[]) {
             const std::string content = read_lesson_file(hints, kMaxHintBytes);
             std::cout << extract_hint(content, static_cast<unsigned>(level_text[0] - '0'));
             return 0;
+        }
+        if (command == "build") {
+            if (argc != 3) {
+                throw std::invalid_argument("Usage: cppapplab build <workspace-directory>");
+            }
+            return build_workspace(argv[2]);
+        }
+        if (command == "run") {
+            if (argc != 3) {
+                throw std::invalid_argument("Usage: cppapplab run <workspace-directory>");
+            }
+            return run_workspace(argv[2]);
         }
         if (command == "check") {
             if (argc != 3) {

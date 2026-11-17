@@ -4,6 +4,8 @@
 
 namespace cppapplab::http {
 
+struct HttpServer::Impl {};
+
 // TODO(D5-1): validate limits and create the non-blocking listener.
 // TODO(D5-2): implement the single-owner epoll Reactor and generation tokens.
 // TODO(D5-3): incrementally receive and parse one request per TCP connection.
@@ -13,7 +15,7 @@ namespace cppapplab::http {
 // TODO(D5-7): map malformed/oversized/overloaded/exception paths to 400/413/503/500.
 // TODO(D5-8): implement eventfd-driven stop and deterministic resource cleanup.
 
-HttpServer::HttpServer(HttpServerConfig, Router) {
+HttpServer::HttpServer(HttpServerConfig, Router) : impl_(std::make_unique<Impl>()) {
     throw std::logic_error("TODO: implement the W8-D5 HTTP TCP server");
 }
 HttpServer::~HttpServer() = default;

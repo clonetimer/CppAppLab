@@ -1,5 +1,19 @@
 # W8-D6-C · HTTP Connection Deadlines and Resource Quotas
 
+## Start here
+
+Keep-Alive is useful only when it cannot reserve resources forever.
+
+1. Identify the idle, header-completion and request-count limits in the configuration.
+2. Open a connection and send no data; observe the idle deadline.
+3. Send only part of a request and observe the header deadline.
+4. Send repeated requests until the per-connection request limit is reached.
+5. Test a slow reader and verify the output buffer remains bounded.
+6. Confirm timeout cleanup occurs on the Reactor thread.
+
+**Mental model:** every persistent connection consumes descriptors, memory and time. Deadlines and quotas turn those costs into explicit limits.
+
+
 ## Goal
 
 Bound the lifetime and reuse of accepted TCP connections. Keep-Alive must not turn an idle socket, a slow partial request, or an unlimited request sequence into an unbounded resource reservation.

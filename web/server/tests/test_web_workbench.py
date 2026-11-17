@@ -800,6 +800,9 @@ class WebWorkbenchTests(unittest.TestCase):
         self.assertIn("learner compile error", result["logs"])
         process.assert_not_called()
         self.assertNotIn("w7.tcp-chat", self.server.service_sessions)
+        refreshed = self.request("/api/v1/workspaces/w7.tcp-chat/service/status")
+        self.assertEqual(refreshed["state"], "BUILD_FAILED")
+        self.assertIn("learner compile error", refreshed["logs"])
 
     def test_service_cleanup_kills_descendants_after_parent_exit(self) -> None:
         script = (

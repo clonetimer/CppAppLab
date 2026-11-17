@@ -4,6 +4,14 @@
 
 #include <gtest/gtest.h>
 
+#include <arpa/inet.h>
+#include <csignal>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
@@ -13,6 +21,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -311,6 +320,83 @@ TEST(ApplicationRuntimeWorkflowTest, TcpEchoProfileBuildsAndValidatesItsFixedCli
     EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
 }
 
+TEST(ApplicationRuntimeWorkflowTest, TcpEchoServiceAndRegisteredLearnerClientCompleteARealRoundTrip) {
+    const cppapplab::Task* task = cppapplab::find_task("w7.tcp-echo");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "tcp-echo-roundtrip");
+
+    int result = -1;
+    std::string output = invoke_capture({"cppapplab", "app-build", workspace.root.string()}, result);
+    ASSERT_EQ(result, 0) << output;
+
+    const int reservation = ::socket(AF_INET, SOCK_STREAM, 0);
+    ASSERT_GE(reservation, 0);
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    address.sin_port = 0;
+    ASSERT_EQ(::bind(reservation, reinterpret_cast<sockaddr*>(&address), sizeof(address)), 0);
+    socklen_t address_size = sizeof(address);
+    ASSERT_EQ(::getsockname(reservation, reinterpret_cast<sockaddr*>(&address), &address_size), 0);
+    const unsigned port = ntohs(address.sin_port);
+    ASSERT_GT(port, 0U);
+    (void)::close(reservation);
+
+    const auto executable = workspace.root / ".cppapplab" / "application" / "learner_app";
+    const pid_t server = ::fork();
+    ASSERT_GE(server, 0);
+    if (server == 0) {
+        const std::string port_text = std::to_string(port);
+        ::execl(executable.c_str(), executable.c_str(), "server", port_text.c_str(),
+                static_cast<char*>(nullptr));
+        _exit(127);
+    }
+
+    bool round_trip_passed = false;
+    bool server_reaped = false;
+    int server_status = 0;
+    for (int attempt = 0; attempt < 30; ++attempt) {
+        output = invoke_capture(
+            {"cppapplab", "app-run", workspace.root.string(), "client",
+             std::to_string(port), "hello from browser"}, result);
+        if (result == 0) {
+            round_trip_passed = true;
+            break;
+        }
+        const pid_t waited = ::waitpid(server, &server_status, WNOHANG);
+        if (waited == server) {
+            server_reaped = true;
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+
+    if (!server_reaped) {
+        for (int attempt = 0; attempt < 30; ++attempt) {
+            const pid_t waited = ::waitpid(server, &server_status, WNOHANG);
+            if (waited == server) {
+                server_reaped = true;
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+    }
+    if (!server_reaped) {
+        (void)::kill(server, SIGKILL);
+        (void)::waitpid(server, &server_status, 0);
+        server_reaped = true;
+    }
+
+    EXPECT_TRUE(round_trip_passed) << output;
+    EXPECT_TRUE(server_reaped);
+    if (round_trip_passed) {
+        EXPECT_NE(output.find("hello from browser"), std::string::npos);
+        EXPECT_NE(output.find("Application result: PASS"), std::string::npos);
+    }
+    EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
+}
 TEST(ApplicationRuntimeWorkflowTest, TcpChatProfileBuildsTheDeclaredLearnerServer) {
     const cppapplab::Task* task = cppapplab::find_task("w7.tcp-chat");
     ASSERT_NE(task, nullptr);

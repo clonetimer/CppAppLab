@@ -769,6 +769,24 @@ async function main() {
       }
     }
 
+    // Keyboard-only course navigation: the first catalog item receives
+    // focus, Tab advances to the next task, and Enter selects it.
+    const firstCourseTask = page.locator("#course-list .task-link").first();
+    const secondCourseTask = page.locator("#course-list .task-link").nth(1);
+    await firstCourseTask.focus();
+    await page.keyboard.press("Tab");
+    assert.equal(
+      await secondCourseTask.evaluate((element) => element === document.activeElement),
+      true,
+      "Tab must move between course tasks in catalog order"
+    );
+    const secondTaskId = await secondCourseTask.getAttribute("data-task-id");
+    await page.keyboard.press("Enter");
+    await page.waitForFunction((id) =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === id,
+      secondTaskId
+    );
+
     // Refresh must preserve the last formal PASS and the history timeline.
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForFunction(() =>

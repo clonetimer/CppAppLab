@@ -119,6 +119,13 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 23. A dismissed beforeunload dialog cancels navigation, not just the reload request
+
+- In Playwright, `page.reload()` waits for the requested navigation lifecycle event. If a `beforeunload` dialog is dismissed, navigation is cancelled, so `domcontentloaded` will never fire and the default 30-second navigation timeout obscures the actual expected behavior.
+- Attach the dialog handler before initiating reload, assert that the dialog type is `beforeunload`, dismiss it, and bound the navigation wait with a short timeout whose cancellation is expected.
+- After cancellation, verify the current document and dirty editor remain usable, then explicitly save and perform a normal reload to prove persistence.
+- Do not accept the dialog in this test: accepting would discard the edits and would not validate the learner-safe cancel path.
+
 ## 22. Browser refresh must protect dirty source and prove explicit-save recovery
 
 - A browser refresh is not a successful recovery test if it silently discards an unsaved editor model. Assert that a dirty source triggers the real `beforeunload` prompt.

@@ -1576,8 +1576,11 @@
     ui.serviceRefreshButton.addEventListener("click", () => refreshServiceStatus());
     ui.serviceStopButton.addEventListener("click", () => stopNetworkService());
     ui.checkButton.addEventListener("click", () => runWorkspaceAction("check"));
-    ui.historyButton.addEventListener("click", () => {
-      if (state.task) loadTaskHistory(state.task.id);
+    ui.historyButton.addEventListener("click", async () => {
+      if (state.task) {
+        await loadTaskHistory(state.task.id);
+        ui.historyClose.focus();
+      }
     });
     ui.historyClose.addEventListener("click", () => { ui.historyPanel.hidden = true; });
     ui.historyPanel.addEventListener("keydown", (event) => {

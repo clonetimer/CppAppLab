@@ -849,6 +849,11 @@ async function main() {
     );
     assert.equal(helloSourceAfterReload.content, helloSourceEdited,
       "Explicitly saved source must survive a browser reload");
+    assert.match(
+      await page.locator("#task-subtitle").textContent(),
+      /无前置任务/,
+      "The selected task must continue to show authoritative prerequisite context after recovery"
+    );
     await page.locator('#course-list .task-link[data-task-id="w1.hello-world"]').click();
     await page.waitForFunction(() =>
       document.querySelector("#task-state")?.textContent === "结果已过期"

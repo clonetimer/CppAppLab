@@ -380,6 +380,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         self.tasks = load_catalog(self.root)
         self.task_by_id = {task["id"]: task for task in self.tasks}
         self.service_sessions: dict[str, ServiceSession] = {}
+        self.service_failures: dict[str, dict[str, Any]] = {}
         self.service_lock = threading.RLock()
         self.service_janitor_stop = threading.Event()
         super().__init__(address, CppAppLabRequestHandler)
@@ -601,6 +602,8 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             raise ApiError(409, "This task has no registered network-service profile.")
         with self.service_lock:
             session = self.service_sessions.get(task_id)
+            if session is None and task_id in self.service_failures:
+                return dict(self.service_failures[task_id])
             return self._service_snapshot(session, task_id)
 
     def start_service(self, task_id: str) -> dict[str, Any]:
@@ -609,6 +612,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             raise ApiError(409, "This task has no registered network-service profile.")
 
         with self.service_lock:
+            self.service_failures.pop(task_id, None)
             existing = self.service_sessions.get(task_id)
             if existing is not None:
                 self._refresh_service_state(existing)
@@ -627,14 +631,17 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             workspace, _ = self.workspace_for_task(task_id)
             build_exit, build_output = self.run_cli(["app-build", str(workspace)], timeout=75.0)
             if build_exit != 0:
-                return {
+                failure = {
                     "task_id": task_id,
                     "kind": profile["kind"],
                     "state": "BUILD_FAILED",
                     "port": None,
                     "exit_code": build_exit,
+                    "clients_count": 0,
                     "logs": bounded_output(build_output),
                 }
+                self.service_failures[task_id] = failure
+                return dict(failure)
 
             runtime_directory = ensure_workspace_directory(
                 workspace, ".cppapplab", "application", "runtime"
@@ -644,9 +651,21 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             try:
                 executable_status = executable.lstat()
             except OSError as exc:
-                raise ApiError(409, "The learner service executable is missing. Build the application first.") from exc
+                message = "The learner service executable is missing. Build the application first."
+                self.service_failures[task_id] = {
+                    "task_id": task_id, "kind": profile["kind"], "state": "FAILED",
+                    "port": None, "exit_code": None, "clients_count": 0,
+                    "logs": bounded_output(build_output + "\\n[CppAppLab Web] " + message + "\\n"),
+                }
+                raise ApiError(409, message) from exc
             if executable.is_symlink() or not executable.is_file() or not os.access(executable, os.X_OK):
-                raise ApiError(409, "The learner service executable is missing or unsafe.")
+                message = "The learner service executable is missing or unsafe."
+                self.service_failures[task_id] = {
+                    "task_id": task_id, "kind": profile["kind"], "state": "FAILED",
+                    "port": None, "exit_code": None, "clients_count": 0,
+                    "logs": bounded_output(build_output + "\\n[CppAppLab Web] " + message + "\\n"),
+                }
+                raise ApiError(409, message)
             command = [str(executable), "server", str(port)]
             if profile["kind"] == "http_server":
                 document_root = ensure_workspace_directory(
@@ -681,8 +700,15 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                     start_new_session=True,
                 )
             except OSError as exc:
-                raise ApiError(503, f"Cannot start the registered learner service: {exc}") from exc
+                message = f"Cannot start the registered learner service: {exc}"
+                self.service_failures[task_id] = {
+                    "task_id": task_id, "kind": profile["kind"], "state": "FAILED",
+                    "port": None, "exit_code": None, "clients_count": 0,
+                    "logs": bounded_output(build_output + "\\n[CppAppLab Web] " + message + "\\n"),
+                }
+                raise ApiError(503, message) from exc
 
+            self.service_failures.pop(task_id, None)
             session = ServiceSession(
                 task_id=task_id,
                 kind=profile["kind"],
@@ -1027,7 +1053,9 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         with self.service_lock:
             session = self.service_sessions.get(task_id)
             if session is None:
-                return self._service_snapshot(None, task_id)
+                failure = self.service_failures.get(task_id)
+                return dict(failure) if failure is not None else self._service_snapshot(None, task_id)
+            session.state = "STOPPING"
             for client in list(session.clients.values()):
                 try:
                     client.connection.sendall(b"QUIT\n")

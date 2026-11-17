@@ -509,6 +509,9 @@ class WebWorkbenchTests(unittest.TestCase):
             self.assertGreaterEqual(started["port"], 1)
             self.assertLessEqual(started["port"], 65535)
             session = self.server.service_sessions["w7.tcp-echo"]
+            self.assertEqual(int(session.process.args[2]), started["port"])
+            self.assertGreater(int(session.process.args[2]), 0,
+                               "TCP Echo learner CLI rejects port 0; pass a concrete ephemeral port")
             deadline = time.monotonic() + 1.0
             while time.monotonic() < deadline:
                 status = self.request("/api/v1/workspaces/w7.tcp-echo/service/status")

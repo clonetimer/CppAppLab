@@ -151,7 +151,7 @@ TEST(ApplicationRuntimeWorkflowTest, TodoApplicationStateIsIsolatedToItsWorkspac
     const cppapplab::Task* task = cppapplab::find_task("w2.todo-cli");
     ASSERT_NE(task, nullptr);
     TemporaryDirectory temporary;
-    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", temporary.path() / "state");
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
     const auto global_todo_file = temporary.path() / "global-todos.tsv";
     ScopedEnvironment global_todo("CPPAPPLAB_TODO_FILE", global_todo_file.string());
 

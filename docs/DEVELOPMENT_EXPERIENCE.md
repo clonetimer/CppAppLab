@@ -98,3 +98,27 @@ For each new development lesson, record:
 6. Any remaining target-machine or manual acceptance gate.
 
 These rules are intended to reduce repeated debugging, prevent false acceptance, and keep the browser-first learning experience faithful to the real C++ course engine.
+
+
+## 11. Long-running learner services need a real process supervisor
+
+- Build the registered learner application first, then launch the workspace-owned `.cppapplab/application/learner_app`. Never launch the CppAppLab learning-engine binary as if it were the learner's server.
+- Pass a fixed argument vector only. For network services, request an ephemeral port by passing `0`, then parse the service's flushed readiness line to obtain the actual port. Do not reserve a port, close it, and later assume it remains free; that creates a bind race.
+- A process is not ready merely because `Popen` returned. Require an explicit readiness marker and fail startup with the learner's captured diagnostics when the marker is missing or the process exits.
+- Drain subprocess pipes continuously. For a buffered text pipe, `read(4096)` can wait for a full buffer; use the underlying buffered stream's `read1` (or an equivalent non-blocking drain) so short readiness lines are observed promptly.
+- Start each service in a new process session. On stop, expiry, startup failure, task switch, and web-server shutdown, terminate the entire process group—even if the group leader has already exited. Descendants can outlive their parent.
+- Keep service logs bounded and continuously drained; otherwise a full stdout pipe can deadlock the learner service.
+- Persist startup/build failures as session diagnostics. A later status refresh must not turn a visible BUILD_FAILED/FAILED result into an apparently clean STOPPED state.
+- Keep lifecycle limits explicit: active-session count, idle expiry, maximum lifetime, readiness timeout, bounded logs, and deterministic cleanup.
+
+## 12. Network-service browser bridges must be finite and loopback-scoped
+
+- TCP Echo, TCP Chat and HTTP Server are distinct interaction contracts; do not present them as arbitrary terminal commands.
+- Chat clients are created and owned by the local adapter. Bound the client count, nickname syntax, line/message sizes, per-client inbox and pending output. The browser sends typed actions, not raw socket destinations.
+- The HTTP request bridge always connects to `127.0.0.1`. Allowlist methods, validate the request target after URL decoding, reject absolute URLs/authority/CRLF/traversal, bound request and response bodies, apply a short timeout, and return only a small response-header allowlist.
+- Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
+- A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
+
+## 13. Keep Pimpl starter code compilable while preserving the TODO
+
+When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that throws before `Impl` is defined can fail to compile: exception cleanup instantiates the member destructor and requires the pointee type to be complete. Define a minimal `Impl` in the starter translation unit before the throwing constructor. The application should compile and then report the intentional TODO at runtime; do not let an incomplete-type error masquerade as a learner implementation failure.

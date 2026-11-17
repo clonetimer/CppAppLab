@@ -599,7 +599,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             runtime_directory = ensure_workspace_directory(
                 workspace, ".cppapplab", "application", "runtime"
             )
-            port = reserve_loopback_port()
+            port = 0
             executable = workspace / ".cppapplab" / "application" / "learner_app"
             try:
                 executable_status = executable.lstat()
@@ -660,18 +660,22 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             )
             session.log_thread = reader
             reader.start()
-            readiness_marker = f"listening on {port}"
-            if profile["kind"] in {"tcp_echo", "tcp_chat"}:
-                readiness_marker = f"listening on 127.0.0.1:{port}"
+            readiness_pattern = r"listening on 127\\.0\\.0\\.1:(\\d+)"
+            if profile["kind"] == "http_server":
+                readiness_pattern = r"listening on (\\d+)"
             deadline = time.monotonic() + 3.0
             ready = False
             while time.monotonic() < deadline:
                 self._refresh_service_state(session)
                 with session.log_lock:
                     log_text = "".join(session.logs)
-                if readiness_marker in log_text:
-                    ready = True
-                    break
+                match = re.search(readiness_pattern, log_text)
+                if match is not None:
+                    reported_port = int(match.group(1))
+                    if 1 <= reported_port <= 65535:
+                        session.port = reported_port
+                        ready = True
+                        break
                 if session.process.poll() is not None:
                     break
                 time.sleep(0.05)

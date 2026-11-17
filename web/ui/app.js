@@ -24,7 +24,9 @@
     editorReady: null,
     busy: false,
     autosaveTimer: null,
-    serviceSnapshot: null
+    serviceSnapshot: null,
+    serviceClients: [],
+    serviceMessages: []
   };
 
   const $ = (id) => document.getElementById(id);
@@ -595,6 +597,9 @@
     state.workspaceReady = true;
     ui.workspaceState.textContent = "工作区已就绪";
     updateApplicationGuidance();
+    if (state.task && state.task.service_profile) {
+      updateServiceSnapshot(state.serviceSnapshot || { state: "STOPPED", port: null, logs: "" });
+    }
     const hasApplicationProfile = Boolean(state.task && state.task.runtime_profile);
     ui.appBuildButton.disabled = !hasApplicationProfile || state.busy;
     ui.appExecuteButton.disabled = !hasApplicationProfile || state.busy;
@@ -642,6 +647,8 @@
     ui.serviceControls.replaceChildren();
     ui.serviceState.textContent = "未启动";
     ui.serviceState.dataset.state = "STOPPED";
+    state.serviceClients = [];
+    state.serviceMessages = [];
     ui.servicePort.textContent = "";
     ui.serviceLogs.textContent = "尚未启动网络服务。";
     ui.serviceStartButton.disabled = true;
@@ -663,6 +670,8 @@
       return;
     }
     state.selectedTaskId = taskId;
+    state.serviceClients = [];
+    state.serviceMessages = [];
     state.task = null;
     clearTaskEditorState();
     ui.welcome.hidden = true;
@@ -927,10 +936,14 @@
     ui.serviceStartButton.disabled = state.busy || !state.workspaceReady || locked || active;
     ui.serviceStopButton.disabled = state.busy || !active;
     ui.serviceRefreshButton.disabled = state.busy;
+    if (!active && ["STOPPED", "FAILED", "BUILD_FAILED", "EXPIRED"].includes(current.state)) {
+      state.serviceClients = [];
+    }
     ui.serviceControls.querySelectorAll("input, select, textarea, button").forEach((control) => {
-      control.disabled = state.busy || !state.workspaceReady || locked ||
-        (control.id === "service-echo-send" && !active);
+      control.disabled = state.busy || !state.workspaceReady || locked || !active;
     });
+    const chatOutput = ui.serviceControls.querySelector("#service-chat-output");
+    if (chatOutput) chatOutput.textContent = state.serviceMessages.join("\n") || "连接客户端后，聊天消息会显示在这里。";
   }
 
   function renderServiceRunner() {
@@ -971,13 +984,109 @@
       send.textContent = "发送并验证回显";
       send.addEventListener("click", sendTcpEchoMessage);
       ui.serviceControls.append(label, send);
+    } else if (profile.kind === "tcp_chat") {
+      const nicknameLabel = document.createElement("label");
+      nicknameLabel.textContent = "客户端昵称";
+      const nickname = document.createElement("input");
+      nickname.id = "service-chat-nickname";
+      nickname.maxLength = 24;
+      nickname.autocomplete = "off";
+      nickname.placeholder = "例如：Alice";
+      nicknameLabel.append(nickname);
+
+      const connect = document.createElement("button");
+      connect.id = "service-chat-connect";
+      connect.type = "button";
+      connect.className = "secondary-button";
+      connect.textContent = "连接新客户端";
+      connect.addEventListener("click", connectChatClient);
+
+      const clientLabel = document.createElement("label");
+      clientLabel.textContent = "当前客户端";
+      const clientSelect = document.createElement("select");
+      clientSelect.id = "service-chat-client";
+      clientLabel.append(clientSelect);
+
+      const messageLabel = document.createElement("label");
+      messageLabel.textContent = "聊天消息";
+      const message = document.createElement("input");
+      message.id = "service-chat-message";
+      message.maxLength = 1024;
+      message.autocomplete = "off";
+      message.placeholder = "输入一条消息";
+      messageLabel.append(message);
+
+      const send = document.createElement("button");
+      send.id = "service-chat-send";
+      send.type = "button";
+      send.className = "primary-button compact";
+      send.textContent = "发送消息";
+      send.addEventListener("click", sendChatMessage);
+
+      const poll = document.createElement("button");
+      poll.id = "service-chat-poll";
+      poll.type = "button";
+      poll.className = "secondary-button";
+      poll.textContent = "刷新消息";
+      poll.addEventListener("click", pollChatMessages);
+
+      const disconnect = document.createElement("button");
+      disconnect.id = "service-chat-disconnect";
+      disconnect.type = "button";
+      disconnect.className = "secondary-button";
+      disconnect.textContent = "断开客户端";
+      disconnect.addEventListener("click", disconnectChatClient);
+
+      const output = document.createElement("pre");
+      output.id = "service-chat-output";
+      output.className = "service-chat-output";
+      output.textContent = state.serviceMessages.join("\n") || "连接客户端后，聊天消息会显示在这里。";
+      ui.serviceControls.append(
+        nicknameLabel, connect, clientLabel, messageLabel, send, poll, disconnect, output
+      );
+      renderChatClientOptions();
     } else {
-      const note = document.createElement("p");
-      note.className = "service-runner-help";
-      note.textContent = profile.kind === "tcp_chat"
-        ? "多客户端连接与消息收发控件将在 TCP Chat 客户端桥接验收中启用。"
-        : "HTTP 方法、路径和响应预览控件将在 HTTP 请求代理验收中启用。";
-      ui.serviceControls.append(note);
+      const methodLabel = document.createElement("label");
+      methodLabel.textContent = "HTTP 方法";
+      const method = document.createElement("select");
+      method.id = "service-http-method";
+      for (const value of ["GET", "HEAD", "POST"]) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        method.append(option);
+      }
+      method.addEventListener("change", () => {
+        const body = ui.serviceControls.querySelector("#service-http-body");
+        if (body) body.disabled = method.value !== "POST" || state.busy || !state.workspaceReady;
+      });
+      methodLabel.append(method);
+
+      const targetLabel = document.createElement("label");
+      targetLabel.textContent = "请求路径";
+      const target = document.createElement("input");
+      target.id = "service-http-target";
+      target.value = "/";
+      target.placeholder = "/index.html";
+      target.maxLength = 2048;
+      targetLabel.append(target);
+
+      const bodyLabel = document.createElement("label");
+      bodyLabel.textContent = "请求正文（POST）";
+      const body = document.createElement("textarea");
+      body.id = "service-http-body";
+      body.placeholder = "可选的 UTF-8 请求正文";
+      body.maxLength = 65536;
+      body.disabled = true;
+      bodyLabel.append(body);
+
+      const send = document.createElement("button");
+      send.id = "service-http-send";
+      send.type = "button";
+      send.className = "primary-button compact";
+      send.textContent = "发送 HTTP 请求";
+      send.addEventListener("click", sendHttpServiceRequest);
+      ui.serviceControls.append(methodLabel, targetLabel, bodyLabel, send);
     }
     updateServiceSnapshot(state.serviceSnapshot || { state: "STOPPED", port: null, logs: "" });
   }
@@ -1065,6 +1174,177 @@
       toast(error.message);
       ui.consoleTitle.textContent = "TCP Echo 客户端输出";
       ui.console.textContent = error.message;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function renderChatClientOptions() {
+    const select = ui.serviceControls.querySelector("#service-chat-client");
+    if (!select) return;
+    const previous = select.value;
+    select.replaceChildren();
+    for (const client of state.serviceClients) {
+      const option = document.createElement("option");
+      option.value = client.id;
+      option.textContent = client.nickname;
+      select.append(option);
+    }
+    if (state.serviceClients.some((client) => client.id === previous)) {
+      select.value = previous;
+    }
+  }
+
+  function appendChatMessages(messages) {
+    if (!messages || typeof messages !== "object") return;
+    for (const [clientId, values] of Object.entries(messages)) {
+      const client = state.serviceClients.find((item) => item.id === clientId);
+      const nickname = client ? client.nickname : "服务端";
+      for (const value of values || []) {
+        state.serviceMessages.push(nickname + "  " + value);
+      }
+    }
+    if (state.serviceMessages.length > 100) {
+      state.serviceMessages = state.serviceMessages.slice(-100);
+    }
+    const output = ui.serviceControls.querySelector("#service-chat-output");
+    if (output) output.textContent = state.serviceMessages.join("\n") || "暂无聊天消息。";
+  }
+
+  async function connectChatClient() {
+    if (!state.task || !state.serviceSnapshot || state.serviceSnapshot.state !== "RUNNING" || state.busy) return;
+    const input = ui.serviceControls.querySelector("#service-chat-nickname");
+    const nickname = input ? input.value.trim() : "";
+    if (!nickname) {
+      toast("请先填写客户端昵称。");
+      return;
+    }
+    setBusy(true, "正在连接 TCP Chat 客户端…");
+    try {
+      const result = await api(
+        "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/chat/connect",
+        { method: "POST", body: { nickname } }
+      );
+      state.serviceClients.push({ id: result.client_id, nickname: result.nickname });
+      appendChatMessages(result.messages);
+      renderChatClientOptions();
+      updateServiceSnapshot(result.service);
+      if (input) input.value = "";
+      toast("客户端 " + nickname + " 已连接。可以再连接另一个昵称进行多客户端测试。");
+    } catch (error) {
+      toast(error.message);
+      ui.consoleTitle.textContent = "TCP Chat 连接结果";
+      ui.console.textContent = error.message;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendChatMessage() {
+    if (!state.task || state.busy) return;
+    const select = ui.serviceControls.querySelector("#service-chat-client");
+    const input = ui.serviceControls.querySelector("#service-chat-message");
+    const clientId = select ? select.value : "";
+    const message = input ? input.value : "";
+    if (!clientId || !message.trim()) {
+      toast("请选择客户端并填写消息。");
+      return;
+    }
+    setBusy(true, "正在发送 TCP Chat 消息…");
+    try {
+      const result = await api(
+        "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/chat/send",
+        { method: "POST", body: { client_id: clientId, message } }
+      );
+      appendChatMessages(result.messages);
+      updateServiceSnapshot(result.service);
+      if (input) input.value = "";
+    } catch (error) {
+      toast(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function pollChatMessages() {
+    if (!state.task || state.busy) return;
+    const select = ui.serviceControls.querySelector("#service-chat-client");
+    const clientId = select ? select.value : "";
+    if (!clientId) {
+      toast("请先连接一个 Chat 客户端。");
+      return;
+    }
+    setBusy(true, "正在刷新 TCP Chat 消息…");
+    try {
+      const result = await api(
+        "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/chat/poll",
+        { method: "POST", body: { client_id: clientId } }
+      );
+      appendChatMessages(result.messages);
+      updateServiceSnapshot(result.service);
+    } catch (error) {
+      toast(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function disconnectChatClient() {
+    if (!state.task || state.busy) return;
+    const select = ui.serviceControls.querySelector("#service-chat-client");
+    const clientId = select ? select.value : "";
+    const client = state.serviceClients.find((item) => item.id === clientId);
+    if (!clientId || !client) {
+      toast("请选择需要断开的客户端。");
+      return;
+    }
+    setBusy(true, "正在断开 TCP Chat 客户端…");
+    try {
+      const result = await api(
+        "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/chat/disconnect",
+        { method: "POST", body: { client_id: clientId } }
+      );
+      appendChatMessages(result.messages);
+      state.serviceClients = state.serviceClients.filter((item) => item.id !== clientId);
+      renderChatClientOptions();
+      updateServiceSnapshot(result.service);
+    } catch (error) {
+      toast(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendHttpServiceRequest() {
+    if (!state.task || state.busy) return;
+    const method = ui.serviceControls.querySelector("#service-http-method")?.value || "GET";
+    const target = ui.serviceControls.querySelector("#service-http-target")?.value || "/";
+    const body = ui.serviceControls.querySelector("#service-http-body")?.value || "";
+    setBusy(true, "正在向学习者 HTTP Server 发送请求…");
+    try {
+      const result = await api(
+        "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/http",
+        { method: "POST", body: { method, target, body } }
+      );
+      updateServiceSnapshot(result.service);
+      ui.consoleTitle.textContent = "HTTP 请求 / 响应";
+      ui.console.textContent = [
+        method + " " + target,
+        "HTTP " + result.status_code + " " + result.reason,
+        "Response headers:",
+        JSON.stringify(result.headers, null, 2),
+        "",
+        "Response body (" + result.body_bytes + " bytes):",
+        result.body
+      ].join("\n");
+      ui.checkResult.textContent = "HTTP " + result.status_code;
+      ui.checkResult.className = "check-result " + (result.status_code >= 200 && result.status_code < 400 ? "pass" : "fail");
+    } catch (error) {
+      ui.consoleTitle.textContent = "HTTP 请求 / 响应";
+      ui.console.textContent = error.message;
+      ui.checkResult.textContent = "请求失败";
+      ui.checkResult.className = "check-result fail";
+      toast(error.message);
     } finally {
       setBusy(false);
     }

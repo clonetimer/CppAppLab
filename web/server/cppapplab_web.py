@@ -9,13 +9,19 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import deque
+from dataclasses import dataclass, field
 import mimetypes
 import os
 import re
 import secrets
 import signal
+import socket
 import subprocess
 import sys
+import threading
+import time
+import uuid
 import tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path, PurePosixPath
@@ -29,6 +35,10 @@ MAX_HINT_BYTES = 32 * 1024
 MAX_SOURCE_BYTES = 1024 * 1024
 MAX_REQUEST_BYTES = MAX_SOURCE_BYTES + 16 * 1024
 MAX_PROCESS_OUTPUT = 256 * 1024
+MAX_SERVICE_LOG_BYTES = 64 * 1024
+MAX_SERVICE_SESSIONS = 3
+SERVICE_IDLE_SECONDS = 5 * 60
+SERVICE_MAX_LIFETIME_SECONDS = 30 * 60
 TASK_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,95}$")
 PROGRESS_RE = re.compile(r"^\[(?P<state>[^\]]+)\]\s+(?P<task>[a-z0-9][a-z0-9._-]*)\s+·")
 HINT_RE = re.compile(r"^## Hint ([1-3])(?:\s|$)", re.MULTILINE)
@@ -128,6 +138,29 @@ RUNTIME_PROFILES: dict[str, dict[str, Any]] = {
         }],
     },
 }
+
+SERVICE_PROFILES: dict[str, dict[str, Any]] = {
+    "w7.tcp-echo": {"label": "TCP Echo Server", "kind": "tcp_echo"},
+    "w7.tcp-chat": {"label": "TCP Chat Server", "kind": "tcp_chat"},
+    "w8.http-server": {"label": "HTTP Server", "kind": "http_server"},
+}
+
+
+@dataclass
+class ServiceSession:
+    task_id: str
+    kind: str
+    workspace: Path
+    process: subprocess.Popen[str]
+    port: int
+    started_at: float = field(default_factory=time.monotonic)
+    last_activity: float = field(default_factory=time.monotonic)
+    state: str = "STARTING"
+    exit_code: int | None = None
+    logs: deque[str] = field(default_factory=deque)
+    log_bytes: int = 0
+    log_lock: threading.Lock = field(default_factory=threading.Lock)
+
 
 
 class ApiError(Exception):

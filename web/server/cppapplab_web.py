@@ -686,7 +686,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 if session.process.poll() is None:
                     self._append_service_log(
                         session,
-                        "\\n[CppAppLab Web] Service did not report loopback readiness within 3 seconds.\\n",
+                        "\n[CppAppLab Web] Service did not report loopback readiness within 3 seconds.\n",
                     )
                     try:
                         os.killpg(session.process.pid, signal.SIGTERM)

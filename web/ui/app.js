@@ -1583,8 +1583,9 @@
       }
     });
     ui.historyClose.addEventListener("click", () => { ui.historyPanel.hidden = true; });
-    ui.historyPanel.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !ui.historyPanel.hidden) {
+        event.preventDefault();
         ui.historyPanel.hidden = true;
         ui.historyButton.focus();
       }

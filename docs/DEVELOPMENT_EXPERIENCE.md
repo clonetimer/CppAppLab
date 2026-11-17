@@ -119,6 +119,14 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 22. Browser refresh must protect dirty source and prove explicit-save recovery
+
+- A browser refresh is not a successful recovery test if it silently discards an unsaved editor model. Assert that a dirty source triggers the real `beforeunload` prompt.
+- Dismiss the prompt and verify the current editor/task remains available; then explicitly save through the same keyboard shortcut the learner uses.
+- Wait for the UI's saved state and verify the source through the workspace file API before reloading.
+- Reload only after the save completes, re-read the source from the workspace and compare the exact content. If the task previously had PASS evidence, the source change must make that evidence STALE rather than preserving a false PASS.
+- Keep the browser-dialog interaction in Chromium; a unit test of the `beforeunload` listener alone does not prove browser navigation behavior.
+
 ## 21. Web-server shutdown is a service-session lifecycle boundary
 
 - A service supervisor cannot rely only on user-initiated stop or idle expiry. The HTTP workbench server's `server_close()` path must stop all registered service sessions and terminate/reap their process groups.

@@ -803,6 +803,9 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                     disconnected.append(client.client_id)
                     continue
                 client.buffer += data.decode("utf-8", errors="replace")
+                if len(client.buffer.encode("utf-8", errors="replace")) > 4096:
+                    disconnected.append(client.client_id)
+                    continue
                 while "\n" in client.buffer:
                     line, client.buffer = client.buffer.split("\n", 1)
                     if line.endswith("\r"):
@@ -959,10 +962,11 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         parsed = urlsplit(target)
         if parsed.scheme or parsed.netloc or parsed.fragment or target.startswith("//"):
             raise ApiError(400, "Absolute URLs, authorities and fragments are not allowed.")
+        decoded_target = unquote(target)
         decoded_path = unquote(parsed.path)
         if "\\" in decoded_path or any(part in {".", ".."} for part in decoded_path.split("/")):
             raise ApiError(400, "HTTP target contains an unsafe path component.")
-        if any(character in target for character in "\r\n\x00"):
+        if any(ord(character) < 0x20 or ord(character) == 0x7F for character in decoded_target):
             raise ApiError(400, "HTTP target contains invalid control characters.")
         if not isinstance(body, str) or len(body.encode("utf-8")) > 64 * 1024:
             raise ApiError(413, "HTTP request body exceeds the 64 KiB limit.")

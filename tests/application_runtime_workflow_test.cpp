@@ -71,13 +71,19 @@ class ScopedEnvironment {
 
 class StdoutCapture {
    public:
-    StdoutCapture() : previous_(std::cout.rdbuf(stream_.rdbuf())) {}
-    ~StdoutCapture() { std::cout.rdbuf(previous_); }
+    StdoutCapture()
+        : previous_(std::cout.rdbuf(stream_.rdbuf())),
+          previous_error_(std::cerr.rdbuf(stream_.rdbuf())) {}
+    ~StdoutCapture() {
+        std::cout.rdbuf(previous_);
+        std::cerr.rdbuf(previous_error_);
+    }
     [[nodiscard]] std::string str() const { return stream_.str(); }
 
    private:
     std::ostringstream stream_;
     std::streambuf* previous_;
+    std::streambuf* previous_error_;
 };
 
 int invoke(const std::vector<std::string>& arguments) {
@@ -190,9 +196,12 @@ TEST(ApplicationRuntimeWorkflowTest, ThreadPoolDemoRunsThroughItsFixedApplicatio
     std::string output = invoke_capture({"cppapplab", "app-build", workspace.root.string()}, result);
     ASSERT_EQ(result, 0) << output;
     output = invoke_capture({"cppapplab", "app-run", workspace.root.string(), "demo"}, result);
-    EXPECT_EQ(result, 0) << output;
-    EXPECT_NE(output.find("CppAppLab W6"), std::string::npos);
-    EXPECT_NE(output.find("42"), std::string::npos);
+    // The learner's starter implementation is intentionally incomplete. The
+    // browser must run that learner source and surface its TODO diagnostic,
+    // rather than silently substituting the reference implementation.
+    EXPECT_EQ(result, 1) << output;
+    EXPECT_NE(output.find("TODO: implement ThreadPool::submit"), std::string::npos);
+    EXPECT_NE(output.find("Application result: FAIL"), std::string::npos);
 }
 
 TEST(ApplicationRuntimeWorkflowTest, LibraryOnlyTaskHasNoApplicationExecutionProfile) {

@@ -1,5 +1,19 @@
 # W7-A · TCP/IP and the First Blocking Echo Server
 
+## Start here
+
+Make one client send one short message to one server before thinking about multiple clients.
+
+1. Start the server on the loopback address and a test port.
+2. Read the flow: `socket → bind → listen → accept`.
+3. Connect one client and send a short message.
+4. Read until the complete expected message is received; do not assume one `recv` returns everything.
+5. Send a second message and test a client disconnect.
+6. Only then add error handling, bounded I/O and clean shutdown.
+
+**Mental model:** TCP is a reliable byte stream, not a message queue. Your application must define how many bytes form a message. For this first exercise, the fixed echo protocol is deliberately small and line-oriented.
+
+
 ## Goal
 
 Extend the W5 file-descriptor model to a real network endpoint. A Linux TCP socket is also represented by a file descriptor:

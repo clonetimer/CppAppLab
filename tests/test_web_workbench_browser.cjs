@@ -451,9 +451,8 @@ async function main() {
       fullPage: true
     });
 
-    // W2 Todo is unlocked by the real W1 calculator acceptance above. Its
-    // registered CLI form and executable run must preserve the learner's
-    // intentionally incomplete implementation, not report a false PASS.
+    // W2 Todo is unlocked by the real W1 calculator acceptance above.
+    // First verify that the incomplete learner implementation surfaces its TODO.
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.locator('#course-list .task-link[data-task-id="w2.todo-cli"]').click();
     await page.waitForFunction(() =>
@@ -469,9 +468,7 @@ async function main() {
       document.querySelector("#check-result")?.textContent === "应用构建成功",
       null, { timeout: 60000 }
     );
-    assert.match(await page.locator("#app-runner-help").textContent(), /当前工作区/);
     await page.locator("#app-action").selectOption("list");
-    assert.equal(await page.locator("#app-fields input").count(), 0);
     await page.locator("#app-execute-button").click();
     await page.waitForFunction(() =>
       document.querySelector("#check-result")?.textContent === "程序运行失败",
@@ -480,13 +477,192 @@ async function main() {
     assert.match(await page.locator("#console-output").textContent(), /not implemented/);
     assert.equal(await page.locator("#task-state").textContent(), "进行中",
       "Failed Todo demo must not write formal acceptance evidence");
+
+    // The browser test harness stages known-good sources only into this disposable
+    // CI workspace. The product never pre-fills or replaces learner code.
+    await copyReferenceSources(
+      page, service.baseUrl, "w2.todo-cli", "labs/w2/todo/reference", ["src/todo.cpp"]
+    );
+    await page.locator('#course-list .task-link[data-task-id="w2.todo-cli"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w2.todo-cli" &&
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+    );
+    await page.locator("#app-build-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "应用构建成功",
+      null, { timeout: 60000 }
+    );
+    await runApplicationAction(page, "add", { title: "browser todo" }, "Added #1: browser todo");
+    await runApplicationAction(page, "list", {}, "#1 [ ] browser todo");
+    await runApplicationAction(page, "done", { id: "1" }, "Completed #1");
+    await runApplicationAction(page, "list", {}, "#1 [x] browser todo");
+    await runApplicationAction(page, "remove", { id: "1" }, "Removed #1");
+    await runApplicationAction(page, "list", {}, "No tasks.");
+    assert.equal(await page.locator("#task-state").textContent(), "进行中",
+      "Todo application CRUD must not write formal acceptance evidence");
+
+    await page.locator("#check-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "PASS",
+      null, { timeout: 60000 }
+    );
+    await page.waitForFunction(() => {
+      const button = document.querySelector('#course-list .task-link[data-task-id="w3.task-manager"]');
+      return button && button.querySelector("small")?.textContent === "可开始";
+    }, null, { timeout: 10000 });
+
+    // W3 TaskManager runs its real application profile in the browser.
+    // Reload after adding a task to prove workspace-local persistence.
+    await page.locator('#course-list .task-link[data-task-id="w3.task-manager"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w3.task-manager"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "TaskManager CLI");
+    await page.locator("#start-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+    );
+    await copyReferenceSources(
+      page, service.baseUrl, "w3.task-manager", "labs/w3/task-manager/reference",
+      ["src/task.cpp", "src/task_manager.cpp"]
+    );
+    await page.locator('#course-list .task-link[data-task-id="w3.task-manager"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w3.task-manager" &&
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+    );
+    await page.locator("#app-build-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "应用构建成功",
+      null, { timeout: 60000 }
+    );
+    await runApplicationAction(page, "add", { title: "browser task" }, "Added #1: browser task");
+    await runApplicationAction(page, "list", {}, "#1 [ ] browser task");
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() =>
+      document.querySelector("#engine-status")?.textContent.includes("本地引擎已连接")
+    );
+    await page.waitForFunction(() =>
+      document.querySelectorAll("#course-list .task-link").length === 23
+    );
+    await page.locator('#course-list .task-link[data-task-id="w3.task-manager"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w3.task-manager" &&
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+    );
+    await runApplicationAction(page, "list", {}, "#1 [ ] browser task");
+    await runApplicationAction(page, "done", { id: "1" }, "Completed #1");
+    await runApplicationAction(page, "list", {}, "#1 [x] browser task");
+    await runApplicationAction(page, "remove", { id: "1" }, "Removed #1");
+    await runApplicationAction(page, "list", {}, "No tasks.");
+    assert.equal(await page.locator("#task-state").textContent(), "进行中",
+      "TaskManager application CRUD must not write formal acceptance evidence");
+
+    await page.locator("#check-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "PASS",
+      null, { timeout: 60000 }
+    );
+    await page.waitForFunction(() => {
+      const button = document.querySelector('#course-list .task-link[data-task-id="w4.quality-gate"]');
+      return button && button.querySelector("small")?.textContent === "可开始";
+    }, null, { timeout: 10000 });
+
+    // W4 remains genuinely incomplete: build the learner application and
+    // verify that its TODO is reported instead of being replaced or passed.
+    await page.locator('#course-list .task-link[data-task-id="w4.quality-gate"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w4.quality-gate"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "TaskManager Quality Gate CLI");
+    await page.locator("#start-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+    );
+    await page.locator("#app-build-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "应用构建成功",
+      null, { timeout: 60000 }
+    );
+    await page.locator("#app-action").selectOption("list");
+    await page.locator("#app-execute-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "程序运行失败",
+      null, { timeout: 15000 }
+    );
+    assert.match(await page.locator("#console-output").textContent(), /not implemented/);
+    assert.equal(await page.locator("#task-state").textContent(), "进行中",
+      "Quality Gate application failure must not write formal acceptance evidence");
     await page.locator("#app-action").selectOption("add");
-    assert.equal(await page.locator("#app-fields input").count(), 1);
-    assert.equal(await page.locator("#app-fields input").getAttribute("data-field"), "title");
+    assert.equal(await page.locator('[data-field="title"]').count(), 1);
+    await page.locator("#app-action").selectOption("done");
+    assert.equal(await page.locator('[data-field="id"]').count(), 1);
+
+    // Other one-shot and structured profiles expose finite browser schemas.
+    // They remain non-executable until their prerequisites have passed.
+    await page.locator('#course-list .task-link[data-task-id="w5.system-lab"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w5.system-lab"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "受限进程运行演示");
+    assert.deepEqual(await page.locator("#app-action option").evaluateAll((items) =>
+      items.map((item) => item.value)
+    ), ["echo"]);
+    assert.equal(await page.locator("#app-fields input, #app-fields textarea").count(), 0);
+    assert.equal(await page.locator("#app-build-button").isDisabled(), true);
+    assert.equal(await page.locator("#app-execute-button").isDisabled(), true);
+    assert.match(await page.locator("#app-runner-help").textContent(), /前置课程/);
+
+    await page.locator('#course-list .task-link[data-task-id="w6.thread-pool"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w6.thread-pool"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "Thread Pool Demo");
+    assert.deepEqual(await page.locator("#app-action option").evaluateAll((items) =>
+      items.map((item) => item.value)
+    ), ["demo"]);
+    assert.equal(await page.locator("#app-execute-button").isDisabled(), true);
+
+    await page.locator('#course-list .task-link[data-task-id="w8.http-protocol"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w8.http-protocol"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "HTTP 协议消息");
+    assert.deepEqual(await page.locator("#app-action option").evaluateAll((items) =>
+      items.map((item) => item.value)
+    ), ["parse-line", "response"]);
+    await page.locator("#app-action").selectOption("parse-line");
+    assert.equal(await page.locator('[data-field="request_line"]').count(), 1);
+    await page.locator("#app-action").selectOption("response");
+    assert.equal(await page.locator("#app-fields input, #app-fields textarea").count(), 0);
+    assert.equal(await page.locator("#app-execute-button").isDisabled(), true);
+
+    await page.locator('#course-list .task-link[data-task-id="w8.static-files"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w8.static-files"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "HTTP 静态文件服务");
+    assert.deepEqual(await page.locator('[data-field="method"] option').evaluateAll((items) =>
+      items.map((item) => item.value)
+    ), ["GET", "HEAD", "POST"]);
+    assert.equal(await page.locator('[data-field="target"]').count(), 1);
+    assert.equal(await page.locator("#app-execute-button").isDisabled(), true);
+
+    // Network-service tasks wait for P8-C3; do not fabricate one-shot runners.
+    for (const taskId of ["w7.tcp-echo", "w7.tcp-chat", "w8.http-server"]) {
+      await page.locator('#course-list .task-link[data-task-id="' + taskId + '"]').click();
+      await page.waitForFunction((id) =>
+        document.querySelector("#task-breadcrumb")?.textContent.trim() === id,
+        taskId
+      );
+      assert.equal(await page.locator("#app-runner").isVisible(), false,
+        taskId + " must wait for a real network-service profile");
+    }
 
     // A locked later task may display its instructional action schema, but
     // must not permit launching an application before prerequisites pass.
-
     await page.locator('#course-list .task-link[data-task-id="w8.http-parser"]').click();
     await page.waitForFunction(() =>
       document.querySelector("#task-breadcrumb")?.textContent.trim() === "w8.http-parser"

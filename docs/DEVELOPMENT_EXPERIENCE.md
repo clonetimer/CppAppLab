@@ -119,6 +119,15 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 19. Cross-course browser coverage must be driven by the authoritative task catalog
+
+- Keep the 23-task ID list in the Chromium journey aligned with `course/tasks.tsv`; assert exact count, unique presence and successful selection for every task.
+- For each selected task, verify its authoritative detail API, lesson content, task state and prerequisite metadata. A sidebar entry alone does not prove the task is usable.
+- Compare browser-visible state labels against the canonical `stateLabel` mapping; do not invent new UI states such as a separate 'needs recheck' label unless the learning engine actually emits them.
+- Locked tasks must expose a non-empty prerequisite explanation; do not attempt to start or execute them just to make the test progress.
+- Keep full catalog traversal separate from deep workflow tests: the former proves breadth, while targeted task journeys prove editing, build/run, acceptance, service lifecycle and recovery semantics.
+- After a formal PASS, reload the browser and verify both the current state and append-only history remain available. Build/run/service operations must not add acceptance records.
+
 ## 18. History UI requires a real browser journey after a formal PASS
 
 - An API unit test proves only the serialization/parsing contract. It does not prove that the learner can discover, open, read and close the history panel in the actual workbench.

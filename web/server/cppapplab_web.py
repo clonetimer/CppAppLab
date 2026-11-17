@@ -988,11 +988,11 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "app-run":
                 self._run_application(parts[3])
                 return
-            if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "service-start":
+            if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "start"]:
                 self._read_json()
                 self._send_json(200, self.server.start_service(parts[3]))
                 return
-            if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "service-stop":
+            if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "stop"]:
                 self._read_json()
                 self._send_json(200, self.server.stop_service(parts[3]))
                 return

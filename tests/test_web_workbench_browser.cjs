@@ -601,7 +601,7 @@ async function main() {
       document.querySelector("#check-result")?.textContent === "未通过",
       null, { timeout: 60000 }
     );
-    assert.match(await page.locator("#console-output").textContent(), /TODO\\(W4-TEST-/);
+    assert.match(await page.locator("#console-output").textContent(), /TODO\(W4-TEST-/);
     assert.equal(await page.locator("#task-state").textContent(), "需要修改",
       "Incomplete learner-authored quality tests must block formal acceptance");
     // Other one-shot and structured profiles expose finite browser schemas.

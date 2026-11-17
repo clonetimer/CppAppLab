@@ -917,6 +917,7 @@
       STOPPED: "未启动",
       STARTING: "启动中",
       RUNNING: "运行中",
+      STOPPING: "停止中",
       FAILED: "启动失败",
       BUILD_FAILED: "构建失败",
       EXPIRED: "已过期"
@@ -963,9 +964,9 @@
     ui.serviceRunner.hidden = false;
     ui.serviceProfileLabel.textContent = profile.label || "网络服务";
     if (state.task.state === "LOCKED") {
-      ui.serviceRunnerHelp.textContent = "当前课程尚未解锁。完成前置课程的正式验收后，才能启动网络服务。服务仅绑定本机回环地址。";
+      ui.serviceRunnerHelp.textContent = "当前课程尚未解锁。完成前置课程的正式验收后，才能启动网络服务。平台连接桥只访问 127.0.0.1；学习者服务应保持回环绑定。";
     } else if (!state.workspaceReady) {
-      ui.serviceRunnerHelp.textContent = "先打开学习工作区，再启动当前任务的真实服务进程。服务仅绑定本机回环地址。";
+      ui.serviceRunnerHelp.textContent = "先打开学习工作区，再启动当前任务的真实服务进程。平台不会接受浏览器指定的主机、端口或可执行文件。";
     } else if (profile.kind === "tcp_echo") {
       ui.serviceRunnerHelp.textContent = "启动当前工作区中的 TCP Echo 服务，发送一条消息后由学习者客户端连接并验证真实回显。";
     } else if (profile.kind === "tcp_chat") {

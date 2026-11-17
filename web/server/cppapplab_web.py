@@ -879,7 +879,8 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             connection = socket.create_connection(("127.0.0.1", port), timeout=2.0)
             connection.settimeout(1.0)
             connection.sendall(("NICK " + nickname + "\n").encode("ascii"))
-            connection.setblocking(False)
+            # Keep the bounded timeout mode: select() handles reads, while
+            # sendall() remains safe for the bounded 1 KiB client messages.
         except OSError as exc:
             raise ApiError(502, f"Could not connect the local Chat client: {exc}") from exc
 

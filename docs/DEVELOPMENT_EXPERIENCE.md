@@ -119,6 +119,15 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 24. Lower the first-use barrier with a task-first path and a plain-language glossary
+
+- Beginners should not have to understand the full course architecture, task IDs, build systems or acceptance model before they can complete the first exercise.
+- Put a short first-task walkthrough before the W1–W9 curriculum map: continue learning → start workspace → edit one named file → build → run → formal check.
+- Explain the three controls separately. Build answers whether source can become a program; Run/Test answers what the program does; Formal Acceptance records whether the fixed course contract passes.
+- Explain terms at first use or in a compact glossary (source, workspace, build, run, test, check, hint, fingerprint, prerequisite). Keep advanced details available after the first successful task rather than removing them.
+- Normalize compiler errors as part of learning: teach the learner to inspect the first error, file and line, fix one issue, and request progressive hints before searching unrelated files.
+- Validate tutorial changes with a first-time learner path in Chromium and keep the CLI guide and browser guide semantically consistent.
+
 ## 23. A dismissed beforeunload dialog cancels navigation, not just the reload request
 
 - In Playwright, `page.reload()` waits for the requested navigation lifecycle event. If a `beforeunload` dialog is dismissed, navigation is cancelled, so `domcontentloaded` will never fire and the default 30-second navigation timeout obscures the actual expected behavior.

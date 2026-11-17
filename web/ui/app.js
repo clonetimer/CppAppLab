@@ -39,6 +39,11 @@
     welcome: $("welcome-panel"),
     workbench: $("workbench-panel"),
     continueButton: $("continue-button"),
+    historyButton: $("history-button"),
+    historyPanel: $("history-panel"),
+    historyClose: $("history-close"),
+    historySummary: $("history-summary"),
+    historyList: $("history-list"),
     taskBreadcrumb: $("task-breadcrumb"),
     taskTitle: $("task-title"),
     taskState: $("task-state"),
@@ -289,6 +294,47 @@
     }
     updateProgressSummary();
     renderCourseList();
+  }
+
+  async function loadTaskHistory(taskId) {
+    ui.historyPanel.hidden = false;
+    ui.historySummary.textContent = "正在读取验收记录…";
+    ui.historyList.replaceChildren();
+    try {
+      const data = await api("/api/v1/tasks/" + encodeURIComponent(taskId) + "/history");
+      ui.historySummary.textContent = data.count
+        ? "共 " + data.count + " 次正式验收 · 当前状态：" + stateLabel(data.current_state)
+        : "尚无正式验收记录 · 当前状态：" + stateLabel(data.current_state);
+      if (!data.records.length) {
+        const empty = document.createElement("p");
+        empty.className = "history-empty";
+        empty.textContent = "完成一次正式验收后，记录会显示在这里。普通构建、运行和网络服务演示不会生成验收记录。";
+        ui.historyList.append(empty);
+        return;
+      }
+      for (const record of data.records.slice().reverse()) {
+        const item = document.createElement("article");
+        item.className = "history-record";
+        const top = document.createElement("div");
+        top.className = "history-record-top";
+        const result = document.createElement("strong");
+        result.className = record.result === "PASS" ? "history-pass" : "history-fail";
+        result.textContent = record.result === "PASS" ? "通过" : "未通过";
+        const timestamp = document.createElement("time");
+        timestamp.textContent = record.timestamp;
+        top.append(result, timestamp);
+        const tests = document.createElement("p");
+        tests.textContent = "测试结果：" + record.tests;
+        const workspace = document.createElement("p");
+        workspace.textContent = "工作区：" + (record.workspace || "未知");
+        const fingerprint = document.createElement("code");
+        fingerprint.textContent = "源码指纹：" + (record.fingerprint || "未知");
+        item.append(top, tests, workspace, fingerprint);
+        ui.historyList.append(item);
+      }
+    } catch (error) {
+      ui.historySummary.textContent = "无法读取验收历史：" + error.message;
+    }
   }
 
   async function loadTasks() {
@@ -691,8 +737,13 @@
       await refreshServiceStatus(true);
       ui.taskBreadcrumb.textContent = task.id;
       ui.taskTitle.textContent = task.title;
-      ui.taskSubtitle.textContent = "W" + task.week + " · " + task.source_files.length + " 个源文件 · " +
-        (task.acceptance_kind === "exact_stdout" ? "单文件 C++ 程序 · 构建 / 运行 / 验收" : "CMake / GoogleTest 工程 · 课程测试 / 正式验收");
+      const prerequisiteText = task.prerequisites && task.prerequisites.length
+        ? "前置任务：" + task.prerequisites.join("、")
+        : "无前置任务";
+      ui.taskSubtitle.textContent =
+        "W" + task.week + " · " + task.source_files.length + " 个源文件 · " +
+        (task.acceptance_kind === "exact_stdout" ? "单文件 C++ 程序 · 构建 / 运行 / 验收" : "CMake / GoogleTest 工程 · 课程测试 / 正式验收") +
+        " · " + prerequisiteText + (task.state_reason ? " · " + task.state_reason : "");
       ui.buildButton.textContent = task.acceptance_kind === "exact_stdout" ? "构建" : "构建测试工程";
       ui.runButton.textContent = task.acceptance_kind === "exact_stdout" ? "运行程序" : "运行课程测试";
       ui.taskState.textContent = stateLabel(task.state);
@@ -1525,6 +1576,10 @@
     ui.serviceRefreshButton.addEventListener("click", () => refreshServiceStatus());
     ui.serviceStopButton.addEventListener("click", () => stopNetworkService());
     ui.checkButton.addEventListener("click", () => runWorkspaceAction("check"));
+    ui.historyButton.addEventListener("click", () => {
+      if (state.task) loadTaskHistory(state.task.id);
+    });
+    ui.historyClose.addEventListener("click", () => { ui.historyPanel.hidden = true; });
     ui.continueButton.addEventListener("click", () => {
       const next = state.tasks.find((task) => ["IN PROGRESS", "NEEDS WORK", "STALE"].includes(task.state))
         || state.tasks.find((task) => task.state === "AVAILABLE");

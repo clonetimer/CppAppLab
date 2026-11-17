@@ -125,10 +125,10 @@ The W7 Chat and W8 HTTP Server learner templates are deliberately incomplete unt
 6. Starter Chat/HTTP Server TODOs are shown as failures, never replaced by reference implementations or reported as acceptance PASS.
 ### P8-C4 — Course state and history
 
-- [ ] Expose current and historical acceptance attempts from the existing learning-engine records.
-- [ ] Explain STALE evidence using the source fingerprint difference.
-- [ ] Visualize prerequisite dependencies and locked-task reasons.
-- [ ] Preserve progress and history after task changes and service restarts.
+- [x] Expose current and historical acceptance attempts through a read-only per-task API backed by the learning engine's existing history records.
+- [x] Explain STALE, NEEDS WORK and LOCKED states in task detail, including source-fingerprint/workspace invalidation and missing prerequisite reasons.
+- [x] Show prerequisite task IDs alongside the selected lesson and add an in-workbench acceptance history panel with timestamp, result, test count, workspace and fingerprint.
+- [x] Preserve progress and history across task changes and service restarts; application runs and service sessions remain excluded from formal acceptance history.
 
 ### P8-C5 — Cross-course user journey
 

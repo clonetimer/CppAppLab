@@ -33,6 +33,14 @@ if command == "--version":
     print("CppAppLab test engine 0.0")
 elif command == "progress":
     print("[IN PROGRESS] w1.hello-world · W1 · Hello World")
+elif command == "history":
+    print("Check history: " + sys.argv[2])
+    print("2026-11-17T08:00:00Z  PASS  1/1")
+    print("  Workspace: " + str(workspace))
+    print("  Fingerprint: abcdef0123456789")
+    print("2026-11-17T08:05:00Z  FAIL  0/1")
+    print("  Workspace: " + str(workspace))
+    print("  Fingerprint: fedcba9876543210")
 elif command == "learn":
     (workspace / "src").mkdir(parents=True, exist_ok=True)
     source = workspace / "src" / "main.cpp"
@@ -271,6 +279,23 @@ class WebWorkbenchTests(unittest.TestCase):
         task = self.request("/api/v1/tasks/w1.hello-world")
         self.assertIn("Write your first C++ program", task["lesson_markdown"])
         self.assertEqual(task["source_files"], ["src/main.cpp"])
+
+    def test_task_history_api_returns_attempts_and_latest_state(self) -> None:
+        history = self.request("/api/v1/tasks/w1.hello-world/history")
+        self.assertEqual(history["task_id"], "w1.hello-world")
+        self.assertEqual(history["count"], 2)
+        self.assertEqual(history["current_state"], "IN PROGRESS")
+        self.assertEqual(history["records"][0]["result"], "PASS")
+        self.assertEqual(history["records"][0]["tests"], "1/1")
+        self.assertEqual(history["records"][0]["fingerprint"], "abcdef0123456789")
+        self.assertEqual(history["records"][1]["result"], "FAIL")
+        self.assertEqual(history["records"][1]["fingerprint"], "fedcba9876543210")
+
+    def test_task_history_api_rejects_unknown_task(self) -> None:
+        self.assertEqual(
+            self.request_error("/api/v1/tasks/w99.unknown/history", "GET"),
+            404,
+        )
 
     def test_start_edit_save_and_fixed_check_workflow(self) -> None:
         started = self.request(

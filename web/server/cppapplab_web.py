@@ -1289,6 +1289,9 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         if len(parts) == 2 and parts[0] == "tasks":
             self._get_task(parts[1])
             return
+        if len(parts) == 3 and parts[0] == "tasks" and parts[2] == "history":
+            self._get_task_history(parts[1])
+            return
         if len(parts) == 4 and parts[0] == "tasks" and parts[2] == "hints":
             self._get_hint(parts[1], parts[3])
             return
@@ -1316,6 +1319,15 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         )
         lesson = read_bounded(lesson_path, MAX_LESSON_BYTES, "Task lesson")
         states = self.server.progress_states()
+        current_state = states.get(task_id, "UNKNOWN")
+        state_reason = ""
+        if current_state == "STALE":
+            state_reason = "此前通过的源码指纹与当前工作区不再一致，或原工作区已不可用；请重新检查当前源码。"
+        elif current_state == "NEEDS WORK":
+            state_reason = "最近一次正式验收未通过；查看验收历史和诊断日志后修复并重新验收。"
+        elif current_state == "LOCKED":
+            missing = next((item for item in task["prerequisites"] if states.get(item) != "PASSED"), "")
+            state_reason = f"需要先通过前置任务 {missing} 的当前源码验收。" if missing else "前置任务尚未全部通过。"
         self._send_json(200, {
             "id": task["id"],
             "title": task["title"],
@@ -1327,8 +1339,44 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             "expected_test_count": task["expected_test_count"],
             "runtime_profile": RUNTIME_PROFILES.get(task_id),
             "service_profile": SERVICE_PROFILES.get(task_id),
-            "state": states.get(task_id, "UNKNOWN"),
+            "state": current_state,
+            "state_reason": state_reason,
             "lesson_markdown": lesson,
+        })
+
+    def _get_task_history(self, task_id: str) -> None:
+        if task_id not in self.server.task_by_id:
+            raise ApiError(404, "Unknown task ID.")
+        exit_code, output = self.server.run_cli(["history", task_id], timeout=10.0)
+        if exit_code != 0:
+            raise ApiError(503, "Course history is temporarily unavailable.")
+        records: list[dict[str, str]] = []
+        current: dict[str, str] | None = None
+        for line in output.splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("Check history:") or stripped.startswith("No check history"):
+                continue
+            if "  PASS  " in line or "  FAIL  " in line:
+                parts = stripped.split()
+                if len(parts) >= 3:
+                    current = {
+                        "timestamp": parts[0],
+                        "result": parts[1],
+                        "tests": parts[2],
+                        "workspace": "",
+                        "fingerprint": "",
+                    }
+                    records.append(current)
+            elif current is not None and stripped.startswith("Workspace:"):
+                current["workspace"] = stripped.partition(":")[2].strip()
+            elif current is not None and stripped.startswith("Fingerprint:"):
+                current["fingerprint"] = stripped.partition(":")[2].strip()
+        progress = self.server.progress_states()
+        self._send_json(200, {
+            "task_id": task_id,
+            "records": records,
+            "count": len(records),
+            "current_state": progress.get(task_id, "UNKNOWN"),
         })
 
     def _get_hint(self, task_id: str, level_text: str) -> None:

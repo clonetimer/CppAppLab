@@ -236,23 +236,18 @@ The CLI remains supported and authoritative. P8-A/P8-B do not claim Windows 11 +
 
 ### P8-C — Full course experience
 
-**C1 runtime-contract audit and C2 fixed application profiles: validated in PR #41 and merged into `main`.**  
-**C3 network-service sessions: implementation and regression coverage complete on `feat/p8-c3-network-service-sessions-20261117`; final CI qualification is in progress.**
+**C1/C2 merged in PR #41; C3 merged in PR #42. P8-C4 implementation is active on `feat/p8-c4-course-history-20261117`.**
 
-C3 delivers:
+P8-C3 final CI #1721 passed all required jobs, including Ubuntu 22.04/24.04 offline dependency bundle verification after adding bounded retry/fallback for transient mirror failures. Repository-wide formatting remains manual/opt-in; clang-tidy passed on both Ubuntu versions.
 
-- Workspace-owned learner executables for TCP Echo, TCP Chat and HTTP Server; fixed argv, ephemeral port allocation and explicit readiness markers.
-- A process supervisor with bounded logs, STARTING/RUNNING/STOPPING/STOPPED/FAILED states, idempotent start, process-group cleanup, idle expiry and maximum lifetime.
-- TCP Echo one-client round trip through the actual learner server/client.
-- Browser-managed TCP Chat clients with bounded nicknames/messages, multi-client broadcast and disconnect.
-- Same-origin HTTP proxy to the task's loopback listener, with method/target validation, fixed host, 64 KiB request-body and 256 KiB response-body limits, and short request timeout.
-- Startup/build failure diagnostics retained across status refresh; application/service runs remain separate from formal course acceptance.
-- Chromium coverage for the locked/unlocked service controls; Python API tests for Chat/HTTP protocol bridges; C++ workflow tests for Echo round trip and incomplete Chat/HTTP TODO behavior.
-- Reusable rules added to `docs/DEVELOPMENT_EXPERIENCE.md`, including process-group cleanup after parent exit, non-blocking pipe draining, ephemeral-port readiness and compilable Pimpl TODO templates.
+P8-C4 adds:
+- Read-only per-task history API backed by the learning engine's existing append-only attempt records.
+- In-workbench attempt timeline with result, timestamp, test count, workspace and source fingerprint.
+- Explicit task-state explanations for STALE, NEEDS WORK and LOCKED.
+- Prerequisite task context in the selected lesson header.
+- Regression tests for history API parsing, unknown tasks and non-acceptance operations remaining outside evidence.
 
-The service templates default to loopback binding and the browser bridge connects only to `127.0.0.1`. CppAppLab is a local development workbench, not an OS sandbox against intentionally modified learner source.
-
-**Next:** P8-C4 — course acceptance history, stale-evidence explanations and prerequisite visualization. P8-C5 remains the complete cross-task recovery journey. P8-D (clangd/GDB) and P8-E (Windows/WSL2 target-machine acceptance) remain separate.
+Next: P8-C5 full 23-task browser recovery journey.
 
 P8-D (clangd/GDB) and P8-E (Windows/WSL2 packaging and target-machine acceptance) remain separate milestones.
 P8-D (clangd/GDB) and P8-E (Windows/WSL2 packaging and target-machine acceptance) remain separate milestones.

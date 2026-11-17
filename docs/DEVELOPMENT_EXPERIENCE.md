@@ -119,6 +119,19 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 16. Offline APT bundle downloads must distinguish transient and permanent mirror failures
+
+**Observed failure mode:** the offline dependency workflow successfully resolved package metadata but both Ubuntu versions received HTTP 503 from the pinned Snapshot endpoint for `libc-dev-bin`; fallback mirrors returned 404 because they did not retain that exact snapshot package version. A single transient Snapshot outage therefore failed the entire offline bundle build.
+
+**Required design:**
+
+- Keep the repository-pinned Ubuntu snapshot and the signed APT SHA-256/MD5 metadata authoritative; do not silently substitute a newer package version.
+- Retry transient HTTP 5xx, connection and timeout failures against the same URI with bounded exponential backoff before moving to the next configured mirror.
+- Treat permanent HTTP 4xx responses (especially 404) as non-retryable for that URI and continue to the next configured mirror.
+- Keep every download in a temporary `.part` file; publish the `.deb` only after size and signed checksum verification.
+- Add deterministic local HTTP-server tests for 503 → 503 → 200 and permanent 404. Do not use live Ubuntu mirrors as unit-test dependencies.
+- Preserve the distinction between a mirror outage and an unavailable pinned package: if all mirrors fail, report each URI and HTTP status without weakening version pinning or checksum verification.
+
 ## 15. Managed TCP clients need bounded blocking writes
 
 - A socket configured with `setblocking(False)` makes `sendall()` unsuitable as a general bounded-message API: a partial write can raise `BlockingIOError` instead of completing the message.

@@ -874,10 +874,15 @@ async function main() {
       normalizeSourceIndentation(helloSourceEdited),
       "Explicitly saved source must survive a browser reload (editor auto-indent may normalize leading whitespace)"
     );
+    await page.locator('#course-list .task-link[data-task-id="w1.hello-world"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w1.hello-world" &&
+      document.querySelector("#task-state")?.textContent === "结果已过期"
+    );
     assert.match(
       await page.locator("#task-subtitle").textContent(),
       /无前置任务/,
-      "The selected task must continue to show authoritative prerequisite context after recovery"
+      "The selected task must show authoritative prerequisite context after recovery"
     );
     assert.equal(
       await page.locator("#task-state").textContent(),

@@ -140,3 +140,10 @@ The W7 Chat and W8 HTTP Server learner templates are deliberately incomplete unt
 ## Acceptance criteria
 
 P8-C is complete only when all 23 registered tasks are represented accurately in the browser; all 14 application tasks have the correct safe interaction contract; the 9 library/test-only tasks remain test-driven; service sessions are bounded and fully cleaned up; formal acceptance remains the only evidence-writing action; and the full browser user journey passes on Ubuntu 22.04/24.04 CI without regressing the CLI, package builds or Windows launcher checks.
+
+### Tutorial accessibility
+
+- [x] Add a task-first walkthrough and plain-language terminology to the Chinese learner guide.
+- [x] Add step-by-step "Start here" sections to W1–W4 lessons, preserving the existing technical contracts and acceptance criteria.
+- [ ] Extend the same teaching structure to W5–W9 and verify all 23 lesson pages in Chromium.
+- [ ] Review task-level help, hints and error explanations for consistency with the beginner-first path.

@@ -933,7 +933,7 @@
     ui.servicePort.textContent = current.port ? "127.0.0.1:" + current.port : "";
     ui.serviceLogs.textContent = current.logs || "暂无服务日志。";
     const locked = state.task.state === "LOCKED";
-    const active = ["STARTING", "RUNNING"].includes(current.state);
+    const active = ["STARTING", "RUNNING", "STOPPING"].includes(current.state);
     ui.serviceStartButton.disabled = state.busy || !state.workspaceReady || locked || active;
     ui.serviceStopButton.disabled = state.busy || !active;
     ui.serviceRefreshButton.disabled = state.busy;

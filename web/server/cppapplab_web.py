@@ -78,6 +78,25 @@ RUNTIME_PROFILES: dict[str, dict[str, Any]] = {
         "label": "Thread Pool Demo",
         "actions": [{"id": "demo", "label": "运行线程池示例", "fields": []}],
     },
+    "w8.http-protocol": {
+        "label": "HTTP 协议消息",
+        "actions": [
+            {"id": "parse-line", "label": "解析请求行",
+             "fields": [{"name": "request_line", "label": "HTTP 请求行", "type": "text"}]},
+            {"id": "response", "label": "生成示例响应", "fields": []},
+        ],
+    },
+    "w8.static-files": {
+        "label": "HTTP 静态文件服务",
+        "actions": [{
+            "id": "handle", "label": "处理静态文件请求",
+            "fields": [
+                {"name": "method", "label": "HTTP 方法", "type": "select",
+                 "options": ["GET", "HEAD", "POST"]},
+                {"name": "target", "label": "请求路径", "type": "text"},
+            ],
+        }],
+    },
 }
 
 

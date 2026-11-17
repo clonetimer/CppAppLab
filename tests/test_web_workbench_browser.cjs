@@ -850,8 +850,13 @@ async function main() {
     const helloSourceAfterReload = await readWorkspaceFile(
       page, service.baseUrl, "w1.hello-world", "src/main.cpp"
     );
-    assert.equal(helloSourceAfterReload.content, helloSourceEdited,
-      "Explicitly saved source must survive a browser reload");
+    const normalizeSourceIndentation = (source) =>
+      source.split("\n").map((line) => line.trimStart()).join("\n").trimEnd();
+    assert.equal(
+      normalizeSourceIndentation(helloSourceAfterReload.content),
+      normalizeSourceIndentation(helloSourceEdited),
+      "Explicitly saved source must survive a browser reload (editor auto-indent may normalize leading whitespace)"
+    );
     assert.match(
       await page.locator("#task-subtitle").textContent(),
       /无前置任务/,

@@ -570,8 +570,9 @@ async function main() {
       return button && button.querySelector("small")?.textContent === "可开始";
     }, null, { timeout: 10000 });
 
-    // W4 remains genuinely incomplete: build the learner application and
-    // verify that its TODO is reported instead of being replaced or passed.
+    // W4 Quality Gate deliberately separates a complete TaskManager runtime
+    // implementation from learner-authored quality tests that still contain TODOs.
+    // The app should work; formal acceptance must still fail until tests are written.
     await page.locator('#course-list .task-link[data-task-id="w4.quality-gate"]').click();
     await page.waitForFunction(() =>
       document.querySelector("#task-breadcrumb")?.textContent.trim() === "w4.quality-gate"
@@ -586,20 +587,23 @@ async function main() {
       document.querySelector("#check-result")?.textContent === "应用构建成功",
       null, { timeout: 60000 }
     );
-    await page.locator("#app-action").selectOption("list");
-    await page.locator("#app-execute-button").click();
-    await page.waitForFunction(() =>
-      document.querySelector("#check-result")?.textContent === "程序运行失败",
-      null, { timeout: 15000 }
-    );
-    assert.match(await page.locator("#console-output").textContent(), /not implemented/);
+    await runApplicationAction(page, "add", { title: "quality gate task" }, "Added #1: quality gate task");
+    await runApplicationAction(page, "list", {}, "#1 [ ] quality gate task");
+    await runApplicationAction(page, "done", { id: "1" }, "Completed #1");
+    await runApplicationAction(page, "list", {}, "#1 [x] quality gate task");
+    await runApplicationAction(page, "remove", { id: "1" }, "Removed #1");
+    await runApplicationAction(page, "list", {}, "No tasks.");
     assert.equal(await page.locator("#task-state").textContent(), "进行中",
-      "Quality Gate application failure must not write formal acceptance evidence");
-    await page.locator("#app-action").selectOption("add");
-    assert.equal(await page.locator('[data-field="title"]').count(), 1);
-    await page.locator("#app-action").selectOption("done");
-    assert.equal(await page.locator('[data-field="id"]').count(), 1);
+      "Quality Gate application runs must not write formal acceptance evidence");
 
+    await page.locator("#check-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "未通过",
+      null, { timeout: 60000 }
+    );
+    assert.match(await page.locator("#console-output").textContent(), /TODO\\(W4-TEST-/);
+    assert.equal(await page.locator("#task-state").textContent(), "需要修改",
+      "Incomplete learner-authored quality tests must block formal acceptance");
     // Other one-shot and structured profiles expose finite browser schemas.
     // They remain non-executable until their prerequisites have passed.
     await page.locator('#course-list .task-link[data-task-id="w5.system-lab"]').click();

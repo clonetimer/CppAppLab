@@ -994,7 +994,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 return self._service_snapshot(None, task_id)
             for client in list(session.clients.values()):
                 try:
-                    client.connection.sendall(b"QUIT\\n")
+                    client.connection.sendall(b"QUIT\n")
                 except OSError:
                     pass
                 try:

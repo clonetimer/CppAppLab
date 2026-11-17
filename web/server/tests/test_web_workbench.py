@@ -5,6 +5,7 @@ import os
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import urllib.error
 import urllib.request
@@ -409,7 +410,14 @@ class WebWorkbenchTests(unittest.TestCase):
             self.assertEqual(started["kind"], "tcp_echo")
             self.assertGreaterEqual(started["port"], 1)
             self.assertLessEqual(started["port"], 65535)
-            self.assertIn(f"listening on 127.0.0.1:{started['port']}", started["logs"])
+            session = self.server.service_sessions["w7.tcp-echo"]
+            deadline = time.monotonic() + 1.0
+            while time.monotonic() < deadline:
+                status = self.request("/api/v1/workspaces/w7.tcp-echo/service/status")
+                if f"listening on 127.0.0.1:{started['port']}" in status["logs"]:
+                    break
+                time.sleep(0.01)
+            self.assertIn(f"listening on 127.0.0.1:{started['port']}", status["logs"])
             self.assertEqual(
                 Path(self.server.service_sessions["w7.tcp-echo"].process.args[0]),
                 executable,

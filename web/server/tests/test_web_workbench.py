@@ -21,6 +21,7 @@ import os
 import pathlib
 import sys
 import time
+import socket
 
 command = sys.argv[1] if len(sys.argv) > 1 else ""
 home = pathlib.Path(os.environ["HOME"])
@@ -49,7 +50,11 @@ elif command == "app-run-stdin":
 elif command == "app-build":
     print("Application build result: PASS")
 elif command == "server":
-    print("listening on 127.0.0.1:" + sys.argv[2], flush=True)
+    listener = socket.socket()
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind(("127.0.0.1", 0))
+    listener.listen()
+    print("listening on 127.0.0.1:" + str(listener.getsockname()[1]), flush=True)
     time.sleep(30)
 elif command == "check":
     print("[PASS] fixed acceptance")

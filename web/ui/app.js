@@ -942,7 +942,9 @@
     }
     ui.serviceControls.querySelectorAll("input, select, textarea, button").forEach((control) => {
       const unavailable = state.busy || !state.workspaceReady || locked || !active;
-      control.disabled = unavailable ||
+      const noChatClient = ["service-chat-send", "service-chat-poll", "service-chat-disconnect"].includes(control.id) &&
+        state.serviceClients.length === 0;
+      control.disabled = unavailable || noChatClient ||
         (control.id === "service-http-body" &&
           ui.serviceControls.querySelector("#service-http-method")?.value !== "POST");
     });
@@ -1062,7 +1064,10 @@
       }
       method.addEventListener("change", () => {
         const body = ui.serviceControls.querySelector("#service-http-body");
-        if (body) body.disabled = method.value !== "POST" || state.busy || !state.workspaceReady;
+        const active = state.serviceSnapshot && state.serviceSnapshot.state === "RUNNING";
+        if (body) body.disabled =
+          method.value !== "POST" || state.busy || !state.workspaceReady || !active ||
+          state.task.state === "LOCKED";
       });
       methodLabel.append(method);
 

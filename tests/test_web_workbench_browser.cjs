@@ -829,7 +829,10 @@ async function main() {
       unloadPromptSeen = dialog.type() === "beforeunload";
       await dialog.dismiss();
     });
-    await page.reload({ waitUntil: "domcontentloaded" });
+    // A dismissed beforeunload dialog cancels navigation by design, so
+    // Playwright's reload navigation wait must be bounded rather than waiting
+    // for DOMContentLoaded that will never occur.
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 3000 }).catch(() => {});
     assert.equal(unloadPromptSeen, true,
       "Reload with dirty learner source must ask before discarding changes");
     await page.waitForFunction(() =>

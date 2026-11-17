@@ -403,9 +403,41 @@ async function main() {
       fullPage: true
     });
 
+    // W2 Todo is unlocked by the real W1 calculator acceptance above. Its
+    // registered CLI form and executable run must preserve the learner's
+    // intentionally incomplete implementation, not report a false PASS.
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.locator('#course-list .task-link[data-task-id="w2.todo-cli"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w2.todo-cli"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "持久化 Todo CLI");
+    await page.locator("#start-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+    );
+    await page.locator("#app-build-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "应用构建成功",
+      null, { timeout: 60000 }
+    );
+    await page.locator("#app-action").selectOption("list");
+    assert.equal(await page.locator("#app-fields input").count(), 0);
+    await page.locator("#app-execute-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "程序运行失败",
+      null, { timeout: 15000 }
+    );
+    assert.match(await page.locator("#console-output").textContent(), /not implemented/);
+    assert.equal(await page.locator("#task-state").textContent(), "进行中",
+      "Failed Todo demo must not write formal acceptance evidence");
+    await page.locator("#app-action").selectOption("add");
+    assert.equal(await page.locator("#app-fields input").count(), 1);
+    assert.equal(await page.locator("#app-fields input").getAttribute("data-field"), "title");
+
     // A locked later task may display its instructional action schema, but
     // must not permit launching an application before prerequisites pass.
-    await page.setViewportSize({ width: 1440, height: 1000 });
+
     await page.locator('#course-list .task-link[data-task-id="w8.http-parser"]').click();
     await page.waitForFunction(() =>
       document.querySelector("#task-breadcrumb")?.textContent.trim() === "w8.http-parser"

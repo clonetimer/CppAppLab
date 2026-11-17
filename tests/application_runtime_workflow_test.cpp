@@ -204,6 +204,44 @@ TEST(ApplicationRuntimeWorkflowTest, ThreadPoolDemoRunsThroughItsFixedApplicatio
     EXPECT_NE(output.find("Application result: FAIL"), std::string::npos);
 }
 
+TEST(ApplicationRuntimeWorkflowTest, HttpProtocolProfileBuildsAndRunsRegisteredRequestLineAction) {
+    const cppapplab::Task* task = cppapplab::find_task("w8.http-protocol");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "http-protocol");
+    int result = -1;
+    std::string output = invoke_capture({"cppapplab", "app-build", workspace.root.string()}, result);
+    ASSERT_EQ(result, 0) << output;
+    output = invoke_capture(
+        {"cppapplab", "app-run", workspace.root.string(), "parse-line", "GET / HTTP/1.1"},
+        result);
+    EXPECT_EQ(result, 1) << output;
+    EXPECT_NE(output.find("400 Bad Request: invalid request line"), std::string::npos);
+    EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
+}
+
+TEST(ApplicationRuntimeWorkflowTest, StaticFilesProfileUsesWorkspaceLocalDocumentRoot) {
+    const cppapplab::Task* task = cppapplab::find_task("w8.static-files");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "static-files");
+    int result = -1;
+    std::string output = invoke_capture({"cppapplab", "app-build", workspace.root.string()}, result);
+    ASSERT_EQ(result, 0) << output;
+    output = invoke_capture(
+        {"cppapplab", "app-run", workspace.root.string(), "handle", "GET", "/index.html"},
+        result);
+    EXPECT_NE(result, 0) << output;
+    EXPECT_NE(output.find("TODO: implement StaticFileHandler::handle"), std::string::npos);
+    EXPECT_TRUE(std::filesystem::is_regular_file(
+        workspace.root / ".cppapplab" / "application" / "runtime" / "www" / "index.html"));
+    EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
+}
+
 TEST(ApplicationRuntimeWorkflowTest, LibraryOnlyTaskHasNoApplicationExecutionProfile) {
     const cppapplab::Task* task = cppapplab::find_task("w8.http-connection-policy");
     ASSERT_NE(task, nullptr);

@@ -382,13 +382,19 @@ async function main() {
     assert.ok(editorBoxDesktop.x < lessonBoxDesktop.x,
       "Desktop places the active code editor to the left of contextual lesson guidance");
 
+    // Avoid distorted full-page evidence from a sticky header captured while
+    // the browser is scrolled to an editor control.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForFunction(() => window.scrollY === 0);
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "cppapplab-workbench-desktop.png"),
       fullPage: true
     });
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.waitForTimeout(500);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForFunction(() => window.scrollY === 0);
+    await page.waitForTimeout(200);
     const mobileOverflow = await page.evaluate(() =>
       document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
     );

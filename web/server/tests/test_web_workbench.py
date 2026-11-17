@@ -40,6 +40,10 @@ elif command == "build":
     print("Build result: PASS")
 elif command == "run":
     print("Run result: PASS")
+elif command == "app-run-stdin":
+    payload = sys.stdin.buffer.read()
+    print("stdin-bytes=" + str(len(payload)))
+    print("argv-count=" + str(len(sys.argv)))
 elif command == "check":
     print("[PASS] fixed acceptance")
 else:
@@ -306,6 +310,30 @@ class WebWorkbenchTests(unittest.TestCase):
             )
             self.assertEqual(kwargs["input_data"], request_body)
             self.assertNotIn(request_body, str(args))
+
+    def test_large_http_input_reaches_real_subprocess_stdin(self) -> None:
+        # Linux caps individual argv strings at around 128 KiB. This regression
+        # must pass with a payload larger than that cap, without mocking the
+        # subprocess runner or injecting the payload into argv.
+        request_body = "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n" + ("x" * 140000)
+        workspace = self.workspace_root / "w8.http-parser"
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ):
+            result = self.request(
+                "/api/v1/workspaces/w8.http-parser/app-run",
+                method="POST",
+                body={"action": "parse", "values": [request_body]},
+                token=self.token,
+                origin=self.base_url,
+            )
+        self.assertTrue(result["success"])
+        self.assertFalse(result["records_evidence"])
+        self.assertIn(
+            f"stdin-bytes={len(request_body.encode('utf-8'))}",
+            result["output"],
+        )
+        self.assertIn("argv-count=4", result["output"])
 
     def test_http_input_rejects_unsupported_action(self) -> None:
         with patch.object(self.server, "run_cli") as engine:

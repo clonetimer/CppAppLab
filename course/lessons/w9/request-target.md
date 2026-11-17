@@ -1,5 +1,19 @@
 # W9-A2 · Strict HTTP Request-Target and Query Parsing
 
+## Start here
+
+Parse a request target once and keep its meaning consistent.
+
+1. Start with `/search?q=cpp` and separate path from query.
+2. Decode one percent-encoded path segment.
+3. Parse repeated query keys while preserving their order.
+4. Reject malformed percent escapes and unsupported target forms.
+5. Verify routing uses the parsed canonical path and does not decode it again.
+6. Test encoded separators, dot segments and ambiguous paths.
+
+**Mental model:** parsing and normalization define one canonical meaning for a request. Re-decoding later can create security bugs because two components may interpret the same bytes differently.
+
+
 ## Goal
 
 Parse the HTTP request-target once, into a path and an ordered query-parameter list. This stage establishes one canonical interpretation for routing and the later secure static-file task.

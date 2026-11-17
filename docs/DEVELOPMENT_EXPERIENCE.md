@@ -119,6 +119,14 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 18. History UI requires a real browser journey after a formal PASS
+
+- An API unit test proves only the serialization/parsing contract. It does not prove that the learner can discover, open, read and close the history panel in the actual workbench.
+- Add the history check immediately after a real successful formal acceptance in the Chromium course journey. Assert count, result, timestamp, workspace and source fingerprint, then verify the panel closes without changing the task's acceptance state.
+- Keep history ordered by attempt time at the source; reverse only for newest-first presentation. Do not silently discard failed attempts or collapse repeated PASS records.
+- A historical PASS must never be treated as the current state: always display the learning engine's latest state separately, because subsequent FAIL or source edits can invalidate the earlier pass.
+- Exercise an empty history, multiple attempts, unknown task IDs and an unavailable history backend separately. Build/Run/service demonstrations must not add records.
+
 ## 17. Reuse the learning engine's canonical append-only history for browser timelines
 
 - The authoritative course history already lives in the learning engine's per-task append-only history records. The browser should consume this source rather than inventing a second database or writing records from Build/Run/service actions.

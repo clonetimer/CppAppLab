@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import urllib.error
 import urllib.request
@@ -12,13 +14,15 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from cppapplab_web import CppAppLabWebServer, safe_relative_path
+from cppapplab_web import CppAppLabWebServer, ServiceSession, safe_relative_path
 
 
 FAKE_ENGINE = """#!/usr/bin/env python3
 import os
 import pathlib
 import sys
+import time
+import socket
 
 command = sys.argv[1] if len(sys.argv) > 1 else ""
 home = pathlib.Path(os.environ["HOME"])
@@ -44,11 +48,112 @@ elif command == "app-run-stdin":
     payload = sys.stdin.buffer.read()
     print("stdin-bytes=" + str(len(payload)))
     print("argv-count=" + str(len(sys.argv)))
+elif command == "app-build":
+    print("Application build result: PASS")
+elif command == "server":
+    listener = socket.socket()
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind(("127.0.0.1", 0))
+    listener.listen()
+    print("listening on 127.0.0.1:" + str(listener.getsockname()[1]), flush=True)
+    time.sleep(30)
 elif command == "check":
     print("[PASS] fixed acceptance")
 else:
     print("unknown command", file=sys.stderr)
     raise SystemExit(2)
+"""
+
+
+FAKE_CHAT_SERVER = """#!/usr/bin/env python3
+import socket
+import sys
+import threading
+
+listener = socket.socket()
+listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+listener.bind(("127.0.0.1", int(sys.argv[2])))
+listener.listen()
+clients = {}
+lock = threading.Lock()
+print("listening on 127.0.0.1:" + str(listener.getsockname()[1]), flush=True)
+
+def broadcast(message, excluded=None):
+    with lock:
+        targets = list(clients.items())
+    for connection, nickname in targets:
+        if connection is excluded or not nickname:
+            continue
+        try:
+            connection.sendall(message.encode("utf-8"))
+        except OSError:
+            pass
+
+def handle(connection):
+    nickname = ""
+    buffer = ""
+    try:
+        while True:
+            data = connection.recv(4096)
+            if not data:
+                break
+            buffer += data.decode("utf-8", errors="replace")
+            while "\\n" in buffer:
+                line, buffer = buffer.split("\\n", 1)
+                line = line.rstrip("\\r")
+                if line.startswith("NICK "):
+                    nickname = line[5:]
+                    with lock:
+                        clients[connection] = nickname
+                    connection.sendall(("OK NICK " + nickname + "\\n").encode("utf-8"))
+                    broadcast("* " + nickname + " joined\\n", connection)
+                elif line.startswith("MSG ") and nickname:
+                    broadcast(nickname + ": " + line[4:] + "\\n", connection)
+                elif line == "QUIT":
+                    return
+    except OSError:
+        pass
+    finally:
+        with lock:
+            clients.pop(connection, None)
+        try:
+            connection.close()
+        except OSError:
+            pass
+        if nickname:
+            broadcast("* " + nickname + " left\\n")
+
+while True:
+    connection, _ = listener.accept()
+    threading.Thread(target=handle, args=(connection,), daemon=True).start()
+"""
+
+
+FAKE_HTTP_SERVER = """#!/usr/bin/env python3
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import sys
+
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        body = b"x" * (256 * 1024 + 1) if self.path == "/large" else b"browser proxy ok"
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", "0"))
+        body = self.rfile.read(length)
+        self.send_response(201)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+server = ThreadingHTTPServer(("127.0.0.1", int(sys.argv[2])), Handler)
+print("listening on " + str(server.server_port), flush=True)
+server.serve_forever()
 """
 
 
@@ -379,6 +484,389 @@ class WebWorkbenchTests(unittest.TestCase):
                 origin=self.base_url,
             ),
             404,
+        )
+
+    def test_service_supervisor_starts_reports_and_stops_registered_loopback_process(self) -> None:
+        workspace = self.workspace_root / "w7.tcp-echo"
+        executable = workspace / ".cppapplab" / "application" / "learner_app"
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.write_text(FAKE_ENGINE, encoding="utf-8")
+        executable.chmod(0o755)
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ), patch.object(
+            self.server, "run_cli", return_value=(0, "Application build result: PASS")
+        ):
+            started = self.request(
+                "/api/v1/workspaces/w7.tcp-echo/service/start",
+                method="POST",
+                body={},
+                token=self.token,
+                origin=self.base_url,
+            )
+            self.assertEqual(started["state"], "RUNNING")
+            self.assertEqual(started["kind"], "tcp_echo")
+            self.assertGreaterEqual(started["port"], 1)
+            self.assertLessEqual(started["port"], 65535)
+            session = self.server.service_sessions["w7.tcp-echo"]
+            self.assertEqual(session.process.args[2], "0",
+                             "TCP Echo must ask the kernel for an ephemeral port")
+            deadline = time.monotonic() + 1.0
+            while time.monotonic() < deadline:
+                status = self.request("/api/v1/workspaces/w7.tcp-echo/service/status")
+                if f"listening on 127.0.0.1:{started['port']}" in status["logs"]:
+                    break
+                time.sleep(0.01)
+            self.assertIn(f"listening on 127.0.0.1:{started['port']}", status["logs"])
+            self.assertEqual(
+                Path(self.server.service_sessions["w7.tcp-echo"].process.args[0]),
+                executable,
+            )
+
+            session = self.server.service_sessions["w7.tcp-echo"]
+            self.assertIsNone(session.process.poll())
+            status = self.request("/api/v1/workspaces/w7.tcp-echo/service/status")
+            self.assertEqual(status["state"], "RUNNING")
+            self.assertEqual(status["port"], started["port"])
+
+            stopped = self.request(
+                "/api/v1/workspaces/w7.tcp-echo/service/stop",
+                method="POST",
+                body={},
+                token=self.token,
+                origin=self.base_url,
+            )
+            self.assertEqual(stopped["state"], "STOPPED")
+            self.assertIsNotNone(session.process.poll())
+            self.assertIn("Stopped by learner", stopped["logs"])
+
+    def test_tcp_echo_bridge_uses_the_registered_client_and_session_port(self) -> None:
+        workspace = self.workspace_root / "w7.tcp-echo"
+        workspace.mkdir(parents=True, exist_ok=True)
+        runtime = workspace / ".cppapplab" / "application" / "runtime"
+        runtime.mkdir(parents=True, exist_ok=True)
+        executable = runtime.parent / "learner_app"
+        executable.write_text(FAKE_ENGINE, encoding="utf-8")
+        executable.chmod(0o755)
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ), patch.object(
+            self.server, "run_cli",
+            side_effect=[
+                (0, "Application build result: PASS"),
+                (0, "echoed: hello from browser"),
+            ],
+        ) as engine:
+            started = self.request(
+                "/api/v1/workspaces/w7.tcp-echo/service/start",
+                method="POST",
+                body={},
+                token=self.token,
+                origin=self.base_url,
+            )
+            self.assertEqual(started["state"], "RUNNING")
+            echoed = self.request(
+                "/api/v1/workspaces/w7.tcp-echo/service/echo",
+                method="POST",
+                body={"message": "hello from browser"},
+                token=self.token,
+                origin=self.base_url,
+            )
+        self.assertTrue(echoed["success"])
+        self.assertIn("echoed: hello from browser", echoed["output"])
+        self.assertEqual(
+            engine.call_args_list[1].args[0],
+            ["app-run", str(workspace), "client", str(started["port"]), "hello from browser"],
+        )
+
+    def test_tcp_echo_bridge_rejects_oversized_and_multiline_messages(self) -> None:
+        workspace = self.workspace_root / "w7.tcp-echo"
+        workspace.mkdir(parents=True, exist_ok=True)
+        runtime = workspace / ".cppapplab" / "application" / "runtime"
+        runtime.mkdir(parents=True, exist_ok=True)
+        executable = runtime.parent / "learner_app"
+        executable.write_text(FAKE_ENGINE, encoding="utf-8")
+        executable.chmod(0o755)
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ), patch.object(
+            self.server, "run_cli", return_value=(0, "Application build result: PASS")
+        ) as engine:
+            self.request(
+                "/api/v1/workspaces/w7.tcp-echo/service/start",
+                method="POST",
+                body={},
+                token=self.token,
+                origin=self.base_url,
+            )
+            self.assertEqual(
+                self.request_error(
+                    "/api/v1/workspaces/w7.tcp-echo/service/echo",
+                    "POST",
+                    {"message": "x" * 1025},
+                    token=self.token,
+                    origin=self.base_url,
+                ),
+                400,
+            )
+            self.assertEqual(
+                self.request_error(
+                    "/api/v1/workspaces/w7.tcp-echo/service/echo",
+                    "POST",
+                    {"message": "hello\nworld"},
+                    token=self.token,
+                    origin=self.base_url,
+                ),
+                400,
+            )
+        self.assertEqual(engine.call_count, 1, "Invalid echo messages must not launch a learner client.")
+
+    def test_tcp_chat_bridge_manages_two_clients_and_broadcasts_messages(self) -> None:
+        workspace = self.workspace_root / "w7.tcp-chat"
+        executable = workspace / ".cppapplab" / "application" / "learner_app"
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.write_text(FAKE_CHAT_SERVER, encoding="utf-8")
+        executable.chmod(0o755)
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ), patch.object(
+            self.server, "run_cli", return_value=(0, "Application build result: PASS")
+        ):
+            started = self.request(
+                "/api/v1/workspaces/w7.tcp-chat/service/start",
+                method="POST", body={}, token=self.token, origin=self.base_url,
+            )
+            self.assertEqual(started["state"], "RUNNING")
+            alice = self.request(
+                "/api/v1/workspaces/w7.tcp-chat/service/chat/connect",
+                method="POST", body={"nickname": "Alice"}, token=self.token, origin=self.base_url,
+            )
+            bob = self.request(
+                "/api/v1/workspaces/w7.tcp-chat/service/chat/connect",
+                method="POST", body={"nickname": "Bob"}, token=self.token, origin=self.base_url,
+            )
+            self.assertIn("OK NICK Alice", alice["messages"][alice["client_id"]])
+            self.assertIn("* Bob joined", bob["messages"][alice["client_id"]])
+            self.assertIn("OK NICK Bob", bob["messages"][bob["client_id"]])
+
+            sent = self.request(
+                "/api/v1/workspaces/w7.tcp-chat/service/chat/send",
+                method="POST",
+                body={"client_id": alice["client_id"], "message": "hello Bob"},
+                token=self.token, origin=self.base_url,
+            )
+            self.assertIn("Alice: hello Bob", sent["messages"][bob["client_id"]])
+            self.assertEqual(sent["service"]["clients_count"], 2)
+
+            disconnected = self.request(
+                "/api/v1/workspaces/w7.tcp-chat/service/chat/disconnect",
+                method="POST",
+                body={"client_id": bob["client_id"]},
+                token=self.token, origin=self.base_url,
+            )
+            self.assertIn("* Bob left", disconnected["messages"][alice["client_id"]])
+            self.assertEqual(disconnected["service"]["clients_count"], 1)
+
+            stopped = self.request(
+                "/api/v1/workspaces/w7.tcp-chat/service/stop",
+                method="POST", body={}, token=self.token, origin=self.base_url,
+            )
+            self.assertEqual(stopped["state"], "STOPPED")
+            self.assertEqual(stopped["clients_count"], 0)
+
+    def test_tcp_chat_bridge_rejects_invalid_nicknames_and_messages(self) -> None:
+        workspace = self.workspace_root / "w7.tcp-chat"
+        executable = workspace / ".cppapplab" / "application" / "learner_app"
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.write_text(FAKE_CHAT_SERVER, encoding="utf-8")
+        executable.chmod(0o755)
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ), patch.object(
+            self.server, "run_cli", return_value=(0, "Application build result: PASS")
+        ):
+            self.request(
+                "/api/v1/workspaces/w7.tcp-chat/service/start",
+                method="POST", body={}, token=self.token, origin=self.base_url,
+            )
+            self.assertEqual(
+                self.request_error(
+                    "/api/v1/workspaces/w7.tcp-chat/service/chat/connect",
+                    "POST", {"nickname": "bad name"}, token=self.token, origin=self.base_url,
+                ),
+                400,
+            )
+            alice = self.request(
+                "/api/v1/workspaces/w7.tcp-chat/service/chat/connect",
+                method="POST", body={"nickname": "Alice"}, token=self.token, origin=self.base_url,
+            )
+            self.assertEqual(
+                self.request_error(
+                    "/api/v1/workspaces/w7.tcp-chat/service/chat/send",
+                    "POST",
+                    {"client_id": alice["client_id"], "message": "x" * 1025},
+                    token=self.token, origin=self.base_url,
+                ),
+                400,
+            )
+
+    def test_http_service_proxy_uses_loopback_and_bounds_request_data(self) -> None:
+        workspace = self.workspace_root / "w8.http-server"
+        executable = workspace / ".cppapplab" / "application" / "learner_app"
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.write_text(FAKE_HTTP_SERVER, encoding="utf-8")
+        executable.chmod(0o755)
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ), patch.object(
+            self.server, "run_cli", return_value=(0, "Application build result: PASS")
+        ):
+            started = self.request(
+                "/api/v1/workspaces/w8.http-server/service/start",
+                method="POST", body={}, token=self.token, origin=self.base_url,
+            )
+            self.assertEqual(started["state"], "RUNNING")
+            get_result = self.request(
+                "/api/v1/workspaces/w8.http-server/service/http",
+                method="POST",
+                body={"method": "GET", "target": "/", "body": ""},
+                token=self.token, origin=self.base_url,
+            )
+            self.assertEqual(get_result["status_code"], 200)
+            self.assertEqual(get_result["body"], "browser proxy ok")
+            self.assertEqual(get_result["headers"]["content-type"], "text/plain; charset=utf-8")
+
+            post_result = self.request(
+                "/api/v1/workspaces/w8.http-server/service/http",
+                method="POST",
+                body={"method": "POST", "target": "/echo", "body": "hello from browser"},
+                token=self.token, origin=self.base_url,
+            )
+            self.assertEqual(post_result["status_code"], 201)
+            self.assertEqual(post_result["body"], "hello from browser")
+
+            self.assertEqual(
+                self.request_error(
+                    "/api/v1/workspaces/w8.http-server/service/http",
+                    "POST", {"method": "GET", "target": "http://example.com/", "body": ""},
+                    token=self.token, origin=self.base_url,
+                ),
+                400,
+            )
+            self.assertEqual(
+                self.request_error(
+                    "/api/v1/workspaces/w8.http-server/service/http",
+                    "POST", {"method": "GET", "target": "/%2e%2e/secret", "body": ""},
+                    token=self.token, origin=self.base_url,
+                ),
+                400,
+            )
+            self.assertEqual(
+                self.request_error(
+                    "/api/v1/workspaces/w8.http-server/service/http",
+                    "POST", {"method": "GET", "target": "/%0d%0aHost:evil", "body": ""},
+                    token=self.token, origin=self.base_url,
+                ),
+                400,
+            )
+            self.assertEqual(
+                self.request_error(
+                    "/api/v1/workspaces/w8.http-server/service/http",
+                    "POST", {"method": "GET", "target": "/large", "body": ""},
+                    token=self.token, origin=self.base_url,
+                ),
+                413,
+            )
+            self.assertEqual(
+                self.request_error(
+                    "/api/v1/workspaces/w8.http-server/service/http",
+                    "POST", {"method": "GET", "target": "/", "body": "not allowed"},
+                    token=self.token, origin=self.base_url,
+                ),
+                400,
+            )
+            self.assertEqual(
+                self.request_error(
+                    "/api/v1/workspaces/w8.http-server/service/http",
+                    "POST", {"method": "GET", "target": "/", "body": "x" * (64 * 1024 + 1)},
+                    token=self.token, origin=self.base_url,
+                ),
+                413,
+            )
+            stopped = self.request(
+                "/api/v1/workspaces/w8.http-server/service/stop",
+                method="POST", body={}, token=self.token, origin=self.base_url,
+            )
+            self.assertEqual(stopped["state"], "STOPPED")
+
+    def test_service_build_failure_does_not_launch_a_child_process(self) -> None:
+        workspace = self.workspace_root / "w7.tcp-chat"
+        workspace.mkdir(parents=True, exist_ok=True)
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ), patch.object(
+            self.server, "run_cli", return_value=(1, "learner compile error")
+        ), patch("cppapplab_web.subprocess.Popen") as process:
+            result = self.request(
+                "/api/v1/workspaces/w7.tcp-chat/service/start",
+                method="POST",
+                body={},
+                token=self.token,
+                origin=self.base_url,
+            )
+        self.assertEqual(result["state"], "BUILD_FAILED")
+        self.assertIn("learner compile error", result["logs"])
+        process.assert_not_called()
+        self.assertNotIn("w7.tcp-chat", self.server.service_sessions)
+        refreshed = self.request("/api/v1/workspaces/w7.tcp-chat/service/status")
+        self.assertEqual(refreshed["state"], "BUILD_FAILED")
+        self.assertIn("learner compile error", refreshed["logs"])
+
+    def test_service_cleanup_kills_descendants_after_parent_exit(self) -> None:
+        script = (
+            "import subprocess, sys; "
+            "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)']); "
+            "print(child.pid, flush=True)"
+        )
+        process = subprocess.Popen(
+            [sys.executable, "-c", script],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            start_new_session=True,
+        )
+        self.assertIsNotNone(process.stdout)
+        child_pid = int(process.stdout.readline().strip())
+        self.assertEqual(process.wait(timeout=2.0), 0)
+        session = ServiceSession(
+            task_id="w7.tcp-echo",
+            kind="tcp_echo",
+            workspace=self.workspace_root,
+            process=process,
+            port=0,
+        )
+        self.assertTrue(CppAppLabWebServer._terminate_service_process_group(session, 1.0))
+        deadline = time.monotonic() + 1.0
+        while time.monotonic() < deadline:
+            try:
+                os.kill(child_pid, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.02)
+        else:
+            self.fail("Service cleanup left a descendant process alive.")
+        process.stdout.close()
+
+    def test_service_routes_reject_unregistered_application_tasks(self) -> None:
+        self.assertEqual(
+            self.request_error(
+                "/api/v1/workspaces/w1.hello-world/service/start",
+                "POST",
+                {},
+                token=self.token,
+                origin=self.base_url,
+            ),
+            409,
         )
 
     def test_static_shell_is_served(self) -> None:

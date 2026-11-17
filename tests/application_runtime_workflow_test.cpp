@@ -1,8 +1,22 @@
 #include "cppapplab/learning.hpp"
+#include "cppapplab/process.hpp"
 #include "cppapplab/task.hpp"
 #include "cppapplab/workspace.hpp"
 
 #include <gtest/gtest.h>
+
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+#include <arpa/inet.h>
+#include <csignal>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include <chrono>
 #include <cstdlib>
@@ -13,6 +27,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -125,6 +140,29 @@ void copy_reference(const std::filesystem::path& workspace,
         std::filesystem::copy_file(reference / relative, workspace / relative,
                                    std::filesystem::copy_options::overwrite_existing);
     }
+}
+
+std::uint16_t reserve_test_loopback_port() {
+    const int descriptor = ::socket(AF_INET, SOCK_STREAM, 0);
+    if (descriptor < 0) {
+        throw std::runtime_error("Cannot create a test TCP socket.");
+    }
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+    address.sin_port = 0U;
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    if (::bind(descriptor, reinterpret_cast<const sockaddr*>(&address), sizeof(address)) < 0) {
+        (void)::close(descriptor);
+        throw std::runtime_error("Cannot bind a test TCP socket.");
+    }
+    socklen_t length = sizeof(address);
+    if (::getsockname(descriptor, reinterpret_cast<sockaddr*>(&address), &length) < 0) {
+        (void)::close(descriptor);
+        throw std::runtime_error("Cannot inspect the test TCP port.");
+    }
+    const std::uint16_t port = ntohs(address.sin_port);
+    (void)::close(descriptor);
+    return port;
 }
 
 }  // namespace
@@ -290,6 +328,221 @@ TEST(ApplicationRuntimeWorkflowTest, ThreadPoolDemoRunsThroughItsFixedApplicatio
     EXPECT_EQ(result, 1) << output;
     EXPECT_NE(output.find("TODO: implement ThreadPool::submit"), std::string::npos);
     EXPECT_NE(output.find("Application result: FAIL"), std::string::npos);
+}
+
+TEST(ApplicationRuntimeWorkflowTest, TcpEchoProfileBuildsAndValidatesItsFixedClientAction) {
+    const cppapplab::Task* task = cppapplab::find_task("w7.tcp-echo");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "tcp-echo");
+
+    int result = -1;
+    std::string output = invoke_capture({"cppapplab", "app-build", workspace.root.string()}, result);
+    ASSERT_EQ(result, 0) << output;
+    EXPECT_NE(output.find("src/tcp_echo.cpp"), std::string::npos);
+
+    output = invoke_capture(
+        {"cppapplab", "app-run", workspace.root.string(), "client", "0", "hello"}, result);
+    EXPECT_EQ(result, 2);
+    EXPECT_NE(output.find("port must be in the range 1..65535"), std::string::npos);
+    EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
+}
+
+TEST(ApplicationRuntimeWorkflowTest, TcpEchoServiceAndRegisteredLearnerClientCompleteARealRoundTrip) {
+    const cppapplab::Task* task = cppapplab::find_task("w7.tcp-echo");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "tcp-echo-roundtrip");
+
+    int result = -1;
+    std::string output = invoke_capture({"cppapplab", "app-build", workspace.root.string()}, result);
+    ASSERT_EQ(result, 0) << output;
+
+    const int reservation = ::socket(AF_INET, SOCK_STREAM, 0);
+    ASSERT_GE(reservation, 0);
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    address.sin_port = 0;
+    ASSERT_EQ(::bind(reservation, reinterpret_cast<sockaddr*>(&address), sizeof(address)), 0);
+    socklen_t address_size = sizeof(address);
+    ASSERT_EQ(::getsockname(reservation, reinterpret_cast<sockaddr*>(&address), &address_size), 0);
+    const unsigned port = ntohs(address.sin_port);
+    ASSERT_GT(port, 0U);
+    (void)::close(reservation);
+
+    const auto executable = workspace.root / ".cppapplab" / "application" / "learner_app";
+    const pid_t server = ::fork();
+    ASSERT_GE(server, 0);
+    if (server == 0) {
+        const std::string port_text = std::to_string(port);
+        ::execl(executable.c_str(), executable.c_str(), "server", port_text.c_str(),
+                static_cast<char*>(nullptr));
+        _exit(127);
+    }
+
+    bool round_trip_passed = false;
+    bool server_reaped = false;
+    int server_status = 0;
+    for (int attempt = 0; attempt < 30; ++attempt) {
+        output = invoke_capture(
+            {"cppapplab", "app-run", workspace.root.string(), "client",
+             std::to_string(port), "hello from browser"}, result);
+        if (result == 0) {
+            round_trip_passed = true;
+            break;
+        }
+        const pid_t waited = ::waitpid(server, &server_status, WNOHANG);
+        if (waited == server) {
+            server_reaped = true;
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+
+    if (!server_reaped) {
+        for (int attempt = 0; attempt < 30; ++attempt) {
+            const pid_t waited = ::waitpid(server, &server_status, WNOHANG);
+            if (waited == server) {
+                server_reaped = true;
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+    }
+    if (!server_reaped) {
+        (void)::kill(server, SIGKILL);
+        (void)::waitpid(server, &server_status, 0);
+        server_reaped = true;
+    }
+
+    EXPECT_TRUE(round_trip_passed) << output;
+    EXPECT_TRUE(server_reaped);
+    if (round_trip_passed) {
+        EXPECT_NE(output.find("hello from browser"), std::string::npos);
+        EXPECT_NE(output.find("Application result: PASS"), std::string::npos);
+    }
+    EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
+}
+TEST(ApplicationRuntimeWorkflowTest, TcpEchoLearnerServerAndRegisteredClientCompleteARealRoundTrip) {
+    const cppapplab::Task* task = cppapplab::find_task("w7.tcp-echo");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "tcp-echo-round-trip");
+
+    int result = -1;
+    std::string output = invoke_capture({"cppapplab", "app-build", workspace.root.string()}, result);
+    ASSERT_EQ(result, 0) << output;
+
+    const auto executable =
+        workspace.root / ".cppapplab" / "application" / "learner_app";
+    const std::uint16_t port = reserve_test_loopback_port();
+    cppapplab::ProcessResult server_result;
+    std::thread server([&] {
+        server_result = cppapplab::run_process(
+            {executable.string(), "server", std::to_string(port)},
+            workspace.root, std::chrono::seconds(5), 4096U);
+    });
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    bool echoed = false;
+    while (std::chrono::steady_clock::now() < deadline) {
+        output = invoke_capture(
+            {"cppapplab", "app-run", workspace.root.string(), "client",
+             std::to_string(port), "real browser workbench round trip"},
+            result);
+        if (result == 0) {
+            echoed = true;
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    server.join();
+
+    EXPECT_TRUE(echoed) << output;
+    EXPECT_NE(output.find("real browser workbench round trip"), std::string::npos);
+    EXPECT_NE(output.find("Application result: PASS"), std::string::npos);
+    EXPECT_EQ(server_result.exit_code, 0) << server_result.output;
+    EXPECT_FALSE(server_result.timed_out);
+    EXPECT_NE(server_result.output.find("listening on 127.0.0.1:"), std::string::npos);
+    EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
+}
+
+TEST(ApplicationRuntimeWorkflowTest, TcpChatProfileBuildsTheDeclaredLearnerServer) {
+    const cppapplab::Task* task = cppapplab::find_task("w7.tcp-chat");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "tcp-chat");
+
+    int result = -1;
+    const std::string output = invoke_capture(
+        {"cppapplab", "app-build", workspace.root.string()}, result);
+    EXPECT_EQ(result, 0) << output;
+    EXPECT_NE(output.find("src/tcp_chat.cpp"), std::string::npos);
+    EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
+}
+
+TEST(ApplicationRuntimeWorkflowTest, TcpChatServiceSurfacesTheLearnerImplementationTodo) {
+    const cppapplab::Task* task = cppapplab::find_task("w7.tcp-chat");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "tcp-chat-todo");
+
+    int result = -1;
+    std::string output = invoke_capture({"cppapplab", "app-build", workspace.root.string()}, result);
+    ASSERT_EQ(result, 0) << output;
+    const auto executable =
+        workspace.root / ".cppapplab" / "application" / "learner_app";
+    const cppapplab::ProcessResult server = cppapplab::run_process(
+        {executable.string(), "server", "0"}, workspace.root, std::chrono::seconds(2), 4096U);
+    EXPECT_EQ(server.exit_code, 1) << server.output;
+    EXPECT_NE(server.output.find("TODO: implement ChatServer::run"), std::string::npos);
+    EXPECT_FALSE(server.timed_out);
+    EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
+}
+
+TEST(ApplicationRuntimeWorkflowTest, HttpServerProfileUsesPlatformOwnedRouterAndThreadPoolSupport) {
+    const cppapplab::Task* task = cppapplab::find_task("w8.http-server");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "http-server");
+
+    int result = -1;
+    const std::string output = invoke_capture(
+        {"cppapplab", "app-build", workspace.root.string()}, result);
+    EXPECT_EQ(result, 0) << output;
+    EXPECT_NE(output.find("[platform] labs/w8/router/reference/src/router.cpp"), std::string::npos);
+    EXPECT_NE(output.find("[platform] labs/w6/thread-pool/reference/src/thread_pool.cpp"), std::string::npos);
+    EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
+}
+TEST(ApplicationRuntimeWorkflowTest, HttpServerServiceSurfacesTheLearnerImplementationTodo) {
+    const cppapplab::Task* task = cppapplab::find_task("w8.http-server");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "http-server-todo");
+
+    int result = -1;
+    std::string output = invoke_capture({"cppapplab", "app-build", workspace.root.string()}, result);
+    ASSERT_EQ(result, 0) << output;
+    const auto executable =
+        workspace.root / ".cppapplab" / "application" / "learner_app";
+    const auto document_root =
+        workspace.root / ".cppapplab" / "application" / "runtime" / "www";
+    std::filesystem::create_directories(document_root);
+    const cppapplab::ProcessResult server = cppapplab::run_process(
+        {executable.string(), "server", "0", document_root.string()},
+        workspace.root, std::chrono::seconds(2), 4096U);
+    EXPECT_EQ(server.exit_code, 1) << server.output;
+    EXPECT_NE(server.output.find("TODO: implement the W8-D5 HTTP TCP server"), std::string::npos);
+    EXPECT_FALSE(server.timed_out);
+    EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
 }
 
 TEST(ApplicationRuntimeWorkflowTest, HttpProtocolProfileBuildsAndRunsRegisteredRequestLineAction) {

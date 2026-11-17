@@ -236,20 +236,23 @@ The CLI remains supported and authoritative. P8-A/P8-B do not claim Windows 11 +
 
 ### P8-C — Full course experience
 
-**C1 runtime-contract audit: complete. C2 one-shot/CLI interaction: validated in PR #41.**
-**Validated head:** `37fb25edcdc3125c4da9b23b04bb05c631da326a`.
-**Final PR CI:** [run #1589](https://github.com/clonetimer/CppAppLab/actions/runs/44026443959). All 12 required jobs passed; the Ubuntu 22.04 source-build compatibility job was skipped by workflow configuration. The repository-wide formatting step remains a manual skipped step; clang-tidy passed on both Ubuntu releases.
+**C1 runtime-contract audit and C2 fixed application profiles: validated in PR #41 and merged into `main`.**  
+**C3 network-service sessions: implementation and regression coverage complete on `feat/p8-c3-network-service-sessions-20261117`; final CI qualification is in progress.**
 
-C2 delivered:
+C3 delivers:
 
-- Fixed application build/run profiles for Calculator, Todo, TaskManager, Quality Gate, System Lab, Thread Pool, HTTP Protocol, HTTP Parser, Static Files and Router.
-- Browser-managed structured forms with no arbitrary shell, executable path, compiler options or user-controlled argv.
-- Source-declared build inputs, source-fingerprint stale-build rejection, workspace-local Todo/TaskManager persistence, and bounded 256 KiB stdin transport for HTTP Parser/Router.
-- Separate application Build/Run and Formal Acceptance semantics. Only `cppapplab check` writes course evidence.
-- Chromium workflows for Calculator, Todo and TaskManager; CRUD and persistence checks; W4 runtime-versus-quality-gate separation; locked-profile UI checks; desktop/mobile and offline-editor coverage.
-- Reusable development lessons in `docs/DEVELOPMENT_EXPERIENCE.md`.
+- Workspace-owned learner executables for TCP Echo, TCP Chat and HTTP Server; fixed argv, ephemeral port allocation and explicit readiness markers.
+- A process supervisor with bounded logs, STARTING/RUNNING/STOPPING/STOPPED/FAILED states, idempotent start, process-group cleanup, idle expiry and maximum lifetime.
+- TCP Echo one-client round trip through the actual learner server/client.
+- Browser-managed TCP Chat clients with bounded nicknames/messages, multi-client broadcast and disconnect.
+- Same-origin HTTP proxy to the task's loopback listener, with method/target validation, fixed host, 64 KiB request-body and 256 KiB response-body limits, and short request timeout.
+- Startup/build failure diagnostics retained across status refresh; application/service runs remain separate from formal course acceptance.
+- Chromium coverage for the locked/unlocked service controls; Python API tests for Chat/HTTP protocol bridges; C++ workflow tests for Echo round trip and incomplete Chat/HTTP TODO behavior.
+- Reusable rules added to `docs/DEVELOPMENT_EXPERIENCE.md`, including process-group cleanup after parent exit, non-blocking pipe draining, ephemeral-port readiness and compilable Pimpl TODO templates.
 
-**Next implementation slice: P8-C3 — loopback-only TCP Echo, TCP Chat and HTTP Server sessions.** It will add fixed service profiles, readiness/status/log/stop controls, bounded clients and deterministic process-group cleanup. P8-C4 history and P8-C5 full-course journeys remain separate.
+The service templates default to loopback binding and the browser bridge connects only to `127.0.0.1`. CppAppLab is a local development workbench, not an OS sandbox against intentionally modified learner source.
+
+**Next:** P8-C4 — course acceptance history, stale-evidence explanations and prerequisite visualization. P8-C5 remains the complete cross-task recovery journey. P8-D (clangd/GDB) and P8-E (Windows/WSL2 target-machine acceptance) remain separate.
 
 P8-D (clangd/GDB) and P8-E (Windows/WSL2 packaging and target-machine acceptance) remain separate milestones.
 P8-D (clangd/GDB) and P8-E (Windows/WSL2 packaging and target-machine acceptance) remain separate milestones.

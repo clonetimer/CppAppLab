@@ -19,7 +19,7 @@ bool parse_port(const char* text, std::uint16_t& port) {
     char* end = nullptr;
     errno = 0;
     const unsigned long value = std::strtoul(text, &end, 10);
-    if (errno != 0 || end == text || *end != '\0' || value == 0UL || value > 65535UL) {
+    if (errno != 0 || end == text || *end != '\0' || value > 65535UL) {
         return false;
     }
     port = static_cast<std::uint16_t>(value);
@@ -47,11 +47,15 @@ int main(int argc, char** argv) {
     try {
         if (std::string(argv[1]) == "server" && argc == 3) {
             cppapplab::net::TcpEchoServer server(port);
-            std::cout << "listening on 127.0.0.1:" << server.port() << '\n';
+            std::cout << "listening on 127.0.0.1:" << server.port() << '\n' << std::flush;
             server.serve_one();
             return 0;
         }
         if (std::string(argv[1]) == "client" && argc == 4) {
+            if (port == 0U) {
+                std::cerr << "port must be in the range 1..65535\n";
+                return 2;
+            }
             const int socket_fd = cppapplab::net::connect_tcp("127.0.0.1", port);
             const std::string message = argv[3];
             if (!cppapplab::net::send_all(socket_fd, message.data(), message.size())) {

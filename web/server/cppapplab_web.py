@@ -8,14 +8,22 @@ It uses only the Python standard library and binds to loopback by default.
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
+from collections import deque
+from dataclasses import dataclass, field
 import mimetypes
 import os
 import re
+import select
 import secrets
 import signal
+import socket
 import subprocess
 import sys
+import threading
+import time
+import uuid
 import tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path, PurePosixPath
@@ -29,6 +37,10 @@ MAX_HINT_BYTES = 32 * 1024
 MAX_SOURCE_BYTES = 1024 * 1024
 MAX_REQUEST_BYTES = MAX_SOURCE_BYTES + 16 * 1024
 MAX_PROCESS_OUTPUT = 256 * 1024
+MAX_SERVICE_LOG_BYTES = 64 * 1024
+MAX_SERVICE_SESSIONS = 3
+SERVICE_IDLE_SECONDS = 5 * 60
+SERVICE_MAX_LIFETIME_SECONDS = 30 * 60
 TASK_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,95}$")
 PROGRESS_RE = re.compile(r"^\[(?P<state>[^\]]+)\]\s+(?P<task>[a-z0-9][a-z0-9._-]*)\s+·")
 HINT_RE = re.compile(r"^## Hint ([1-3])(?:\s|$)", re.MULTILINE)
@@ -128,6 +140,40 @@ RUNTIME_PROFILES: dict[str, dict[str, Any]] = {
         }],
     },
 }
+
+SERVICE_PROFILES: dict[str, dict[str, Any]] = {
+    "w7.tcp-echo": {"label": "TCP Echo Server", "kind": "tcp_echo"},
+    "w7.tcp-chat": {"label": "TCP Chat Server", "kind": "tcp_chat"},
+    "w8.http-server": {"label": "HTTP Server", "kind": "http_server"},
+}
+
+
+@dataclass
+class ServiceChatClient:
+    client_id: str
+    nickname: str
+    connection: socket.socket
+    buffer: str = ""
+    inbox: deque[str] = field(default_factory=deque)
+
+
+@dataclass
+class ServiceSession:
+    task_id: str
+    kind: str
+    workspace: Path
+    process: subprocess.Popen[str]
+    port: int
+    started_at: float = field(default_factory=time.monotonic)
+    last_activity: float = field(default_factory=time.monotonic)
+    state: str = "STARTING"
+    exit_code: int | None = None
+    logs: deque[str] = field(default_factory=deque)
+    log_bytes: int = 0
+    log_lock: threading.Lock = field(default_factory=threading.Lock)
+    log_thread: threading.Thread | None = None
+    clients: dict[str, "ServiceChatClient"] = field(default_factory=dict)
+
 
 
 class ApiError(Exception):
@@ -288,6 +334,26 @@ def bounded_output(value: str) -> str:
     clipped = encoded[:MAX_PROCESS_OUTPUT].decode("utf-8", errors="ignore")
     return clipped + "\n[CppAppLab Web] Output truncated at the configured limit.\n"
 
+def ensure_workspace_directory(root: Path, *parts: str) -> Path:
+    current = root
+    for part in parts:
+        if not part or part in {".", ".."} or "/" in part or "\\" in part:
+            raise ApiError(400, "Workspace runtime directory contains an unsafe component.")
+        current = current / part
+        try:
+            status = current.lstat()
+        except FileNotFoundError:
+            try:
+                current.mkdir()
+                status = current.lstat()
+            except OSError as exc:
+                raise ApiError(500, f"Cannot create workspace runtime directory: {exc}") from exc
+        except OSError as exc:
+            raise ApiError(500, f"Cannot inspect workspace runtime directory: {exc}") from exc
+        if current.is_symlink() or not current.is_dir():
+            raise ApiError(400, "Workspace runtime directories must be real directories.")
+    return current
+
 
 class CppAppLabWebServer(ThreadingHTTPServer):
     daemon_threads = True
@@ -313,7 +379,17 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         self.child_env["HOME"] = str(Path(self.child_env.get("HOME", str(Path.home()))).expanduser())
         self.tasks = load_catalog(self.root)
         self.task_by_id = {task["id"]: task for task in self.tasks}
+        self.service_sessions: dict[str, ServiceSession] = {}
+        self.service_failures: dict[str, dict[str, Any]] = {}
+        self.service_lock = threading.RLock()
+        self.service_janitor_stop = threading.Event()
         super().__init__(address, CppAppLabRequestHandler)
+        self.service_janitor = threading.Thread(
+            target=self._service_janitor_loop,
+            name="cppapplab-service-janitor",
+            daemon=True,
+        )
+        self.service_janitor.start()
 
     def run_cli(
         self, arguments: list[str], timeout: float = 20.0, input_data: str | None = None
@@ -417,6 +493,636 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         if exit_code != 0:
             return {task["id"]: "UNKNOWN" for task in self.tasks}
         return parse_progress(output, self.tasks)
+
+    @staticmethod
+    def _append_service_log(session: ServiceSession, value: str) -> None:
+        encoded = value.encode("utf-8", errors="replace")
+        if len(encoded) > MAX_SERVICE_LOG_BYTES:
+            encoded = encoded[-MAX_SERVICE_LOG_BYTES:]
+            value = encoded.decode("utf-8", errors="ignore")
+            encoded = value.encode("utf-8")
+        with session.log_lock:
+            session.logs.append(value)
+            session.log_bytes += len(encoded)
+            while session.log_bytes > MAX_SERVICE_LOG_BYTES and session.logs:
+                removed = session.logs.popleft()
+                session.log_bytes -= len(removed.encode("utf-8", errors="replace"))
+
+    @staticmethod
+    def _read_service_output(session: ServiceSession) -> None:
+        stream = session.process.stdout
+        if stream is None:
+            return
+        try:
+            binary_stream = stream.buffer
+            while True:
+                chunk = binary_stream.read1(4096)
+                if not chunk:
+                    break
+                CppAppLabWebServer._append_service_log(
+                    session, chunk.decode("utf-8", errors="replace")
+                )
+        finally:
+            try:
+                stream.close()
+            except OSError:
+                pass
+
+    @staticmethod
+    def _terminate_service_process_group(session: ServiceSession, grace_seconds: float = 2.0) -> bool:
+        process_group = session.process.pid
+        try:
+            os.killpg(process_group, signal.SIGTERM)
+        except ProcessLookupError:
+            if session.process.poll() is None:
+                try:
+                    session.process.wait(timeout=grace_seconds)
+                except subprocess.TimeoutExpired:
+                    pass
+            return session.process.poll() is not None
+
+        deadline = time.monotonic() + grace_seconds
+        while time.monotonic() < deadline:
+            if session.process.poll() is None:
+                try:
+                    session.process.wait(timeout=0.05)
+                except subprocess.TimeoutExpired:
+                    pass
+            try:
+                os.killpg(process_group, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.05)
+
+        try:
+            os.killpg(process_group, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        if session.process.poll() is None:
+            try:
+                session.process.wait(timeout=1.0)
+            except subprocess.TimeoutExpired:
+                return False
+        try:
+            os.killpg(process_group, 0)
+        except ProcessLookupError:
+            return True
+        return False
+
+    @staticmethod
+    def _refresh_service_state(session: ServiceSession) -> None:
+        exit_code = session.process.poll()
+        if exit_code is not None:
+            if session.state in {"STARTING", "RUNNING"}:
+                CppAppLabWebServer._terminate_service_process_group(session, 0.25)
+            session.exit_code = exit_code
+            if session.state not in {"STOPPED", "EXPIRED"}:
+                session.state = "STOPPED" if exit_code == 0 else "FAILED"
+
+    @staticmethod
+    def _service_snapshot(session: ServiceSession | None, task_id: str) -> dict[str, Any]:
+        if session is None:
+            return {"task_id": task_id, "state": "STOPPED", "port": None, "exit_code": None, "logs": ""}
+        CppAppLabWebServer._refresh_service_state(session)
+        with session.log_lock:
+            logs = "".join(session.logs)
+        return {
+            "task_id": session.task_id,
+            "kind": session.kind,
+            "state": session.state,
+            "port": session.port,
+            "exit_code": session.exit_code,
+            "started_seconds_ago": max(0, int(time.monotonic() - session.started_at)),
+            "clients_count": len(session.clients),
+            "logs": logs,
+        }
+
+    def service_status(self, task_id: str) -> dict[str, Any]:
+        if task_id not in SERVICE_PROFILES:
+            raise ApiError(409, "This task has no registered network-service profile.")
+        with self.service_lock:
+            session = self.service_sessions.get(task_id)
+            if session is None and task_id in self.service_failures:
+                return dict(self.service_failures[task_id])
+            return self._service_snapshot(session, task_id)
+
+    def start_service(self, task_id: str) -> dict[str, Any]:
+        profile = SERVICE_PROFILES.get(task_id)
+        if profile is None:
+            raise ApiError(409, "This task has no registered network-service profile.")
+
+        with self.service_lock:
+            self.service_failures.pop(task_id, None)
+            existing = self.service_sessions.get(task_id)
+            if existing is not None:
+                self._refresh_service_state(existing)
+                if existing.state in {"STARTING", "RUNNING"} and existing.process.poll() is None:
+                    return self._service_snapshot(existing, task_id)
+                self.service_sessions.pop(task_id, None)
+
+            active = 0
+            for session in self.service_sessions.values():
+                self._refresh_service_state(session)
+                if session.state in {"STARTING", "RUNNING"} and session.process.poll() is None:
+                    active += 1
+            if active >= MAX_SERVICE_SESSIONS:
+                raise ApiError(429, "The local service session limit has been reached. Stop another service first.")
+
+            workspace, _ = self.workspace_for_task(task_id)
+            build_exit, build_output = self.run_cli(["app-build", str(workspace)], timeout=75.0)
+            if build_exit != 0:
+                failure = {
+                    "task_id": task_id,
+                    "kind": profile["kind"],
+                    "state": "BUILD_FAILED",
+                    "port": None,
+                    "exit_code": build_exit,
+                    "clients_count": 0,
+                    "logs": bounded_output(build_output),
+                }
+                self.service_failures[task_id] = failure
+                return dict(failure)
+
+            runtime_directory = ensure_workspace_directory(
+                workspace, ".cppapplab", "application", "runtime"
+            )
+            # All registered services request a kernel-assigned ephemeral port
+            # and report the actual bound port through their readiness line.
+            port = 0
+            executable = workspace / ".cppapplab" / "application" / "learner_app"
+            try:
+                executable_status = executable.lstat()
+            except OSError as exc:
+                message = "The learner service executable is missing. Build the application first."
+                self.service_failures[task_id] = {
+                    "task_id": task_id, "kind": profile["kind"], "state": "FAILED",
+                    "port": None, "exit_code": None, "clients_count": 0,
+                    "logs": bounded_output(build_output + "\n[CppAppLab Web] " + message + "\n"),
+                }
+                raise ApiError(409, message) from exc
+            if executable.is_symlink() or not executable.is_file() or not os.access(executable, os.X_OK):
+                message = "The learner service executable is missing or unsafe."
+                self.service_failures[task_id] = {
+                    "task_id": task_id, "kind": profile["kind"], "state": "FAILED",
+                    "port": None, "exit_code": None, "clients_count": 0,
+                    "logs": bounded_output(build_output + "\n[CppAppLab Web] " + message + "\n"),
+                }
+                raise ApiError(409, message)
+            command = [str(executable), "server", str(port)]
+            if profile["kind"] == "http_server":
+                document_root = ensure_workspace_directory(
+                    runtime_directory, "www"
+                )
+                sample_index = document_root / "index.html"
+                if sample_index.exists() or sample_index.is_symlink():
+                    if sample_index.is_symlink() or not sample_index.is_file():
+                        raise ApiError(400, "The HTTP service document-root sample is unsafe.")
+                else:
+                    try:
+                        sample_index.write_text(
+                            "CppAppLab local document root\n", encoding="utf-8"
+                        )
+                    except OSError as exc:
+                        raise ApiError(500, f"Cannot create HTTP service sample: {exc}") from exc
+                command.append(str(document_root))
+
+            try:
+                process = subprocess.Popen(
+                    command,
+                    cwd=runtime_directory,
+                    env=self.child_env,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    bufsize=1,
+                    close_fds=True,
+                    start_new_session=True,
+                )
+            except OSError as exc:
+                message = f"Cannot start the registered learner service: {exc}"
+                self.service_failures[task_id] = {
+                    "task_id": task_id, "kind": profile["kind"], "state": "FAILED",
+                    "port": None, "exit_code": None, "clients_count": 0,
+                    "logs": bounded_output(build_output + "\n[CppAppLab Web] " + message + "\n"),
+                }
+                raise ApiError(503, message) from exc
+
+            self.service_failures.pop(task_id, None)
+            session = ServiceSession(
+                task_id=task_id,
+                kind=profile["kind"],
+                workspace=workspace,
+                process=process,
+                port=port,
+            )
+            self._append_service_log(session, build_output)
+            self.service_sessions[task_id] = session
+            reader = threading.Thread(
+                target=self._read_service_output,
+                args=(session,),
+                name=f"cppapplab-{profile['kind']}-logs",
+                daemon=True,
+            )
+            session.log_thread = reader
+            reader.start()
+            readiness_pattern = r"listening on 127\.0\.0\.1:(\d+)"
+            if profile["kind"] == "http_server":
+                readiness_pattern = r"listening on (\d+)"
+            deadline = time.monotonic() + 3.0
+            ready = False
+            while time.monotonic() < deadline:
+                self._refresh_service_state(session)
+                with session.log_lock:
+                    log_text = "".join(session.logs)
+                match = re.search(readiness_pattern, log_text)
+                if match is not None:
+                    reported_port = int(match.group(1))
+                    if 1 <= reported_port <= 65535:
+                        session.port = reported_port
+                        ready = True
+                        break
+                if session.process.poll() is not None:
+                    break
+                time.sleep(0.05)
+
+            if ready and session.process.poll() is None:
+                session.state = "RUNNING"
+            else:
+                self._append_service_log(
+                    session,
+                    "\n[CppAppLab Web] Service did not report loopback readiness within 3 seconds.\n",
+                )
+                self._terminate_service_process_group(session, 1.0)
+                session.exit_code = session.process.poll()
+                session.state = "FAILED"
+                if session.log_thread is not None:
+                    session.log_thread.join(timeout=0.5)
+            return self._service_snapshot(session, task_id)
+
+    def send_tcp_echo(self, task_id: str, message: str) -> dict[str, Any]:
+        profile = SERVICE_PROFILES.get(task_id)
+        if profile is None or profile["kind"] != "tcp_echo":
+            raise ApiError(409, "This task does not expose a TCP Echo client.")
+        if not isinstance(message, str) or not message:
+            raise ApiError(400, "Echo message must be non-empty text.")
+        encoded = message.encode("utf-8")
+        if len(encoded) > 1024 or any(character in message for character in "\r\n\t\x00"):
+            raise ApiError(400, "Echo message must be at most 1024 bytes on one line.")
+
+        with self.service_lock:
+            session = self.service_sessions.get(task_id)
+            if session is None:
+                raise ApiError(409, "Start the TCP Echo service before sending a message.")
+            self._refresh_service_state(session)
+            if session.state != "RUNNING" or session.process.poll() is not None:
+                raise ApiError(409, "The TCP Echo service is not running.")
+            session.last_activity = time.monotonic()
+            workspace = session.workspace
+            port = session.port
+
+        exit_code, output = self.run_cli(
+            ["app-run", str(workspace), "client", str(port), message],
+            timeout=10.0,
+        )
+        with self.service_lock:
+            self._refresh_service_state(session)
+            session.last_activity = time.monotonic()
+            snapshot = self._service_snapshot(session, task_id)
+        return {
+            "task_id": task_id,
+            "success": exit_code == 0,
+            "exit_code": exit_code,
+            "output": bounded_output(output),
+            "service": snapshot,
+        }
+
+    @staticmethod
+    def _collect_chat_messages(session: ServiceSession, timeout: float = 0.15) -> dict[str, list[str]]:
+        deadline = time.monotonic() + max(0.0, timeout)
+        while session.clients:
+            connections = [client.connection for client in session.clients.values()]
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            try:
+                readable, _, _ = select.select(connections, [], [], remaining)
+            except (OSError, ValueError):
+                break
+            if not readable:
+                break
+            disconnected: list[str] = []
+            for connection in readable:
+                client = next(
+                    (item for item in session.clients.values() if item.connection is connection),
+                    None,
+                )
+                if client is None:
+                    continue
+                try:
+                    data = connection.recv(4096)
+                except (BlockingIOError, InterruptedError):
+                    continue
+                except OSError:
+                    data = b""
+                if not data:
+                    disconnected.append(client.client_id)
+                    continue
+                client.buffer += data.decode("utf-8", errors="replace")
+                if len(client.buffer.encode("utf-8", errors="replace")) > 4096:
+                    disconnected.append(client.client_id)
+                    continue
+                while "\n" in client.buffer:
+                    line, client.buffer = client.buffer.split("\n", 1)
+                    if line.endswith("\r"):
+                        line = line[:-1]
+                    if line:
+                        client.inbox.append(line)
+                        while len(client.inbox) > 100:
+                            client.inbox.popleft()
+            for client_id in disconnected:
+                stale = session.clients.pop(client_id, None)
+                if stale is not None:
+                    try:
+                        stale.connection.close()
+                    except OSError:
+                        pass
+
+        result: dict[str, list[str]] = {}
+        for client_id, client in session.clients.items():
+            if client.inbox:
+                result[client_id] = list(client.inbox)
+                client.inbox.clear()
+        return result
+
+    def connect_chat_client(self, task_id: str, nickname: str) -> dict[str, Any]:
+        profile = SERVICE_PROFILES.get(task_id)
+        if profile is None or profile["kind"] != "tcp_chat":
+            raise ApiError(409, "This task does not expose a TCP Chat client.")
+        if not isinstance(nickname, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,24}", nickname):
+            raise ApiError(400, "Nickname must be 1–24 ASCII letters, digits, '_' or '-'.")
+        with self.service_lock:
+            session = self.service_sessions.get(task_id)
+            if session is None:
+                raise ApiError(409, "Start the TCP Chat service before connecting a client.")
+            self._refresh_service_state(session)
+            if session.state != "RUNNING" or session.process.poll() is not None:
+                raise ApiError(409, "The TCP Chat service is not running.")
+            if len(session.clients) >= 8:
+                raise ApiError(429, "The browser workbench supports at most eight Chat clients.")
+            port = session.port
+            session.last_activity = time.monotonic()
+
+        try:
+            connection = socket.create_connection(("127.0.0.1", port), timeout=2.0)
+            connection.settimeout(1.0)
+            connection.sendall(("NICK " + nickname + "\n").encode("ascii"))
+            # Keep the bounded timeout mode: select() handles reads, while
+            # sendall() remains safe for the bounded 1 KiB client messages.
+        except OSError as exc:
+            raise ApiError(502, f"Could not connect the local Chat client: {exc}") from exc
+
+        client_id = uuid.uuid4().hex[:12]
+        client = ServiceChatClient(client_id, nickname, connection)
+        with self.service_lock:
+            if self.service_sessions.get(task_id) is not session or session.process.poll() is not None:
+                connection.close()
+                raise ApiError(409, "The TCP Chat service stopped while the client was connecting.")
+            session.clients[client_id] = client
+            session.last_activity = time.monotonic()
+            messages = self._collect_chat_messages(session, 0.25)
+            own_messages = messages.get(client_id, [])
+            if not any(message == "OK NICK " + nickname for message in own_messages):
+                session.clients.pop(client_id, None)
+                connection.close()
+                raise ApiError(502, "The learner Chat server did not acknowledge the nickname.")
+            return {
+                "task_id": task_id,
+                "client_id": client_id,
+                "nickname": nickname,
+                "messages": messages,
+                "service": self._service_snapshot(session, task_id),
+            }
+
+    def send_chat_message(self, task_id: str, client_id: str, message: str) -> dict[str, Any]:
+        profile = SERVICE_PROFILES.get(task_id)
+        if profile is None or profile["kind"] != "tcp_chat":
+            raise ApiError(409, "This task does not expose a TCP Chat client.")
+        if not isinstance(message, str) or not message or len(message.encode("utf-8")) > 1024:
+            raise ApiError(400, "Chat message must contain 1–1024 UTF-8 bytes.")
+        if any(character in message for character in "\r\n\t\x00"):
+            raise ApiError(400, "Chat message must be a single line.")
+        with self.service_lock:
+            session = self.service_sessions.get(task_id)
+            client = session.clients.get(client_id) if session is not None else None
+            if session is None or client is None:
+                raise ApiError(404, "Chat client was not found; connect it again.")
+            self._refresh_service_state(session)
+            if session.state != "RUNNING" or session.process.poll() is not None:
+                raise ApiError(409, "The TCP Chat service is not running.")
+            try:
+                client.connection.sendall(("MSG " + message + "\n").encode("utf-8"))
+            except OSError as exc:
+                raise ApiError(502, f"Could not send the Chat message: {exc}") from exc
+            session.last_activity = time.monotonic()
+            messages = self._collect_chat_messages(session, 0.2)
+            return {
+                "task_id": task_id,
+                "client_id": client_id,
+                "messages": messages,
+                "service": self._service_snapshot(session, task_id),
+            }
+
+    def poll_chat_messages(self, task_id: str, client_id: str) -> dict[str, Any]:
+        profile = SERVICE_PROFILES.get(task_id)
+        if profile is None or profile["kind"] != "tcp_chat":
+            raise ApiError(409, "This task does not expose a TCP Chat client.")
+        with self.service_lock:
+            session = self.service_sessions.get(task_id)
+            if session is None or client_id not in session.clients:
+                raise ApiError(404, "Chat client was not found; connect it again.")
+            self._refresh_service_state(session)
+            session.last_activity = time.monotonic()
+            messages = self._collect_chat_messages(session, 0.1)
+            return {
+                "task_id": task_id,
+                "client_id": client_id,
+                "messages": messages,
+                "service": self._service_snapshot(session, task_id),
+            }
+
+    def disconnect_chat_client(self, task_id: str, client_id: str) -> dict[str, Any]:
+        with self.service_lock:
+            session = self.service_sessions.get(task_id)
+            if session is None:
+                raise ApiError(404, "Chat service session was not found.")
+            client = session.clients.pop(client_id, None)
+            if client is None:
+                raise ApiError(404, "Chat client was not found.")
+            try:
+                client.connection.sendall(b"QUIT\n")
+            except OSError:
+                pass
+            try:
+                client.connection.close()
+            except OSError:
+                pass
+            session.last_activity = time.monotonic()
+            messages = self._collect_chat_messages(session, 0.1)
+            return {
+                "task_id": task_id,
+                "client_id": client_id,
+                "messages": messages,
+                "service": self._service_snapshot(session, task_id),
+            }
+
+    def proxy_http_request(
+        self, task_id: str, method: str, target: str, body: str = ""
+    ) -> dict[str, Any]:
+        profile = SERVICE_PROFILES.get(task_id)
+        if profile is None or profile["kind"] != "http_server":
+            raise ApiError(409, "This task does not expose an HTTP request proxy.")
+        if method not in {"GET", "HEAD", "POST"}:
+            raise ApiError(400, "HTTP method must be GET, HEAD or POST.")
+        if not isinstance(target, str) or not target.startswith("/") or len(target) > 2048:
+            raise ApiError(400, "HTTP target must be a relative path beginning with '/'.")
+        parsed = urlsplit(target)
+        if parsed.scheme or parsed.netloc or parsed.fragment or target.startswith("//"):
+            raise ApiError(400, "Absolute URLs, authorities and fragments are not allowed.")
+        decoded_target = unquote(target)
+        decoded_path = unquote(parsed.path)
+        if "\\" in decoded_path or any(part in {".", ".."} for part in decoded_path.split("/")):
+            raise ApiError(400, "HTTP target contains an unsafe path component.")
+        if any(ord(character) < 0x20 or ord(character) == 0x7F for character in decoded_target):
+            raise ApiError(400, "HTTP target contains invalid control characters.")
+        if not isinstance(body, str) or len(body.encode("utf-8")) > 64 * 1024:
+            raise ApiError(413, "HTTP request body exceeds the 64 KiB limit.")
+        if method in {"GET", "HEAD"} and body:
+            raise ApiError(400, "Only POST requests may include a request body.")
+
+        with self.service_lock:
+            session = self.service_sessions.get(task_id)
+            if session is None:
+                raise ApiError(409, "Start the HTTP Server before sending a request.")
+            self._refresh_service_state(session)
+            if session.state != "RUNNING" or session.process.poll() is not None:
+                raise ApiError(409, "The HTTP Server is not running.")
+            port = session.port
+            session.last_activity = time.monotonic()
+
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3.0)
+        try:
+            body_bytes = body.encode("utf-8")
+            headers = {
+                "Host": f"127.0.0.1:{port}",
+                "Connection": "close",
+                "Content-Length": str(len(body_bytes)),
+            }
+            if method == "POST":
+                headers["Content-Type"] = "text/plain; charset=utf-8"
+            connection.request(method, target, body=body_bytes if method != "HEAD" else None, headers=headers)
+            response = connection.getresponse()
+            response_body = response.read(256 * 1024 + 1)
+            if len(response_body) > 256 * 1024:
+                raise ApiError(413, "HTTP response body exceeds the 256 KiB limit.")
+            safe_headers = {
+                name.lower(): value
+                for name, value in response.getheaders()
+                if name.lower() in {"content-type", "content-length", "cache-control"}
+            }
+            with self.service_lock:
+                session.last_activity = time.monotonic()
+                self._refresh_service_state(session)
+                snapshot = self._service_snapshot(session, task_id)
+            return {
+                "task_id": task_id,
+                "status_code": response.status,
+                "reason": response.reason,
+                "headers": safe_headers,
+                "body": response_body.decode("utf-8", errors="replace"),
+                "body_bytes": len(response_body),
+                "service": snapshot,
+            }
+        except ApiError:
+            raise
+        except (OSError, http.client.HTTPException) as exc:
+            raise ApiError(502, f"Could not proxy the request to the learner HTTP Server: {exc}") from exc
+        finally:
+            connection.close()
+
+    def stop_service(self, task_id: str, reason: str = "Stopped by learner") -> dict[str, Any]:
+        if task_id not in SERVICE_PROFILES:
+            raise ApiError(409, "This task has no registered network-service profile.")
+        with self.service_lock:
+            session = self.service_sessions.get(task_id)
+            if session is None:
+                failure = self.service_failures.get(task_id)
+                return dict(failure) if failure is not None else self._service_snapshot(None, task_id)
+            session.state = "STOPPING"
+            for client in list(session.clients.values()):
+                try:
+                    client.connection.sendall(b"QUIT\n")
+                except OSError:
+                    pass
+                try:
+                    client.connection.close()
+                except OSError:
+                    pass
+            session.clients.clear()
+            self._append_service_log(session, f"\n[CppAppLab Web] {reason}.\n")
+            stopped = self._terminate_service_process_group(session, 2.0)
+            if not stopped:
+                self._append_service_log(
+                    session, "\n[CppAppLab Web] Service process group did not exit after SIGKILL.\n"
+                )
+            session.exit_code = session.process.poll()
+            session.state = "STOPPED" if stopped else "FAILED"
+            session.last_activity = time.monotonic()
+            if session.log_thread is not None:
+                session.log_thread.join(timeout=0.5)
+            return self._service_snapshot(session, task_id)
+
+    def stop_all_services(self) -> None:
+        with self.service_lock:
+            task_ids = list(self.service_sessions)
+        for task_id in task_ids:
+            try:
+                self.stop_service(task_id, "Web workbench shutting down")
+            except ApiError as exc:
+                sys.stderr.write(f"[CppAppLab Web] Could not stop {task_id}: {exc.message}\n")
+
+    def _service_janitor_loop(self) -> None:
+        while not self.service_janitor_stop.wait(15.0):
+            now = time.monotonic()
+            expired: list[str] = []
+            with self.service_lock:
+                for task_id, session in self.service_sessions.items():
+                    self._refresh_service_state(session)
+                    if session.state not in {"STARTING", "RUNNING"} or session.process.poll() is not None:
+                        continue
+                    idle = now - session.last_activity >= SERVICE_IDLE_SECONDS
+                    lifetime = now - session.started_at >= SERVICE_MAX_LIFETIME_SECONDS
+                    if idle or lifetime:
+                        session.state = "EXPIRED"
+                        expired.append(task_id)
+            for task_id in expired:
+                try:
+                    self.stop_service(task_id, "Service session expired")
+                    with self.service_lock:
+                        session = self.service_sessions.get(task_id)
+                        if session is not None:
+                            session.state = "EXPIRED"
+                except ApiError as exc:
+                    sys.stderr.write(f"[CppAppLab Web] Could not expire {task_id}: {exc.message}\n")
+
+    def server_close(self) -> None:
+        self.service_janitor_stop.set()
+        self.stop_all_services()
+        if hasattr(self, "service_janitor"):
+            self.service_janitor.join(timeout=1.0)
+        super().server_close()
 
 
 class CppAppLabRequestHandler(BaseHTTPRequestHandler):
@@ -589,6 +1295,13 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         if len(parts) == 3 and parts[0] == "workspaces" and parts[2] == "files":
             self._get_workspace_files(parts[1])
             return
+        if len(parts) == 4 and parts[0] == "workspaces" and parts[2] == "service":
+            if parts[3] == "status":
+                self._send_json(200, self.server.service_status(parts[1]))
+                return
+            if parts[3] == "logs":
+                self._send_json(200, self.server.service_status(parts[1]))
+                return
         if len(parts) >= 4 and parts[0] == "workspaces" and parts[2] == "files":
             self._get_workspace_file(parts[1], "/".join(parts[3:]))
             return
@@ -613,6 +1326,7 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             "acceptance_kind": task["acceptance_kind"],
             "expected_test_count": task["expected_test_count"],
             "runtime_profile": RUNTIME_PROFILES.get(task_id),
+            "service_profile": SERVICE_PROFILES.get(task_id),
             "state": states.get(task_id, "UNKNOWN"),
             "lesson_markdown": lesson,
         })
@@ -681,6 +1395,45 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "app-run":
                 self._run_application(parts[3])
                 return
+            if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "start"]:
+                self._read_json()
+                self._send_json(200, self.server.start_service(parts[3]))
+                return
+            if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "stop"]:
+                self._read_json()
+                self._send_json(200, self.server.stop_service(parts[3]))
+                return
+            if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "echo"]:
+                value = self._read_json()
+                self._send_json(200, self.server.send_tcp_echo(parts[3], value.get("message")))
+                return
+            if len(parts) == 7 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:6] == ["service", "chat"]:
+                value = self._read_json()
+                action = parts[6]
+                if action == "connect":
+                    result = self.server.connect_chat_client(parts[3], value.get("nickname"))
+                elif action == "send":
+                    result = self.server.send_chat_message(
+                        parts[3], value.get("client_id"), value.get("message")
+                    )
+                elif action == "poll":
+                    result = self.server.poll_chat_messages(parts[3], value.get("client_id"))
+                elif action == "disconnect":
+                    result = self.server.disconnect_chat_client(parts[3], value.get("client_id"))
+                else:
+                    raise ApiError(404, "Chat service action not found.")
+                self._send_json(200, result)
+                return
+            if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "http"]:
+                value = self._read_json()
+                result = self.server.proxy_http_request(
+                    parts[3],
+                    value.get("method"),
+                    value.get("target"),
+                    value.get("body", ""),
+                )
+                self._send_json(200, result)
+                return
             if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "check":
                 self._check_workspace(parts[3])
                 return
@@ -734,6 +1487,8 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         if len(content.encode("utf-8")) > MAX_SOURCE_BYTES:
             raise ApiError(413, "Learner source file exceeds the 1 MiB limit.")
         target, _ = self.server.resolve_workspace_file(task_id, relative)
+        if task_id in SERVICE_PROFILES:
+            self.server.stop_service(task_id, "Learner source changed")
         parent = target.parent
         try:
             target_info = target.lstat()
@@ -776,7 +1531,7 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         })
 
     def _build_application(self, task_id: str) -> None:
-        if task_id not in RUNTIME_PROFILES:
+        if task_id not in RUNTIME_PROFILES and task_id not in SERVICE_PROFILES:
             raise ApiError(409, "This task has no browser application profile.")
         self._read_json()
         workspace, _ = self.server.workspace_for_task(task_id)

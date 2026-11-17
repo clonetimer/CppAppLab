@@ -663,6 +663,29 @@ async function main() {
       );
       assert.equal(await page.locator("#app-runner").isVisible(), false,
         taskId + " must wait for a real network-service profile");
+      assert.equal(await page.locator("#service-runner").isVisible(), true,
+        taskId + " must expose its registered network-service lifecycle panel");
+      assert.equal(await page.locator("#service-start-button").isDisabled(), true,
+        taskId + " must remain disabled until prerequisites and workspace are ready");
+      assert.equal(await page.locator("#service-stop-button").isDisabled(), true);
+      if (taskId === "w7.tcp-echo") {
+        assert.equal(await page.locator("#service-echo-message").count(), 1);
+        assert.equal(await page.locator("#service-echo-send").isDisabled(), true);
+      } else if (taskId === "w7.tcp-chat") {
+        assert.equal(await page.locator("#service-chat-nickname").count(), 1);
+        assert.equal(await page.locator("#service-chat-connect").isDisabled(), true);
+        assert.equal(await page.locator("#service-chat-client").count(), 1);
+        assert.equal(await page.locator("#service-chat-message").count(), 1);
+        assert.equal(await page.locator("#service-chat-output").count(), 1);
+      } else if (taskId === "w8.http-server") {
+        assert.equal(await page.locator("#service-http-method").count(), 1);
+        assert.deepEqual(await page.locator("#service-http-method option").evaluateAll((items) =>
+          items.map((item) => item.value)
+        ), ["GET", "HEAD", "POST"]);
+        assert.equal(await page.locator("#service-http-target").inputValue(), "/");
+        assert.equal(await page.locator("#service-http-body").isDisabled(), true);
+        assert.equal(await page.locator("#service-http-send").isDisabled(), true);
+      }
     }
 
     // A locked later task may display its instructional action schema, but

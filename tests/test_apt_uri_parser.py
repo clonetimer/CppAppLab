@@ -140,6 +140,92 @@ Need to get 80.0 kB of archives.
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual((output / "pkg.deb").read_bytes(), payload)
 
+    def test_downloader_retries_transient_http_503_before_mirror_fallback(self) -> None:
+        import http.server
+        import threading
+
+        payload = b"verified-package"
+        expected_sha = hashlib.sha256(payload).hexdigest()
+        attempts = {"count": 0}
+
+        class FlakyHandler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self) -> None:
+                attempts["count"] += 1
+                if attempts["count"] < 3:
+                    self.send_error(503, "temporary snapshot outage")
+                    return
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+
+            def log_message(self, format: str, *args: object) -> None:
+                return
+
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), FlakyHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        self.addCleanup(thread.join, 2)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manifest = root / "uris.json"
+            manifest.write_text(json.dumps([{
+                "filename": "pkg.deb",
+                "size": len(payload),
+                "sha256": expected_sha,
+                "mirrors": [f"http://127.0.0.1:{server.server_port}/pkg.deb"],
+            }]), encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(DOWNLOADER), "--input", str(manifest),
+                 "--output", str(root / "out")],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(attempts["count"], 3)
+            self.assertEqual((root / "out" / "pkg.deb").read_bytes(), payload)
+            self.assertIn("attempt 3/3", result.stdout)
+
+    def test_downloader_does_not_retry_permanent_http_404(self) -> None:
+        import http.server
+        import threading
+
+        attempts = {"count": 0}
+
+        class MissingHandler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self) -> None:
+                attempts["count"] += 1
+                self.send_error(404, "not found")
+
+            def log_message(self, format: str, *args: object) -> None:
+                return
+
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), MissingHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        self.addCleanup(thread.join, 2)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            manifest = root / "uris.json"
+            manifest.write_text(json.dumps([{
+                "filename": "pkg.deb",
+                "size": 10,
+                "mirrors": [f"http://127.0.0.1:{server.server_port}/missing.deb"],
+            }]), encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(DOWNLOADER), "--input", str(manifest),
+                 "--output", str(root / "out")],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(attempts["count"], 1)
+            self.assertIn("HTTP 404", result.stderr)
+
     def test_downloader_rejects_checksum_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

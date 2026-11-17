@@ -19,7 +19,7 @@ bool parse_port(const char* text, std::uint16_t& port) {
     char* end = nullptr;
     errno = 0;
     const unsigned long value = std::strtoul(text, &end, 10);
-    if (errno != 0 || end == text || *end != '\0' || value == 0UL || value > 65535UL) {
+    if (errno != 0 || end == text || *end != '\0' || value > 65535UL) {
         return false;
     }
     port = static_cast<std::uint16_t>(value);

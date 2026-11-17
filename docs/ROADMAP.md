@@ -281,11 +281,14 @@ The roadmap is outcome-based. Additional lessons are added only when they improv
 
 ## P8 — Browser-first learning workbench
 
-**Status: P8-A validated; P8-B implementation in CI on `feat/p8-web-learning-workbench-20261116`.**
+**Status: P8-A and P8-B validated on `feat/p8-web-learning-workbench-20261116`; P8-C is next.**  
+**P8-B validated head:** `e58227d06b7252fc5023339064637512f5954ae0`.  
+**Final PR CI:** [#1524](https://github.com/clonetimer/CppAppLab/actions/runs/43904815195) passed the required GCC/GoogleTest, ASan/UBSan, clang-format/clang-tidy, offline-dependency, package, Windows launcher and Chromium browser jobs.  
+**Final push CI:** [#1523](https://github.com/clonetimer/CppAppLab/actions/runs/43904797238) also passed Ubuntu 22.04 source-build compatibility.
 
 The goal is to move the learner-facing workflow into one browser tab while preserving the existing C++ learning engine and CLI.
 
-### P8-A — Local web foundation
+### P8-A — Local web foundation (validated)
 
 - [x] Define the browser adapter architecture and API/security boundaries.
 - [x] Add a loopback-only Python standard-library service.
@@ -300,7 +303,7 @@ The goal is to move the learner-facing workflow into one browser tab while prese
 - [x] Pass the local start/status/stop launcher smoke test.
 - [ ] Complete Windows 11 + WSL2 target-machine browser startup (P8-E).
 
-### P8-B — Professional editor and learning loop
+### P8-B — Professional editor and learning loop (validated)
 
 - [x] Add pinned Monaco 0.52.2 with a local plain-text fallback.
 - [x] Add per-file editor models and multi-file source tabs.
@@ -310,18 +313,19 @@ The goal is to move the learner-facing workflow into one browser tab while prese
 - [x] Add source-fingerprint build stamps and reject stale build execution.
 - [x] Keep build/run results separate from formal acceptance evidence.
 - [x] Parse GCC/CMake diagnostics into clickable source locations and Monaco markers.
-- [x] Add real Chromium/Playwright acceptance for Monaco multi-file editing, autosave, build/run/evidence separation, CMake diagnostics, source navigation, task unlock, mobile layout and CDN-blocked fallback.
-- [ ] Pass Ubuntu 22.04/24.04 C++ build and GoogleTest matrix.
-- [ ] Pass real-engine direct-execution and CMake/GoogleTest browser integration.
-- [ ] Pass ASan/UBSan and clang-tidy matrix after the engine changes.
-- [ ] Pass the Chromium browser acceptance job and inspect its desktop/mobile screenshots.
+- [x] Pass real Chromium/Playwright acceptance for Monaco multi-file editing, autosave, build/run/evidence separation, CMake diagnostics, source navigation, task unlock, 390px mobile layout and forced-CDN-failure textarea fallback.
+- [x] Pass Ubuntu 22.04/24.04 GCC/GoogleTest, ASan/UBSan, clang-format/clang-tidy, offline dependency verification and source/learner package builds.
+- [x] Pass Windows launcher syntax/handoff checks.
+- [x] Review desktop and mobile browser screenshots; verify mobile page has no horizontal overflow.
+- [ ] Complete Windows 11 + WSL2 target-machine browser startup (P8-E).
 
-### P8-C — Full course experience
+### P8-C — Full course experience (next)
 
-- Cover all 23 released W1–W9 tasks.
-- Interactive stdin/stdout for CLI programs and lifecycle controls for network services.
-- Visual course dependencies, progress, history and stale-evidence states.
-- Responsive layout and learner-oriented recovery guidance.
+- [ ] C1: audit all 23 registered W1–W9 tasks and classify their interaction contracts: direct CLI program, multi-file/CMake project, or long-running network service.
+- [ ] C2: add browser-managed stdin/stdout and process lifecycle for direct CLI programs, using task-declared fixed execution profiles only.
+- [ ] C3: add fixed-profile start/stop/status/log controls for registered network-service tasks; no arbitrary shell or user-supplied executable/argument surface.
+- [ ] C4: expose acceptance history, stale-evidence reasons and prerequisite dependencies from the existing learning-engine records.
+- [ ] C5: complete responsive recovery guidance and cross-task user-journey regression.
 
 ### P8-D — Professional tooling
 

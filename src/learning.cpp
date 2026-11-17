@@ -7,6 +7,7 @@
 #include "cppapplab/workspace.hpp"
 
 #include <chrono>
+#include <charconv>
 #include <cctype>
 #include <cstdlib>
 #include <ctime>
@@ -1617,6 +1618,23 @@ int run_cli(int argc, char* argv[]) {
                 throw std::invalid_argument("Usage: cppapplab build <workspace-directory>");
             }
             return build_workspace(argv[2]);
+        }
+        if (command == "app-build") {
+            if (argc != 3) {
+                throw std::invalid_argument("Usage: cppapplab app-build <workspace-directory>");
+            }
+            return build_application_workspace(argv[2]);
+        }
+        if (command == "app-run") {
+            if (argc < 4) {
+                throw std::invalid_argument("Usage: cppapplab app-run <workspace-directory> <action> [values...]");
+            }
+            std::vector<std::string> requested;
+            requested.reserve(static_cast<std::size_t>(argc - 3));
+            for (int index = 3; index < argc; ++index) {
+                requested.emplace_back(argv[index]);
+            }
+            return run_application_workspace(argv[2], requested);
         }
         if (command == "run") {
             if (argc != 3) {

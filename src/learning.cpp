@@ -829,7 +829,7 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
         if (action == "parse-line" && requested.size() == 2U) {
             const auto& request_line = requested[1];
             if (request_line.empty() || request_line.size() > 512U ||
-                request_line.find_first_of("\\r\\n\\t") != std::string::npos) {
+                request_line.find_first_of("\r\n\t") != std::string::npos) {
                 throw std::invalid_argument("HTTP request line must be short, non-empty and single-line.");
             }
             application_arguments = {"parse-line", request_line};
@@ -848,7 +848,7 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
             throw std::invalid_argument("Static-files method is not registered.");
         }
         if (target.empty() || target.size() > 512U ||
-            target.find_first_of("\\r\\n\\t") != std::string::npos) {
+            target.find_first_of("\r\n\t") != std::string::npos) {
             throw std::invalid_argument("Static-files target must be short, non-empty and single-line.");
         }
         application_arguments = {"handle", method, target};
@@ -888,7 +888,7 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
             if (!sample) {
                 throw std::runtime_error("Cannot create the application document-root sample.");
             }
-            sample << "CppAppLab local document root\\n";
+            sample << "CppAppLab local document root\n";
             sample.flush();
             if (!sample) {
                 throw std::runtime_error("Cannot write the application document-root sample.");

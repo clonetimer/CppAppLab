@@ -372,7 +372,16 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         self.child_env["HOME"] = str(Path(self.child_env.get("HOME", str(Path.home()))).expanduser())
         self.tasks = load_catalog(self.root)
         self.task_by_id = {task["id"]: task for task in self.tasks}
+        self.service_sessions: dict[str, ServiceSession] = {}
+        self.service_lock = threading.RLock()
+        self.service_janitor_stop = threading.Event()
         super().__init__(address, CppAppLabRequestHandler)
+        self.service_janitor = threading.Thread(
+            target=self._service_janitor_loop,
+            name="cppapplab-service-janitor",
+            daemon=True,
+        )
+        self.service_janitor.start()
 
     def run_cli(
         self, arguments: list[str], timeout: float = 20.0, input_data: str | None = None
@@ -476,6 +485,237 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         if exit_code != 0:
             return {task["id"]: "UNKNOWN" for task in self.tasks}
         return parse_progress(output, self.tasks)
+
+    @staticmethod
+    def _append_service_log(session: ServiceSession, value: str) -> None:
+        encoded = value.encode("utf-8", errors="replace")
+        if len(encoded) > MAX_SERVICE_LOG_BYTES:
+            encoded = encoded[-MAX_SERVICE_LOG_BYTES:]
+            value = encoded.decode("utf-8", errors="ignore")
+            encoded = value.encode("utf-8")
+        with session.log_lock:
+            session.logs.append(value)
+            session.log_bytes += len(encoded)
+            while session.log_bytes > MAX_SERVICE_LOG_BYTES and session.logs:
+                removed = session.logs.popleft()
+                session.log_bytes -= len(removed.encode("utf-8", errors="replace"))
+
+    @staticmethod
+    def _read_service_output(session: ServiceSession) -> None:
+        stream = session.process.stdout
+        if stream is None:
+            return
+        try:
+            for line in iter(stream.readline, ""):
+                CppAppLabWebServer._append_service_log(session, line)
+        finally:
+            try:
+                stream.close()
+            except OSError:
+                pass
+
+    @staticmethod
+    def _refresh_service_state(session: ServiceSession) -> None:
+        exit_code = session.process.poll()
+        if exit_code is not None:
+            session.exit_code = exit_code
+            if session.state not in {"STOPPED", "EXPIRED"}:
+                session.state = "STOPPED" if exit_code == 0 else "FAILED"
+
+    @staticmethod
+    def _service_snapshot(session: ServiceSession | None, task_id: str) -> dict[str, Any]:
+        if session is None:
+            return {"task_id": task_id, "state": "STOPPED", "port": None, "exit_code": None, "logs": ""}
+        CppAppLabWebServer._refresh_service_state(session)
+        with session.log_lock:
+            logs = "".join(session.logs)
+        return {
+            "task_id": session.task_id,
+            "kind": session.kind,
+            "state": session.state,
+            "port": session.port,
+            "exit_code": session.exit_code,
+            "started_seconds_ago": max(0, int(time.monotonic() - session.started_at)),
+            "logs": logs,
+        }
+
+    def service_status(self, task_id: str) -> dict[str, Any]:
+        if task_id not in SERVICE_PROFILES:
+            raise ApiError(409, "This task has no registered network-service profile.")
+        with self.service_lock:
+            session = self.service_sessions.get(task_id)
+            return self._service_snapshot(session, task_id)
+
+    def start_service(self, task_id: str) -> dict[str, Any]:
+        profile = SERVICE_PROFILES.get(task_id)
+        if profile is None:
+            raise ApiError(409, "This task has no registered network-service profile.")
+
+        with self.service_lock:
+            existing = self.service_sessions.get(task_id)
+            if existing is not None:
+                self._refresh_service_state(existing)
+                if existing.state in {"STARTING", "RUNNING"} and existing.process.poll() is None:
+                    return self._service_snapshot(existing, task_id)
+                self.service_sessions.pop(task_id, None)
+
+            active = 0
+            for session in self.service_sessions.values():
+                self._refresh_service_state(session)
+                if session.state in {"STARTING", "RUNNING"} and session.process.poll() is None:
+                    active += 1
+            if active >= MAX_SERVICE_SESSIONS:
+                raise ApiError(429, "The local service session limit has been reached. Stop another service first.")
+
+            workspace, _ = self.workspace_for_task(task_id)
+            build_exit, build_output = self.run_cli(["app-build", str(workspace)], timeout=75.0)
+            if build_exit != 0:
+                return {
+                    "task_id": task_id,
+                    "kind": profile["kind"],
+                    "state": "BUILD_FAILED",
+                    "port": None,
+                    "exit_code": build_exit,
+                    "logs": bounded_output(build_output),
+                }
+
+            runtime_directory = ensure_workspace_directory(
+                workspace, ".cppapplab", "application", "runtime"
+            )
+            port = reserve_loopback_port()
+            command = [str(self.binary), "server", str(port)]
+            if profile["kind"] == "http_server":
+                document_root = ensure_workspace_directory(
+                    runtime_directory, "www"
+                )
+                sample_index = document_root / "index.html"
+                if sample_index.exists() or sample_index.is_symlink():
+                    if sample_index.is_symlink() or not sample_index.is_file():
+                        raise ApiError(400, "The HTTP service document-root sample is unsafe.")
+                else:
+                    try:
+                        sample_index.write_text(
+                            "CppAppLab local document root\n", encoding="utf-8"
+                        )
+                    except OSError as exc:
+                        raise ApiError(500, f"Cannot create HTTP service sample: {exc}") from exc
+                command.append(str(document_root))
+
+            try:
+                process = subprocess.Popen(
+                    command,
+                    cwd=runtime_directory,
+                    env=self.child_env,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    bufsize=1,
+                    close_fds=True,
+                    start_new_session=True,
+                )
+            except OSError as exc:
+                raise ApiError(503, f"Cannot start the registered learner service: {exc}") from exc
+
+            session = ServiceSession(
+                task_id=task_id,
+                kind=profile["kind"],
+                workspace=workspace,
+                process=process,
+                port=port,
+            )
+            self._append_service_log(session, build_output)
+            self.service_sessions[task_id] = session
+            reader = threading.Thread(
+                target=self._read_service_output,
+                args=(session,),
+                name=f"cppapplab-{profile['kind']}-logs",
+                daemon=True,
+            )
+            session.log_thread = reader
+            reader.start()
+            time.sleep(0.15)
+            self._refresh_service_state(session)
+            if session.process.poll() is not None and session.log_thread is not None:
+                session.log_thread.join(timeout=0.5)
+            elif session.state == "STARTING":
+                session.state = "RUNNING"
+            return self._service_snapshot(session, task_id)
+
+    def stop_service(self, task_id: str, reason: str = "Stopped by learner") -> dict[str, Any]:
+        if task_id not in SERVICE_PROFILES:
+            raise ApiError(409, "This task has no registered network-service profile.")
+        with self.service_lock:
+            session = self.service_sessions.get(task_id)
+            if session is None:
+                return self._service_snapshot(None, task_id)
+            self._append_service_log(session, f"\n[CppAppLab Web] {reason}.\n")
+            if session.process.poll() is None:
+                try:
+                    os.killpg(session.process.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+                try:
+                    session.process.wait(timeout=2.0)
+                except subprocess.TimeoutExpired:
+                    try:
+                        os.killpg(session.process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    try:
+                        session.process.wait(timeout=2.0)
+                    except subprocess.TimeoutExpired:
+                        self._append_service_log(
+                            session, "\n[CppAppLab Web] Service process did not exit after SIGKILL.\n"
+                        )
+            session.exit_code = session.process.poll()
+            session.state = "STOPPED"
+            session.last_activity = time.monotonic()
+            if session.log_thread is not None:
+                session.log_thread.join(timeout=0.5)
+            return self._service_snapshot(session, task_id)
+
+    def stop_all_services(self) -> None:
+        with self.service_lock:
+            task_ids = list(self.service_sessions)
+        for task_id in task_ids:
+            try:
+                self.stop_service(task_id, "Web workbench shutting down")
+            except ApiError as exc:
+                sys.stderr.write(f"[CppAppLab Web] Could not stop {task_id}: {exc.message}\n")
+
+    def _service_janitor_loop(self) -> None:
+        while not self.service_janitor_stop.wait(15.0):
+            now = time.monotonic()
+            expired: list[str] = []
+            with self.service_lock:
+                for task_id, session in self.service_sessions.items():
+                    self._refresh_service_state(session)
+                    if session.state not in {"STARTING", "RUNNING"} or session.process.poll() is not None:
+                        continue
+                    idle = now - session.last_activity >= SERVICE_IDLE_SECONDS
+                    lifetime = now - session.started_at >= SERVICE_MAX_LIFETIME_SECONDS
+                    if idle or lifetime:
+                        session.state = "EXPIRED"
+                        expired.append(task_id)
+            for task_id in expired:
+                try:
+                    self.stop_service(task_id, "Service session expired")
+                    with self.service_lock:
+                        session = self.service_sessions.get(task_id)
+                        if session is not None:
+                            session.state = "EXPIRED"
+                except ApiError as exc:
+                    sys.stderr.write(f"[CppAppLab Web] Could not expire {task_id}: {exc.message}\n")
+
+    def server_close(self) -> None:
+        self.service_janitor_stop.set()
+        self.stop_all_services()
+        if hasattr(self, "service_janitor"):
+            self.service_janitor.join(timeout=1.0)
+        super().server_close()
 
 
 class CppAppLabRequestHandler(BaseHTTPRequestHandler):

@@ -645,6 +645,43 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 session.state = "RUNNING"
             return self._service_snapshot(session, task_id)
 
+    def send_tcp_echo(self, task_id: str, message: str) -> dict[str, Any]:
+        profile = SERVICE_PROFILES.get(task_id)
+        if profile is None or profile["kind"] != "tcp_echo":
+            raise ApiError(409, "This task does not expose a TCP Echo client.")
+        if not isinstance(message, str) or not message:
+            raise ApiError(400, "Echo message must be non-empty text.")
+        encoded = message.encode("utf-8")
+        if len(encoded) > 1024 or any(character in message for character in "\r\n\t\x00"):
+            raise ApiError(400, "Echo message must be at most 1024 bytes on one line.")
+
+        with self.service_lock:
+            session = self.service_sessions.get(task_id)
+            if session is None:
+                raise ApiError(409, "Start the TCP Echo service before sending a message.")
+            self._refresh_service_state(session)
+            if session.state != "RUNNING" or session.process.poll() is not None:
+                raise ApiError(409, "The TCP Echo service is not running.")
+            session.last_activity = time.monotonic()
+            workspace = session.workspace
+            port = session.port
+
+        exit_code, output = self.run_cli(
+            ["app-run", str(workspace), "client", str(port), message],
+            timeout=10.0,
+        )
+        with self.service_lock:
+            self._refresh_service_state(session)
+            session.last_activity = time.monotonic()
+            snapshot = self._service_snapshot(session, task_id)
+        return {
+            "task_id": task_id,
+            "success": exit_code == 0,
+            "exit_code": exit_code,
+            "output": bounded_output(output),
+            "service": snapshot,
+        }
+
     def stop_service(self, task_id: str, reason: str = "Stopped by learner") -> dict[str, Any]:
         if task_id not in SERVICE_PROFILES:
             raise ApiError(409, "This task has no registered network-service profile.")
@@ -996,6 +1033,10 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "stop"]:
                 self._read_json()
                 self._send_json(200, self.server.stop_service(parts[3]))
+                return
+            if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "echo"]:
+                value = self._read_json()
+                self._send_json(200, self.server.send_tcp_echo(parts[3], value.get("message")))
                 return
             if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "check":
                 self._check_workspace(parts[3])

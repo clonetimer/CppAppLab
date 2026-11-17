@@ -1,6 +1,20 @@
 # W2 · Persistent Todo CLI
 
 ## Goal
+## Start here
+
+Build the Todo program in small steps. Do not try to implement persistence and every command at once.
+
+1. Start with an empty list and make `add` append one valid item.
+2. Make `list` display items in ID order.
+3. Implement `done` and `remove` for an existing ID.
+4. Try an unknown ID and an empty title. The program should report an error without changing other items.
+5. Add saving and loading only after the in-memory operations work. Run the program twice to prove that data survives between runs.
+
+**What the STL containers do:** `vector` stores an ordered group of items; `string` stores a title; algorithms such as `find_if` search the collection. You do not need to memorize all STL algorithms before starting—use the interface and examples as you implement each operation.
+
+The platform's fixed acceptance checks include malformed files and interrupted/invalid persistence cases. Treat those as later robustness work after the basic Todo loop works.
+
 
 Build a small command-line application that manages a list of tasks across separate program runs. This exercise introduces the STL as a practical data-management toolkit and makes file persistence part of the program's behavior.
 

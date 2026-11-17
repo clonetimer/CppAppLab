@@ -281,7 +281,7 @@ The roadmap is outcome-based. Additional lessons are added only when they improv
 
 ## P8 — Browser-first learning workbench
 
-**Status: P8-A/P8-B merged into `main`; P8-C1/C2 validated in PR #41 (`feat/p8-c-full-course-experience-20261117`).**  
+**Status: P8-A/P8-B and P8-C2 merged into `main`; P8-C3 service sessions implemented on `feat/p8-c3-network-service-sessions-20261117`, final CI qualification in progress.**  
 **P8-B validated head:** `e58227d06b7252fc5023339064637512f5954ae0`.  
 **Final PR CI:** [#1524](https://github.com/clonetimer/CppAppLab/actions/runs/43904815195) passed the required GCC/GoogleTest, ASan/UBSan, clang-format/clang-tidy, offline-dependency, package, Windows launcher and Chromium browser jobs.  
 **Final push CI:** [#1523](https://github.com/clonetimer/CppAppLab/actions/runs/43904797238) also passed Ubuntu 22.04 source-build compatibility.
@@ -324,7 +324,7 @@ The goal is to move the learner-facing workflow into one browser tab while prese
 
 - [x] C1: audit all 23 registered W1–W9 tasks and classify their interaction contracts. See `docs/WEB_WORKBENCH_P8_C_PLAN.md`.
 - [x] C2: add fixed application build profiles and browser-managed structured CLI/stdin interaction for eligible tasks; never expose arbitrary commands. Validated in PR #41 with real Chromium CRUD, persistence, stdin-boundary and acceptance-separation coverage.
-- [ ] C3: add fixed-profile start/stop/status/log controls for registered network-service tasks; no arbitrary shell or user-supplied executable/argument surface.
+- [x] C3: add fixed-profile start/stop/status/log controls for registered network-service tasks; no arbitrary shell or user-supplied executable/argument surface. TCP Echo round trip, Chat multi-client bridge, HTTP loopback proxy, bounded sessions and process-group cleanup are implemented; see `docs/WEB_WORKBENCH_P8_C_PLAN.md`.
 - [ ] C4: expose acceptance history, stale-evidence reasons and prerequisite dependencies from the existing learning-engine records.
 - [ ] C5: complete responsive recovery guidance and cross-task user-journey regression.
 

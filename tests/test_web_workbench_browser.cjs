@@ -787,6 +787,23 @@ async function main() {
       secondTaskId
     );
 
+    // First-time learner guidance must be present in the first four lessons.
+    for (const taskId of [
+      "w1.hello-world", "w1.calculator", "w2.todo-cli",
+      "w3.task-manager", "w4.quality-gate"
+    ]) {
+      await page.locator('#course-list .task-link[data-task-id="' + taskId + '"]').click();
+      await page.waitForFunction((id) =>
+        document.querySelector("#task-breadcrumb")?.textContent.trim() === id,
+        taskId
+      );
+      assert.match(
+        await page.locator("#lesson-content").textContent(),
+        /Start here/,
+        taskId + " must provide a task-first beginner walkthrough"
+      );
+    }
+
     // Refresh must preserve the last formal PASS and the history timeline.
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForFunction(() =>

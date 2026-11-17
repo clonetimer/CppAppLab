@@ -83,14 +83,46 @@ The W7 Chat and W8 HTTP Server learner templates are deliberately incomplete unt
 
 ### P8-C3 — Network-service interaction
 
-- [ ] Add fixed service profiles for TCP Echo, TCP Chat and HTTP Server.
-- [ ] Add loopback-only ephemeral-port startup and readiness detection.
-- [ ] Add explicit service states, bounded logs, stop controls, process-group cleanup and idle expiry.
-- [ ] Add fixed TCP client bridge for Echo and browser-managed chat sessions for Chat.
-- [ ] Add HTTP request/response proxying restricted to the active HTTP Server session.
-- [ ] Verify service startup failures surface learner diagnostics and never mark acceptance evidence.
-- [ ] Add lifecycle, concurrency, timeout and cleanup browser tests.
+#### Service-session architecture
 
+- Service profiles are platform-owned and task-ID keyed. The browser supplies only typed request/message data; it never chooses a binary, port, bind address, process arguments or environment.
+- Build each service through the registered application build profile before launch. The service supervisor launches only the workspace's fingerprint-stamped `learner_app` with fixed arguments.
+- Bind services to `127.0.0.1` only and allocate a short-lived loopback port. The browser reaches services through the same-origin Python API bridge, not by supplying an arbitrary host or URL.
+- Use an explicit lifecycle: `STARTING → RUNNING → STOPPING → STOPPED` or `FAILED`. Capture bounded stdout/stderr logs, drain output continuously, reap every child, and terminate the entire process group on stop or timeout.
+- Enforce a small active-session limit, a maximum session lifetime, idle expiry, bounded client counts, bounded request/message sizes, and deterministic cleanup on task switch, source mutation and web-server shutdown.
+- A service being ready or responding is not formal course acceptance. Only `cppapplab check` may write course evidence.
+
+#### Fixed task contracts
+
+| Task | Fixed service contract | Browser bridge |
+|---|---|---|
+| `w7.tcp-echo` | One loopback Echo server process; one client exchange per server instance | Run the registered learner client action against the active session port; show exact echoed output |
+| `w7.tcp-chat` | One loopback Chat server; bounded multi-client sessions | Python-managed TCP clients using the registered `NICK`, `MSG` and `QUIT` line protocol; no browser raw socket or arbitrary destination |
+| `w8.http-server` | One loopback HTTP server using a workspace-local document root | Same-origin request proxy with fixed loopback destination, method allowlist, bounded target/body/response and filtered response headers |
+
+#### Build boundaries
+
+- TCP Echo application profile compiles only its declared learner `main.cpp` and `tcp_echo.cpp`.
+- TCP Chat application profile compiles only its declared learner `main.cpp` and `tcp_chat.cpp`.
+- HTTP Server compiles learner-declared `main.cpp` and `http_server.cpp`, plus explicitly enumerated platform-owned support sources from the previously validated W8 Router and W6 Thread Pool reference libraries. These support sources are not exposed as learner-editable files and are not accepted from the browser.
+- The HTTP Server learner implementation is intentionally incomplete at this milestone. Startup must surface its actual constructor/run TODO; it must not fall back to the reference server.
+
+#### Delivery slices
+
+- [ ] C3-A: fixed service build profiles, process supervisor, bounded log capture, state machine, loopback port allocation, stop/expiry and process-group cleanup.
+- [ ] C3-B: TCP Echo start/status/send/stop journey using the learner's own server and client implementation.
+- [ ] C3-C: TCP Chat server lifecycle and bounded browser-managed multi-client bridge.
+- [ ] C3-D: HTTP Server lifecycle and same-origin HTTP request/response proxy against the workspace document root.
+- [ ] C3-E: Chromium, Python API and C++ integration regression across Ubuntu 22.04/24.04; verify incomplete learner services surface real diagnostics and never create formal PASS evidence.
+
+#### Acceptance gates
+
+1. No service binds beyond loopback; no browser request can select an arbitrary host, port, executable or process argument.
+2. Start is idempotent; failed startup returns learner diagnostics; status and logs remain available after process exit.
+3. Stop, task switching, source edits, idle expiry and web-server shutdown leave no child process or client socket behind.
+4. Logs, clients, chat lines, HTTP request bodies and HTTP responses have explicit limits.
+5. Echo completes a real learner-client round trip; Chat supports at least two independent browser-managed clients and message broadcast; HTTP proxy returns a real learner-server response when implemented.
+6. Starter Chat/HTTP Server TODOs are shown as failures, never replaced by reference implementations or reported as acceptance PASS.
 ### P8-C4 — Course state and history
 
 - [ ] Expose current and historical acceptance attempts from the existing learning-engine records.

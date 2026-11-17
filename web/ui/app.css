@@ -318,6 +318,22 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .service-controls input:focus, .service-controls textarea:focus, .service-controls select:focus { border-color: rgba(117, 166, 239, .7); }
 .service-controls button { min-height: 36px; padding: 8px 12px; font-size: 11px; }
 .service-runner-buttons { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+.service-chat-output {
+  flex: 1 0 100%;
+  width: 100%;
+  min-height: 88px;
+  max-height: 180px;
+  overflow: auto;
+  margin: 2px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(8, 18, 30, .72);
+  color: #c8d7eb;
+  font: 11px/1.6 "Cascadia Code", Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .service-runner-buttons button { min-height: 36px; padding: 8px 12px; font-size: 11px; }
 .service-log-heading { margin: 12px 0 5px; color: #8ea3c2; font-size: 10px; letter-spacing: .04em; }
 .service-logs {

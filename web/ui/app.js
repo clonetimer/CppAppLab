@@ -881,6 +881,175 @@
     }
   }
 
+  function serviceStateLabel(snapshot) {
+    const stateValue = snapshot && snapshot.state ? snapshot.state : "STOPPED";
+    if (stateValue === "STOPPED" && snapshot && snapshot.exit_code === 0) return "已完成";
+    return ({
+      STOPPED: "未启动",
+      STARTING: "启动中",
+      RUNNING: "运行中",
+      FAILED: "启动失败",
+      BUILD_FAILED: "构建失败",
+      EXPIRED: "已过期"
+    })[stateValue] || stateValue;
+  }
+
+  function updateServiceSnapshot(snapshot) {
+    state.serviceSnapshot = snapshot || { state: "STOPPED", port: null, logs: "" };
+    if (!state.task || !state.task.service_profile) return;
+    const current = state.serviceSnapshot;
+    ui.serviceState.textContent = serviceStateLabel(current);
+    ui.serviceState.dataset.state = current.state || "STOPPED";
+    ui.servicePort.textContent = current.port ? "127.0.0.1:" + current.port : "";
+    ui.serviceLogs.textContent = current.logs || "暂无服务日志。";
+    const locked = state.task.state === "LOCKED";
+    const active = ["STARTING", "RUNNING"].includes(current.state);
+    ui.serviceStartButton.disabled = state.busy || !state.workspaceReady || locked || active;
+    ui.serviceStopButton.disabled = state.busy || !active;
+    ui.serviceRefreshButton.disabled = state.busy;
+    ui.serviceControls.querySelectorAll("input, select, textarea, button").forEach((control) => {
+      control.disabled = state.busy || !state.workspaceReady || locked ||
+        (control.id === "service-echo-send" && !active);
+    });
+  }
+
+  function renderServiceRunner() {
+    const profile = state.task && state.task.service_profile;
+    if (!profile) {
+      ui.serviceRunner.hidden = true;
+      ui.serviceControls.replaceChildren();
+      state.serviceSnapshot = null;
+      return;
+    }
+    ui.serviceRunner.hidden = false;
+    ui.serviceProfileLabel.textContent = profile.label || "网络服务";
+    if (state.task.state === "LOCKED") {
+      ui.serviceRunnerHelp.textContent = "当前课程尚未解锁。完成前置课程的正式验收后，才能启动网络服务。服务仅绑定本机回环地址。";
+    } else if (!state.workspaceReady) {
+      ui.serviceRunnerHelp.textContent = "先打开学习工作区，再启动当前任务的真实服务进程。服务仅绑定本机回环地址。";
+    } else if (profile.kind === "tcp_echo") {
+      ui.serviceRunnerHelp.textContent = "启动当前工作区中的 TCP Echo 服务，发送一条消息后由学习者客户端连接并验证真实回显。";
+    } else if (profile.kind === "tcp_chat") {
+      ui.serviceRunnerHelp.textContent = "启动当前工作区中的多客户端 TCP Chat 服务。所有客户端连接均由本机工作台管理。";
+    } else {
+      ui.serviceRunnerHelp.textContent = "启动当前工作区中的 HTTP 服务。浏览器请求将通过本机工作台代理到该任务的回环监听端口。";
+    }
+    ui.serviceControls.replaceChildren();
+    if (profile.kind === "tcp_echo") {
+      const label = document.createElement("label");
+      label.textContent = "发送消息";
+      const input = document.createElement("input");
+      input.id = "service-echo-message";
+      input.maxLength = 1024;
+      input.autocomplete = "off";
+      input.placeholder = "例如：Hello, TCP Echo!";
+      label.append(input);
+      const send = document.createElement("button");
+      send.id = "service-echo-send";
+      send.type = "button";
+      send.className = "primary-button compact";
+      send.textContent = "发送并验证回显";
+      send.addEventListener("click", sendTcpEchoMessage);
+      ui.serviceControls.append(label, send);
+    } else {
+      const note = document.createElement("p");
+      note.className = "service-runner-help";
+      note.textContent = profile.kind === "tcp_chat"
+        ? "多客户端连接与消息收发控件将在 TCP Chat 客户端桥接验收中启用。"
+        : "HTTP 方法、路径和响应预览控件将在 HTTP 请求代理验收中启用。";
+      ui.serviceControls.append(note);
+    }
+    updateServiceSnapshot(state.serviceSnapshot || { state: "STOPPED", port: null, logs: "" });
+  }
+
+  async function refreshServiceStatus(silent = false) {
+    if (!state.task || !state.task.service_profile) return;
+    try {
+      const snapshot = await api(
+        "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/status"
+      );
+      updateServiceSnapshot(snapshot);
+      return snapshot;
+    } catch (error) {
+      if (!silent) toast(error.message);
+      return null;
+    }
+  }
+
+  async function startNetworkService() {
+    if (!state.task || !state.task.service_profile || !state.workspaceReady || state.busy) return;
+    setBusy(true, "正在保存代码…");
+    const saved = await saveAllDirtyFiles({ silent: true });
+    if (!saved) {
+      setBusy(false);
+      toast("代码保存失败，已取消服务启动。");
+      return;
+    }
+    try {
+      const snapshot = await api(
+        "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/start",
+        { method: "POST", body: {} }
+      );
+      updateServiceSnapshot(snapshot);
+      if (snapshot.state === "RUNNING") {
+        toast("网络服务已启动；进程由本机工作台管理。");
+      } else {
+        toast("网络服务未能启动，请查看服务日志中的真实构建或运行诊断。");
+      }
+    } catch (error) {
+      toast(error.message);
+      ui.serviceLogs.textContent = error.message;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function stopNetworkService(silent = false) {
+    if (!state.task || !state.task.service_profile || state.busy) return;
+    try {
+      setBusy(true);
+      const snapshot = await api(
+        "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/stop",
+        { method: "POST", body: {} }
+      );
+      updateServiceSnapshot(snapshot);
+      if (!silent) toast("网络服务已停止，子进程组已清理。");
+    } catch (error) {
+      if (!silent) toast(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendTcpEchoMessage() {
+    if (!state.task || !state.task.service_profile || state.task.service_profile.kind !== "tcp_echo" || state.busy) return;
+    const input = ui.serviceControls.querySelector("#service-echo-message");
+    const message = input ? input.value : "";
+    if (!message.trim()) {
+      toast("请输入要发送的消息。");
+      return;
+    }
+    setBusy(true, "正在连接 TCP Echo 服务…");
+    try {
+      const result = await api(
+        "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/echo",
+        { method: "POST", body: { message } }
+      );
+      updateServiceSnapshot(result.service);
+      ui.consoleTitle.textContent = "TCP Echo 客户端输出";
+      ui.console.textContent = result.output || "(没有输出)";
+      ui.checkResult.textContent = result.success ? "回显成功" : "回显失败";
+      ui.checkResult.className = "check-result " + (result.success ? "pass" : "fail");
+      toast(result.success ? "已收到学习者 TCP Echo 服务的真实回显。" : "TCP Echo 客户端执行失败，请查看输出和服务日志。");
+    } catch (error) {
+      toast(error.message);
+      ui.consoleTitle.textContent = "TCP Echo 客户端输出";
+      ui.console.textContent = error.message;
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function runApplicationBuild() {
     if (!state.task || !state.task.runtime_profile || !state.workspaceReady || state.busy) return;
     setBusy(true, "正在保存代码…");

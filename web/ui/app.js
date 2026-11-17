@@ -612,6 +612,7 @@
     } else {
       await loadFile(state.activeFile);
     }
+    await refreshServiceStatus(true);
   }
 
   function clearTaskEditorState() {
@@ -637,12 +638,26 @@
     ui.appRunner.hidden = true;
     ui.appAction.replaceChildren();
     ui.appFields.replaceChildren();
+    ui.serviceRunner.hidden = true;
+    ui.serviceControls.replaceChildren();
+    ui.serviceState.textContent = "未启动";
+    ui.serviceState.dataset.state = "STOPPED";
+    ui.servicePort.textContent = "";
+    ui.serviceLogs.textContent = "尚未启动网络服务。";
+    ui.serviceStartButton.disabled = true;
+    ui.serviceRefreshButton.disabled = true;
+    ui.serviceStopButton.disabled = true;
+    state.serviceSnapshot = null;
     ui.checkButton.disabled = true;
     ui.workspaceState.textContent = "尚未创建";
     updateDirtyState();
   }
 
   async function selectTask(taskId) {
+    if (state.task && state.task.service_profile && state.serviceSnapshot &&
+        ["STARTING", "RUNNING"].includes(state.serviceSnapshot.state)) {
+      await stopNetworkService(true);
+    }
     if (state.dirtyFiles.size && !await saveAllDirtyFiles({ silent: true })) {
       toast("当前代码未能保存，暂不切换课程。");
       return;
@@ -663,6 +678,8 @@
       const task = await api("/api/v1/tasks/" + encodeURIComponent(taskId));
       state.task = task;
       renderApplicationRunner();
+      renderServiceRunner();
+      await refreshServiceStatus(true);
       ui.taskBreadcrumb.textContent = task.id;
       ui.taskTitle.textContent = task.title;
       ui.taskSubtitle.textContent = "W" + task.week + " · " + task.source_files.length + " 个源文件 · " +
@@ -801,6 +818,9 @@
       control.disabled = value;
     });
     ui.checkButton.disabled = value || !state.workspaceReady;
+    if (state.task && state.task.service_profile) {
+      updateServiceSnapshot(state.serviceSnapshot || { state: "STOPPED", port: null, logs: "" });
+    }
     if (saveLabel) ui.saveState.textContent = saveLabel;
   }
 
@@ -1211,6 +1231,9 @@
     ui.appBuildButton.addEventListener("click", runApplicationBuild);
     ui.appExecuteButton.addEventListener("click", runApplication);
     ui.appAction.addEventListener("change", renderApplicationFields);
+    ui.serviceStartButton.addEventListener("click", startNetworkService);
+    ui.serviceRefreshButton.addEventListener("click", () => refreshServiceStatus());
+    ui.serviceStopButton.addEventListener("click", () => stopNetworkService());
     ui.checkButton.addEventListener("click", () => runWorkspaceAction("check"));
     ui.continueButton.addEventListener("click", () => {
       const next = state.tasks.find((task) => ["IN PROGRESS", "NEEDS WORK", "STALE"].includes(task.state))

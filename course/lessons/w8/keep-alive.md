@@ -1,5 +1,19 @@
 # W8-D6-B · Sequential HTTP Keep-Alive Lifecycle
 
+## Start here
+
+Make two sequential requests over one connection.
+
+1. Connect once and send a complete request with keep-alive.
+2. Read the complete response, including its body boundary.
+3. Send a second request on the same socket.
+4. Verify the server parses exactly one request at a time and retains any following bytes.
+5. Test a request that asks to close and verify the connection closes after its response.
+6. Test pipelined bytes without allowing concurrent response reordering.
+
+**Mental model:** a persistent connection is a state machine that reuses one socket while preserving request/response order.
+
+
 ## Goal
 
 Use the D6-A request policy to reuse a TCP connection safely. The Reactor remains the sole owner of sockets and connection state. A connection may have only one request executing or one response being written at a time.

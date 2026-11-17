@@ -125,6 +125,17 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .editor-actions { flex: 0 0 auto; display: flex; gap: 7px; }
 .editor-actions button { padding: 8px 10px; font-size: 10px; }
 .primary-button.compact span { margin-left: 7px; font-size: 10px; }
+.app-runner { padding: 12px 14px; border-bottom: 1px solid var(--border); background: rgba(20, 36, 58, .78); }
+.app-runner-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.app-runner-heading > div { display: flex; align-items: baseline; gap: 9px; color: #d9e7fa; font-size: 11px; }
+.app-runner-heading .eyebrow { color: #7189aa; font-size: 8px; letter-spacing: .12em; }
+.app-runner-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 8px; }
+.app-action-label, .app-fields label { display: grid; gap: 5px; color: #8fa4c2; font-size: 9px; }
+.app-action-select, .app-fields input { min-width: 112px; min-height: 32px; padding: 7px 9px; border: 1px solid rgba(142, 169, 210, .2); border-radius: 6px; outline: none; background: #101e31; color: #dbe8fa; font: inherit; font-size: 10px; }
+.app-fields { display: flex; align-items: end; flex-wrap: wrap; gap: 8px; }
+.app-fields input:focus, .app-action-select:focus { border-color: rgba(117, 166, 239, .7); }
+.app-runner-buttons { display: flex; flex-wrap: wrap; gap: 7px; margin-left: auto; }
+.app-runner-buttons button { min-height: 32px; padding: 7px 10px; font-size: 9px; }
 .editor-meta { height: 31px; padding: 0 13px; display: flex; justify-content: space-between; align-items: center; color: #7185a3; font-size: 9px; border-bottom: 1px solid var(--border); }
 .source-editor { flex: 1; width: 100%; min-height: 190px; resize: vertical; padding: 17px; border: 0; outline: 0; background: #0a1323; color: #d1e0f5; font: 12px/1.75 "Cascadia Code", Consolas, monospace; tab-size: 4; white-space: pre; overflow: auto; }
 .source-editor:disabled { opacity: .5; }

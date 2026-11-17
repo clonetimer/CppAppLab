@@ -128,6 +128,12 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Normalize compiler errors as part of learning: teach the learner to inspect the first error, file and line, fix one issue, and request progressive hints before searching unrelated files.
 - Validate tutorial changes with a first-time learner path in Chromium and keep the CLI guide and browser guide semantically consistent.
 
+## 25. Browser editor persistence tests must account for editor-managed indentation
+
+- Monaco can apply auto-indent when a test replaces source through keyboard input. The persisted source may therefore differ in leading whitespace even though the intended code edit is correct.
+- For a refresh-persistence assertion, compare semantic source content while normalizing only leading indentation per line; do not remove or normalize tokens, literals, operators, line order or line endings inside the source.
+- Keep the test responsible for two separate facts: the saved source survives reload, and the resulting task state reflects source-fingerprint invalidation. If exact byte preservation is itself a product requirement, test it through a deterministic editor API edit rather than keyboard insertion with auto-indent enabled.
+
 ## 23. A dismissed beforeunload dialog cancels navigation, not just the reload request
 
 - In Playwright, `page.reload()` waits for the requested navigation lifecycle event. If a `beforeunload` dialog is dismissed, navigation is cancelled, so `domcontentloaded` will never fire and the default 30-second navigation timeout obscures the actual expected behavior.

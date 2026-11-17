@@ -1722,6 +1722,32 @@ int run_cli(int argc, char* argv[]) {
             }
             return run_application_workspace(argv[2], requested);
         }
+        if (command == "app-run-stdin") {
+            if (argc != 4) {
+                throw std::invalid_argument(
+                    "Usage: cppapplab app-run-stdin <workspace-directory> <parse|dispatch>");
+            }
+            const Workspace workspace = open_workspace(argv[2]);
+            if ((workspace.task->id != "w8.http-parser" || std::string_view(argv[3]) != "parse") &&
+                (workspace.task->id != "w8.router" || std::string_view(argv[3]) != "dispatch")) {
+                throw std::invalid_argument("Only registered HTTP stdin actions are supported.");
+            }
+            constexpr std::size_t kMaxHttpInputBytes = 256U * 1024U;
+            std::string input;
+            char buffer[4096];
+            while (std::cin) {
+                std::cin.read(buffer, sizeof(buffer));
+                const auto bytes = static_cast<std::size_t>(std::cin.gcount());
+                if (bytes > kMaxHttpInputBytes - input.size()) {
+                    throw std::invalid_argument("HTTP input exceeds the 256 KiB limit.");
+                }
+                input.append(buffer, bytes);
+            }
+            if (!std::cin.eof()) {
+                throw std::runtime_error("Unable to read HTTP input from standard input.");
+            }
+            return run_application_workspace(argv[2], {argv[3], input});
+        }
         if (command == "run") {
             if (argc != 3) {
                 throw std::invalid_argument("Usage: cppapplab run <workspace-directory>");

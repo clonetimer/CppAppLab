@@ -311,13 +311,16 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         self.task_by_id = {task["id"]: task for task in self.tasks}
         super().__init__(address, CppAppLabRequestHandler)
 
-    def run_cli(self, arguments: list[str], timeout: float = 20.0) -> tuple[int, str]:
+    def run_cli(
+        self, arguments: list[str], timeout: float = 20.0, input_data: str | None = None
+    ) -> tuple[int, str]:
         try:
             result = subprocess.run(
                 [str(self.binary), *arguments],
                 cwd=self.root,
                 env=self.child_env,
-                stdin=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL if input_data is None else None,
+                input=input_data,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -827,9 +830,18 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             arguments.append(raw)
 
         workspace, _ = self.server.workspace_for_task(task_id)
-        exit_code, output = self.server.run_cli(
-            ["app-run", str(workspace), action_id, *arguments], timeout=20.0
-        )
+        if any(field["type"] == "multiline" for field in fields):
+            # HTTP request bodies are passed over stdin instead of argv: Linux
+            # limits a single argv entry and also exposes arguments in ps output.
+            exit_code, output = self.server.run_cli(
+                ["app-run-stdin", str(workspace), action_id],
+                timeout=20.0,
+                input_data=arguments[0],
+            )
+        else:
+            exit_code, output = self.server.run_cli(
+                ["app-run", str(workspace), action_id, *arguments], timeout=20.0
+            )
         self._send_json(200, {
             "task_id": task_id,
             "action": action_id,

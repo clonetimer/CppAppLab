@@ -95,6 +95,23 @@ int invoke(const std::vector<std::string>& arguments) {
     return cppapplab::run_cli(static_cast<int>(argv.size()), argv.data());
 }
 
+class ScopedInputCapture {
+   public:
+    explicit ScopedInputCapture(const std::string& input) : stream_(input), previous_(std::cin.rdbuf(stream_.rdbuf())) {
+        std::cin.clear();
+    }
+    ~ScopedInputCapture() {
+        std::cin.rdbuf(previous_);
+        std::cin.clear();
+    }
+    ScopedInputCapture(const ScopedInputCapture&) = delete;
+    ScopedInputCapture& operator=(const ScopedInputCapture&) = delete;
+
+   private:
+    std::istringstream stream_;
+    std::streambuf* previous_;
+};
+
 std::string invoke_capture(const std::vector<std::string>& arguments, int& result) {
     StdoutCapture capture;
     result = invoke(arguments);
@@ -275,8 +292,11 @@ TEST(ApplicationRuntimeWorkflowTest, HttpParserProfilePassesRequestThroughStanda
     std::string output = invoke_capture({"cppapplab", "app-build", workspace.root.string()}, result);
     ASSERT_EQ(result, 0) << output;
     const std::string request = "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n";
-    output = invoke_capture(
-        {"cppapplab", "app-run", workspace.root.string(), "parse", request}, result);
+    {
+        ScopedInputCapture input(request);
+        output = invoke_capture(
+            {"cppapplab", "app-run-stdin", workspace.root.string(), "parse"}, result);
+    }
     EXPECT_NE(result, 0) << output;
     EXPECT_NE(output.find("TODO: implement incremental HTTP request parsing"), std::string::npos);
 }
@@ -292,12 +312,45 @@ TEST(ApplicationRuntimeWorkflowTest, RouterProfilePassesRequestThroughStandardIn
     std::string output = invoke_capture({"cppapplab", "app-build", workspace.root.string()}, result);
     ASSERT_EQ(result, 0) << output;
     const std::string request = "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n";
-    output = invoke_capture(
-        {"cppapplab", "app-run", workspace.root.string(), "dispatch", request}, result);
+    {
+        ScopedInputCapture input(request);
+        output = invoke_capture(
+            {"cppapplab", "app-run-stdin", workspace.root.string(), "dispatch"}, result);
+    }
     EXPECT_NE(result, 0) << output;
     EXPECT_NE(output.find("TODO: register the three dynamic endpoints"), std::string::npos);
     EXPECT_TRUE(std::filesystem::is_regular_file(
         workspace.root / ".cppapplab" / "application" / "runtime" / "www" / "index.html"));
+}
+
+TEST(ApplicationRuntimeWorkflowTest, StdinEntrypointRejectsUnregisteredActions) {
+    const cppapplab::Task* task = cppapplab::find_task("w1.calculator");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "calculator");
+
+    int result = -1;
+    const std::string output = invoke_capture(
+        {"cppapplab", "app-run-stdin", workspace.root.string(), "parse"}, result);
+    EXPECT_EQ(result, 2);
+    EXPECT_NE(output.find("Only registered HTTP stdin actions"), std::string::npos);
+}
+
+TEST(ApplicationRuntimeWorkflowTest, StdinEntrypointRejectsOversizedHttpRequests) {
+    const cppapplab::Task* task = cppapplab::find_task("w8.http-parser");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "parser");
+
+    std::string input_data(256U * 1024U + 1U, 'x');
+    ScopedInputCapture input(input_data);
+    int result = -1;
+    const std::string output = invoke_capture(
+        {"cppapplab", "app-run-stdin", workspace.root.string(), "parse"}, result);
+    EXPECT_EQ(result, 2);
+    EXPECT_NE(output.find("HTTP input exceeds the 256 KiB limit"), std::string::npos);
 }
 
 TEST(ApplicationRuntimeWorkflowTest, LibraryOnlyTaskHasNoApplicationExecutionProfile) {

@@ -74,7 +74,7 @@ The W7 Chat and W8 HTTP Server learner templates are deliberately incomplete unt
 
 - [x] Add fixed application build profiles for Calculator, Todo, TaskManager, Quality Gate, System Lab, Thread Pool, HTTP Protocol, HTTP Parser, Static Files and Router, using only declared learner sources.
 - [x] Add structured action forms for Calculator, Todo, TaskManager, Quality Gate, System Lab, HTTP Protocol and Static Files.
-- [x] Add bounded stdin submission for HTTP Parser and Router; the process runner uses a bounded temporary input file rather than an unbounded stdin pipe.
+- [x] Add bounded stdin submission for HTTP Parser and Router; the web service sends HTTP payload via subprocess stdin (not argv) and the C++ process runner uses a bounded temporary input file.
 - [x] Add a fixed Echo demonstration for System Lab; the browser cannot submit executable names or arbitrary arguments.
 - [x] Keep application output, errors, exit status, timeout and source fingerprint visible; application runs never write formal acceptance evidence.
 - [x] Verify per-workspace Todo persistence isolation and stale-build rejection in C++ workflow tests.

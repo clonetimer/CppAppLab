@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
         cppapplab::net::ChatServerConfig config;
         config.port = static_cast<std::uint16_t>(parsed);
         cppapplab::net::ChatServer server(std::move(config));
-        std::cout << "listening on 127.0.0.1:" << server.port() << '\n';
+        std::cout << "listening on 127.0.0.1:" << server.port() << '\n' << std::flush;
         server.run();
         return 0;
     } catch (const std::exception& error) {

@@ -54,7 +54,16 @@ This document turns recurring implementation failures and successful fixes into 
 - Capture screenshots at scroll origin (`window.scrollY === 0`) so sticky headers do not distort full-page evidence.
 - Block the editor CDN in a dedicated test to prove the offline fallback remains usable and does not emit uncaught browser errors.
 
-## 6. Application profiles are finite contracts, not a browser shell
+## 6. Distinguish application execution from a task's formal quality gate
+
+W4 Quality Gate is an important example: its TaskManager application implementation is complete, while its learner-authored GoogleTest file intentionally contains TODO failures. Therefore:
+
+- The W4 application profile should build and execute add/list/done/remove successfully against the learner's current runtime sources.
+- The formal `cppapplab check` must still fail until the learner replaces the TODO tests with meaningful assertions.
+- Do not infer that an application must fail merely because its task acceptance tests are incomplete. Conversely, a successful application demo must never be promoted to a formal PASS.
+- Browser acceptance should exercise both paths and assert the expected state transition: application actions leave the task in progress; failed formal acceptance moves it to NEEDS WORK.
+
+## 7. Application profiles are finite contracts, not a browser shell
 
 - `course/tasks.tsv` and the C++ learning engine remain authoritative for task IDs, declared sources, prerequisites, workspaces, source fingerprints, and formal acceptance.
 - Each browser application profile maps one task to a fixed set of actions and typed fields. The browser must not supply executable paths, compiler flags, CMake configuration, working directories, environment maps, or arbitrary argv.
@@ -62,14 +71,14 @@ This document turns recurring implementation failures and successful fixes into 
 - Library/test-only tasks must not receive fabricated application runners.
 - Long-running TCP/HTTP services require an explicit lifecycle contract (loopback bind, readiness, bounded sessions, stop, process-group cleanup, and idle expiry). Do not disguise a service as a one-shot CLI form.
 
-## 7. Persistent application state belongs to the learner workspace
+## 8. Persistent application state belongs to the learner workspace
 
 - Todo and TaskManager demos must store state below the active workspace's application runtime directory.
 - Pass the workspace-local storage path through a scoped environment override; do not write to the user's global home-directory data file.
 - Test isolation from a pre-existing global storage path and verify that a second workspace cannot observe the first workspace's records.
 - Keep sample HTTP document roots inside the workspace and reject unsafe paths and symlinks.
 
-## 8. UI state must follow task and workspace state
+## 9. UI state must follow task and workspace state
 
 - Hide the application runner when switching to a task without a registered application profile.
 - Show the profile schema for locked tasks only as an instructional preview; disable build/run until prerequisites and workspace readiness are satisfied.
@@ -77,7 +86,7 @@ This document turns recurring implementation failures and successful fixes into 
 - Save dirty source files before build/run; reject stale application binaries using the source fingerprint.
 - Keep lesson, source editor, application controls, diagnostics, output, and formal acceptance visually distinct. Do not let an application result look like a formal course PASS.
 
-## 9. Required regression record for future fixes
+## 10. Required regression record for future fixes
 
 For each new development lesson, record:
 

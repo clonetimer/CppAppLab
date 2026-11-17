@@ -938,9 +938,13 @@
     ui.serviceRefreshButton.disabled = state.busy;
     if (!active && ["STOPPED", "FAILED", "BUILD_FAILED", "EXPIRED"].includes(current.state)) {
       state.serviceClients = [];
+      renderChatClientOptions();
     }
     ui.serviceControls.querySelectorAll("input, select, textarea, button").forEach((control) => {
-      control.disabled = state.busy || !state.workspaceReady || locked || !active;
+      const unavailable = state.busy || !state.workspaceReady || locked || !active;
+      control.disabled = unavailable ||
+        (control.id === "service-http-body" &&
+          ui.serviceControls.querySelector("#service-http-method")?.value !== "POST");
     });
     const chatOutput = ui.serviceControls.querySelector("#service-chat-output");
     if (chatOutput) chatOutput.textContent = state.serviceMessages.join("\n") || "连接客户端后，聊天消息会显示在这里。";

@@ -1,6 +1,21 @@
 # W4 · TaskManager Quality Gate
 
 ## Goal
+## Start here
+
+This lesson starts with a working application and ten deliberately incomplete learner tests. Your first job is to understand one failing test, not to make the entire quality pipeline green immediately.
+
+1. Build the project in Debug mode.
+2. Run CTest and read the first failing test name.
+3. Open that test and identify its Arrange, Act and Assert parts.
+4. Replace one TODO with an assertion that checks observable behavior.
+5. Run only that test with the shown GoogleTest filter; then run the full suite.
+6. Once ordinary tests pass, investigate the separate sanitizer, GDB, formatting and static-analysis tasks.
+
+**What each tool answers:** GoogleTest checks expected behavior; GDB helps inspect execution; ASan/UBSan find classes of memory and undefined-behavior defects; clang-tidy reports static code-quality issues. They complement one another rather than replacing one another.
+
+A green application demo is not the same as a passing quality gate: the learner-owned tests and reproducible build configuration are part of this task.
+
 
 Turn the W3 TaskManager refactor into a reproducible, test-driven engineering deliverable. This week is about proving behavior, diagnosing failures, and keeping the project maintainable—not adding another application feature.
 

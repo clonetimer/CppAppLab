@@ -701,7 +701,7 @@ int build_application_workspace(const std::filesystem::path& workspace_path) {
     }
 
     std::vector<std::string> arguments{
-        "g++", "-std=c++17", "-Wall", "-Wextra", "-Wpedantic", "-Wshadow", "-Werror", "-g"};
+        "g++", "-std=c++17", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-g"};
     const auto include_directory = workspace.root / "include";
     if (std::filesystem::is_directory(include_directory) && !std::filesystem::is_symlink(include_directory)) {
         arguments.push_back("-I");

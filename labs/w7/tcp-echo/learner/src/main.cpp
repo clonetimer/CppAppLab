@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
     try {
         if (std::string(argv[1]) == "server" && argc == 3) {
             cppapplab::net::TcpEchoServer server(port);
-            std::cout << "listening on 127.0.0.1:" << server.port() << '\n';
+            std::cout << "listening on 127.0.0.1:" << server.port() << '\n' << std::flush;
             server.serve_one();
             return 0;
         }

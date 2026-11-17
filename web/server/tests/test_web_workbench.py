@@ -48,7 +48,7 @@ elif command == "app-run-stdin":
 elif command == "app-build":
     print("Application build result: PASS")
 elif command == "server":
-    print("fake service listening", flush=True)
+    print("listening on 127.0.0.1:" + sys.argv[2], flush=True)
     time.sleep(30)
 elif command == "check":
     print("[PASS] fixed acceptance")
@@ -389,7 +389,10 @@ class WebWorkbenchTests(unittest.TestCase):
 
     def test_service_supervisor_starts_reports_and_stops_registered_loopback_process(self) -> None:
         workspace = self.workspace_root / "w7.tcp-echo"
-        workspace.mkdir(parents=True, exist_ok=True)
+        executable = workspace / ".cppapplab" / "application" / "learner_app"
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.write_text(FAKE_ENGINE, encoding="utf-8")
+        executable.chmod(0o755)
         with patch.object(
             self.server, "workspace_for_task", return_value=(workspace, "")
         ), patch.object(
@@ -406,7 +409,11 @@ class WebWorkbenchTests(unittest.TestCase):
             self.assertEqual(started["kind"], "tcp_echo")
             self.assertGreaterEqual(started["port"], 1)
             self.assertLessEqual(started["port"], 65535)
-            self.assertIn("fake service listening", started["logs"])
+            self.assertIn(f"listening on 127.0.0.1:{started['port']}", started["logs"])
+            self.assertEqual(
+                Path(self.server.service_sessions["w7.tcp-echo"].process.args[0]),
+                executable,
+            )
 
             session = self.server.service_sessions["w7.tcp-echo"]
             self.assertIsNone(session.process.poll())

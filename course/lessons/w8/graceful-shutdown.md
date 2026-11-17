@@ -1,5 +1,19 @@
 # W8-D6-D1 · Graceful HTTP Server Shutdown
 
+## Start here
+
+Shutdown is a coordinated state transition, not just killing a process.
+
+1. Start the server and open one idle client connection.
+2. Request shutdown and observe how the Reactor is woken.
+3. Verify the listening socket stops accepting new clients.
+4. Observe how idle connections and active requests are handled.
+5. Confirm worker threads finish or are bounded by the shutdown contract.
+6. Repeat shutdown to check idempotency and descriptor cleanup.
+
+**Mental model:** the Reactor owns sockets and connection state. Workers must not independently close Reactor-owned descriptors during shutdown.
+
+
 ## Goal
 
 Stop accepting new clients, finish already accepted work where possible, and close sockets deterministically. Shutdown must be driven by the Reactor thread; worker threads must never close client descriptors or mutate Connection state.

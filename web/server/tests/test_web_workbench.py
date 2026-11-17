@@ -135,7 +135,7 @@ import sys
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        body = b"browser proxy ok"
+        body = b"x" * (256 * 1024 + 1) if self.path == "/large" else b"browser proxy ok"
         self.send_response(200)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -758,6 +758,22 @@ class WebWorkbenchTests(unittest.TestCase):
                     token=self.token, origin=self.base_url,
                 ),
                 400,
+            )
+            self.assertEqual(
+                self.request_error(
+                    "/api/v1/workspaces/w8.http-server/service/http",
+                    "POST", {"method": "GET", "target": "/%0d%0aHost:evil", "body": ""},
+                    token=self.token, origin=self.base_url,
+                ),
+                400,
+            )
+            self.assertEqual(
+                self.request_error(
+                    "/api/v1/workspaces/w8.http-server/service/http",
+                    "POST", {"method": "GET", "target": "/large", "body": ""},
+                    token=self.token, origin=self.base_url,
+                ),
+                413,
             )
             self.assertEqual(
                 self.request_error(

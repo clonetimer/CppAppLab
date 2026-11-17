@@ -425,6 +425,77 @@ class WebWorkbenchTests(unittest.TestCase):
             self.assertIsNotNone(session.process.poll())
             self.assertIn("Stopped by learner", stopped["logs"])
 
+    def test_tcp_echo_bridge_uses_the_registered_client_and_session_port(self) -> None:
+        workspace = self.workspace_root / "w7.tcp-echo"
+        workspace.mkdir(parents=True, exist_ok=True)
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ), patch.object(
+            self.server, "run_cli",
+            side_effect=[
+                (0, "Application build result: PASS"),
+                (0, "echoed: hello from browser"),
+            ],
+        ) as engine:
+            started = self.request(
+                "/api/v1/workspaces/w7.tcp-echo/service/start",
+                method="POST",
+                body={},
+                token=self.token,
+                origin=self.base_url,
+            )
+            self.assertEqual(started["state"], "RUNNING")
+            echoed = self.request(
+                "/api/v1/workspaces/w7.tcp-echo/service/echo",
+                method="POST",
+                body={"message": "hello from browser"},
+                token=self.token,
+                origin=self.base_url,
+            )
+        self.assertTrue(echoed["success"])
+        self.assertIn("echoed: hello from browser", echoed["output"])
+        self.assertEqual(
+            engine.call_args_list[1].args[0],
+            ["app-run", str(workspace), "client", str(started["port"]), "hello from browser"],
+        )
+
+    def test_tcp_echo_bridge_rejects_oversized_and_multiline_messages(self) -> None:
+        workspace = self.workspace_root / "w7.tcp-echo"
+        workspace.mkdir(parents=True, exist_ok=True)
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ), patch.object(
+            self.server, "run_cli", return_value=(0, "Application build result: PASS")
+        ) as engine:
+            self.request(
+                "/api/v1/workspaces/w7.tcp-echo/service/start",
+                method="POST",
+                body={},
+                token=self.token,
+                origin=self.base_url,
+            )
+            self.assertEqual(
+                self.request_error(
+                    "/api/v1/workspaces/w7.tcp-echo/service/echo",
+                    "POST",
+                    {"message": "x" * 1025},
+                    token=self.token,
+                    origin=self.base_url,
+                ),
+                400,
+            )
+            self.assertEqual(
+                self.request_error(
+                    "/api/v1/workspaces/w7.tcp-echo/service/echo",
+                    "POST",
+                    {"message": "hello\\nworld"},
+                    token=self.token,
+                    origin=self.base_url,
+                ),
+                400,
+            )
+        self.assertEqual(engine.call_count, 1, "Invalid echo messages must not launch a learner client.")
+
     def test_service_build_failure_does_not_launch_a_child_process(self) -> None:
         workspace = self.workspace_root / "w7.tcp-chat"
         workspace.mkdir(parents=True, exist_ok=True)

@@ -36,6 +36,14 @@ TEST(ProcessRunnerTest, PassesBoundedStandardInputToChild) {
     EXPECT_EQ(result.output, request);
 }
 
+TEST(ProcessRunnerTest, RejectsOversizedStandardInputBeforeStartingChild) {
+    const std::string oversized(256U * 1024U + 1U, 'x');
+    EXPECT_THROW(
+        (void)cppapplab::run_process({"/bin/cat"}, std::filesystem::current_path(),
+                                     std::chrono::seconds(2), 1024, oversized),
+        std::invalid_argument);
+}
+
 TEST(ProcessRunnerTest, EnforcesTimeLimit) {
     const auto result = cppapplab::run_process({"/bin/sleep", "2"}, std::filesystem::current_path(),
                                                std::chrono::milliseconds(100), 1024);

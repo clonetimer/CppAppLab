@@ -78,7 +78,7 @@ The W7 Chat and W8 HTTP Server learner templates are deliberately incomplete unt
 - [x] Add a fixed Echo demonstration for System Lab; the browser cannot submit executable names or arbitrary arguments.
 - [x] Keep application output, errors, exit status, timeout and source fingerprint visible; application runs never write formal acceptance evidence.
 - [x] Verify per-workspace Todo persistence isolation and stale-build rejection in C++ workflow tests.
-- [ ] Add Chromium user-journey tests for every structured CLI and stdin interaction class; calculator is currently covered end-to-end, the remaining profiles have engine-level coverage.
+- [ ] Add Chromium user-journey tests for every structured CLI and stdin interaction class; Calculator and Todo run against the real learning engine, while W8 Parser/Router forms are rendered and locked-state behavior verified in Chromium. Remaining task types have engine-level coverage but do not yet have full browser journeys.
 
 ### P8-C3 — Network-service interaction
 

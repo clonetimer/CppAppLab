@@ -43,6 +43,10 @@ ProcessResult run_process(const std::vector<std::string>& arguments,
     if (timeout.count() <= 0) {
         throw std::invalid_argument("run_process timeout must be positive");
     }
+    constexpr std::size_t kMaxStdinBytes = 256U * 1024U;
+    if (standard_input.size() > kMaxStdinBytes) {
+        throw std::invalid_argument("run_process stdin exceeds the 256 KiB limit");
+    }
 
     FILE* input_file = nullptr;
     if (!standard_input.empty()) {

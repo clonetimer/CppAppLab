@@ -660,9 +660,9 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             )
             session.log_thread = reader
             reader.start()
-            readiness_pattern = r"listening on 127\\.0\\.0\\.1:(\\d+)"
+            readiness_pattern = r"listening on 127\.0\.0\.1:(\d+)"
             if profile["kind"] == "http_server":
-                readiness_pattern = r"listening on (\\d+)"
+                readiness_pattern = r"listening on (\d+)"
             deadline = time.monotonic() + 3.0
             ready = False
             while time.monotonic() < deadline:

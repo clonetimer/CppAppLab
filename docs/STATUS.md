@@ -236,14 +236,20 @@ The CLI remains supported and authoritative. P8-A/P8-B do not claim Windows 11 +
 
 ### P8-C — Full course experience
 
-**C1 runtime-contract audit: complete** in [`docs/WEB_WORKBENCH_P8_C_PLAN.md`](WEB_WORKBENCH_P8_C_PLAN.md).
+**C1 runtime-contract audit: complete. C2 one-shot/CLI interaction: validated in PR #41.**
+**Validated head:** `37fb25edcdc3125c4da9b23b04bb05c631da326a`.
+**Final PR CI:** [run #1589](https://github.com/clonetimer/CppAppLab/actions/runs/44026443959). All 12 required jobs passed; the Ubuntu 22.04 source-build compatibility job was skipped by workflow configuration. The repository-wide formatting step remains a manual skipped step; clang-tidy passed on both Ubuntu releases.
 
-- 14 tasks have learner application entry points; 9 tasks are library/test-only.
-- Runtime classes: two one-shot demos, six structured CLI apps, two stdin-driven tools, one restricted process-runner demo and three network services.
-- W5 System Lab will expose only platform-owned sample invocations; arbitrary command execution is prohibited.
-- W7 TCP Echo, W7 TCP Chat and W8 HTTP Server require explicit loopback-only service lifecycle controls.
-- Library/test-only tasks retain the existing fixed Build, Run Tests and Formal Acceptance path.
+C2 delivered:
 
-**Next implementation slice: P8-C2 — fixed application profiles and browser-managed CLI interaction.**
+- Fixed application build/run profiles for Calculator, Todo, TaskManager, Quality Gate, System Lab, Thread Pool, HTTP Protocol, HTTP Parser, Static Files and Router.
+- Browser-managed structured forms with no arbitrary shell, executable path, compiler options or user-controlled argv.
+- Source-declared build inputs, source-fingerprint stale-build rejection, workspace-local Todo/TaskManager persistence, and bounded 256 KiB stdin transport for HTTP Parser/Router.
+- Separate application Build/Run and Formal Acceptance semantics. Only `cppapplab check` writes course evidence.
+- Chromium workflows for Calculator, Todo and TaskManager; CRUD and persistence checks; W4 runtime-versus-quality-gate separation; locked-profile UI checks; desktop/mobile and offline-editor coverage.
+- Reusable development lessons in `docs/DEVELOPMENT_EXPERIENCE.md`.
 
+**Next implementation slice: P8-C3 — loopback-only TCP Echo, TCP Chat and HTTP Server sessions.** It will add fixed service profiles, readiness/status/log/stop controls, bounded clients and deterministic process-group cleanup. P8-C4 history and P8-C5 full-course journeys remain separate.
+
+P8-D (clangd/GDB) and P8-E (Windows/WSL2 packaging and target-machine acceptance) remain separate milestones.
 P8-D (clangd/GDB) and P8-E (Windows/WSL2 packaging and target-machine acceptance) remain separate milestones.

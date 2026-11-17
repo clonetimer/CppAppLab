@@ -1,5 +1,19 @@
 # W8-D5 · epoll + ThreadPool HTTP Server
 
+## Start here
+
+The server connects the pieces you have already built. Trace one request before adding concurrency.
+
+1. Start the loopback server and request its simplest static route.
+2. Follow the lifecycle: accept socket → register with epoll → read bytes → parse request.
+3. Trace how the request reaches the router and how the response returns to the client.
+4. Keep socket ownership in the Reactor thread; workers execute handler work but do not close Reactor-owned client descriptors.
+5. Add bounded worker submission and handle queue saturation.
+6. Test stop, client disconnect, slow reader and repeated requests.
+
+**Mental model:** the Reactor watches sockets; the ThreadPool performs bounded application work; the connection state joins the two. Draw the ownership boundary before changing the code.
+
+
 ## Goal
 
 Turn the W8-D1–D4 HTTP application pipeline into a real Linux TCP server. This stage combines three capabilities already studied:

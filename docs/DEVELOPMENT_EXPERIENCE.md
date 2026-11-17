@@ -119,6 +119,89 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 29. Generate course coverage from the catalog and keep evidence dimensions separate
+
+- The `course/tasks.tsv` file is the single authoritative source for task IDs, lesson paths, source files, acceptance kind and prerequisites. Never maintain a manually duplicated course matrix.
+- Generate the course matrix in CI from that catalog and upload it with browser screenshots so the evidence is tied to the exact tested commit.
+- Distinguish catalog/browser representation, deep interaction journeys and formal acceptance. A task being listed, selectable or having a `Start here` section is not proof its full exercise was solved.
+- Fail generation when catalog rows are malformed or the expected task count changes unexpectedly; a count change should trigger an explicit course-scope review.
+- Use explicit `NOT_RUN`/`SEE_FEATURE_MATRIX` states for evidence that the generator cannot prove. Never infer PASS from source-file presence or test-name presence.
+
+## 28. Apply one task-first entry pattern across the full curriculum
+
+- Once a consistent first-screen teaching pattern is proven in the introductory lessons, extend it to every catalog task rather than leaving advanced weeks as an abrupt jump in difficulty.
+- Tailor the first actions to the actual task: one child process, one worker/future, one TCP exchange, one HTTP message, one parsed request, one route, one persistent connection, one timeout, one shutdown, one metric, one chunk, one target and one confined file.
+- Keep each first path executable and incremental, then direct the learner to the existing detailed requirements and edge cases. Do not weaken security, concurrency or protocol acceptance criteria.
+- Make the authoritative `course/tasks.tsv` lesson path the source for coverage. Chromium must visit all 23 task pages and assert the first-step guidance is rendered, in addition to the catalog metadata checks.
+
+## 26. Put a task-first walkthrough inside the lesson, not only in a global guide
+
+- A global beginner guide is useful but learners often arrive directly at a selected task. Put the immediate next actions inside the lesson itself.
+- The first screen of a lesson should answer: what am I building, which file do I change, what is the first small step, how do I run it, and what does success look like?
+- Keep advanced interface contracts, persistence limits, ownership rules and security constraints in the rest of the lesson. Lowering the barrier must reorder and explain material, not delete engineering depth.
+- For cumulative tasks, sequence the work from a small working path to edge cases and robustness. Explicitly tell learners which complexity can wait until the basic loop works.
+- Verify the rendered lesson in Chromium and assert that task-first guidance is actually visible for the first beginner lessons; markdown-file existence alone is insufficient.
+
+## 24. Lower the first-use barrier with a task-first path and a plain-language glossary
+
+- Beginners should not have to understand the full course architecture, task IDs, build systems or acceptance model before they can complete the first exercise.
+- Put a short first-task walkthrough before the W1–W9 curriculum map: continue learning → start workspace → edit one named file → build → run → formal check.
+- Explain the three controls separately. Build answers whether source can become a program; Run/Test answers what the program does; Formal Acceptance records whether the fixed course contract passes.
+- Explain terms at first use or in a compact glossary (source, workspace, build, run, test, check, hint, fingerprint, prerequisite). Keep advanced details available after the first successful task rather than removing them.
+- Normalize compiler errors as part of learning: teach the learner to inspect the first error, file and line, fix one issue, and request progressive hints before searching unrelated files.
+- Validate tutorial changes with a first-time learner path in Chromium and keep the CLI guide and browser guide semantically consistent.
+
+## 27. Re-select the task before asserting task-scoped UI after a full reload
+
+- A browser reload reconstructs the workbench and may return to its default task selection; persisted workspace files and course state can be correct while the task subtitle/panel still reflects the default view.
+- Separate persistence assertions from selected-view assertions: first query the workspace API to verify saved file content, then explicitly select the task and wait for its breadcrumb and authoritative state before checking task-scoped labels, prerequisites or diagnostics.
+- Do not treat an unselected task's stale or empty subtitle as evidence that prerequisite metadata was lost. The browser test must establish the UI context it is asserting.
+
+## 25. Browser editor persistence tests must account for editor-managed indentation
+
+- Monaco can apply auto-indent when a test replaces source through keyboard input. The persisted source may therefore differ in leading whitespace even though the intended code edit is correct.
+- For a refresh-persistence assertion, compare semantic source content while normalizing only leading indentation per line; do not remove or normalize tokens, literals, operators, line order or line endings inside the source.
+- Keep the test responsible for two separate facts: the saved source survives reload, and the resulting task state reflects source-fingerprint invalidation. If exact byte preservation is itself a product requirement, test it through a deterministic editor API edit rather than keyboard insertion with auto-indent enabled.
+
+## 23. A dismissed beforeunload dialog cancels navigation, not just the reload request
+
+- In Playwright, `page.reload()` waits for the requested navigation lifecycle event. If a `beforeunload` dialog is dismissed, navigation is cancelled, so `domcontentloaded` will never fire and the default 30-second navigation timeout obscures the actual expected behavior.
+- Attach the dialog handler before initiating reload, assert that the dialog type is `beforeunload`, dismiss it, and bound the navigation wait with a short timeout whose cancellation is expected.
+- After cancellation, verify the current document and dirty editor remain usable, then explicitly save and perform a normal reload to prove persistence.
+- Do not accept the dialog in this test: accepting would discard the edits and would not validate the learner-safe cancel path.
+
+## 22. Browser refresh must protect dirty source and prove explicit-save recovery
+
+- A browser refresh is not a successful recovery test if it silently discards an unsaved editor model. Assert that a dirty source triggers the real `beforeunload` prompt.
+- Dismiss the prompt and verify the current editor/task remains available; then explicitly save through the same keyboard shortcut the learner uses.
+- Wait for the UI's saved state and verify the source through the workspace file API before reloading.
+- Reload only after the save completes, re-read the source from the workspace and compare the exact content. If the task previously had PASS evidence, the source change must make that evidence STALE rather than preserving a false PASS.
+- Keep the browser-dialog interaction in Chromium; a unit test of the `beforeunload` listener alone does not prove browser navigation behavior.
+
+## 21. Web-server shutdown is a service-session lifecycle boundary
+
+- A service supervisor cannot rely only on user-initiated stop or idle expiry. The HTTP workbench server's `server_close()` path must stop all registered service sessions and terminate/reap their process groups.
+- Test this by starting a real supervised child, invoking the actual server shutdown hook, and asserting the child has exited, the session is STOPPED, and the janitor thread is signalled.
+- Make shutdown idempotent because normal test teardown and production shutdown paths may both call `server_close()`.
+- Keep active browser request interruption as a separate test: stopping service children does not prove that in-flight API handlers, autosave requests or browser refreshes recover correctly.
+
+## 20. Keyboard focus and service-crash recovery are explicit workbench contracts
+
+- When a modal-like history panel opens from a keyboard action, move focus into the panel; Escape closes it and returns focus to the invoking control. A close button alone is not sufficient keyboard support.
+- Verify Enter/Escape behavior in a real browser journey and assert the underlying task state is unchanged.
+- A service supervisor must detect an unexpectedly exited child from `poll()`, expose FAILED plus its exit code in status, and permit a new start without leaving the stale process/session in the active set.
+- Test the crash path by killing the real supervised child, polling the public status endpoint until FAILED, then restarting and verifying a new live process/port. A mocked `Popen` does not validate child lifecycle behavior.
+- Keep interrupted web-server shutdown and browser refresh during an active request as separate recovery gates; do not claim them covered by a service crash test.
+
+## 19. Cross-course browser coverage must be driven by the authoritative task catalog
+
+- Keep the 23-task ID list in the Chromium journey aligned with `course/tasks.tsv`; assert exact count, unique presence and successful selection for every task.
+- For each selected task, verify its authoritative detail API, lesson content, task state and prerequisite metadata. A sidebar entry alone does not prove the task is usable.
+- Compare browser-visible state labels against the canonical `stateLabel` mapping; do not invent new UI states such as a separate 'needs recheck' label unless the learning engine actually emits them.
+- Locked tasks must expose a non-empty prerequisite explanation; do not attempt to start or execute them just to make the test progress.
+- Keep full catalog traversal separate from deep workflow tests: the former proves breadth, while targeted task journeys prove editing, build/run, acceptance, service lifecycle and recovery semantics.
+- After a formal PASS, reload the browser and verify both the current state and append-only history remain available. Build/run/service operations must not add acceptance records.
+
 ## 18. History UI requires a real browser journey after a formal PASS
 
 - An API unit test proves only the serialization/parsing contract. It does not prove that the learner can discover, open, read and close the history panel in the actual workbench.

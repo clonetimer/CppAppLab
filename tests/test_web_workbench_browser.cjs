@@ -319,6 +319,16 @@ async function main() {
     await page.locator("#history-close").click();
     assert.equal(await page.locator("#history-panel").isVisible(), false);
 
+    // Keyboard-only access to the history control: tab focus, open with Enter,
+    // then close with Escape without using a pointer.
+    await page.locator("#history-button").focus();
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => !document.querySelector("#history-panel")?.hidden);
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => document.querySelector("#history-panel")?.hidden);
+    assert.equal(await page.locator("#task-state").textContent(), "已通过",
+      "Keyboard history navigation must not alter formal task state");
+
     await page.waitForFunction(() => {
       const button = Array.from(document.querySelectorAll("#course-list .task-link"))
         .find((item) => item.textContent.includes("Multi-file Calculator"));
@@ -718,6 +728,176 @@ async function main() {
     assert.equal(await page.locator("#app-profile-label").textContent(), "HTTP 路由与分发");
     assert.equal(await page.locator("#app-fields textarea").count(), 1);
     assert.equal(await page.locator("#app-execute-button").isDisabled(), true);
+
+    // P8-C5: walk every catalog entry in the actual browser. This verifies
+    // that all 23 tasks are selectable, have their authoritative lesson and
+    // state rendered, and expose the same prerequisite metadata as the API.
+    const catalogTaskIds = [
+      "w1.hello-world", "w1.calculator", "w2.todo-cli", "w3.task-manager",
+      "w4.quality-gate", "w5.system-lab", "w6.thread-pool", "w7.tcp-echo",
+      "w7.tcp-chat", "w8.http-protocol", "w8.http-parser", "w8.static-files",
+      "w8.router", "w8.http-server", "w8.http-connection-policy",
+      "w8.http-keep-alive", "w8.http-connection-guards",
+      "w8.http-graceful-shutdown", "w8.http-observability",
+      "w8.http-operational-load", "w9.http-chunked", "w9.request-target",
+      "w9.static-root"
+    ];
+    assert.equal(await page.locator("#course-list .task-link").count(), catalogTaskIds.length);
+    for (const taskId of catalogTaskIds) {
+      const taskButton = page.locator('#course-list .task-link[data-task-id="' + taskId + '"]');
+      assert.equal(await taskButton.count(), 1, taskId + " must exist exactly once in the browser catalog");
+      await taskButton.click();
+      await page.waitForFunction((id) =>
+        document.querySelector("#task-breadcrumb")?.textContent.trim() === id,
+        taskId
+      );
+      assert.ok((await page.locator("#task-title").textContent()).trim().length > 0,
+        taskId + " must render a lesson title");
+      assert.ok((await page.locator("#lesson-content").textContent()).trim().length > 0,
+        taskId + " must render its authoritative lesson");
+      assert.match(
+        await page.locator("#lesson-content").textContent(),
+        /Start here/,
+        taskId + " must expose an immediate task-first learning path"
+      );
+      assert.ok(["已通过", "进行中", "需要修改", "结果已过期", "未开始", "可开始", "未解锁", "状态未知"].includes(
+        await page.locator("#task-state").textContent()
+      ), taskId + " must expose a known course state");
+      const taskDetail = await page.request.get(service.baseUrl + "/api/v1/tasks/" + taskId);
+      assert.equal(taskDetail.status(), 200, taskId + " detail API must be available");
+      const detail = await taskDetail.json();
+      assert.equal(detail.id, taskId);
+      assert.ok(Array.isArray(detail.prerequisites));
+      if (detail.state === "LOCKED") {
+        assert.ok(detail.state_reason.length > 0,
+          taskId + " must explain why its prerequisites are locked");
+      }
+    }
+
+    // Keyboard-only course navigation: the first catalog item receives
+    // focus, Tab advances to the next task, and Enter selects it.
+    const firstCourseTask = page.locator("#course-list .task-link").first();
+    const secondCourseTask = page.locator("#course-list .task-link").nth(1);
+    await firstCourseTask.focus();
+    await page.keyboard.press("Tab");
+    assert.equal(
+      await secondCourseTask.evaluate((element) => element === document.activeElement),
+      true,
+      "Tab must move between course tasks in catalog order"
+    );
+    const secondTaskId = await secondCourseTask.getAttribute("data-task-id");
+    await page.keyboard.press("Enter");
+    await page.waitForFunction((id) =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === id,
+      secondTaskId
+    );
+
+    // First-time learner guidance must be present in the first four lessons.
+    for (const taskId of [
+      "w1.hello-world", "w1.calculator", "w2.todo-cli",
+      "w3.task-manager", "w4.quality-gate"
+    ]) {
+      await page.locator('#course-list .task-link[data-task-id="' + taskId + '"]').click();
+      await page.waitForFunction((id) =>
+        document.querySelector("#task-breadcrumb")?.textContent.trim() === id,
+        taskId
+      );
+      assert.match(
+        await page.locator("#lesson-content").textContent(),
+        /Start here/,
+        taskId + " must provide a task-first beginner walkthrough"
+      );
+    }
+
+    // Refresh must preserve the last formal PASS and the history timeline.
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() =>
+      document.querySelector("#engine-status")?.textContent.includes("本地引擎已连接")
+    );
+    await page.waitForFunction(() =>
+      document.querySelectorAll("#course-list .task-link").length === 23
+    );
+    await page.locator('#course-list .task-link[data-task-id="w1.hello-world"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w1.hello-world"
+    );
+    assert.equal(await page.locator("#task-state").textContent(), "已通过",
+      "A browser refresh must not lose the authoritative formal PASS");
+    await page.locator("#history-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#history-summary")?.textContent.includes("1 次正式验收")
+    );
+    assert.equal(await page.locator("#history-list .history-record").count(), 1);
+
+    // Unsaved edits must trigger the browser's beforeunload guard. Cancel the
+    // first reload, save explicitly, then reload and verify persisted content.
+    const helloSourceBefore = await readWorkspaceFile(
+      page, service.baseUrl, "w1.hello-world", "src/main.cpp"
+    );
+    const helloSourceEdited = helloSourceBefore.content.replace(
+      "Hello, CppAppLab!", "Hello, CppAppLab after refresh!"
+    );
+    assert.notEqual(helloSourceEdited, helloSourceBefore.content);
+    await page.locator('#course-list .task-link[data-task-id="w1.hello-world"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w1.hello-world"
+    );
+    await replaceMonacoEditor(page, helloSourceEdited);
+    await page.waitForFunction(() =>
+      document.querySelector("#save-state")?.textContent.includes("自动保存将在片刻后执行")
+    );
+    let unloadPromptSeen = false;
+    page.once("dialog", async (dialog) => {
+      unloadPromptSeen = dialog.type() === "beforeunload";
+      await dialog.dismiss();
+    });
+    // A dismissed beforeunload dialog cancels navigation by design, so
+    // Playwright's reload navigation wait must be bounded rather than waiting
+    // for DOMContentLoaded that will never occur.
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 3000 }).catch(() => {});
+    assert.equal(unloadPromptSeen, true,
+      "Reload with dirty learner source must ask before discarding changes");
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w1.hello-world"
+    );
+    await page.keyboard.press("Control+S");
+    await page.waitForFunction(() =>
+      document.querySelector("#save-state")?.textContent === "已保存到本地工作区",
+      null, { timeout: 15000 }
+    );
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() =>
+      document.querySelector("#engine-status")?.textContent.includes("本地引擎已连接")
+    );
+    const helloSourceAfterReload = await readWorkspaceFile(
+      page, service.baseUrl, "w1.hello-world", "src/main.cpp"
+    );
+    const normalizeSourceIndentation = (source) =>
+      source.split("\n").map((line) => line.trimStart()).join("\n").trimEnd();
+    assert.equal(
+      normalizeSourceIndentation(helloSourceAfterReload.content),
+      normalizeSourceIndentation(helloSourceEdited),
+      "Explicitly saved source must survive a browser reload (editor auto-indent may normalize leading whitespace)"
+    );
+    await page.locator('#course-list .task-link[data-task-id="w1.hello-world"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w1.hello-world" &&
+      document.querySelector("#task-state")?.textContent === "结果已过期"
+    );
+    assert.match(
+      await page.locator("#task-subtitle").textContent(),
+      /无前置任务/,
+      "The selected task must show authoritative prerequisite context after recovery"
+    );
+    assert.equal(
+      await page.locator("#task-state").textContent(),
+      "结果已过期",
+      "A source edit after a historical PASS must never preserve a current PASS after reload"
+    );
+    await page.locator('#course-list .task-link[data-task-id="w1.hello-world"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-state")?.textContent === "结果已过期"
+    );
 
     // Monaco may reject an in-flight worker request with its documented "Canceled"
     // sentinel when an editor model is disposed during task switching. It is not an

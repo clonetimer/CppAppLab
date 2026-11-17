@@ -1,5 +1,19 @@
 # W6 · Thread Pool, Futures, and Graceful Shutdown
 
+## Start here
+
+First understand one task running on one worker. The pool is only a managed group of that same operation.
+
+1. Read the public `ThreadPool::submit` declaration and the supplied CLI example.
+2. Start with one worker and submit one function that returns a value.
+3. Use the returned `future` to obtain that value; then submit a function that throws and observe exception propagation.
+4. Add multiple workers and submit several independent tasks.
+5. Test bounded-queue backpressure, then test shutdown while tasks are queued.
+6. Finish with repeated submit/shutdown cycles and sanitizer runs.
+
+**Mental model:** `submit` places work into a queue; a worker removes it and executes it; `future` carries the eventual result back. A graceful shutdown stops accepting new work and lets already accepted work finish according to the course contract.
+
+
 ## Goal
 
 Build a reusable fixed-size C++17 thread pool on top of the W5 bounded queue. The task focuses on asynchronous result delivery, callable/argument forwarding, exception propagation, backpressure, and concurrent shutdown semantics.

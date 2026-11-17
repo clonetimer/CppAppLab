@@ -1,5 +1,19 @@
 # W8-D1 · HTTP/1.1 Protocol Foundations
 
+## Start here
+
+Start with one HTTP request as text. Do not begin with the full server.
+
+1. Read the sample request and mark its request line, headers, blank line and body.
+2. Parse the method, target and protocol version from the request line.
+3. Parse one header and explain why header names are compared case-insensitively.
+4. Serialize a small response with a status line, headers and body.
+5. Verify that Content-Length counts body bytes, not characters.
+6. Compare the HTTP message boundary with the TCP receive boundary.
+
+**Mental model:** TCP carries bytes. HTTP assigns meaning to those bytes. One request may arrive in several TCP reads, so never treat a single `recv` as one complete HTTP message.
+
+
 ## Goal
 
 Build the application-protocol layer on top of the TCP byte stream completed in W7. This lesson covers HTTP/1.1 message structure, request and response lines, headers, status codes, byte-accurate Content-Length, CRLF framing, and the distinction between a protocol message and a TCP receive operation.

@@ -824,6 +824,70 @@ class WebWorkbenchTests(unittest.TestCase):
             )
             self.assertEqual(stopped["state"], "STOPPED")
 
+    def test_web_server_shutdown_stops_managed_service_process_group(self) -> None:
+        workspace = self.workspace_root / "w7.tcp-echo"
+        executable = workspace / ".cppapplab" / "application" / "learner_app"
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.write_text(FAKE_ENGINE, encoding="utf-8")
+        executable.chmod(0o755)
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ), patch.object(
+            self.server, "run_cli", return_value=(0, "Application build result: PASS")
+        ):
+            started = self.request(
+                "/api/v1/workspaces/w7.tcp-echo/service/start",
+                method="POST", body={}, token=self.token, origin=self.base_url,
+            )
+            self.assertEqual(started["state"], "RUNNING")
+            session = self.server.service_sessions["w7.tcp-echo"]
+            process = session.process
+            self.assertIsNone(process.poll())
+
+            self.server.server_close()
+
+            self.assertIsNotNone(process.poll(),
+                                 "Web server shutdown must terminate and reap managed service processes")
+            self.assertEqual(session.state, "STOPPED")
+            self.assertTrue(self.server.service_janitor_stop.is_set())
+
+    def test_service_crash_is_reported_and_a_new_session_can_restart(self) -> None:
+        workspace = self.workspace_root / "w7.tcp-echo"
+        executable = workspace / ".cppapplab" / "application" / "learner_app"
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.write_text(FAKE_ENGINE, encoding="utf-8")
+        executable.chmod(0o755)
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ), patch.object(
+            self.server, "run_cli", return_value=(0, "Application build result: PASS")
+        ):
+            started = self.request(
+                "/api/v1/workspaces/w7.tcp-echo/service/start",
+                method="POST", body={}, token=self.token, origin=self.base_url,
+            )
+            self.assertEqual(started["state"], "RUNNING")
+            crashed = self.server.service_sessions["w7.tcp-echo"]
+            crashed.process.kill()
+            crashed.process.wait(timeout=3)
+
+            deadline = time.monotonic() + 2.0
+            while time.monotonic() < deadline:
+                status = self.request("/api/v1/workspaces/w7.tcp-echo/service/status")
+                if status["state"] == "FAILED":
+                    break
+                time.sleep(0.01)
+            self.assertEqual(status["state"], "FAILED")
+            self.assertIsNotNone(status["exit_code"])
+
+            restarted = self.request(
+                "/api/v1/workspaces/w7.tcp-echo/service/start",
+                method="POST", body={}, token=self.token, origin=self.base_url,
+            )
+            self.assertEqual(restarted["state"], "RUNNING")
+            self.assertNotEqual(restarted["port"], started["port"])
+            self.assertIsNone(self.server.service_sessions["w7.tcp-echo"].process.poll())
+
     def test_service_build_failure_does_not_launch_a_child_process(self) -> None:
         workspace = self.workspace_root / "w7.tcp-chat"
         workspace.mkdir(parents=True, exist_ok=True)

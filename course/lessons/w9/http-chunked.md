@@ -1,5 +1,19 @@
 # W9-A · Incremental HTTP/1.1 Chunked Transfer Decoding
 
+## Start here
+
+Decode one chunked body by following its framing.
+
+1. Read a complete example and identify the hexadecimal chunk size.
+2. Parse the size line, then consume exactly that many payload bytes.
+3. Verify the following CRLF before reading the next chunk.
+4. Feed the same body in fragments, including a split size line and split payload.
+5. Recognize the zero-size final chunk and parse trailers.
+6. Test invalid sizes, missing CRLF and body-size limits.
+
+**Mental model:** chunked encoding frames the body when its final length is not known in advance. TCP may split every part, so the decoder must preserve state between calls.
+
+
 ## Goal
 
 Extend the W8 incremental HTTP parser to decode HTTP/1.1 chunked request bodies without losing TCP stream boundaries. The parser must remain incremental: a partial chunk line, chunk payload, CRLF terminator or trailer block returns NeedMoreData, not a malformed-request error.

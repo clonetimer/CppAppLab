@@ -1,5 +1,19 @@
 # W8-D4 — Router and Dynamic HTTP Handlers
 
+## Start here
+
+A router chooses which handler receives a request. It does not parse TCP bytes and it does not own the socket.
+
+1. Read the request model produced by W8-D2.
+2. Register one exact route and send it a matching request.
+3. Register a dynamic handler and inspect how path parameters reach it.
+4. Add a static-file fallback after dynamic routes.
+5. Test an unknown route, method mismatch and malformed input.
+6. Trace the full pipeline: request → router → handler → response → serializer.
+
+**Mental model:** the router is a decision table for application behavior. Keep network I/O outside it so the same handler can be tested without opening a socket.
+
+
 ## Goal and source
 
 Based on the supplied `快速C++` D4 section, separate dynamic HTTP handlers from static-file lookup. Keep the course's progression: request model → Router/StaticFileHandler → response model → serializer. This task implements the application pipeline independently of sockets; D5 will integrate networking and a worker pool. The private `clonetimer/cpptest` repository returned 404 during this implementation, so no claims are made about incorporating its source.

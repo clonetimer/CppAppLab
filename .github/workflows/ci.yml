@@ -743,13 +743,17 @@ jobs:
           CPPAPPLAB_TEST_BINARY: ${{ github.workspace }}/build-browser/cppapplab
           CPPAPPLAB_BROWSER_ARTIFACT_DIR: ${{ runner.temp }}/cppapplab-browser-artifacts
         run: node tests/test_web_workbench_browser.cjs
-      - name: Upload browser screenshots
+      - name: Generate authoritative course coverage matrix
+        run: python3 scripts/generate_course_coverage.py --output "${{ runner.temp }}/cppapplab-browser-artifacts/course-coverage-matrix.csv"
+      - name: Upload browser screenshots and course matrix
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cppapplab-browser-workbench-${{ github.sha }}
-          path: ${{ runner.temp }}/cppapplab-browser-artifacts/*.png
-          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/cppapplab-browser-artifacts/*.png
+            ${{ runner.temp }}/cppapplab-browser-artifacts/course-coverage-matrix.csv
+          if-no-files-found: error
           retention-days: 14
 
   package-candidate:

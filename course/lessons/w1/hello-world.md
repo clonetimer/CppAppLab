@@ -1,6 +1,20 @@
 # W1 · First C++ Program
 
 ## Goal
+## Start here
+
+If this is your first C++ exercise, do not worry about understanding every line yet.
+
+1. Open `src/main.cpp` in the workbench.
+2. Find the line that prints text. Change only the message so the output is exactly `Hello, CppAppLab!\n`.
+3. Select **Build**. If it fails, read the first error and note its file and line.
+4. Select **Run / Test** and compare the output with the goal.
+5. Select **Formal check** only after the program behaves as expected.
+
+**Three different questions:** Build asks whether the source can become a program; Run asks what the program actually does; Formal check asks whether it meets the fixed course contract and records the result.
+
+You only need to edit the file listed in **Your task**. The platform owns the acceptance tests and reference implementation.
+
 
 Compile and run a small C++17 program with GCC. This is the first complete edit → build → execute → check loop in CppAppLab.
 

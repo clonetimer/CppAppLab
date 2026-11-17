@@ -1,5 +1,19 @@
 # W8-D3 · HTTP Responses and Static Files
 
+## Start here
+
+Connect one parsed request to one response before studying the complete router.
+
+1. Construct a request for `GET /` and pass it to the static-file handler.
+2. Read the returned status, headers and body.
+3. Serialize the response and inspect the exact HTTP bytes.
+4. Try a known file, a missing file and a directory index.
+5. Compare GET and HEAD: HEAD returns the same response metadata but no body.
+6. Test binary content and unsafe paths.
+
+**Mental model:** parsing turns bytes into a request object; a handler turns that object into a response object; serialization turns the response back into bytes. Each step has one responsibility.
+
+
 ## Goal
 
 Connect the W8-D2 parsed request model to an HTTP response and a static-file handler:

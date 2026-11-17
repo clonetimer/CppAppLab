@@ -132,11 +132,25 @@ The W7 Chat and W8 HTTP Server learner templates are deliberately incomplete unt
 
 ### P8-C5 — Cross-course user journey
 
-- [ ] Run browser journeys across all 23 tasks and all interaction classes.
-- [ ] Verify desktop, narrow mobile and keyboard-only navigation.
-- [ ] Verify recoverability after compile failure, failed acceptance, interrupted process, service crash and browser refresh.
-- [ ] Review screenshots and task completion flow before P8-C sign-off.
+- [ ] Run browser journeys across all 23 tasks and all interaction classes. The first catalog-wide Chromium sweep is implemented; CI validation is pending.
+- [ ] Verify desktop, narrow mobile and keyboard-only navigation. The acceptance history panel now supports Enter to open, focus transfer into the panel, Escape to close and focus restoration; full course/editor tab-order audit remains.
+- [ ] Verify recoverability after compile failure, failed acceptance, interrupted process, service crash and browser refresh. Compile-error → correction → successful build/test, failed W4 acceptance, formal PASS/history refresh and TCP service crash → restart now have automated coverage; web-server shutdown process reaping is now covered; unsaved-edit beforeunload guard, cancel-reload, explicit save, reload and source-persistence recovery are now covered in Chromium.
+- [ ] Review screenshots and task completion flow before P8-C sign-off. CI uploads the desktop/mobile PNG evidence; final delivery provenance and review requirements are specified in `docs/P8_FINAL_DELIVERY_PACKAGE.md`.
 
 ## Acceptance criteria
 
 P8-C is complete only when all 23 registered tasks are represented accurately in the browser; all 14 application tasks have the correct safe interaction contract; the 9 library/test-only tasks remain test-driven; service sessions are bounded and fully cleaned up; formal acceptance remains the only evidence-writing action; and the full browser user journey passes on Ubuntu 22.04/24.04 CI without regressing the CLI, package builds or Windows launcher checks.
+
+### Curriculum-wide task-first teaching
+
+- [x] W1–W4 first-task walkthroughs with staged complexity and plain-language mental models.
+- [x] W5–W9 all 18 advanced task lessons now begin with a task-specific first path and a concrete mental model.
+- [x] Chromium catalog traversal now asserts that all 23 lessons render a visible `Start here` section.
+- [ ] Review actual beginner usability with a first-time learner walkthrough; automated presence checks do not replace comprehension testing.
+
+### Tutorial accessibility
+
+- [x] Add a task-first walkthrough and plain-language terminology to the Chinese learner guide.
+- [x] Add step-by-step "Start here" sections to W1–W4 lessons, preserving the existing technical contracts and acceptance criteria.
+- [ ] Extend the same teaching structure to W5–W9 and verify all 23 lesson pages in Chromium.
+- [ ] Review task-level help, hints and error explanations for consistency with the beginner-first path.

@@ -1,5 +1,19 @@
 # W7-B · Multi-client TCP Chat with Non-blocking I/O and epoll
 
+## Start here
+
+Build on the single-client Echo server. The new problem is coordinating several connections without blocking the whole server.
+
+1. Draw three clients connected to one server. Each client has its own socket/file descriptor.
+2. First identify what blocks in the W7-A server when one client is slow.
+3. Read the event-loop outline: `epoll_create → epoll_ctl → epoll_wait`.
+4. Implement accepting clients and recording their connection state before adding broadcast.
+5. Add nickname registration, then deliver one message to the other connected clients.
+6. Test disconnect cleanup, slow clients, partial writes and bounded output queues.
+
+**Mental model:** epoll tells the server which descriptors are ready; it does not send messages for you. The server still owns each client's state and must handle partial reads/writes and disconnects.
+
+
 ## Goal
 
 Build the W7 completion project: a multi-client TCP chat server using non-blocking Linux sockets and an `epoll` event loop.

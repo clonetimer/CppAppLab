@@ -119,6 +119,14 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 29. Generate course coverage from the catalog and keep evidence dimensions separate
+
+- The `course/tasks.tsv` file is the single authoritative source for task IDs, lesson paths, source files, acceptance kind and prerequisites. Never maintain a manually duplicated course matrix.
+- Generate the course matrix in CI from that catalog and upload it with browser screenshots so the evidence is tied to the exact tested commit.
+- Distinguish catalog/browser representation, deep interaction journeys and formal acceptance. A task being listed, selectable or having a `Start here` section is not proof its full exercise was solved.
+- Fail generation when catalog rows are malformed or the expected task count changes unexpectedly; a count change should trigger an explicit course-scope review.
+- Use explicit `NOT_RUN`/`SEE_FEATURE_MATRIX` states for evidence that the generator cannot prove. Never infer PASS from source-file presence or test-name presence.
+
 ## 28. Apply one task-first entry pattern across the full curriculum
 
 - Once a consistent first-screen teaching pattern is proven in the introductory lessons, extend it to every catalog task rather than leaving advanced weeks as an abrupt jump in difficulty.

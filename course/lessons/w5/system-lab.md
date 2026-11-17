@@ -1,5 +1,19 @@
 # W5 · Linux System Programming Lab
 
+## Start here
+
+Begin with one process, not the whole Linux API surface.
+
+1. Read the fixed CLI in `src/main.cpp` and identify the command that starts a child process.
+2. Trace the data path: command arguments → `ProcessRunner` → child process → captured output and exit status.
+3. Implement the smallest bounded-queue operation first: push one item, then pop it.
+4. Run the focused queue test before adding concurrent producers and consumers.
+5. Implement process execution with a fixed argument vector; then add timeout, output limit and child cleanup.
+6. Finish by testing invalid input, timeout and output truncation.
+
+**Mental model:** a file descriptor is a small integer handle owned by the process. `fork` creates a child; `exec` replaces its program; `waitpid` collects its exit status. Start with one child and follow its lifetime before studying pipes and process groups.
+
+
 ## Goal
 
 Build a small Linux command runner backed by two reusable components:

@@ -448,6 +448,11 @@ class WebWorkbenchTests(unittest.TestCase):
     def test_tcp_echo_bridge_uses_the_registered_client_and_session_port(self) -> None:
         workspace = self.workspace_root / "w7.tcp-echo"
         workspace.mkdir(parents=True, exist_ok=True)
+        runtime = workspace / ".cppapplab" / "application" / "runtime"
+        runtime.mkdir(parents=True, exist_ok=True)
+        executable = runtime.parent / "learner_app"
+        executable.write_text(FAKE_ENGINE, encoding="utf-8")
+        executable.chmod(0o755)
         with patch.object(
             self.server, "workspace_for_task", return_value=(workspace, "")
         ), patch.object(
@@ -482,6 +487,11 @@ class WebWorkbenchTests(unittest.TestCase):
     def test_tcp_echo_bridge_rejects_oversized_and_multiline_messages(self) -> None:
         workspace = self.workspace_root / "w7.tcp-echo"
         workspace.mkdir(parents=True, exist_ok=True)
+        runtime = workspace / ".cppapplab" / "application" / "runtime"
+        runtime.mkdir(parents=True, exist_ok=True)
+        executable = runtime.parent / "learner_app"
+        executable.write_text(FAKE_ENGINE, encoding="utf-8")
+        executable.chmod(0o755)
         with patch.object(
             self.server, "workspace_for_task", return_value=(workspace, "")
         ), patch.object(

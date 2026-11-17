@@ -719,6 +719,66 @@ async function main() {
     assert.equal(await page.locator("#app-fields textarea").count(), 1);
     assert.equal(await page.locator("#app-execute-button").isDisabled(), true);
 
+    // P8-C5: walk every catalog entry in the actual browser. This verifies
+    // that all 23 tasks are selectable, have their authoritative lesson and
+    // state rendered, and expose the same prerequisite metadata as the API.
+    const catalogTaskIds = [
+      "w1.hello-world", "w1.calculator", "w2.todo-cli", "w3.task-manager",
+      "w4.quality-gate", "w5.system-lab", "w6.thread-pool", "w7.tcp-echo",
+      "w7.tcp-chat", "w8.http-protocol", "w8.http-parser", "w8.static-files",
+      "w8.router", "w8.http-server", "w8.http-connection-policy",
+      "w8.http-keep-alive", "w8.http-connection-guards",
+      "w8.http-graceful-shutdown", "w8.http-observability",
+      "w8.http-operational-load", "w9.http-chunked", "w9.request-target",
+      "w9.static-root"
+    ];
+    assert.equal(await page.locator("#course-list .task-link").count(), catalogTaskIds.length);
+    for (const taskId of catalogTaskIds) {
+      const taskButton = page.locator('#course-list .task-link[data-task-id="' + taskId + '"]');
+      assert.equal(await taskButton.count(), 1, taskId + " must exist exactly once in the browser catalog");
+      await taskButton.click();
+      await page.waitForFunction((id) =>
+        document.querySelector("#task-breadcrumb")?.textContent.trim() === id,
+        taskId
+      );
+      assert.ok((await page.locator("#task-title").textContent()).trim().length > 0,
+        taskId + " must render a lesson title");
+      assert.ok((await page.locator("#lesson-content").textContent()).trim().length > 0,
+        taskId + " must render its authoritative lesson");
+      assert.ok(["已通过", "进行中", "需要修改", "需要重新验收", "未开始", "未解锁"].includes(
+        await page.locator("#task-state").textContent()
+      ), taskId + " must expose a known course state");
+      const taskDetail = await page.request.get(service.baseUrl + "/api/v1/tasks/" + taskId);
+      assert.equal(taskDetail.status(), 200, taskId + " detail API must be available");
+      const detail = await taskDetail.json();
+      assert.equal(detail.id, taskId);
+      assert.ok(Array.isArray(detail.prerequisites));
+      if (detail.state === "LOCKED") {
+        assert.ok(detail.state_reason.length > 0,
+          taskId + " must explain why its prerequisites are locked");
+      }
+    }
+
+    // Refresh must preserve the last formal PASS and the history timeline.
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() =>
+      document.querySelector("#engine-status")?.textContent.includes("本地引擎已连接")
+    );
+    await page.waitForFunction(() =>
+      document.querySelectorAll("#course-list .task-link").length === 23
+    );
+    await page.locator('#course-list .task-link[data-task-id="w1.hello-world"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w1.hello-world"
+    );
+    assert.equal(await page.locator("#task-state").textContent(), "已通过",
+      "A browser refresh must not lose the authoritative formal PASS");
+    await page.locator("#history-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#history-summary")?.textContent.includes("1 次正式验收")
+    );
+    assert.equal(await page.locator("#history-list .history-record").count(), 1);
+
     // Monaco may reject an in-flight worker request with its documented "Canceled"
     // sentinel when an editor model is disposed during task switching. It is not an
     // application exception; all other uncaught page errors remain test failures.

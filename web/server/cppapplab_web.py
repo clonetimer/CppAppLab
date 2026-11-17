@@ -756,6 +756,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 break
             if not readable:
                 break
+            disconnected: list[str] = []
             for connection in readable:
                 client = next(
                     (item for item in session.clients.values() if item.connection is connection),
@@ -770,16 +771,24 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 except OSError:
                     data = b""
                 if not data:
+                    disconnected.append(client.client_id)
                     continue
                 client.buffer += data.decode("utf-8", errors="replace")
-                while "\n" in client.buffer:
-                    line, client.buffer = client.buffer.split("\n", 1)
-                    if line.endswith("\r"):
+                while "\\n" in client.buffer:
+                    line, client.buffer = client.buffer.split("\\n", 1)
+                    if line.endswith("\\r"):
                         line = line[:-1]
                     if line:
                         client.inbox.append(line)
                         while len(client.inbox) > 100:
                             client.inbox.popleft()
+            for client_id in disconnected:
+                stale = session.clients.pop(client_id, None)
+                if stale is not None:
+                    try:
+                        stale.connection.close()
+                    except OSError:
+                        pass
 
         result: dict[str, list[str]] = {}
         for client_id, client in session.clients.items():
@@ -921,7 +930,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         parsed = urlsplit(target)
         if parsed.scheme or parsed.netloc or parsed.fragment or target.startswith("//"):
             raise ApiError(400, "Absolute URLs, authorities and fragments are not allowed.")
-        if "\\\\" in target or any(part in {".", ".."} for part in parsed.path.split("/")):
+        if "\\" in target or any(part in {".", ".."} for part in parsed.path.split("/")):
             raise ApiError(400, "HTTP target contains an unsafe path component.")
         if any(character in target for character in "\r\n\x00"):
             raise ApiError(400, "HTTP target contains invalid control characters.")
@@ -983,6 +992,16 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             session = self.service_sessions.get(task_id)
             if session is None:
                 return self._service_snapshot(None, task_id)
+            for client in list(session.clients.values()):
+                try:
+                    client.connection.sendall(b"QUIT\\n")
+                except OSError:
+                    pass
+                try:
+                    client.connection.close()
+                except OSError:
+                    pass
+            session.clients.clear()
             self._append_service_log(session, f"\n[CppAppLab Web] {reason}.\n")
             if session.process.poll() is None:
                 try:

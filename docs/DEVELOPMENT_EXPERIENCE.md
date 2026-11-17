@@ -119,6 +119,13 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 21. Web-server shutdown is a service-session lifecycle boundary
+
+- A service supervisor cannot rely only on user-initiated stop or idle expiry. The HTTP workbench server's `server_close()` path must stop all registered service sessions and terminate/reap their process groups.
+- Test this by starting a real supervised child, invoking the actual server shutdown hook, and asserting the child has exited, the session is STOPPED, and the janitor thread is signalled.
+- Make shutdown idempotent because normal test teardown and production shutdown paths may both call `server_close()`.
+- Keep active browser request interruption as a separate test: stopping service children does not prove that in-flight API handlers, autosave requests or browser refreshes recover correctly.
+
 ## 20. Keyboard focus and service-crash recovery are explicit workbench contracts
 
 - When a modal-like history panel opens from a keyboard action, move focus into the panel; Escape closes it and returns focus to the invoking control. A close button alone is not sufficient keyboard support.

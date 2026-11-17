@@ -334,12 +334,6 @@ def bounded_output(value: str) -> str:
     clipped = encoded[:MAX_PROCESS_OUTPUT].decode("utf-8", errors="ignore")
     return clipped + "\n[CppAppLab Web] Output truncated at the configured limit.\n"
 
-def reserve_loopback_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
-        listener.bind(("127.0.0.1", 0))
-        return int(listener.getsockname()[1])
-
-
 def ensure_workspace_directory(root: Path, *parts: str) -> Path:
     current = root
     for part in parts:

@@ -376,6 +376,12 @@ async function main() {
     assert.equal(await page.locator("#task-state").textContent(), "已通过",
       "Application build/run must not alter the formal acceptance result");
 
+    const editorBoxDesktop = await page.locator(".editor-panel").boundingBox();
+    const lessonBoxDesktop = await page.locator(".lesson-panel").boundingBox();
+    assert.ok(editorBoxDesktop && lessonBoxDesktop);
+    assert.ok(editorBoxDesktop.x < lessonBoxDesktop.x,
+      "Desktop places the active code editor to the left of contextual lesson guidance");
+
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "cppapplab-workbench-desktop.png"),
       fullPage: true
@@ -387,10 +393,35 @@ async function main() {
       document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
     );
     assert.equal(mobileOverflow, false, "Mobile workbench must not introduce horizontal page overflow");
+    const lessonBoxMobile = await page.locator(".lesson-panel").boundingBox();
+    const editorBoxMobile = await page.locator(".editor-panel").boundingBox();
+    assert.ok(lessonBoxMobile && editorBoxMobile);
+    assert.ok(lessonBoxMobile.y < editorBoxMobile.y,
+      "Mobile retains the instructional sequence: lesson before source editor");
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "cppapplab-workbench-mobile.png"),
       fullPage: true
     });
+
+    // A locked later task may display its instructional action schema, but
+    // must not permit launching an application before prerequisites pass.
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.locator('#course-list .task-link[data-task-id="w8.http-parser"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w8.http-parser"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "HTTP 请求解析器");
+    assert.equal(await page.locator("#app-fields textarea").count(), 1);
+    assert.match(await page.locator("#app-fields textarea").inputValue(), /Host: localhost/);
+    assert.equal(await page.locator("#app-execute-button").isDisabled(), true,
+      "Locked parser tasks must not be executed from the browser");
+    await page.locator('#course-list .task-link[data-task-id="w8.router"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w8.router"
+    );
+    assert.equal(await page.locator("#app-profile-label").textContent(), "HTTP 路由与分发");
+    assert.equal(await page.locator("#app-fields textarea").count(), 1);
+    assert.equal(await page.locator("#app-execute-button").isDisabled(), true);
 
     // Monaco may reject an in-flight worker request with its documented "Canceled"
     // sentinel when an editor model is disposed during task switching. It is not an

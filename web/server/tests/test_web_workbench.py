@@ -824,6 +824,33 @@ class WebWorkbenchTests(unittest.TestCase):
             )
             self.assertEqual(stopped["state"], "STOPPED")
 
+    def test_web_server_shutdown_stops_managed_service_process_group(self) -> None:
+        workspace = self.workspace_root / "w7.tcp-echo"
+        executable = workspace / ".cppapplab" / "application" / "learner_app"
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.write_text(FAKE_ENGINE, encoding="utf-8")
+        executable.chmod(0o755)
+        with patch.object(
+            self.server, "workspace_for_task", return_value=(workspace, "")
+        ), patch.object(
+            self.server, "run_cli", return_value=(0, "Application build result: PASS")
+        ):
+            started = self.request(
+                "/api/v1/workspaces/w7.tcp-echo/service/start",
+                method="POST", body={}, token=self.token, origin=self.base_url,
+            )
+            self.assertEqual(started["state"], "RUNNING")
+            session = self.server.service_sessions["w7.tcp-echo"]
+            process = session.process
+            self.assertIsNone(process.poll())
+
+            self.server.server_close()
+
+            self.assertIsNotNone(process.poll(),
+                                 "Web server shutdown must terminate and reap managed service processes")
+            self.assertEqual(session.state, "STOPPED")
+            self.assertTrue(self.server.service_janitor_stop.is_set())
+
     def test_service_crash_is_reported_and_a_new_session_can_restart(self) -> None:
         workspace = self.workspace_root / "w7.tcp-echo"
         executable = workspace / ".cppapplab" / "application" / "learner_app"

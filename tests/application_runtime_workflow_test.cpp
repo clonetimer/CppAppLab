@@ -247,6 +247,7 @@ TEST(ApplicationRuntimeWorkflowTest, TaskManagerApplicationStateIsIsolatedToItsW
     EXPECT_FALSE(std::filesystem::exists(global_todo_file));
     EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
 }
+
 TEST(ApplicationRuntimeWorkflowTest, SystemLabOnlyRunsItsFixedEchoDemonstration) {
     const cppapplab::Task* task = cppapplab::find_task("w5.system-lab");
     ASSERT_NE(task, nullptr);

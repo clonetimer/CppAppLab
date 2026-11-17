@@ -199,6 +199,54 @@ TEST(ApplicationRuntimeWorkflowTest, TodoApplicationStateIsIsolatedToItsWorkspac
     EXPECT_FALSE(std::filesystem::exists(global_todo_file));
 }
 
+TEST(ApplicationRuntimeWorkflowTest, TaskManagerApplicationStateIsIsolatedToItsWorkspace) {
+    const cppapplab::Task* task = cppapplab::find_task("w3.task-manager");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state("CPPAPPLAB_STATE_DIR", (temporary.path() / "state").string());
+    const auto global_todo_file = temporary.path() / "global-todos.tsv";
+    ScopedEnvironment global_todo("CPPAPPLAB_TODO_FILE", global_todo_file.string());
+
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "task-manager");
+    const auto reference = cppapplab::data_root() / "labs/w3/task-manager/reference";
+    copy_reference(workspace.root, reference, {"src/task.cpp", "src/task_manager.cpp"});
+
+    int result = -1;
+    std::string output = invoke_capture({"cppapplab", "app-build", workspace.root.string()}, result);
+    ASSERT_EQ(result, 0) << output;
+
+    output = invoke_capture(
+        {"cppapplab", "app-run", workspace.root.string(), "add", "workspace scoped task"}, result);
+    EXPECT_EQ(result, 0) << output;
+    EXPECT_NE(output.find("Added #1: workspace scoped task"), std::string::npos);
+
+    output = invoke_capture({"cppapplab", "app-run", workspace.root.string(), "list"}, result);
+    EXPECT_EQ(result, 0) << output;
+    EXPECT_NE(output.find("#1 [ ] workspace scoped task"), std::string::npos);
+
+    output = invoke_capture(
+        {"cppapplab", "app-run", workspace.root.string(), "done", "1"}, result);
+    EXPECT_EQ(result, 0) << output;
+    EXPECT_NE(output.find("Completed #1"), std::string::npos);
+
+    output = invoke_capture({"cppapplab", "app-run", workspace.root.string(), "list"}, result);
+    EXPECT_EQ(result, 0) << output;
+    EXPECT_NE(output.find("#1 [x] workspace scoped task"), std::string::npos);
+
+    output = invoke_capture(
+        {"cppapplab", "app-run", workspace.root.string(), "remove", "1"}, result);
+    EXPECT_EQ(result, 0) << output;
+    EXPECT_NE(output.find("Removed #1"), std::string::npos);
+
+    output = invoke_capture({"cppapplab", "app-run", workspace.root.string(), "list"}, result);
+    EXPECT_EQ(result, 0) << output;
+    EXPECT_NE(output.find("No tasks."), std::string::npos);
+
+    EXPECT_TRUE(std::filesystem::is_regular_file(
+        workspace.root / ".cppapplab" / "application" / "runtime" / "todos.tsv"));
+    EXPECT_FALSE(std::filesystem::exists(global_todo_file));
+    EXPECT_FALSE(std::filesystem::exists(workspace.root / ".cppapplab" / "evidence.txt"));
+}
 TEST(ApplicationRuntimeWorkflowTest, SystemLabOnlyRunsItsFixedEchoDemonstration) {
     const cppapplab::Task* task = cppapplab::find_task("w5.system-lab");
     ASSERT_NE(task, nullptr);

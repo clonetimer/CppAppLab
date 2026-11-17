@@ -319,6 +319,16 @@ async function main() {
     await page.locator("#history-close").click();
     assert.equal(await page.locator("#history-panel").isVisible(), false);
 
+    // Keyboard-only access to the history control: tab focus, open with Enter,
+    // then close with Escape without using a pointer.
+    await page.locator("#history-button").focus();
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => !document.querySelector("#history-panel")?.hidden);
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => document.querySelector("#history-panel")?.hidden);
+    assert.equal(await page.locator("#task-state").textContent(), "已通过",
+      "Keyboard history navigation must not alter formal task state");
+
     await page.waitForFunction(() => {
       const button = Array.from(document.querySelectorAll("#course-list .task-link"))
         .find((item) => item.textContent.includes("Multi-file Calculator"));

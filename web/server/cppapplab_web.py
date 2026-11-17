@@ -888,6 +888,13 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         if len(parts) == 3 and parts[0] == "workspaces" and parts[2] == "files":
             self._get_workspace_files(parts[1])
             return
+        if len(parts) == 4 and parts[0] == "workspaces" and parts[2] == "service":
+            if parts[3] == "status":
+                self._send_json(200, self.server.service_status(parts[1]))
+                return
+            if parts[3] == "logs":
+                self._send_json(200, self.server.service_status(parts[1]))
+                return
         if len(parts) >= 4 and parts[0] == "workspaces" and parts[2] == "files":
             self._get_workspace_file(parts[1], "/".join(parts[3:]))
             return
@@ -912,6 +919,7 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             "acceptance_kind": task["acceptance_kind"],
             "expected_test_count": task["expected_test_count"],
             "runtime_profile": RUNTIME_PROFILES.get(task_id),
+            "service_profile": SERVICE_PROFILES.get(task_id),
             "state": states.get(task_id, "UNKNOWN"),
             "lesson_markdown": lesson,
         })
@@ -980,6 +988,14 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "app-run":
                 self._run_application(parts[3])
                 return
+            if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "service-start":
+                self._read_json()
+                self._send_json(200, self.server.start_service(parts[3]))
+                return
+            if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "service-stop":
+                self._read_json()
+                self._send_json(200, self.server.stop_service(parts[3]))
+                return
             if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "check":
                 self._check_workspace(parts[3])
                 return
@@ -1033,6 +1049,8 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         if len(content.encode("utf-8")) > MAX_SOURCE_BYTES:
             raise ApiError(413, "Learner source file exceeds the 1 MiB limit.")
         target, _ = self.server.resolve_workspace_file(task_id, relative)
+        if task_id in SERVICE_PROFILES:
+            self.server.stop_service(task_id, "Learner source changed")
         parent = target.parent
         try:
             target_info = target.lstat()
@@ -1075,7 +1093,7 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         })
 
     def _build_application(self, task_id: str) -> None:
-        if task_id not in RUNTIME_PROFILES:
+        if task_id not in RUNTIME_PROFILES and task_id not in SERVICE_PROFILES:
             raise ApiError(409, "This task has no browser application profile.")
         self._read_json()
         workspace, _ = self.server.workspace_for_task(task_id)

@@ -119,6 +119,14 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 17. Reuse the learning engine's canonical append-only history for browser timelines
+
+- The authoritative course history already lives in the learning engine's per-task append-only history records. The browser should consume this source rather than inventing a second database or writing records from Build/Run/service actions.
+- Expose history through a read-only API that calls the fixed `cppapplab history <task-id>` command and parses its bounded, task-scoped output. Validate task IDs against the course catalog before invoking the engine.
+- Preserve the distinction between an attempt and current task state: a historical PASS can be followed by FAIL, and the latest state must not be inferred from the first or best historical attempt.
+- Display timestamps, result, test count, workspace and source fingerprint so learners can compare attempts without exposing mutable evidence-writing controls.
+- Explain STALE and LOCKED using the same state semantics as the learning engine. Never let a browser timeline independently grant prerequisites or mark a task passed.
+
 ## 16. Offline APT bundle downloads must distinguish transient and permanent mirror failures
 
 **Observed failure mode:** the offline dependency workflow successfully resolved package metadata but both Ubuntu versions received HTTP 503 from the pinned Snapshot endpoint for `libc-dev-bin`; fallback mirrors returned 404 because they did not retain that exact snapshot package version. A single transient Snapshot outage therefore failed the entire offline bundle build.

@@ -134,7 +134,7 @@ The W7 Chat and W8 HTTP Server learner templates are deliberately incomplete unt
 
 - [ ] Run browser journeys across all 23 tasks and all interaction classes. The first catalog-wide Chromium sweep is implemented; CI validation is pending.
 - [ ] Verify desktop, narrow mobile and keyboard-only navigation. The acceptance history panel now supports Enter to open, focus transfer into the panel, Escape to close and focus restoration; full course/editor tab-order audit remains.
-- [ ] Verify recoverability after compile failure, failed acceptance, interrupted process, service crash and browser refresh. Compile-error → correction → successful build/test, failed W4 acceptance, formal PASS/history refresh and TCP service crash → restart now have automated coverage; web-server shutdown process reaping is now covered; browser refresh during an in-flight operation remains.
+- [ ] Verify recoverability after compile failure, failed acceptance, interrupted process, service crash and browser refresh. Compile-error → correction → successful build/test, failed W4 acceptance, formal PASS/history refresh and TCP service crash → restart now have automated coverage; web-server shutdown process reaping is now covered; unsaved-edit beforeunload guard, cancel-reload, explicit save, reload and source-persistence recovery are now covered in Chromium.
 - [ ] Review screenshots and task completion flow before P8-C sign-off.
 
 ## Acceptance criteria

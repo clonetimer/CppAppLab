@@ -1,5 +1,19 @@
 # W9-A3 · Secure Static-File Root Confinement
 
+## Start here
+
+The goal is to serve files under one trusted directory without following attacker-controlled paths.
+
+1. Open the configured document root and keep its directory file descriptor.
+2. Serve a normal file using descriptor-relative lookup.
+3. Try a path containing `..` and verify it cannot escape the root.
+4. Create a symlink inside the root pointing outside and verify it is not followed.
+5. Test a missing file, a directory index and a non-GET method.
+6. Trace how each path component is opened relative to the already-open directory.
+
+**Mental model:** a path string is not proof that a file is inside the document root. Descriptor-relative traversal with no symlink following enforces the boundary at the filesystem level.
+
+
 ## Goal
 
 Replace path-string concatenation with descriptor-relative file access. The document root is opened once and retained as a directory file descriptor. Every path component is resolved relative to an already-open directory descriptor; symlinks are never followed.

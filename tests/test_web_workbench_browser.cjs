@@ -807,6 +807,53 @@ async function main() {
     );
     assert.equal(await page.locator("#history-list .history-record").count(), 1);
 
+    // Unsaved edits must trigger the browser's beforeunload guard. Cancel the
+    // first reload, save explicitly, then reload and verify persisted content.
+    const helloSourceBefore = await readWorkspaceFile(
+      page, service.baseUrl, "w1.hello-world", "src/main.cpp"
+    );
+    const helloSourceEdited = helloSourceBefore.content.replace(
+      "Hello, CppAppLab!", "Hello, CppAppLab after refresh!"
+    );
+    assert.notEqual(helloSourceEdited, helloSourceBefore.content);
+    await page.locator('#course-list .task-link[data-task-id="w1.hello-world"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w1.hello-world"
+    );
+    await replaceMonacoEditor(page, helloSourceEdited);
+    await page.waitForFunction(() =>
+      document.querySelector("#save-state")?.textContent.includes("自动保存将在片刻后执行")
+    );
+    let unloadPromptSeen = false;
+    page.once("dialog", async (dialog) => {
+      unloadPromptSeen = dialog.type() === "beforeunload";
+      await dialog.dismiss();
+    });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    assert.equal(unloadPromptSeen, true,
+      "Reload with dirty learner source must ask before discarding changes");
+    await page.waitForFunction(() =>
+      document.querySelector("#task-breadcrumb")?.textContent.trim() === "w1.hello-world"
+    );
+    await page.keyboard.press("Control+S");
+    await page.waitForFunction(() =>
+      document.querySelector("#save-state")?.textContent === "已保存到本地工作区",
+      null, { timeout: 15000 }
+    );
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForFunction(() =>
+      document.querySelector("#engine-status")?.textContent.includes("本地引擎已连接")
+    );
+    const helloSourceAfterReload = await readWorkspaceFile(
+      page, service.baseUrl, "w1.hello-world", "src/main.cpp"
+    );
+    assert.equal(helloSourceAfterReload.content, helloSourceEdited,
+      "Explicitly saved source must survive a browser reload");
+    await page.locator('#course-list .task-link[data-task-id="w1.hello-world"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector("#task-state")?.textContent === "结果已过期"
+    );
+
     // Monaco may reject an in-flight worker request with its documented "Canceled"
     // sentinel when an editor model is disposed during task switching. It is not an
     // application exception; all other uncaught page errors remain test failures.

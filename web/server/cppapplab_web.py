@@ -1351,6 +1351,33 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
                 value = self._read_json()
                 self._send_json(200, self.server.send_tcp_echo(parts[3], value.get("message")))
                 return
+            if len(parts) == 7 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:6] == ["service", "chat"]:
+                value = self._read_json()
+                action = parts[6]
+                if action == "connect":
+                    result = self.server.connect_chat_client(parts[3], value.get("nickname"))
+                elif action == "send":
+                    result = self.server.send_chat_message(
+                        parts[3], value.get("client_id"), value.get("message")
+                    )
+                elif action == "poll":
+                    result = self.server.poll_chat_messages(parts[3], value.get("client_id"))
+                elif action == "disconnect":
+                    result = self.server.disconnect_chat_client(parts[3], value.get("client_id"))
+                else:
+                    raise ApiError(404, "Chat service action not found.")
+                self._send_json(200, result)
+                return
+            if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "http"]:
+                value = self._read_json()
+                result = self.server.proxy_http_request(
+                    parts[3],
+                    value.get("method"),
+                    value.get("target"),
+                    value.get("body", ""),
+                )
+                self._send_json(200, result)
+                return
             if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "check":
                 self._check_workspace(parts[3])
                 return

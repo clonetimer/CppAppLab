@@ -109,15 +109,15 @@ The W7 Chat and W8 HTTP Server learner templates are deliberately incomplete unt
 
 #### Delivery slices
 
-- [ ] C3-A: fixed service build profiles, process supervisor, bounded log capture, state machine, loopback port allocation, stop/expiry and process-group cleanup.
-- [ ] C3-B: TCP Echo start/status/send/stop journey using the learner's own server and client implementation.
-- [ ] C3-C: TCP Chat server lifecycle and bounded browser-managed multi-client bridge.
-- [ ] C3-D: HTTP Server lifecycle and same-origin HTTP request/response proxy against the workspace document root.
+- [x] C3-A: fixed service build profiles, process supervisor, bounded log capture, state machine, ephemeral port allocation, stop/expiry and process-group cleanup.
+- [x] C3-B: TCP Echo start/status/send/stop journey using the learner's own server and client implementation; a C++ workflow test performs a real loopback client/server round trip.
+- [x] C3-C: TCP Chat server lifecycle and bounded browser-managed multi-client bridge; API tests cover two clients, join/leave events, message broadcast and input limits.
+- [x] C3-D: HTTP Server lifecycle and same-origin HTTP request/response proxy against the workspace document root; API tests cover GET/POST, target validation, request/response size limits and timeout handling.
 - [ ] C3-E: Chromium, Python API and C++ integration regression across Ubuntu 22.04/24.04; verify incomplete learner services surface real diagnostics and never create formal PASS evidence.
 
 #### Acceptance gates
 
-1. No service binds beyond loopback; no browser request can select an arbitrary host, port, executable or process argument.
+1. Service templates default to loopback binding; the browser bridge always connects to 127.0.0.1 and accepts no user-supplied host, port, executable or process argument. The workbench is a local development environment, not an OS sandbox for deliberately modified learner source.
 2. Start is idempotent; failed startup returns learner diagnostics; status and logs remain available after process exit.
 3. Stop, task switching, source edits, idle expiry and web-server shutdown leave no child process or client socket behind.
 4. Logs, clients, chat lines, HTTP request bodies and HTTP responses have explicit limits.

@@ -273,7 +273,7 @@ TEST(ApplicationRuntimeWorkflowTest, RouterProfilePassesRequestThroughStandardIn
     output = invoke_capture(
         {"cppapplab", "app-run", workspace.root.string(), "dispatch", request}, result);
     EXPECT_NE(result, 0) << output;
-    EXPECT_NE(output.find("TODO: implement incremental HTTP request parsing"), std::string::npos);
+    EXPECT_NE(output.find("TODO: register the three dynamic endpoints"), std::string::npos);
     EXPECT_TRUE(std::filesystem::is_regular_file(
         workspace.root / ".cppapplab" / "application" / "runtime" / "www" / "index.html"));
 }

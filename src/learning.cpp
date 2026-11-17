@@ -634,8 +634,7 @@ std::optional<ApplicationBuildProfile> application_build_profile(const Task& tas
             {"src/main.cpp", "src/http_message.cpp", "src/static_file_handler.cpp"}, false};
     }
     if (task.id == "w8.http-parser") {
-        return ApplicationBuildProfile{
-            {"src/main.cpp", "src/http_message.cpp", "src/http_request_parser.cpp"}, false};
+        return ApplicationBuildProfile{{"src/main.cpp", "src/http_request_parser.cpp"}, false};
     }
     if (task.id == "w8.router") {
         return ApplicationBuildProfile{

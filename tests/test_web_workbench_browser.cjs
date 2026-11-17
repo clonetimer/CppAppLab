@@ -854,6 +854,11 @@ async function main() {
       /无前置任务/,
       "The selected task must continue to show authoritative prerequisite context after recovery"
     );
+    assert.equal(
+      await page.locator("#task-state").textContent(),
+      "结果已过期",
+      "A source edit after a historical PASS must never preserve a current PASS after reload"
+    );
     await page.locator('#course-list .task-link[data-task-id="w1.hello-world"]').click();
     await page.waitForFunction(() =>
       document.querySelector("#task-state")?.textContent === "结果已过期"

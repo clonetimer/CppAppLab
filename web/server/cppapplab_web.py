@@ -8,6 +8,7 @@ It uses only the Python standard library and binds to loopback by default.
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 from collections import deque
 from dataclasses import dataclass, field
@@ -171,7 +172,6 @@ class ServiceSession:
     log_lock: threading.Lock = field(default_factory=threading.Lock)
     log_thread: threading.Thread | None = None
     clients: dict[str, "ServiceChatClient"] = field(default_factory=dict)
-    log_thread: threading.Thread | None = None
 
 
 
@@ -551,6 +551,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             "port": session.port,
             "exit_code": session.exit_code,
             "started_seconds_ago": max(0, int(time.monotonic() - session.started_at)),
+            "clients_count": len(session.clients),
             "logs": logs,
         }
 
@@ -598,7 +599,14 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 workspace, ".cppapplab", "application", "runtime"
             )
             port = reserve_loopback_port()
-            command = [str(self.binary), "server", str(port)]
+            executable = workspace / ".cppapplab" / "application" / "learner_app"
+            try:
+                executable_status = executable.lstat()
+            except OSError as exc:
+                raise ApiError(409, "The learner service executable is missing. Build the application first.") from exc
+            if executable.is_symlink() or not executable.is_file() or not os.access(executable, os.X_OK):
+                raise ApiError(409, "The learner service executable is missing or unsafe.")
+            command = [str(executable), "server", str(port)]
             if profile["kind"] == "http_server":
                 document_root = ensure_workspace_directory(
                     runtime_directory, "www"
@@ -651,12 +659,49 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             )
             session.log_thread = reader
             reader.start()
-            time.sleep(0.15)
-            self._refresh_service_state(session)
-            if session.process.poll() is not None and session.log_thread is not None:
-                session.log_thread.join(timeout=0.5)
-            elif session.state == "STARTING":
+            readiness_marker = f"listening on {port}"
+            if profile["kind"] in {"tcp_echo", "tcp_chat"}:
+                readiness_marker = f"listening on 127.0.0.1:{port}"
+            deadline = time.monotonic() + 3.0
+            ready = False
+            while time.monotonic() < deadline:
+                self._refresh_service_state(session)
+                with session.log_lock:
+                    log_text = "".join(session.logs)
+                if readiness_marker in log_text:
+                    ready = True
+                    break
+                if session.process.poll() is not None:
+                    break
+                time.sleep(0.05)
+
+            if ready and session.process.poll() is None:
                 session.state = "RUNNING"
+            else:
+                if session.process.poll() is None:
+                    self._append_service_log(
+                        session,
+                        "\\n[CppAppLab Web] Service did not report loopback readiness within 3 seconds.\\n",
+                    )
+                    try:
+                        os.killpg(session.process.pid, signal.SIGTERM)
+                    except ProcessLookupError:
+                        pass
+                    try:
+                        session.process.wait(timeout=1.0)
+                    except subprocess.TimeoutExpired:
+                        try:
+                            os.killpg(session.process.pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                        try:
+                            session.process.wait(timeout=1.0)
+                        except subprocess.TimeoutExpired:
+                            pass
+                session.exit_code = session.process.poll()
+                session.state = "FAILED"
+                if session.log_thread is not None:
+                    session.log_thread.join(timeout=0.5)
             return self._service_snapshot(session, task_id)
 
     def send_tcp_echo(self, task_id: str, message: str) -> dict[str, Any]:

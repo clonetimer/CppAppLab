@@ -119,6 +119,13 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 15. Managed TCP clients need bounded blocking writes
+
+- A socket configured with `setblocking(False)` makes `sendall()` unsuitable as a general bounded-message API: a partial write can raise `BlockingIOError` instead of completing the message.
+- For adapter-owned Chat clients, use a finite socket timeout, use `select()` to wait for readable data, and retain blocking/timeout-mode `sendall()` for the small bounded protocol lines.
+- Keep the client count, line size, message size, inbox length and operation timeout bounded independently. A socket timeout alone is not a substitute for those limits.
+- Exercise multiple clients through the actual TCP protocol bridge, including nickname acknowledgement, join/leave broadcasts and message delivery.
+
 ## 14. Let the learner service own ephemeral port allocation
 
 **Observed failure mode:** the TCP Echo server already supports binding to port `0`, but its reference CLI rejected `0` before the server constructor could bind. The service adapter therefore cannot safely assume that every service accepts a preselected concrete port.

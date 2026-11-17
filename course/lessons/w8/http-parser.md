@@ -1,5 +1,19 @@
 # W8-D2 · Incremental HTTP Request Parser
 
+## Start here
+
+The parser receives arbitrary pieces of a request. Your first goal is to recognize an incomplete request without calling it malformed.
+
+1. Feed a complete request in one buffer and inspect the parsed method, target and headers.
+2. Feed the same request one byte at a time.
+3. After each byte, distinguish `NeedMoreData`, a complete request and a malformed request.
+4. Add Content-Length body handling and verify the exact number of consumed bytes.
+5. Test duplicate/conflicting framing headers and the configured size limits.
+6. Confirm that bytes belonging to a following request remain unconsumed.
+
+**Mental model:** the parser is a stateful boundary detector. It must not lose bytes, invent missing bytes or consume the next message.
+
+
 ## Goal
 
 Convert an arbitrary TCP byte buffer into a complete `HttpRequest` without assuming one `recv()` equals one HTTP request. The parser must distinguish incomplete input from malformed input and report exactly how many bytes belong to the first complete request.

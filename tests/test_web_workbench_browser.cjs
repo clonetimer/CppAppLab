@@ -308,6 +308,17 @@ async function main() {
 
     await page.locator("#check-button").click();
     await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "PASS", null, { timeout: 45000 });
+    await page.locator("#history-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#history-summary")?.textContent.includes("1 次正式验收")
+    );
+    assert.equal(await page.locator("#history-list .history-record").count(), 1);
+    assert.equal(await page.locator("#history-list .history-pass").textContent(), "通过");
+    assert.match(await page.locator("#history-list").textContent(), /源码指纹/);
+    assert.match(await page.locator("#history-list").textContent(), /Workspace|cppapplab-work/);
+    await page.locator("#history-close").click();
+    assert.equal(await page.locator("#history-panel").isVisible(), false);
+
     await page.waitForFunction(() => {
       const button = Array.from(document.querySelectorAll("#course-list .task-link"))
         .find((item) => item.textContent.includes("Multi-file Calculator"));

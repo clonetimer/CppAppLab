@@ -1047,7 +1047,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                     session, "\n[CppAppLab Web] Service process group did not exit after SIGKILL.\n"
                 )
             session.exit_code = session.process.poll()
-            session.state = "STOPPED"
+            session.state = "STOPPED" if stopped else "FAILED"
             session.last_activity = time.monotonic()
             if session.log_thread is not None:
                 session.log_thread.join(timeout=0.5)

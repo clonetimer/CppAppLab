@@ -147,6 +147,15 @@ SERVICE_PROFILES: dict[str, dict[str, Any]] = {
 
 
 @dataclass
+class ServiceChatClient:
+    client_id: str
+    nickname: str
+    connection: socket.socket
+    buffer: str = ""
+    inbox: deque[str] = field(default_factory=deque)
+
+
+@dataclass
 class ServiceSession:
     task_id: str
     kind: str
@@ -160,6 +169,8 @@ class ServiceSession:
     logs: deque[str] = field(default_factory=deque)
     log_bytes: int = 0
     log_lock: threading.Lock = field(default_factory=threading.Lock)
+    log_thread: threading.Thread | None = None
+    clients: dict[str, "ServiceChatClient"] = field(default_factory=dict)
     log_thread: threading.Thread | None = None
 
 
@@ -507,8 +518,11 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         if stream is None:
             return
         try:
-            for line in iter(stream.readline, ""):
-                CppAppLabWebServer._append_service_log(session, line)
+            while True:
+                chunk = stream.read(4096)
+                if not chunk:
+                    break
+                CppAppLabWebServer._append_service_log(session, chunk)
         finally:
             try:
                 stream.close()

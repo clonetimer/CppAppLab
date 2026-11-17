@@ -13,7 +13,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from cppapplab_web import CppAppLabWebServer, safe_relative_path
+from cppapplab_web import CppAppLabWebServer, ServiceSession, safe_relative_path
 
 
 FAKE_ENGINE = """#!/usr/bin/env python3
@@ -799,6 +799,41 @@ class WebWorkbenchTests(unittest.TestCase):
         self.assertIn("learner compile error", result["logs"])
         process.assert_not_called()
         self.assertNotIn("w7.tcp-chat", self.server.service_sessions)
+
+    def test_service_cleanup_kills_descendants_after_parent_exit(self) -> None:
+        script = (
+            "import subprocess, sys; "
+            "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)']); "
+            "print(child.pid, flush=True)"
+        )
+        process = subprocess.Popen(
+            [sys.executable, "-c", script],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            start_new_session=True,
+        )
+        self.assertIsNotNone(process.stdout)
+        child_pid = int(process.stdout.readline().strip())
+        self.assertEqual(process.wait(timeout=2.0), 0)
+        session = ServiceSession(
+            task_id="w7.tcp-echo",
+            kind="tcp_echo",
+            workspace=self.workspace_root,
+            process=process,
+            port=0,
+        )
+        self.assertTrue(CppAppLabWebServer._terminate_service_process_group(session, 1.0))
+        deadline = time.monotonic() + 1.0
+        while time.monotonic() < deadline:
+            try:
+                os.kill(child_pid, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.02)
+        else:
+            self.fail("Service cleanup left a descendant process alive.")
+        process.stdout.close()
 
     def test_service_routes_reject_unregistered_application_tasks(self) -> None:
         self.assertEqual(

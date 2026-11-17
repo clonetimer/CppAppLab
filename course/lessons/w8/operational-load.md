@@ -1,5 +1,19 @@
 # W8-D6-D3 · Operational Load, Backpressure and Soak Validation
 
+## Start here
+
+Begin with one client and increase load gradually.
+
+1. Run the fixed loopback probe with one client and record latency and status.
+2. Increase to a small number of concurrent clients.
+3. Add a slow reader and observe backpressure.
+4. Repeat Keep-Alive requests and monitor connection and queue bounds.
+5. Run a short soak test and compare resource counters before and after.
+6. Investigate the first invariant violation rather than only increasing timeouts.
+
+**Mental model:** load testing checks whether resource limits and lifecycle rules remain true under pressure. A high request count alone is not a quality result.
+
+
 ## Goal
 
 Validate the operational behavior of the HTTP server under concurrent clients, slow readers, sustained Keep-Alive traffic and repeated lifecycle transitions. These tests are intended to expose resource leaks, stalled writes, queue-accounting errors and regressions across the complete D5/D6 Reactor pipeline.

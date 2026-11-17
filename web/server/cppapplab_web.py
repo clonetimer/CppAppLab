@@ -1017,6 +1017,8 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 "Connection": "close",
                 "Content-Length": str(len(body_bytes)),
             }
+            if method == "POST":
+                headers["Content-Type"] = "text/plain; charset=utf-8"
             connection.request(method, target, body=body_bytes if method != "HEAD" else None, headers=headers)
             response = connection.getresponse()
             response_body = response.read(256 * 1024 + 1)

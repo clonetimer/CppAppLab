@@ -611,6 +611,8 @@ int run_cmake_gtest_workspace(const Workspace& workspace) {
 struct ApplicationBuildProfile {
     std::vector<std::string> sources;
     bool link_threads{false};
+    std::vector<std::string> platform_sources;
+    std::vector<std::string> platform_include_directories;
 };
 
 std::optional<ApplicationBuildProfile> application_build_profile(const Task& task) {
@@ -629,6 +631,12 @@ std::optional<ApplicationBuildProfile> application_build_profile(const Task& tas
     if (task.id == "w6.thread-pool") {
         return ApplicationBuildProfile{{"src/main.cpp", "src/thread_pool.cpp"}, true};
     }
+    if (task.id == "w7.tcp-echo") {
+        return ApplicationBuildProfile{{"src/main.cpp", "src/tcp_echo.cpp"}, false};
+    }
+    if (task.id == "w7.tcp-chat") {
+        return ApplicationBuildProfile{{"src/main.cpp", "src/tcp_chat.cpp"}, false};
+    }
     if (task.id == "w8.http-protocol") {
         return ApplicationBuildProfile{{"src/main.cpp", "src/http_message.cpp"}, false};
     }
@@ -644,6 +652,20 @@ std::optional<ApplicationBuildProfile> application_build_profile(const Task& tas
             {"src/main.cpp", "src/http_message.cpp", "src/http_request_parser.cpp",
              "src/static_file_handler.cpp", "src/router.cpp", "src/api_handlers.cpp",
              "src/dispatcher.cpp"}, false};
+    }
+    if (task.id == "w8.http-server") {
+        return ApplicationBuildProfile{
+            {"src/main.cpp", "src/http_server.cpp"},
+            true,
+            {"labs/w8/router/reference/src/http_message.cpp",
+             "labs/w8/router/reference/src/http_request_parser.cpp",
+             "labs/w8/router/reference/src/static_file_handler.cpp",
+             "labs/w8/router/reference/src/router.cpp",
+             "labs/w8/router/reference/src/api_handlers.cpp",
+             "labs/w8/router/reference/src/dispatcher.cpp",
+             "labs/w6/thread-pool/reference/src/thread_pool.cpp"},
+            {"labs/w8/router/reference/include",
+             "labs/w6/thread-pool/reference/include"}};
     }
     return std::nullopt;
 }
@@ -727,6 +749,30 @@ int build_application_workspace(const std::filesystem::path& workspace_path) {
         arguments.push_back(include_directory.string());
     }
 
+    for (const std::string& relative : profile->platform_include_directories) {
+        const std::filesystem::path relative_path(relative);
+        if (relative_path.empty() || relative_path.is_absolute()) {
+            throw std::runtime_error("Application platform include path must be relative.");
+        }
+        auto directory = data_root();
+        for (const auto& component : relative_path) {
+            if (component == "." || component == "..") {
+                throw std::runtime_error("Application platform include path is unsafe.");
+            }
+            directory /= component;
+            const auto status = std::filesystem::symlink_status(directory);
+            if (std::filesystem::is_symlink(status)) {
+                throw std::runtime_error("Application platform include path contains a symlink: " + relative);
+            }
+        }
+        const auto status = std::filesystem::symlink_status(directory);
+        if (!std::filesystem::is_directory(status) || std::filesystem::is_symlink(status)) {
+            throw std::runtime_error("Application platform include directory is missing or unsafe: " + relative);
+        }
+        arguments.push_back("-I");
+        arguments.push_back(directory.string());
+    }
+
     for (const std::string& relative : profile->sources) {
         if (!declared_source(task, relative)) {
             throw std::runtime_error("Application profile references an undeclared learner source: " + relative);
@@ -735,6 +781,28 @@ int build_application_workspace(const std::filesystem::path& workspace_path) {
         const auto status = std::filesystem::symlink_status(source);
         if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
             throw std::runtime_error("Application source is missing or unsafe: " + relative);
+        }
+        arguments.push_back(source.string());
+    }
+    for (const std::string& relative : profile->platform_sources) {
+        const std::filesystem::path relative_path(relative);
+        if (relative_path.empty() || relative_path.is_absolute()) {
+            throw std::runtime_error("Application platform source path must be relative.");
+        }
+        auto source = data_root();
+        for (const auto& component : relative_path) {
+            if (component == "." || component == "..") {
+                throw std::runtime_error("Application platform source path is unsafe.");
+            }
+            source /= component;
+            const auto status = std::filesystem::symlink_status(source);
+            if (std::filesystem::is_symlink(status)) {
+                throw std::runtime_error("Application platform source path contains a symlink: " + relative);
+            }
+        }
+        const auto status = std::filesystem::symlink_status(source);
+        if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
+            throw std::runtime_error("Application platform source is missing or unsafe: " + relative);
         }
         arguments.push_back(source.string());
     }
@@ -750,6 +818,9 @@ int build_application_workspace(const std::filesystem::path& workspace_path) {
     }
     for (const std::string& relative : profile->sources) {
         std::cout << " " << relative;
+    }
+    for (const std::string& relative : profile->platform_sources) {
+        std::cout << " [platform] " << relative;
     }
     std::cout << " -o .cppapplab/application/learner_app\n";
 
@@ -843,6 +914,24 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
         if (action != "demo" || requested.size() != 1U) {
             throw std::invalid_argument("Thread-pool task supports only the fixed demo action.");
         }
+    } else if (task.id == "w7.tcp-echo") {
+        if (action != "client" || requested.size() != 3U) {
+            throw std::invalid_argument("TCP Echo client requires: client <port> <message>.");
+        }
+        unsigned port = 0U;
+        const auto parsed = std::from_chars(
+            requested[1].data(), requested[1].data() + requested[1].size(), port);
+        if (parsed.ec != std::errc{} || parsed.ptr != requested[1].data() + requested[1].size() ||
+            port == 0U || port > 65535U) {
+            throw std::invalid_argument("TCP Echo client port must be in the range 1..65535.");
+        }
+        const std::string& message = requested[2];
+        if (message.empty() || message.size() > 1024U ||
+            message.find_first_of("\r\n\t") != std::string::npos ||
+            message.find('\0') != std::string::npos) {
+            throw std::invalid_argument("TCP Echo message must be 1..1024 bytes on one line.");
+        }
+        application_arguments = {"client", requested[1], message};
     } else if (task.id == "w8.http-protocol") {
         if (action == "parse-line" && requested.size() == 2U) {
             const auto& request_line = requested[1];

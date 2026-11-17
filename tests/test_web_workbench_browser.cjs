@@ -353,6 +353,29 @@ async function main() {
       return button && button.querySelector("small")?.textContent === "可开始";
     }, null, { timeout: 10000 });
 
+    // The structured application profile is a separate learner-facing run path.
+    // It must execute the current learner implementation without changing
+    // the formal acceptance state.
+    assert.equal(await page.locator("#app-runner").isVisible(), true);
+    assert.equal(await page.locator("#app-profile-label").textContent(), "命令行计算器");
+    await page.locator("#app-build-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "应用构建成功",
+      null,
+      { timeout: 60000 }
+    );
+    await page.locator('[data-field="left"]').fill("20");
+    await page.locator('[data-field="right"]').fill("22");
+    await page.locator("#app-execute-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "程序运行成功",
+      null,
+      { timeout: 15000 }
+    );
+    assert.match(await page.locator("#console-output").textContent(), /42/);
+    assert.equal(await page.locator("#task-state").textContent(), "已通过",
+      "Application build/run must not alter the formal acceptance result");
+
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "cppapplab-workbench-desktop.png"),
       fullPage: true

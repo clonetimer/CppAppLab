@@ -1,5 +1,19 @@
 # W8-D6-A · HTTP Connection Policy and Response Serialization
 
+## Start here
+
+First decide whether one request should keep its TCP connection open.
+
+1. Compare HTTP/1.0 and HTTP/1.1 defaults.
+2. Read the Connection header as a list of comma-separated options.
+3. Implement exact, case-insensitive token matching; do not use substring matching.
+4. Serialize the response with the matching Connection policy.
+5. Test explicit close, keep-alive and conflicting options.
+6. Confirm the server lifecycle itself has not changed in this lesson.
+
+**Mental model:** connection policy is a decision derived from the request. The serializer communicates that decision; the next lesson applies it to the actual socket lifecycle.
+
+
 ## Goal
 
 Define connection persistence from the HTTP request and make the response serializer emit the matching policy. This stage prepares the protocol layer for Keep-Alive without changing the TCP server lifecycle yet.

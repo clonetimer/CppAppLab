@@ -132,9 +132,9 @@ The W7 Chat and W8 HTTP Server learner templates are deliberately incomplete unt
 
 ### P8-C5 — Cross-course user journey
 
-- [ ] Run browser journeys across all 23 tasks and all interaction classes.
-- [ ] Verify desktop, narrow mobile and keyboard-only navigation.
-- [ ] Verify recoverability after compile failure, failed acceptance, interrupted process, service crash and browser refresh.
+- [ ] Run browser journeys across all 23 tasks and all interaction classes. The first catalog-wide Chromium sweep is implemented; CI validation is pending.
+- [ ] Verify desktop, narrow mobile and keyboard-only navigation, including keyboard-only traversal of course selection, editor actions and history controls.
+- [ ] Verify recoverability after compile failure, failed acceptance, interrupted process, service crash and browser refresh. Formal PASS/history refresh recovery is now covered; remaining interruption and service-crash scenarios require dedicated tests.
 - [ ] Review screenshots and task completion flow before P8-C sign-off.
 
 ## Acceptance criteria

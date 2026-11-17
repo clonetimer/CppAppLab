@@ -519,11 +519,14 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         if stream is None:
             return
         try:
+            binary_stream = stream.buffer
             while True:
-                chunk = stream.read(4096)
+                chunk = binary_stream.read1(4096)
                 if not chunk:
                     break
-                CppAppLabWebServer._append_service_log(session, chunk)
+                CppAppLabWebServer._append_service_log(
+                    session, chunk.decode("utf-8", errors="replace")
+                )
         finally:
             try:
                 stream.close()

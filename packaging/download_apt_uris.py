@@ -7,6 +7,8 @@ import hashlib
 import json
 import os
 import tempfile
+import time
+import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -51,31 +53,50 @@ def download_one(entry: dict[str, object], output: Path) -> None:
         fd, temp_name = tempfile.mkstemp(prefix=f".{filename}.", suffix=".part", dir=output)
         os.close(fd)
         temp_path = Path(temp_name)
-        try:
-            print(f"[INFO] Downloading {filename} from {uri}", flush=True)
-            request = urllib.request.Request(
-                uri, headers={"User-Agent": "CppAppLab-offline-packager/1"}
-            )
-            with urllib.request.urlopen(request, timeout=90) as response, temp_path.open("wb") as dest:
-                while True:
-                    chunk = response.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    dest.write(chunk)
-            if temp_path.stat().st_size != expected_size:
-                raise RuntimeError(
-                    f"size mismatch: expected {expected_size}, got {temp_path.stat().st_size}"
+        for attempt in range(3):
+            try:
+                temp_path.unlink(missing_ok=True)
+                print(
+                    f"[INFO] Downloading {filename} from {uri}"
+                    + (f" (attempt {attempt + 1}/3)" if attempt else ""),
+                    flush=True,
                 )
-            if expected_sha and digest(temp_path, "sha256") != expected_sha:
-                raise RuntimeError("SHA-256 mismatch")
-            if expected_md5 and digest(temp_path, "md5") != expected_md5:
-                raise RuntimeError("MD5 mismatch against signed APT package index")
-            temp_path.replace(target)
-            print(f"[PASS] {filename} ({expected_size} bytes)", flush=True)
-            return
-        except Exception as exc:
-            errors.append(f"{uri}: {exc}")
-            temp_path.unlink(missing_ok=True)
+                request = urllib.request.Request(
+                    uri, headers={"User-Agent": "CppAppLab-offline-packager/1"}
+                )
+                with urllib.request.urlopen(request, timeout=90) as response, temp_path.open("wb") as dest:
+                    while True:
+                        chunk = response.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        dest.write(chunk)
+                if temp_path.stat().st_size != expected_size:
+                    raise RuntimeError(
+                        f"size mismatch: expected {expected_size}, got {temp_path.stat().st_size}"
+                    )
+                if expected_sha and digest(temp_path, "sha256") != expected_sha:
+                    raise RuntimeError("SHA-256 mismatch")
+                if expected_md5 and digest(temp_path, "md5") != expected_md5:
+                    raise RuntimeError("MD5 mismatch against signed APT package index")
+                temp_path.replace(target)
+                print(f"[PASS] {filename} ({expected_size} bytes)", flush=True)
+                return
+            except urllib.error.HTTPError as exc:
+                errors.append(f"{uri} (attempt {attempt + 1}): HTTP {exc.code}: {exc.reason}")
+                temp_path.unlink(missing_ok=True)
+                if exc.code < 500 or attempt == 2:
+                    break
+            except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as exc:
+                errors.append(f"{uri} (attempt {attempt + 1}): {exc}")
+                temp_path.unlink(missing_ok=True)
+                if attempt == 2:
+                    break
+            except Exception as exc:
+                errors.append(f"{uri}: {exc}")
+                temp_path.unlink(missing_ok=True)
+                break
+            time.sleep(2 ** attempt)
+        temp_path.unlink(missing_ok=True)
 
     raise RuntimeError(
         f"All configured APT mirrors failed for {filename}:\n" + "\n".join(errors)

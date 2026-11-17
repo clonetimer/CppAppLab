@@ -772,9 +772,9 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 if not data:
                     continue
                 client.buffer += data.decode("utf-8", errors="replace")
-                while "\\n" in client.buffer:
-                    line, client.buffer = client.buffer.split("\\n", 1)
-                    if line.endswith("\\r"):
+                while "\n" in client.buffer:
+                    line, client.buffer = client.buffer.split("\n", 1)
+                    if line.endswith("\r"):
                         line = line[:-1]
                     if line:
                         client.inbox.append(line)
@@ -809,7 +809,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         try:
             connection = socket.create_connection(("127.0.0.1", port), timeout=2.0)
             connection.settimeout(1.0)
-            connection.sendall(("NICK " + nickname + "\\n").encode("ascii"))
+            connection.sendall(("NICK " + nickname + "\n").encode("ascii"))
             connection.setblocking(False)
         except OSError as exc:
             raise ApiError(502, f"Could not connect the local Chat client: {exc}") from exc
@@ -842,7 +842,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             raise ApiError(409, "This task does not expose a TCP Chat client.")
         if not isinstance(message, str) or not message or len(message.encode("utf-8")) > 1024:
             raise ApiError(400, "Chat message must contain 1–1024 UTF-8 bytes.")
-        if any(character in message for character in "\\r\\n\\t\\x00"):
+        if any(character in message for character in "\r\n\t\x00"):
             raise ApiError(400, "Chat message must be a single line.")
         with self.service_lock:
             session = self.service_sessions.get(task_id)
@@ -853,7 +853,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             if session.state != "RUNNING" or session.process.poll() is not None:
                 raise ApiError(409, "The TCP Chat service is not running.")
             try:
-                client.connection.sendall(("MSG " + message + "\\n").encode("utf-8"))
+                client.connection.sendall(("MSG " + message + "\n").encode("utf-8"))
             except OSError as exc:
                 raise ApiError(502, f"Could not send the Chat message: {exc}") from exc
             session.last_activity = time.monotonic()
@@ -892,7 +892,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             if client is None:
                 raise ApiError(404, "Chat client was not found.")
             try:
-                client.connection.sendall(b"QUIT\\n")
+                client.connection.sendall(b"QUIT\n")
             except OSError:
                 pass
             try:
@@ -923,7 +923,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             raise ApiError(400, "Absolute URLs, authorities and fragments are not allowed.")
         if "\\\\" in target or any(part in {".", ".."} for part in parsed.path.split("/")):
             raise ApiError(400, "HTTP target contains an unsafe path component.")
-        if any(character in target for character in "\\r\\n\\x00"):
+        if any(character in target for character in "\r\n\x00"):
             raise ApiError(400, "HTTP target contains invalid control characters.")
         if not isinstance(body, str) or len(body.encode("utf-8")) > 64 * 1024:
             raise ApiError(413, "HTTP request body exceeds the 64 KiB limit.")

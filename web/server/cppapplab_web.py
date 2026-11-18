@@ -19,6 +19,7 @@ import select
 import secrets
 import signal
 import socket
+import stat
 import subprocess
 import sys
 import threading
@@ -35,6 +36,7 @@ MAX_CATALOG_BYTES = 64 * 1024
 MAX_LESSON_BYTES = 64 * 1024
 MAX_HINT_BYTES = 32 * 1024
 MAX_SOURCE_BYTES = 1024 * 1024
+CPP_HEADER_SUFFIXES = {".h", ".hpp", ".hh", ".hxx"}
 MAX_REQUEST_BYTES = MAX_SOURCE_BYTES + 16 * 1024
 MAX_PROCESS_OUTPUT = 256 * 1024
 MAX_SERVICE_LOG_BYTES = 64 * 1024
@@ -207,12 +209,13 @@ def _lstat_regular_file(path: Path, label: str) -> os.stat_result:
     return info
 
 
-def safe_repo_file(root: Path, relative: str, max_bytes: int, label: str) -> Path:
+def _safe_repo_path(root: Path, relative: str, label: str) -> tuple[Path, os.stat_result]:
     try:
         normalized = safe_relative_path(relative)
     except ValueError as exc:
         raise ApiError(400, str(exc)) from exc
 
+    target = root / normalized
     current = root
     for part in PurePosixPath(normalized).parts:
         current = current / part
@@ -220,16 +223,20 @@ def safe_repo_file(root: Path, relative: str, max_bytes: int, label: str) -> Pat
             info = current.lstat()
         except OSError as exc:
             raise ApiError(404, f"{label} was not found.") from exc
-        if current.is_symlink():
+        if stat.S_ISLNK(info.st_mode):
             raise ApiError(400, f"{label} cannot contain symlinks.")
-        if current != root / normalized and not current.is_dir():
+        if current != target and not stat.S_ISDIR(info.st_mode):
             raise ApiError(400, f"{label} contains a non-directory parent.")
-        if current == root / normalized:
-            if not current.is_file():
-                raise ApiError(400, f"{label} must be a regular file.")
-            if info.st_size > max_bytes:
-                raise ApiError(413, f"{label} exceeds its size limit.")
-    return current
+    return target, info
+
+
+def safe_repo_file(root: Path, relative: str, max_bytes: int, label: str) -> Path:
+    target, info = _safe_repo_path(root, relative, label)
+    if not stat.S_ISREG(info.st_mode):
+        raise ApiError(400, f"{label} must be a regular file.")
+    if info.st_size > max_bytes:
+        raise ApiError(413, f"{label} exceeds its size limit.")
+    return target
 
 
 def read_bounded(path: Path, max_bytes: int, label: str) -> str:
@@ -487,6 +494,42 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         if info.st_size > MAX_SOURCE_BYTES:
             raise ApiError(413, "Learner source file exceeds the 1 MiB limit.")
         return target, task
+
+    def reference_header_file(self, task: dict[str, Any], relative: str) -> Path | None:
+        if (not relative.startswith("include/")
+                or PurePosixPath(relative).suffix not in CPP_HEADER_SUFFIXES
+                or relative in task["source_files"]):
+            return None
+        try:
+            return safe_repo_file(
+                self.root, f"{task['learner_template']}/{relative}",
+                MAX_SOURCE_BYTES, "Template reference header",
+            )
+        except ApiError:
+            return None
+
+    def reference_headers(self, task: dict[str, Any]) -> dict[str, int]:
+        template = self.root / task["learner_template"]
+        try:
+            include, info = _safe_repo_path(
+                self.root, f"{task['learner_template']}/include", "Template include directory"
+            )
+        except ApiError:
+            return {}
+        if not stat.S_ISDIR(info.st_mode):
+            return {}
+
+        headers = {}
+        for directory, _, filenames in os.walk(include, followlinks=False):
+            for filename in filenames:
+                relative = (Path(directory) / filename).relative_to(template).as_posix()
+                target = self.reference_header_file(task, relative)
+                if target is not None:
+                    try:
+                        headers[relative] = target.lstat().st_size
+                    except OSError:
+                        continue
+        return headers
 
     def progress_states(self) -> dict[str, str]:
         exit_code, output = self.run_cli(["progress"], timeout=15.0)
@@ -1417,14 +1460,28 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
                     "size": info.st_size,
                     "language": "cpp" if current.suffix in {".cpp", ".cc", ".cxx"} else
                                 "c" if current.suffix == ".c" else
-                                "cpp" if current.suffix in {".hpp", ".hh", ".hxx", ".h"} else "text",
+                                "cpp" if current.suffix in CPP_HEADER_SUFFIXES else "text",
+                    "read_only": False,
                 })
+        files.extend(
+            {"path": relative, "size": size, "language": "cpp", "read_only": True}
+            for relative, size in sorted(self.server.reference_headers(task).items())
+        )
         self._send_json(200, {"task_id": task_id, "files": files})
 
     def _get_workspace_file(self, task_id: str, relative: str) -> None:
-        target, _ = self.server.resolve_workspace_file(task_id, relative)
-        content = read_bounded(target, MAX_SOURCE_BYTES, "Learner source file")
-        self._send_json(200, {"task_id": task_id, "path": relative, "content": content})
+        task = self.server.task_by_id.get(task_id)
+        if task is None:
+            raise ApiError(404, "Unknown task ID.")
+        target = self.server.reference_header_file(task, relative)
+        read_only = target is not None
+        if target is None:
+            target, _ = self.server.resolve_workspace_file(task_id, relative)
+        label = "Template reference header" if read_only else "Learner source file"
+        content = read_bounded(target, MAX_SOURCE_BYTES, label)
+        self._send_json(200, {
+            "task_id": task_id, "path": relative, "content": content, "read_only": read_only,
+        })
 
     def do_POST(self) -> None:
         try:

@@ -119,6 +119,36 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 36. Make lesson-referenced interfaces reachable without widening edit permissions
+
+- Compare lesson reading instructions with the browser's actual file allowlist. An interface present in the learner template is not automatically available in the editor; six supplied headers across four tasks were missing from the visible file list.
+- Expose supplied headers as explicitly read-only references from the fixed course template. Keep editable sources, their order, source fingerprints and formal acceptance unchanged. File-list and content reads must use the same bounded, symlink-rejecting eligibility rule.
+- Enforce read-only behavior at both boundaries: reject PUT through the original server allowlist and prevent client dirty/autosave changes. A textarea's readOnly property does not stop an explicit setRangeText call in a custom Tab handler.
+- Preserve copying, keyboard focus and a clean return to editable source. Opening a reference must not discard another file's unsaved changes or make global Save incapable of saving those changes.
+- Turn only exact paths in the available file list into lesson buttons. Course prose is not authority to expose arbitrary filesystem paths.
+
+## 37. Bind asynchronous feedback to its originating task and refresh dependent state
+
+- Capture the task ID before launching an operation. Disable and guard task navigation while an operation or task transition owns the busy state, including the outgoing save, so a delayed PASS cannot be applied to another course.
+- Coalesce overlapping saves for the same task/file and retain the source-version check. Autosave, explicit Save and navigation must not race older content against newer edits; a change made during a save remains dirty until its own save completes.
+- Protect asynchronous help and file reads too. A late response must not reopen closed help or replace the currently selected course/file.
+- Order catalog, history and service-status reads with request generations. Ignore superseded errors as well as results; invalidate service polls when a task changes or a mutating operation starts.
+- Saving a previously accepted source invalidates more than one status pill. Refresh the authoritative task catalog and any visible history summary; retain historical records while reporting the current source as stale.
+- Refresh saves from STALE too: restoring the exact accepted source can legitimately restore PASS from the existing fingerprint without another check. Let the engine decide, and verify that the history count stays unchanged.
+- Use refreshed formal progress for a persistent next-course action. Build/run success is useful feedback but does not establish course completion. A failed progress refresh should offer refresh explicitly instead of retaining an unverified continuation.
+- HTTP success does not establish valid progress: UNKNOWN states must remain unavailable, never become a completed curriculum. Keep refresh failures visible and refresh the open history panel when the learner retries.
+- Reproduce these transitions through the real UI state functions with controlled request timing, then exercise the complete interactions in Chromium. Keep network adapters at the boundary and avoid asserting on a fake's own behavior.
+
+## 38. Verify that help can be read and recovery actions can be followed
+
+- API hint parity does not prove browser readability. A bounded parent with hidden overflow can clip a long hint even when every character reaches the page. Give help a bounded scrollable viewport and an explicit return action; verify the final section at desktop and mobile widths.
+- Provide direct Start here, Troubleshooting and Acceptance navigation so task-specific guidance remains reachable inside long lessons.
+- Separate normal first-use conditions from unsafe filesystem conditions. An absent build directory should instruct the learner to build; existing non-directory paths and dangling or live symlinks must still be rejected.
+- Render plain compiler diagnostics without depending on Monaco globals. Offline editing must preserve the real compiler output, clickable source location and formal failure state even when editor marker APIs are unavailable.
+- Acceptance output may repeat a compiler diagnostic across stages. A browser recovery test should follow the first actionable error and verify the recorded result rather than assume the diagnostic text is unique.
+- Test recovery without fabricating formal acceptance: real CLI run-before-build checks preserve history, while UI-only reference fixtures live in temporary catalogs. The full browser journey retains the released prerequisite chain.
+- Record environmental verification limits accurately. A local browser blocked by process/socket restrictions is not a product test failure; retain state/API regression evidence and complete layout and interaction verification on the existing Chromium CI runner.
+
 ## 34. Deliver progressive hints through the same reader contract in every interface
 
 - Audit the content against the actual CLI, HTTP API and UI level limits. Seven courses contained Hint 4–10 even though both user-facing interfaces expose only levels 1–3. The CLI stopped Hint 3 at the next numbered heading while the web reader included the remaining text.

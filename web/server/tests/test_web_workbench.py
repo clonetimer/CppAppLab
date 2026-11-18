@@ -178,7 +178,8 @@ class WebWorkbenchTests(unittest.TestCase):
         self.workspace_root.mkdir(parents=True)
         (self.root / "course" / "lessons" / "w1").mkdir(parents=True)
         self.ui_root.mkdir(parents=True)
-        (self.root / "labs" / "w1" / "hello-world" / "learner" / "src").mkdir(parents=True)
+        self.learner_template = self.root / "labs" / "w1" / "hello-world" / "learner"
+        (self.learner_template / "src").mkdir(parents=True)
         (self.root / "course" / "lessons" / "w1" / "hello-world.md").write_text(
             "# Hello World\n\nWrite your first C++ program.\n", encoding="utf-8"
         )
@@ -308,18 +309,20 @@ class WebWorkbenchTests(unittest.TestCase):
         self.assertTrue(started["workspace_ready"])
         files = self.request("/api/v1/workspaces/w1.hello-world/files")
         self.assertEqual(files["files"][0]["path"], "src/main.cpp")
+        self.assertIs(files["files"][0]["read_only"], False)
         source = self.request("/api/v1/workspaces/w1.hello-world/files/src/main.cpp")
         self.assertIn("int main()", source["content"])
+        self.assertIs(source["read_only"], False)
         saved = self.request(
             "/api/v1/workspaces/w1.hello-world/files/src/main.cpp",
             method="PUT",
-            body={"content": "#include <iostream>\nint main() { return 0; }\n"},
+            body={"content": "int main() { return 1; }\n"},
             token=self.token,
             origin=self.base_url,
         )
         self.assertTrue(saved["saved"])
         reloaded = self.request("/api/v1/workspaces/w1.hello-world/files/src/main.cpp")
-        self.assertEqual(reloaded["content"], "#include <iostream>\nint main() { return 0; }\n")
+        self.assertEqual(reloaded["content"], "int main() { return 1; }\n")
         check = self.request(
             "/api/v1/workspaces/w1.hello-world/check",
             method="POST",
@@ -329,6 +332,84 @@ class WebWorkbenchTests(unittest.TestCase):
         )
         self.assertTrue(check["passed"])
         self.assertIn("fixed acceptance", check["output"])
+
+    def test_reference_headers_append_in_path_order_and_read_from_template(self) -> None:
+        template_include = self.learner_template / "include"
+        (template_include / "nested").mkdir(parents=True)
+        (template_include / "z.hxx").write_text("// z\n", encoding="utf-8")
+        (template_include / "nested" / "b.hh").write_text("// b\n", encoding="utf-8")
+        (template_include / "a.hpp").write_text("// course template\n", encoding="utf-8")
+        (template_include / "a.h").write_text("// a\n", encoding="utf-8")
+        workspace_include = self.workspace_root / "w1.hello-world" / "include"
+        workspace_include.mkdir(parents=True)
+        (workspace_include / "a.hpp").write_text("// workspace shadow\n", encoding="utf-8")
+
+        endpoint = "/api/v1/workspaces/w1.hello-world/files"
+        files = self.request(endpoint)["files"]
+        self.assertEqual(
+            [(item["path"], item["read_only"]) for item in files],
+            [
+                ("src/main.cpp", False),
+                ("include/a.h", True),
+                ("include/a.hpp", True),
+                ("include/nested/b.hh", True),
+                ("include/z.hxx", True),
+            ],
+        )
+        self.assertEqual(files[2]["language"], "cpp")
+        self.assertEqual(files[2]["size"], len(b"// course template\n"))
+        self.assertEqual(self.request(f"{endpoint}/include/a.hpp"), {
+            "task_id": "w1.hello-world",
+            "path": "include/a.hpp",
+            "content": "// course template\n",
+            "read_only": True,
+        })
+        self.assertEqual(
+            self.request_error(
+                f"{endpoint}/include/a.hpp", "PUT", {"content": "// changed\n"},
+                token=self.token, origin=self.base_url,
+            ),
+            403,
+        )
+        self.assertEqual((template_include / "a.hpp").read_text(encoding="utf-8"), "// course template\n")
+        self.assertEqual((workspace_include / "a.hpp").read_text(encoding="utf-8"), "// workspace shadow\n")
+
+    def test_reference_read_does_not_start_a_workspace_or_change_history(self) -> None:
+        template_include = self.learner_template / "include"
+        template_include.mkdir()
+        (template_include / "a.hpp").write_text("// course template\n", encoding="utf-8")
+        history_endpoint = "/api/v1/tasks/w1.hello-world/history"
+        before = self.request(history_endpoint)
+
+        source = self.request("/api/v1/workspaces/w1.hello-world/files/include/a.hpp")
+
+        self.assertIs(source["read_only"], True)
+        self.assertFalse((self.workspace_root / "w1.hello-world").exists())
+        self.assertEqual(self.request(history_endpoint), before)
+
+    def test_reference_candidates_exclude_unlisted_unsafe_and_oversized_files(self) -> None:
+        template_include = self.learner_template / "include"
+        template_include.mkdir()
+        (template_include / "valid.hpp").write_text("// course header\n", encoding="utf-8")
+        (template_include / "notes.txt").write_text("template notes", encoding="utf-8")
+        (self.learner_template / "outside.hpp").write_text("// outside include\n", encoding="utf-8")
+        external = self.base / "external"
+        external.mkdir()
+        (external / "a.hpp").write_text("// external header\n", encoding="utf-8")
+        (template_include / "linked.hpp").symlink_to(external / "a.hpp")
+        (template_include / "linked_dir").symlink_to(external, target_is_directory=True)
+        (template_include / "large.hpp").write_bytes(b"a" * (1024 * 1024 + 1))
+
+        endpoint = "/api/v1/workspaces/w1.hello-world/files"
+        files = self.request(endpoint)["files"]
+        self.assertEqual([item["path"] for item in files], ["src/main.cpp", "include/valid.hpp"])
+        for relative in (
+            "include/notes.txt", "outside.hpp", "include/linked.hpp",
+            "include/linked_dir/a.hpp", "include/large.hpp",
+        ):
+            with self.subTest(relative=relative):
+                self.assertEqual(self.request_error(f"{endpoint}/{relative}", "GET"), 403)
+        self.assertEqual(self.request_error(f"{endpoint}/include/%2e%2e/outside.hpp", "GET"), 400)
 
     def test_build_and_run_are_separate_from_fixed_acceptance(self) -> None:
         self.request(

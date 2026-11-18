@@ -16,6 +16,7 @@
     activeFile: "",
     workspaceReady: false,
     dirtyFiles: new Set(),
+    savingFiles: new Map(),
     fileContents: new Map(),
     fileVersions: new Map(),
     models: new Map(),
@@ -23,6 +24,14 @@
     editorInstance: null,
     editorReady: null,
     busy: false,
+    progressFresh: false,
+    lastAction: null,
+    catalogRequest: 0,
+    hintRequest: 0,
+    historyRequest: 0,
+    fileRequest: 0,
+    serviceRequest: 0,
+    settingEditorValue: false,
     autosaveTimer: null,
     serviceSnapshot: null,
     serviceClients: [],
@@ -51,6 +60,11 @@
     startButton: $("start-button"),
     lesson: $("lesson-content"),
     hint: $("hint-content"),
+    hintPanel: $("hint-panel"),
+    hintTitle: $("hint-title"),
+    hintClose: $("hint-close"),
+    workflowHelp: $("workflow-help"),
+    workflowAction: $("workflow-action"),
     fileList: $("file-list"),
     activeFile: $("active-file"),
     editor: $("source-editor"),
@@ -265,6 +279,7 @@
         button.className = "task-link" + (task.id === state.selectedTaskId ? " active" : "");
         button.dataset.taskId = task.id;
         button.dataset.state = task.state;
+        button.disabled = state.busy;
         button.title = task.title;
         const marker = document.createElement("span");
         marker.className = "task-marker";
@@ -294,14 +309,17 @@
     }
     updateProgressSummary();
     renderCourseList();
+    updateWorkflowGuidance();
   }
 
   async function loadTaskHistory(taskId) {
+    const request = ++state.historyRequest;
     ui.historyPanel.hidden = false;
     ui.historySummary.textContent = "正在读取验收记录…";
     ui.historyList.replaceChildren();
     try {
       const data = await api("/api/v1/tasks/" + encodeURIComponent(taskId) + "/history");
+      if (!state.task || state.task.id !== taskId || request !== state.historyRequest) return;
       ui.historySummary.textContent = data.count
         ? "共 " + data.count + " 次正式验收 · 当前状态：" + stateLabel(data.current_state)
         : "尚无正式验收记录 · 当前状态：" + stateLabel(data.current_state);
@@ -333,19 +351,155 @@
         ui.historyList.append(item);
       }
     } catch (error) {
+      if (!state.task || state.task.id !== taskId || request !== state.historyRequest) return;
       ui.historySummary.textContent = "无法读取验收历史：" + error.message;
     }
   }
 
   async function loadTasks() {
-    const data = await api("/api/v1/tasks");
-    state.tasks = data.tasks || [];
+    const request = ++state.catalogRequest;
+    state.progressFresh = false;
+    ui.continueButton.disabled = true;
+    ui.continueButton.textContent = "正在刷新课程状态…";
+    ui.startButton.disabled = true;
+    updateWorkflowGuidance();
+    let data;
+    try {
+      data = await api("/api/v1/tasks");
+    } catch (error) {
+      if (request !== state.catalogRequest) return false;
+      ui.continueButton.textContent = "课程状态暂不可用";
+      throw error;
+    }
+    if (request !== state.catalogRequest) return false;
+    state.tasks = Array.isArray(data.tasks) ? data.tasks : [];
+    const knownStates = ["AVAILABLE", "NOT STARTED", "IN PROGRESS", "PASSED", "NEEDS WORK", "STALE", "LOCKED"];
+    state.progressFresh = state.tasks.length > 0 && state.tasks.every((task) => knownStates.includes(task.state));
+    const selected = state.task && state.tasks.find((task) => task.id === state.task.id);
+    if (state.task) {
+      const selectedState = selected ? selected.state : "UNKNOWN";
+      if (!selected) state.progressFresh = false;
+      state.task.state = selectedState;
+      ui.taskState.textContent = stateLabel(selectedState);
+      ui.taskState.dataset.state = selectedState;
+      ui.startButton.disabled = state.busy || !state.progressFresh || selectedState === "LOCKED";
+    }
     updateProgressSummary();
     renderCourseList();
     const next = state.tasks.find((task) => ["IN PROGRESS", "NEEDS WORK", "STALE"].includes(task.state))
       || state.tasks.find((task) => task.state === "AVAILABLE");
-    ui.continueButton.disabled = !next;
-    ui.continueButton.textContent = next ? "继续学习  →" : "课程已完成";
+    ui.continueButton.disabled = state.busy || !state.progressFresh || !next;
+    ui.continueButton.textContent = !state.progressFresh ? "课程状态暂不可用" : next ? "继续学习  →" :
+      state.tasks.every((task) => task.state === "PASSED") ? "课程已完成" : "暂无可开始课程";
+    updateWorkflowGuidance();
+    if (!state.progressFresh) toast("课程进度暂不可用，请重试刷新。");
+    return state.progressFresh;
+  }
+
+  function updateWorkflowGuidance() {
+    ui.workflowAction.hidden = true;
+    ui.workflowAction.disabled = state.busy;
+    delete ui.workflowAction.dataset.action;
+    delete ui.workflowAction.dataset.taskId;
+    const offer = (text, label, action, taskId) => {
+      ui.workflowHelp.textContent = text;
+      if (!label) return;
+      ui.workflowAction.textContent = label;
+      ui.workflowAction.dataset.action = action;
+      if (taskId) ui.workflowAction.dataset.taskId = taskId;
+      ui.workflowAction.hidden = false;
+    };
+    if (!state.task) return offer("选择课程后，这里会显示当前可以进行的下一步。");
+    if (state.busy) return offer("正在处理当前课程，请等待结果后继续操作。");
+    if (!state.progressFresh) {
+      return offer("课程状态需要刷新，刷新后再继续下一课。", "刷新课程状态", "refresh");
+    }
+    if (state.task.state === "LOCKED") {
+      const prerequisite = (state.task.prerequisites || []).map((id) => state.tasks.find((task) => task.id === id))
+        .find((task) => task && task.state !== "PASSED");
+      return offer("先完成前置课程的当前源码验收；现在可以阅读本课教材和提示。",
+        prerequisite ? "前往：" + prerequisite.title.replace(/^W\d+\s*[·:]\s*/, "") : "刷新课程状态",
+        prerequisite ? "task" : "refresh", prerequisite && prerequisite.id);
+    }
+    if (!state.workspaceReady) {
+      return offer("点击开始学习创建代码工作区，再按“从这里开始”阅读并修改源文件。", "开始学习", "start");
+    }
+    if (state.dirtyFiles.size) return offer("代码有修改。先保存并构建，再运行或测试；最后执行正式验收。", "保存并构建", "build");
+    const result = state.lastAction;
+    if (result && result.taskId === state.task.id && !result.passed) {
+      return offer(result.action === "run"
+        ? "运行未完成。尚未构建或代码已变化时，请先构建；其他错误可结合输出与“故障排查”继续定位。"
+        : "本次操作未通过。先看下方第一条错误，再结合本课故障排查和渐进式提示修改代码。",
+      result.action === "run" ? "构建当前代码" : "查看故障排查", result.action === "run" ? "build" : "troubleshooting");
+    }
+    if (state.task.state === "PASSED") {
+      const index = state.tasks.findIndex((task) => task.id === state.task.id);
+      const following = state.tasks.slice(index + 1).concat(state.tasks.slice(0, Math.max(index, 0)));
+      const next = following.find((task) => ["AVAILABLE", "IN PROGRESS", "NEEDS WORK", "STALE"].includes(task.state));
+      return offer(next ? "当前源码已通过正式验收，可以继续学习下一课。" : "当前源码已通过正式验收，可以回顾教材或选择其他课程。",
+        next && "继续：" + next.title.replace(/^W\d+\s*[·:]\s*/, ""), "task", next && next.id);
+    }
+    if (result && result.taskId === state.task.id && result.passed) {
+      if (result.action === "build") return offer("构建成功。接着运行程序或课程测试，查看实际结果。", "运行 / 测试", "run");
+      if (result.action === "run") return offer("运行完成。确认结果符合教材要求后，再执行正式验收。", "正式验收", "check");
+    }
+    if (state.task.state === "STALE") return offer("源码已修改，之前的通过记录仍保留；请构建当前代码并重新正式验收。", "构建当前代码", "build");
+    if (state.task.state === "NEEDS WORK") return offer("最近一次验收未通过。按本课故障排查修改源文件，再重新构建、运行和验收。", "查看故障排查", "troubleshooting");
+    offer("先按教材完成源文件中的任务，再依次构建、运行 / 测试、正式验收。教材中的文件按钮可以直接打开代码。", "构建当前代码", "build");
+  }
+
+  async function followWorkflowAction() {
+    if (state.busy) return;
+    const action = ui.workflowAction.dataset.action;
+    if (action === "task") return selectTask(ui.workflowAction.dataset.taskId);
+    if (action === "start") return startTask();
+    if (action === "troubleshooting") return jumpToLessonSection("Troubleshooting");
+    if (["build", "run", "check"].includes(action)) return runWorkspaceAction(action);
+    if (action === "refresh") {
+      try {
+        if (await loadTasks() && state.task && !ui.historyPanel.hidden) await loadTaskHistory(state.task.id);
+      } catch (error) { toast("课程状态刷新失败：" + error.message); }
+    }
+  }
+
+  function isReadOnlyFile(path) {
+    const file = state.files.find((item) => item.path === path);
+    return !file || file.read_only === true;
+  }
+
+  function enhanceLessonFiles(container) {
+    for (const code of container.querySelectorAll("code")) {
+      if (code.closest("pre, button")) continue;
+      const file = state.files.find((item) => item.path === code.textContent.trim());
+      if (!file) continue;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "lesson-file-button";
+      button.dataset.filePath = file.path;
+      button.title = (file.read_only ? "查看只读参考：" : "打开源文件：") + file.path;
+      button.disabled = state.busy;
+      code.replaceWith(button);
+      button.append(code);
+      button.addEventListener("click", () => loadFile(file.path));
+    }
+  }
+
+  function closeHint(restoreFocus = true) {
+    state.hintRequest += 1;
+    ui.hintPanel.hidden = true;
+    ui.lesson.hidden = false;
+    document.querySelectorAll("[data-hint]").forEach((button) => button.setAttribute("aria-pressed", "false"));
+    if (restoreFocus) ui.lesson.focus({ preventScroll: true });
+  }
+
+  function jumpToLessonSection(section) {
+    closeHint(false);
+    const heading = Array.from(ui.lesson.querySelectorAll("h2")).find((item) => item.textContent.trim() === section);
+    if (!heading) return;
+    const offset = heading.getBoundingClientRect().top - ui.lesson.getBoundingClientRect().top;
+    ui.lesson.scrollTo({ top: ui.lesson.scrollTop + offset - 12, behavior: "smooth" });
+    heading.setAttribute("tabindex", "-1");
+    heading.focus({ preventScroll: true });
   }
 
   function disposeEditorModels() {
@@ -476,21 +630,25 @@
 
   function setEditorValue(path, value) {
     state.fileContents.set(path, value);
-    if (state.editorInstance && state.monaco) {
-      let model = state.models.get(path);
-      if (!model) {
-        model = state.monaco.editor.createModel(value, languageForPath(path), modelUri(path));
-        state.models.set(path, model);
-      } else if (!state.dirtyFiles.has(path)) {
-        model.setValue(value);
-      }
-      state.editorInstance.setModel(model);
-      state.editorInstance.updateOptions({ readOnly: false });
-    } else {
-      ui.editor.value = value;
-      ui.editor.disabled = false;
-    }
     state.activeFile = path;
+    state.settingEditorValue = true;
+    try {
+      if (state.editorInstance && state.monaco) {
+        let model = state.models.get(path);
+        if (!model) {
+          model = state.monaco.editor.createModel(value, languageForPath(path), modelUri(path));
+          state.models.set(path, model);
+        } else if (!state.dirtyFiles.has(path)) {
+          model.setValue(value);
+        }
+        state.editorInstance.setModel(model);
+        state.editorInstance.updateOptions({ readOnly: state.busy || isReadOnlyFile(path) });
+      } else {
+        ui.editor.value = value;
+        ui.editor.disabled = false;
+        ui.editor.readOnly = state.busy || isReadOnlyFile(path);
+      }
+    } finally { state.settingEditorValue = false; }
     ui.activeFile.textContent = path;
   }
 
@@ -508,6 +666,14 @@
       button.type = "button";
       button.className = "file-tab" + (file.path === state.activeFile ? " active" : "");
       button.title = file.path;
+      button.disabled = state.busy;
+      if (file.read_only) {
+        button.setAttribute("aria-label", file.path + "，只读参考");
+        const reference = document.createElement("span");
+        reference.className = "read-only-label";
+        reference.textContent = "只读";
+        button.append(reference);
+      }
       const dirty = document.createElement("span");
       dirty.className = "file-dirty-dot";
       dirty.textContent = state.dirtyFiles.has(file.path) ? "● " : "";
@@ -521,9 +687,11 @@
 
   function updateDirtyState() {
     const dirty = state.dirtyFiles.size > 0;
-    ui.saveState.textContent = dirty ? "有未保存的修改" : "已保存到本地工作区";
+    ui.saveState.textContent = dirty ? "有未保存的修改" :
+      state.activeFile && isReadOnlyFile(state.activeFile) ? "课程参考文件 · 只读" : "已保存到本地工作区";
     ui.saveButton.disabled = !dirty || state.busy || !state.workspaceReady;
     renderFileTabs();
+    updateWorkflowGuidance();
   }
 
   function clearDiagnosticsForActiveModel() {
@@ -537,7 +705,8 @@
   }
 
   function handleEditorInput() {
-    if (!state.activeFile) return;
+    if (!state.activeFile || state.settingEditorValue || state.busy || isReadOnlyFile(state.activeFile)) return;
+    state.lastAction = null;
     state.dirtyFiles.add(state.activeFile);
     state.fileVersions.set(state.activeFile, (state.fileVersions.get(state.activeFile) || 0) + 1);
     state.fileContents.set(state.activeFile, editorValueFor(state.activeFile));
@@ -554,13 +723,25 @@
     }, 900);
   }
 
-  async function saveFile(path, options = {}) {
-    if (!state.task || !path || !state.workspaceReady) return false;
+  function saveFile(path, options = {}) {
+    if (!state.task || !path || !state.workspaceReady || isReadOnlyFile(path)) return Promise.resolve(false);
+    const key = state.task.id + ":" + path;
+    if (state.savingFiles.has(key)) return state.savingFiles.get(key);
+    const pending = saveFileContent(path, options).finally(() => state.savingFiles.delete(key));
+    state.savingFiles.set(key, pending);
+    return pending;
+  }
+
+  async function saveFileContent(path, options = {}) {
+    if (!state.task || !path || !state.workspaceReady || isReadOnlyFile(path)) return false;
+    const taskId = state.task.id;
+    const wasPassed = state.task.state === "PASSED";
+    const hadAcceptance = wasPassed || state.task.state === "STALE";
     const content = editorValueFor(path);
     const savedVersion = state.fileVersions.get(path) || 0;
     const encodedPath = path.split("/").map(encodeURIComponent).join("/");
     try {
-      await api("/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/files/" + encodedPath, {
+      await api("/api/v1/workspaces/" + encodeURIComponent(taskId) + "/files/" + encodedPath, {
         method: "PUT",
         body: { content }
       });
@@ -571,9 +752,19 @@
         state.fileContents.set(path, editorValueFor(path));
         scheduleAutosave();
       }
-      if (state.task.state === "PASSED") updateTaskState(state.task.id, "STALE");
+      let progressRefreshFailed = false;
+      if (hadAcceptance) {
+        if (wasPassed) updateTaskState(taskId, "STALE");
+        try {
+          progressRefreshFailed = !await loadTasks();
+          if (!progressRefreshFailed && !ui.historyPanel.hidden && state.task && state.task.id === taskId) await loadTaskHistory(taskId);
+        } catch (error) {
+          progressRefreshFailed = true;
+          toast("代码已保存，课程状态暂未刷新：" + error.message);
+        }
+      }
       updateDirtyState();
-      if (!options.silent) toast("代码已保存。");
+      if (!options.silent && !progressRefreshFailed) toast("代码已保存。");
       return true;
     } catch (error) {
       ui.saveState.textContent = "保存失败";
@@ -601,23 +792,27 @@
       if (!options.silent) toast("代码仍在修改中，请稍后再运行。");
       return false;
     }
-    if (!options.silent && savedCount) toast("所有修改均已保存。");
+    if (!options.silent && savedCount && state.progressFresh) toast("所有修改均已保存。");
     updateDirtyState();
     return true;
   }
 
   async function loadFile(path) {
-    if (!state.task) return;
+    if (!state.task || !state.files.some((file) => file.path === path)) return;
+    const taskId = state.task.id;
+    const request = ++state.fileRequest;
     if (state.activeFile && state.dirtyFiles.has(state.activeFile)) {
       const saved = await saveFile(state.activeFile, { silent: true });
       if (!saved) return;
     }
     await ensureEditorReady();
+    if (!state.task || state.task.id !== taskId || request !== state.fileRequest) return;
     let content = state.fileContents.get(path);
     if (content === undefined) {
       const encodedPath = path.split("/").map(encodeURIComponent).join("/");
       try {
-        const data = await api("/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/files/" + encodedPath);
+        const data = await api("/api/v1/workspaces/" + encodeURIComponent(taskId) + "/files/" + encodedPath);
+        if (!state.task || state.task.id !== taskId || request !== state.fileRequest) return;
         content = data.content;
         state.fileContents.set(path, content);
       } catch (error) {
@@ -650,6 +845,8 @@
     ui.appBuildButton.disabled = !hasApplicationProfile || state.busy;
     ui.appExecuteButton.disabled = !hasApplicationProfile || state.busy;
     renderFileTabs();
+    enhanceLessonFiles(ui.lesson);
+    enhanceLessonFiles(ui.hint);
     if (!state.files.length) {
       ui.editor.disabled = true;
       ui.saveButton.disabled = true;
@@ -667,6 +864,12 @@
   }
 
   function clearTaskEditorState() {
+    state.fileRequest += 1;
+    state.historyRequest += 1;
+    state.serviceRequest += 1;
+    state.lastAction = null;
+    closeHint(false);
+    ui.historyPanel.hidden = true;
     if (state.editorInstance) state.editorInstance.setModel(null);
     for (const model of state.models.values()) model.dispose();
     state.models.clear();
@@ -707,29 +910,33 @@
   }
 
   async function selectTask(taskId) {
-    if (state.task && state.task.service_profile && state.serviceSnapshot &&
-        ["STARTING", "RUNNING"].includes(state.serviceSnapshot.state)) {
-      await stopNetworkService(true);
-    }
-    if (state.dirtyFiles.size && !await saveAllDirtyFiles({ silent: true })) {
-      toast("当前代码未能保存，暂不切换课程。");
+    if (state.busy) {
+      toast("当前课程正在处理，请等待完成后再切换。");
       return;
     }
-    state.selectedTaskId = taskId;
-    state.serviceClients = [];
-    state.serviceMessages = [];
-    state.task = null;
-    clearTaskEditorState();
-    ui.welcome.hidden = true;
-    ui.workbench.hidden = false;
-    ui.lesson.innerHTML = '<div class="loading">正在读取课程讲解…</div>';
-    ui.hint.hidden = true;
-    ui.console.textContent = "开始任务后，可以在这里查看构建、运行与验收输出。";
-    ui.diagnostics.hidden = true;
-    ui.checkResult.textContent = "等待执行";
-    ui.checkResult.className = "check-result";
-    renderCourseList();
+    setBusy(true);
     try {
+      if (state.task && state.task.service_profile && state.serviceSnapshot &&
+          ["STARTING", "RUNNING"].includes(state.serviceSnapshot.state)) {
+        await stopNetworkService(true, true);
+      }
+      if (state.dirtyFiles.size && !await saveAllDirtyFiles({ silent: true })) {
+        toast("当前代码未能保存，暂不切换课程。");
+        return;
+      }
+      state.selectedTaskId = taskId;
+      state.serviceClients = [];
+      state.serviceMessages = [];
+      state.task = null;
+      clearTaskEditorState();
+      ui.welcome.hidden = true;
+      ui.workbench.hidden = false;
+      ui.lesson.innerHTML = '<div class="loading">正在读取课程讲解…</div>';
+      ui.console.textContent = "开始任务后，可以在这里查看构建、运行与验收输出。";
+      ui.diagnostics.hidden = true;
+      ui.checkResult.textContent = "等待执行";
+      ui.checkResult.className = "check-result";
+      renderCourseList();
       const task = await api("/api/v1/tasks/" + encodeURIComponent(taskId));
       state.task = task;
       renderApplicationRunner();
@@ -759,6 +966,8 @@
     } catch (error) {
       ui.lesson.textContent = error.message;
       toast(error.message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -809,7 +1018,7 @@
         source: match[1]
       };
       diagnostics.push(item);
-      if (path) {
+      if (path && state.monaco) {
         if (!byPath.has(path)) byPath.set(path, []);
         byPath.get(path).push({
           startLineNumber: item.line,
@@ -866,7 +1075,8 @@
 
   function setBusy(value, saveLabel) {
     state.busy = value;
-    ui.startButton.disabled = value || !state.task || state.task.state === "LOCKED";
+    if (value) state.serviceRequest += 1;
+    ui.startButton.disabled = value || !state.progressFresh || !state.task || ["LOCKED", "UNKNOWN"].includes(state.task.state);
     ui.saveButton.disabled = value || !state.workspaceReady || state.dirtyFiles.size === 0;
     ui.buildButton.disabled = value || !state.workspaceReady;
     ui.runButton.disabled = value || !state.workspaceReady;
@@ -878,10 +1088,18 @@
       control.disabled = value;
     });
     ui.checkButton.disabled = value || !state.workspaceReady;
+    document.querySelectorAll("#course-list .task-link, .lesson-file-button, .file-tab").forEach((button) => {
+      button.disabled = value;
+    });
+    ui.continueButton.disabled = value || !state.progressFresh || !state.tasks.some((task) => ["AVAILABLE", "IN PROGRESS", "NEEDS WORK", "STALE"].includes(task.state));
+    const readOnly = value || isReadOnlyFile(state.activeFile);
+    if (state.editorInstance) state.editorInstance.updateOptions({ readOnly });
+    ui.editor.readOnly = readOnly;
     if (state.task && state.task.service_profile) {
       updateServiceSnapshot(state.serviceSnapshot || { state: "STOPPED", port: null, logs: "" });
     }
     if (saveLabel) ui.saveState.textContent = saveLabel;
+    updateWorkflowGuidance();
   }
 
   function updateApplicationGuidance() {
@@ -1153,14 +1371,18 @@
   }
 
   async function refreshServiceStatus(silent = false) {
-    if (!state.task || !state.task.service_profile) return;
+    if (!state.task || !state.task.service_profile || (state.busy && !silent)) return;
+    const taskId = state.task.id;
+    const request = ++state.serviceRequest;
     try {
       const snapshot = await api(
-        "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/status"
+        "/api/v1/workspaces/" + encodeURIComponent(taskId) + "/service/status"
       );
+      if (!state.task || state.task.id !== taskId || request !== state.serviceRequest) return null;
       updateServiceSnapshot(snapshot);
       return snapshot;
     } catch (error) {
+      if (!state.task || state.task.id !== taskId || request !== state.serviceRequest) return null;
       if (!silent) toast(error.message);
       return null;
     }
@@ -1194,8 +1416,8 @@
     }
   }
 
-  async function stopNetworkService(silent = false) {
-    if (!state.task || !state.task.service_profile || state.busy) return;
+  async function stopNetworkService(silent = false, navigationOwnsBusy = false) {
+    if (!state.task || !state.task.service_profile || (state.busy && !navigationOwnsBusy)) return;
     try {
       setBusy(true);
       const snapshot = await api(
@@ -1207,7 +1429,7 @@
     } catch (error) {
       if (!silent) toast(error.message);
     } finally {
-      setBusy(false);
+      if (!navigationOwnsBusy) setBusy(false);
     }
   }
 
@@ -1493,6 +1715,7 @@
 
   async function runWorkspaceAction(action) {
     if (!state.task || !state.workspaceReady || state.busy) return;
+    const taskId = state.task.id;
     setBusy(true, "正在保存代码…");
     const saved = await saveAllDirtyFiles({ silent: true });
     if (!saved) {
@@ -1515,9 +1738,11 @@
     setBusy(true, labels[action]);
     try {
       const result = await api(
-        "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/" + action,
+        "/api/v1/workspaces/" + encodeURIComponent(taskId) + "/" + action,
         { method: "POST", body: {} }
       );
+      if (!state.task || state.task.id !== taskId) return;
+      state.lastAction = { taskId, action, passed: result.passed };
       ui.console.textContent = result.output || "(没有输出)";
       renderDiagnostics(result.output || "");
       const passed = result.passed;
@@ -1526,22 +1751,23 @@
         (passed ? "执行成功" : "执行失败");
       ui.checkResult.className = "check-result " + (passed ? "pass" : "fail");
       if (action === "check") {
-        updateTaskState(state.task.id, passed ? "PASSED" : "NEEDS WORK");
-        if (passed) {
-          try {
-            // Refresh prerequisite-derived states so the next task unlocks immediately.
-            await loadTasks();
-          } catch (refreshError) {
-            toast("验收已记录，但课程状态刷新失败：" + refreshError.message);
-          }
+        updateTaskState(taskId, passed ? "PASSED" : "NEEDS WORK");
+        try {
+          // Refresh authoritative prerequisite states after either PASS or FAIL.
+          const refreshed = await loadTasks();
+          if (refreshed && !ui.historyPanel.hidden) await loadTaskHistory(taskId);
+          if (refreshed && state.progressFresh) toast(passed ? "平台固定验收已通过，下一任务已更新。" : "验收未通过，请根据诊断继续修改。");
+        } catch (refreshError) {
+          toast("验收已记录，但课程状态刷新失败：" + refreshError.message);
         }
-        toast(passed ? "平台固定验收已通过，下一任务已更新。" : "验收未通过，请根据诊断继续修改。");
       } else if (action === "build") {
         toast(passed ? "构建成功。尚未记录正式验收结果。" : "构建失败，请查看编译诊断。");
       } else {
         toast(passed ? "运行 / 测试完成。正式验收需要单独执行。" : "运行 / 测试未通过，请查看输出。");
       }
     } catch (error) {
+      if (!state.task || state.task.id !== taskId) return;
+      state.lastAction = { taskId, action, passed: false };
       ui.console.textContent = error.message;
       ui.checkResult.textContent = "执行失败";
       ui.checkResult.className = "check-result fail";
@@ -1553,12 +1779,25 @@
 
   async function showHint(level) {
     if (!state.task) return;
+    const taskId = state.task.id;
+    const request = ++state.hintRequest;
+    ui.hintTitle.textContent = "渐进式提示 " + level;
+    ui.hint.innerHTML = '<div class="loading">正在读取提示…</div>';
+    ui.lesson.hidden = true;
+    ui.hintPanel.hidden = false;
+    document.querySelectorAll("[data-hint]").forEach((button) => {
+      button.setAttribute("aria-pressed", String(Number(button.dataset.hint) === level));
+    });
     try {
-      const data = await api("/api/v1/tasks/" + encodeURIComponent(state.task.id) + "/hints/" + level);
-      ui.hint.innerHTML = "<strong>渐进式提示 " + level + "</strong>" + renderMarkdown(data.markdown);
-      ui.hint.hidden = false;
-      ui.hint.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      const data = await api("/api/v1/tasks/" + encodeURIComponent(taskId) + "/hints/" + level);
+      if (!state.task || state.task.id !== taskId || request !== state.hintRequest) return;
+      ui.hint.innerHTML = renderMarkdown(data.markdown);
+      enhanceLessonFiles(ui.hint);
+      ui.hint.scrollTop = 0;
+      ui.hint.focus({ preventScroll: true });
     } catch (error) {
+      if (!state.task || state.task.id !== taskId || request !== state.hintRequest) return;
+      ui.hint.textContent = "提示读取失败，请重试：" + error.message;
       toast(error.message);
     }
   }
@@ -1576,6 +1815,11 @@
     ui.serviceRefreshButton.addEventListener("click", () => refreshServiceStatus());
     ui.serviceStopButton.addEventListener("click", () => stopNetworkService());
     ui.checkButton.addEventListener("click", () => runWorkspaceAction("check"));
+    ui.workflowAction.addEventListener("click", followWorkflowAction);
+    ui.hintClose.addEventListener("click", () => closeHint());
+    document.querySelectorAll("[data-lesson-section]").forEach((button) => {
+      button.addEventListener("click", () => jumpToLessonSection(button.dataset.lessonSection));
+    });
     ui.historyButton.addEventListener("click", async () => {
       if (state.task) {
         await loadTaskHistory(state.task.id);
@@ -1591,13 +1835,14 @@
       }
     });
     ui.continueButton.addEventListener("click", () => {
+      if (!state.progressFresh || state.busy) return;
       const next = state.tasks.find((task) => ["IN PROGRESS", "NEEDS WORK", "STALE"].includes(task.state))
         || state.tasks.find((task) => task.state === "AVAILABLE");
       if (next) selectTask(next.id);
     });
     ui.editor.addEventListener("input", handleEditorInput);
     ui.editor.addEventListener("keydown", (event) => {
-      if (event.key === "Tab") {
+      if (event.key === "Tab" && !ui.editor.readOnly && !ui.editor.disabled) {
         event.preventDefault();
         const start = ui.editor.selectionStart;
         const end = ui.editor.selectionEnd;

@@ -219,6 +219,25 @@ async function runApplicationAction(page, action, fields, expectedOutput) {
   return output;
 }
 
+async function verifyReadOnlyReference(page, relativePath) {
+  await page.waitForFunction(() => {
+    const tab = document.querySelector("#file-list .file-tab");
+    return tab && !tab.disabled && document.querySelector("#active-file").textContent !== "未选择文件";
+  });
+  const originalFile = await page.locator("#active-file").textContent();
+  await page.locator('#file-list button[title="' + relativePath + '"]').click();
+  await page.waitForFunction((file) => document.querySelector("#active-file").textContent === file, relativePath);
+  const before = await page.evaluate((file) => window.monaco.editor.getModels()
+    .find((model) => model.uri.path.endsWith("/" + file)).getValue(), relativePath);
+  await replaceMonacoEditor(page, "must not change the supplied interface");
+  const after = await page.evaluate((file) => window.monaco.editor.getModels()
+    .find((model) => model.uri.path.endsWith("/" + file)).getValue(), relativePath);
+  assert.equal(after, before, "Monaco must keep supplied reference headers read-only");
+  assert.match(await page.locator("#save-state").textContent(), /只读/);
+  await page.locator('#file-list button[title="' + originalFile + '"]').click();
+  await page.waitForFunction((file) => document.querySelector("#active-file").textContent === file, originalFile);
+}
+
 async function main() {
   assert.ok(BINARY && fs.existsSync(BINARY), "CPPAPPLAB_TEST_BINARY must point to the built learning engine");
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
@@ -484,6 +503,7 @@ async function main() {
     await page.waitForFunction(() =>
       document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
     );
+    await verifyReadOnlyReference(page, "include/todo.hpp");
     await page.locator("#app-build-button").click();
     await page.waitForFunction(() =>
       document.querySelector("#check-result")?.textContent === "应用构建成功",
@@ -544,6 +564,8 @@ async function main() {
     await page.waitForFunction(() =>
       document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
     );
+    await verifyReadOnlyReference(page, "include/task.hpp");
+    await verifyReadOnlyReference(page, "include/task_manager.hpp");
     await copyReferenceSources(
       page, service.baseUrl, "w3.task-manager", "labs/w3/task-manager/reference",
       ["src/task.cpp", "src/task_manager.cpp"]

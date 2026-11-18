@@ -426,3 +426,9 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - **Changed:** Extended the Windows-to-WSL smoke test to exercise both default browser mode (including forced setup) and the explicit `-Cli` override for Ubuntu 22.04 and 24.04.
 - **Why:** Changing the primary entry point must not silently remove an established workflow. Documentation alone does not prove that PowerShell transports the override through the Base64 bootstrap into the WSL process.
 - **Pitfall:** Assert the full WSL argument vector and the two independent mode values. The default path must pass setup/browser flags as `1/1`; the explicit CLI path must pass `0/0`. Inspect the transported command's final two quoted arguments directly rather than rewriting an already escaped PowerShell regex. Keep both distributions in the same executable Windows-side test.
+
+## 50. Health identity must be an explicit service field, not inferred from version text
+
+- **Changed:** Added `service: CppAppLab` to the health response and made the launcher validate that explicit identity alongside `status` and a positive task count. The integration fixture now models the actual `--version` output (`0.1.0`) and a separate service identity field.
+- **Why:** The C++ engine's `--version` output is a version string, not a product banner. Treating it as a service identity caused the launcher to reject its own valid server during real start/status/stop integration.
+- **Pitfall:** Do not infer server identity from presentation text or version output. Keep machine identity as a stable structured field; test both the real engine version representation and an unrelated HTTP 200 service response.

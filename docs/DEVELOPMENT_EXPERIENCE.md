@@ -419,4 +419,4 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 
 - **Changed:** Replaced opaque `subprocess.run(check=True)` failures in the real start/status/stop integration test with explicit return-code assertions that include captured stdout and stderr.
 - **Why:** The new health identity validation changed the launch boundary, and a failed launcher test surfaced only `CalledProcessError` plus the command. That was insufficient to distinguish a port conflict, invalid health payload, missing binary, or service startup failure.
-- **Pitfall:** Keep subprocess output captured for clean passing tests, but attach both streams to assertion failures. Always run stop in `finally` so a failed startup attempt cannot leak a child service into later tests.
+- **Pitfall:** Keep subprocess output captured for clean passing tests, but attach both streams to assertion failures. Reserve an ephemeral loopback port rather than hardcoding one, because the stricter identity check now correctly rejects unrelated services on an occupied port. Always run stop in `finally` so a failed startup attempt cannot leak a child service into later tests.

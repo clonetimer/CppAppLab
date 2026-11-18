@@ -279,6 +279,31 @@ async function main() {
       document.querySelectorAll("#course-list .task-link").length === 23
     );
 
+    // Exercise the actual first-use path rather than selecting a lesson from
+    // the sidebar. The guide must return focus to its welcome-page opener and
+    // preserve the welcome screen before the learner continues.
+    assert.equal(await page.locator("#welcome-panel").isVisible(), true);
+    assert.equal(await page.locator("#workbench").isVisible(), false);
+    await page.locator("#welcome-guide").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#learning-guide")?.open === true &&
+      document.querySelector("#guide-content")?.textContent.includes("第一次使用：先完成一个最小任务")
+    );
+    assert.equal(await page.locator('[data-guide-section="第一次使用"]').isEnabled(), true);
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => document.querySelector("#learning-guide")?.open === false);
+    assert.equal(await page.locator("#welcome-panel").isVisible(), true);
+    assert.equal(await page.evaluate(() => document.activeElement?.id), "welcome-guide");
+
+    const continueButton = page.locator("#continue-button");
+    assert.equal(await continueButton.isEnabled(), true,
+      "A fresh learner with a loaded course catalog must be able to continue");
+    await continueButton.click();
+    await page.waitForFunction(() =>
+      !document.querySelector("#workbench")?.hidden &&
+      document.querySelector("#task-title")?.textContent.includes("First C++ Program")
+    );
+
     const helloTask = page.locator('#course-list .task-link[data-task-id="w1.hello-world"]');
     assert.equal(
       await helloTask.count(),
@@ -286,7 +311,6 @@ async function main() {
       "W1 Hello World task must appear in the course list. Rendered list: " +
         await page.locator("#course-list").innerText()
     );
-    await helloTask.click();
     await page.waitForFunction(() =>
       document.querySelector("#task-title")?.textContent.includes("First C++ Program")
     );

@@ -425,4 +425,4 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 
 - **Changed:** Extended the Windows-to-WSL smoke test to exercise both default browser mode (including forced setup) and the explicit `-Cli` override for Ubuntu 22.04 and 24.04.
 - **Why:** Changing the primary entry point must not silently remove an established workflow. Documentation alone does not prove that PowerShell transports the override through the Base64 bootstrap into the WSL process.
-- **Pitfall:** Assert the full WSL argument vector and the two independent mode values. The default path must pass setup/browser flags as `1/1`; the explicit CLI path must pass `0/0`. Keep both distributions in the same executable Windows-side test.
+- **Pitfall:** Assert the full WSL argument vector and the two independent mode values. The default path must pass setup/browser flags as `1/1`; the explicit CLI path must pass `0/0`. Inspect the transported command's final two quoted arguments directly rather than rewriting an already escaped PowerShell regex. Keep both distributions in the same executable Windows-side test.

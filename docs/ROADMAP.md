@@ -281,11 +281,11 @@ The roadmap is outcome-based. Additional lessons are added only when they improv
 
 ## P8 — Browser-first learning workbench
 
-**Status: P8-A/P8-B and P8-C2 merged into `main`; P8-C3 service sessions implemented on `feat/p8-c3-network-service-sessions-20261117`, final CI qualification in progress.**  
-**P8-B validated head:** `e58227d06b7252fc5023339064637512f5954ae0`.  
-**Final PR CI:** [#1524](https://github.com/clonetimer/CppAppLab/actions/runs/43904815195) passed the required GCC/GoogleTest, ASan/UBSan, clang-format/clang-tidy, offline-dependency, package, Windows launcher and Chromium browser jobs.  
-**Final push CI:** [#1523](https://github.com/clonetimer/CppAppLab/actions/runs/43904797238) also passed Ubuntu 22.04 source-build compatibility.
-**P8-C2 final PR CI:** [#1589](https://github.com/clonetimer/CppAppLab/actions/runs/44026443959), all 12 required jobs passed; Ubuntu 22.04 source-build compatibility was skipped by workflow configuration.
+**Status: P8-A/P8-B and P8-C1–C5 are merged into `main` via PRs #40–#44; the P8-C implementation milestone is closed.**  
+**P8-C5 merge:** `25686fd210098006ffcadf8891c54f043e0b148d`.  
+**Final P8-C5 PR CI:** [#1848](https://github.com/clonetimer/CppAppLab/actions/runs/44104945290), 12 successful jobs and one push-only job skipped.  
+**Merged-main push CI:** [#1849](https://github.com/clonetimer/CppAppLab/actions/runs/44119538209), all five scheduled jobs passed, including Ubuntu 22.04 source-build compatibility.  
+Chromium journeys run on Ubuntu 24.04; API/core regression runs on Ubuntu 22.04 and 24.04. Repository-wide formatting remains a manual, opt-in step. See [the closeout report](P8_C5_CLOSEOUT.md) for coverage and remaining boundaries.
 
 The goal is to move the learner-facing workflow into one browser tab while preserving the existing C++ learning engine and CLI.
 
@@ -330,7 +330,7 @@ The goal is to move the learner-facing workflow into one browser tab while prese
 - [x] Beginner-first `Start here` guidance on all 23 lessons and Chinese first-task guide/glossary.
 - [x] Final P8-C5 PR CI #1848 passed all required jobs; see `docs/STATUS.md` for explicitly skipped/manual gates.
 
-**Interaction contract:** 14 tasks have application/service runtime profiles; 9 library/test-focused tasks use the browser editor plus registered build/test/formal acceptance workflow rather than a standalone application. All 23 are available in the browser and retain the authoritative learning-engine acceptance.
+**Interaction contract:** 14 tasks have application/service runtime interactions; 9 library/test-focused tasks use the browser editor plus registered build/test/formal acceptance workflow rather than a standalone application. All 23 are available in the browser and retain the authoritative learning-engine acceptance.
 
 **P8-C implementation is closed.** Windows 11 + WSL2 target-machine acceptance remains P8-E; clangd/GDB remains P8-D. Tutorial usability improvements continue as the main product line.
  

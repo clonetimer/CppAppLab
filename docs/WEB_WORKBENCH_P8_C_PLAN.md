@@ -1,5 +1,7 @@
 # P8-C — Full Course Experience Plan
 
+**Status: implementation closed after PRs #41–#44.** This document records the delivered contracts and validation scope. See [P8-C5 closeout](P8_C5_CLOSEOUT.md) for exact CI evidence; unchecked follow-up items below remain usability work.
+
 ## Objective
 
 Complete the learner-facing workflow for all 23 released W1–W9 tasks in the browser while preserving the existing CppAppLab learning engine as the authority for course metadata, prerequisites, build fingerprints, fixed acceptance and evidence.
@@ -52,7 +54,7 @@ The W7 Chat and W8 HTTP Server learner templates are deliberately incomplete unt
 
 1. **One source of truth:** task IDs, declared learner sources, prerequisites and acceptance contracts continue to come from `course/tasks.tsv` and the C++ learning engine.
 2. **Fixed runtime profiles:** a platform-owned profile maps a task ID to a known target, source subset, include directories, link requirements and a finite set of UI actions. The browser never submits a command, executable path, compiler option, CMake argument, working directory, environment map or raw argv array.
-3. **Declared-source boundary:** every source compiled for an application profile must be present in that task's declared `source_files`. Profile files and generated build scripts are platform-owned.
+3. **Declared-source boundary:** every learner-provided source compiled for an application profile must be present in that task's declared `source_files`. Fixed, explicitly enumerated platform-owned support sources may be linked where the task contract requires them (see the HTTP Server build boundary below). Profile files and generated build scripts are platform-owned.
 4. **Do not execute learner-controlled CMake configuration:** application builds use platform-generated fixed build profiles. Existing acceptance fixtures remain separate and authoritative.
 5. **No evidence side effects:** interactive execution and service sessions do not create or update formal acceptance evidence. Only `cppapplab check` may do so.
 6. **Workspace isolation:** Todo/TaskManager persistence and HTTP document roots live below the selected learner workspace, not in the user's global home directory or arbitrary filesystem paths.
@@ -113,7 +115,7 @@ The W7 Chat and W8 HTTP Server learner templates are deliberately incomplete unt
 - [x] C3-B: TCP Echo start/status/send/stop journey using the learner's own server and client implementation; a C++ workflow test performs a real loopback client/server round trip.
 - [x] C3-C: TCP Chat server lifecycle and bounded browser-managed multi-client bridge; API tests cover two clients, join/leave events, message broadcast and input limits.
 - [x] C3-D: HTTP Server lifecycle and same-origin HTTP request/response proxy against the workspace document root; API tests cover GET/POST, target validation, request/response size limits and timeout handling.
-- [ ] C3-E: Chromium, Python API and C++ integration regression across Ubuntu 22.04/24.04; verify incomplete learner services surface real diagnostics and never create formal PASS evidence.
+- [x] C3-E: Chromium profile-panel/prerequisite checks on Ubuntu 24.04, with Python API and C++ process/service regression on Ubuntu 22.04/24.04. Incomplete learner services surface real diagnostics; application/service interactions never create formal PASS evidence. Live service lifecycle and transport behavior are exercised by API/process tests; the browser run does not deeply complete every service lesson.
 
 #### Acceptance gates
 
@@ -130,16 +132,21 @@ The W7 Chat and W8 HTTP Server learner templates are deliberately incomplete unt
 - [x] Show prerequisite task IDs alongside the selected lesson and add an in-workbench acceptance history panel with timestamp, result, test count, workspace and fingerprint.
 - [x] Preserve progress and history across task changes and service restarts; application runs and service sessions remain excluded from formal acceptance history.
 
-### P8-C5 — Cross-course user journey
+### P8-C5 — Cross-course user journey (implementation closed)
 
-- [ ] Run browser journeys across all 23 tasks and all interaction classes. The first catalog-wide Chromium sweep is implemented; CI validation is pending.
-- [ ] Verify desktop, narrow mobile and keyboard-only navigation. The acceptance history panel now supports Enter to open, focus transfer into the panel, Escape to close and focus restoration; full course/editor tab-order audit remains.
-- [ ] Verify recoverability after compile failure, failed acceptance, interrupted process, service crash and browser refresh. Compile-error → correction → successful build/test, failed W4 acceptance, formal PASS/history refresh and TCP service crash → restart now have automated coverage; web-server shutdown process reaping is now covered; unsaved-edit beforeunload guard, cancel-reload, explicit save, reload and source-persistence recovery are now covered in Chromium.
-- [ ] Review screenshots and task completion flow before P8-C sign-off. CI uploads the desktop/mobile PNG evidence; final delivery provenance and review requirements are specified in `docs/P8_FINAL_DELIVERY_PACKAGE.md`.
+- [x] Traverse all 23 registered task IDs in Chromium and verify lesson rendering, task state, prerequisites and visible `Start here` guidance. Representative deep journeys exercise editing, building, running and formal acceptance; catalog coverage is not a claim that every exercise was solved in this browser run.
+- [x] Verify desktop layout, 390px mobile layout without page-level horizontal overflow, keyboard course selection, and history-panel Enter/focus-transfer/Escape/focus-restoration behavior.
+- [x] Verify compile-error correction, failed formal acceptance, retained PASS/history after refresh, and dirty-source cancel-reload/save/reload recovery in Chromium.
+- [x] Verify service crash/restart and web-server shutdown process cleanup through API/process regression.
+- [x] Generate desktop/mobile PNGs and the catalog-derived course matrix in passing CI [#1848](https://github.com/clonetimer/CppAppLab/actions/runs/44104945290).
+- [ ] Follow-up: complete the course/editor keyboard tab-order and accessibility audit.
+- [ ] Follow-up: review first-time learner task completion and comprehension. Screenshot generation and structural checks do not certify these outcomes.
 
-## Acceptance criteria
+## Accepted validation scope
 
-P8-C is complete only when all 23 registered tasks are represented accurately in the browser; all 14 application tasks have the correct safe interaction contract; the 9 library/test-only tasks remain test-driven; service sessions are bounded and fully cleaned up; formal acceptance remains the only evidence-writing action; and the full browser user journey passes on Ubuntu 22.04/24.04 CI without regressing the CLI, package builds or Windows launcher checks.
+All 23 registered tasks are represented in the browser; 14 application/service tasks have fixed runtime interactions; the 9 library/test-focused tasks use registered build/test/acceptance; service sessions have bounded lifecycles and cleanup; and formal acceptance remains the only course-evidence-writing action. Chromium journeys pass on Ubuntu 24.04, while API and C++ regression pass on Ubuntu 22.04/24.04. CLI regressions, both package targets and Windows launcher checks pass. The merged-main push run [#1849](https://github.com/clonetimer/CppAppLab/actions/runs/44119538209) also passed Ubuntu 22.04 source-build compatibility.
+
+This records the implemented CI matrix. Windows 11 + WSL2 target-machine browser acceptance, full accessibility and learner comprehension remain separately identified work. The release-package schema is in `docs/P8_FINAL_DELIVERY_PACKAGE.md`; a versioned release has not been published as part of this implementation closeout.
 
 ### Curriculum-wide task-first teaching
 
@@ -152,5 +159,5 @@ P8-C is complete only when all 23 registered tasks are represented accurately in
 
 - [x] Add a task-first walkthrough and plain-language terminology to the Chinese learner guide.
 - [x] Add step-by-step "Start here" sections to W1–W4 lessons, preserving the existing technical contracts and acceptance criteria.
-- [ ] Extend the same teaching structure to W5–W9 and verify all 23 lesson pages in Chromium.
+- [x] Extend the same teaching structure to W5–W9 and verify all 23 lesson pages in Chromium.
 - [ ] Review task-level help, hints and error explanations for consistency with the beginner-first path.

@@ -208,11 +208,13 @@ The priority is a complete, understandable experience for the currently released
 - P8-C4: PR #43, merge `ffd25b4`.
 - P8-C5 integrated browser course, recovery, evidence automation and beginner-first lesson guidance: PR #44, merge `25686fd210098006ffcadf8891c54f043e0b148d`.
 - Final PR CI for P8-C5: [#1848](https://github.com/clonetimer/CppAppLab/actions/runs/44104945290), required jobs passed. The repository-wide formatting step was manual/opt-in and skipped; Ubuntu 22.04 source-build compatibility is push-only and was not exercised by the PR event.
+- Merged-main push CI: [#1849](https://github.com/clonetimer/CppAppLab/actions/runs/44119538209), all five scheduled jobs passed, including Ubuntu 22.04 source-build compatibility. Full GCC/sanitizer/quality matrices and offline bundles are PR/manual gates and were skipped on this push event.
 - Browser evidence from the accepted PR run includes desktop/mobile screenshots and the generated course coverage CSV. Final human visual/usability review remains a user-feedback loop, not a blocker to the code merge.
 
 ### Browser course interaction contract
 
 The authoritative catalog contains 23 registered W1–W9 tasks:
+
 - 14 application/service tasks have learner-facing build/run or managed network-service interaction.
 - 9 library/test-focused tasks are intentionally exercised through source editing, the registered CMake/GoogleTest build/test and formal acceptance path; they are not separate standalone applications.
 - All 23 tasks are selectable in the browser, render their lessons and prerequisite/state metadata, and include task-first guidance.
@@ -225,7 +227,7 @@ The authoritative catalog contains 23 registered W1–W9 tasks:
 - Fixed-profile learner applications, bounded stdin and workspace-local persistence.
 - Managed TCP Echo, TCP Chat and HTTP Server sessions with bounded lifecycle, logs, restart and cleanup.
 - Read-only append-only acceptance history, prerequisite/state explanations and stale-evidence handling.
-- 23-task Chromium catalog sweep, compiler/acceptance recovery, service crash/restart, web-server shutdown and dirty-source refresh recovery.
+- Chromium on Ubuntu 24.04 verifies the 23-task catalog and representative deep journeys, compiler/acceptance recovery and dirty-source refresh recovery. API/process regressions cover service crash/restart and web-server shutdown on Ubuntu 22.04/24.04. The catalog sweep does not claim that all 23 exercises were solved in the browser run.
 - Desktop/mobile responsive checks and screenshot evidence; course matrix generated from `course/tasks.tsv`.
 - Beginner-first `Start here` sections across all 23 lessons and a Chinese first-task guide/glossary.
 

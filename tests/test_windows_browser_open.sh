@@ -18,6 +18,7 @@ cat > "$BIN/python3" <<'PY'
 #!/usr/bin/env bash
 # Health-check calls use "-" as the Python program; server starts use a file path.
 if [[ "${1:-}" == "-" ]]; then
+    printf 'health marker=%s exists=%s\n' "$CPPAPPLAB_TEST_FOREIGN_MARKER" "$([[ -f "$CPPAPPLAB_TEST_FOREIGN_MARKER" ]] && echo yes || echo no)" >> "$CPPAPPLAB_TEST_TRACE"
     cat >/dev/null
     if [[ -f "$CPPAPPLAB_TEST_FOREIGN_MARKER" ]]; then
         printf '{"status":"ok","engine":"Unrelated service","task_count":23}\n'
@@ -44,6 +45,7 @@ export PATH="$BIN:$PATH"
 export CPPAPPLAB_TEST_WINDOWS_ARGS="$TEMP_ROOT/windows-args"
 export CPPAPPLAB_TEST_WSLVIEW_ARGS="$TEMP_ROOT/wslview-args"
 export CPPAPPLAB_TEST_FOREIGN_MARKER="$TEMP_ROOT/foreign-health"
+export CPPAPPLAB_TEST_TRACE="$TEMP_ROOT/python-trace"
 export CPPAPPLAB_OPEN_BROWSER=1
 export CPPAPPLAB_WEB_PORT=18765
 export XDG_RUNTIME_DIR="$TEMP_ROOT/runtime"
@@ -70,6 +72,7 @@ test ! -e "$CPPAPPLAB_TEST_WSLVIEW_ARGS"
 : > "$CPPAPPLAB_TEST_FOREIGN_MARKER"
 if bash "$TEST_ROOT/scripts/start-web-workbench.sh" start >"$TEMP_ROOT/foreign.log" 2>&1; then
     cat "$TEMP_ROOT/foreign.log" >&2
+    cat "$CPPAPPLAB_TEST_TRACE" >&2
     echo "[FAIL] An unrelated service was accepted as the CppAppLab workbench." >&2
     exit 1
 fi

@@ -40,3 +40,6 @@ if cppapplab_check_ubuntu "$TEMP_ROOT/os-release" > "$TEMP_ROOT/result.log" 2>&1
 fi
 
 echo "[PASS] Ubuntu source-build support matrix: 22.04 and 24.04 accepted; unsupported releases rejected."
+
+
+bash tests/test_windows_browser_open.sh

@@ -400,3 +400,42 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - Compare diagnostic audit rules with existing course conventions before treating a NO as a missing teaching element. The Router lesson already had a Goal and source section; matching Goal at a word boundary fixes that false negative.
 - Keep structural signals, semantic review and learner comprehension separate. A corrected report still records comprehension as NOT_TESTED until an actual learner walkthrough provides evidence.
 
+
+
+## 46. Windows first launch should land in the browser workbench
+
+- **Changed:** Made the Windows double-click launcher start the local browser workbench by default, including after first-time setup. Added `-Cli` as an explicit compatibility path to the terminal home, and `-Setup` continues to rebuild and run CTest before launch. The WSL launcher requests browser opening only after the loopback service passes its health check; it prefers the Windows default browser and falls back to `wslview`, otherwise printing the exact local URL.
+- **Why:** The browser-first workbench was available but Windows learners still landed in the terminal and had to discover and run a second command. The delivered product entry should match the primary learning interface.
+- **Pitfall:** Do not open the browser before the service is ready, do not bind beyond loopback, and do not treat browser auto-open failure as service failure. Preserve stdin for first-use package prompts, preserve the explicit CLI path, and keep setup/build/test behavior unchanged. Port conflicts remain visible with a concrete alternate-port instruction rather than silently killing or reusing an unrelated process.
+- **Regression:** Windows launcher smoke verifies the encoded bootstrap, distribution and setup arguments plus the default browser-mode argument; existing Ubuntu build/package and browser CI gates remain required before merge.
+
+## 47. Test WSL browser interop independently from WSL process handoff
+
+- **Changed:** Added a deterministic shell integration test for the post-health-check browser action. It verifies that the health payload identifies CppAppLab (not merely an arbitrary HTTP 200), the exact Windows `cmd.exe /c start` argument vector, the `wslview` fallback, and that browser opening is opt-in for non-Windows/manual launches. The test uses a real local HTTP fixture with switchable valid/foreign JSON payloads, stubs only the external browser commands and service launcher, and never starts or signals a real service. It runs in the Chromium acceptance job on pull requests, not only the push-only Ubuntu compatibility job.
+- **Why:** The Windows launcher handoff test proves PowerShell arguments reach WSL, but it does not prove the final URL is handed to the Windows browser correctly. These are separate boundaries and need separate evidence.
+- **Pitfall:** Keep the test isolated in a temporary checkout, use a local HTTP server to exercise the real Python JSON/HTTP health parser, stub only external interop and service-launch boundaries, and assert the exact URL/argument order. A generic health endpoint can belong to an unrelated service occupying the default port; require the expected engine identity and a valid task count before opening it. Treat malformed JSON as an unhealthy endpoint without leaking a traceback into learner-facing startup output. Do not claim that a stub test proves browser launch on a real Windows desktop; retain P8-E target-machine validation as a separate NOT RUN item until executed there.
+
+## 48. Launcher integration failures must preserve captured diagnostics
+
+- **Changed:** Replaced opaque `subprocess.run(check=True)` failures in the real start/status/stop integration test with explicit return-code assertions that include captured stdout and stderr.
+- **Why:** The new health identity validation changed the launch boundary, and a failed launcher test surfaced only `CalledProcessError` plus the command. That was insufficient to distinguish a port conflict, invalid health payload, missing binary, or service startup failure.
+- **Pitfall:** Keep subprocess output captured for clean passing tests, but attach both streams and the service log to assertion failures. Reserve an ephemeral loopback port rather than hardcoding one, because the stricter identity check now correctly rejects unrelated services on an occupied port. Always run stop in `finally` so a failed startup attempt cannot leak a child service into later tests.
+
+## 49. Preserve explicit CLI mode when browser becomes the default
+
+- **Changed:** Extended the Windows-to-WSL smoke test to exercise both default browser mode (including forced setup) and the explicit `-Cli` override for Ubuntu 22.04 and 24.04.
+- **Why:** Changing the primary entry point must not silently remove an established workflow. Documentation alone does not prove that PowerShell transports the override through the Base64 bootstrap into the WSL process.
+- **Pitfall:** Assert the full WSL argument vector and the two independent mode values. The default path must pass setup/browser flags as `1/1`; the explicit CLI path must pass `0/0`. Inspect the transported command's final two quoted arguments directly rather than rewriting an already escaped PowerShell regex. Keep both distributions in the same executable Windows-side test.
+
+## 50. Health identity must be an explicit service field, not inferred from version text
+
+- **Changed:** Added `service: CppAppLab` to the health response and made the launcher validate that explicit identity alongside `status` and a positive task count. The integration fixture now models the actual `--version` output (`0.1.0`) and a separate service identity field.
+- **Why:** The C++ engine's `--version` output is a version string, not a product banner. Treating it as a service identity caused the launcher to reject its own valid server during real start/status/stop integration.
+- **Pitfall:** Do not infer server identity from presentation text or version output. Keep machine identity as a stable structured field; test both the real engine version representation and an unrelated HTTP 200 service response.
+
+## 51. Treat the full acceptance matrix as the merge gate, not one green job
+
+- **Changed:** Completed the P8-E acceptance matrix on the exact PR head: Windows PowerShell 5.1/7 parsing and WSL handoff for Ubuntu 22.04/24.04, browser and explicit CLI mode transport, real Chromium workbench acceptance, GCC/GoogleTest, ASan/UBSan, clang-tidy on both Ubuntu versions, offline dependency closure and source/learner package builds.
+- **Why:** A browser-first entry-point change crosses Windows, WSL, shell startup, the Python HTTP adapter and the C++ learning engine. A single passing build or one green browser job cannot establish the integrated path.
+- **Pitfall:** Do not merge while any matrix job is pending or skipped unexpectedly. Verify the exact tested head SHA, inspect the final run conclusion, and separately record the real Windows 11 + WSL2 desktop launch as NOT YET VERIFIED because hosted CI cannot open the user's local desktop.
+- **Outcome:** PR #51's complete run at the recorded head SHA completed successfully; the Ubuntu 22.04 source-build compatibility job is intentionally skipped by workflow configuration, while the independent Ubuntu 22.04 source-build/package and learner entry-point checks pass.

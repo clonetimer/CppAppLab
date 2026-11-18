@@ -38,6 +38,8 @@ jobs:
           node --check web/ui/app.js
           node --test tests/test_web_guidance_state.cjs tests/test_web_editor_loading.cjs tests/test_web_markdown_tables.cjs
           bash -n scripts/start-web-workbench.sh
+          bash -n tests/test_windows_browser_open.sh
+          bash tests/test_windows_browser_open.sh
       - name: Install C++ development toolchain
         run: |
           sudo apt-get -o Acquire::Retries=3 update
@@ -113,7 +115,7 @@ jobs:
           printf '#!/usr/bin/env bash\nprintf "CPPAPPLAB_LAUNCHER_SMOKE_OK\\n"\n' > "$launcher_repo/build/cppapplab"
           chmod +x "$launcher_repo/build/cppapplab"
           launcher_repo_base64="$(printf '%s' "$launcher_repo" | base64 -w0)"
-          bash scripts/cppapplab-wsl-launcher.sh "$launcher_repo_base64" 0 | grep -Fq "CPPAPPLAB_LAUNCHER_SMOKE_OK"
+          bash scripts/cppapplab-wsl-launcher.sh "$launcher_repo_base64" 0 0 | grep -Fq "CPPAPPLAB_LAUNCHER_SMOKE_OK"
           foreign_repo="$RUNNER_TEMP/cppapplab foreign checkout"
           mkdir -p "$foreign_repo"
           git -C "$foreign_repo" init -q
@@ -704,6 +706,10 @@ jobs:
             'scripts/ci_prepare_ubuntu_snapshot.sh',
             'scripts/lib/ubuntu-support.sh',
             'scripts/lib/terminal.sh',
+            'scripts/cppapplab-wsl-launcher.sh',
+            'scripts/quickstart.sh',
+            'scripts/start-web-workbench.sh',
+            'tests/test_windows_browser_open.sh',
             'tests/test_ubuntu_support.sh'
           )
           foreach ($script in $scripts) {

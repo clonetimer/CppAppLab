@@ -1317,6 +1317,7 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             exit_code, output = self.server.run_cli(["--version"], timeout=5.0)
             self._send_json(200 if exit_code == 0 else 503, {
                 "status": "ok" if exit_code == 0 else "degraded",
+                "service": "CppAppLab",
                 "engine": output.strip(),
                 "task_count": len(self.server.tasks),
             })

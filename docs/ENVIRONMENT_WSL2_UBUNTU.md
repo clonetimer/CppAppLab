@@ -33,7 +33,7 @@ Use the exact distribution name shown by `wsl -l -v`, for example `wsl -d Ubuntu
 
 After cloning the repository inside WSL, run explorer.exe . from the repository root in Ubuntu. Windows Explorer opens the project folder; double-click Start-CppAppLab.cmd to launch the Windows entry point. A Windows-accessible checkout can also be used.
 
-The launcher detects the installed Ubuntu distribution, verifies WSL2 and accepts Ubuntu 22.04 or 24.04 for source builds. It clones into ~/work/CppAppLab only when that checkout is missing, and opens the interactive learning home. Use Start-CppAppLab.cmd -Setup after updating source code to rebuild and rerun CTest. The launcher does not update an existing Git checkout automatically.
+The launcher detects the installed Ubuntu distribution, verifies WSL2 and accepts Ubuntu 22.04 or 24.04 for source builds. It clones into ~/work/CppAppLab only when that checkout is missing, and opens the browser learning workbench in the Windows default browser. Use Start-CppAppLab.cmd -Setup after updating source code to rebuild and rerun CTest before opening the browser workbench. Add -Cli to open the interactive terminal learning home instead. The launcher does not update an existing Git checkout automatically.
 
 ## 2. Verify Ubuntu
 

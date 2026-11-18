@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import socket
 import tempfile
 import threading
 import urllib.error
@@ -103,29 +104,49 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
     def test_local_launcher_start_status_stop(self) -> None:
         runtime_dir = self.base / "runtime"
         state_dir = self.base / "state"
+        with socket.socket() as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            port = reservation.getsockname()[1]
         env = os.environ.copy()
         env.update({
             "HOME": str(self.home),
             "XDG_RUNTIME_DIR": str(runtime_dir),
             "XDG_STATE_HOME": str(state_dir),
             "CPPAPPLAB_BINARY": os.environ["CPPAPPLAB_TEST_BINARY"],
-            "CPPAPPLAB_WEB_PORT": "18765",
+            "CPPAPPLAB_WEB_PORT": str(port),
         })
         command = ["bash", str(ROOT / "scripts" / "start-web-workbench.sh")]
         try:
             started = subprocess.run(
                 command + ["start"], env=env, capture_output=True, text=True,
-                timeout=20, check=True,
+                timeout=20, check=False,
+            )
+            launcher_log = state_dir / "cppapplab" / "web-workbench.log"
+            log_text = (
+                launcher_log.read_text(encoding="utf-8", errors="replace")
+                if launcher_log.is_file() else "(launcher log was not created)"
+            )
+            self.assertEqual(
+                started.returncode, 0,
+                f"Launcher start failed. stdout:\n{started.stdout}\nstderr:\n{started.stderr}\nlog:\n{log_text}",
             )
             self.assertIn("Web Workbench is ready", started.stdout)
             status = subprocess.run(
                 command + ["status"], env=env, capture_output=True, text=True,
-                timeout=10, check=True,
+                timeout=10, check=False,
+            )
+            self.assertEqual(
+                status.returncode, 0,
+                f"Launcher status failed. stdout:\n{status.stdout}\nstderr:\n{status.stderr}",
             )
             self.assertIn("is ready", status.stdout)
             stopped = subprocess.run(
                 command + ["stop"], env=env, capture_output=True, text=True,
-                timeout=10, check=True,
+                timeout=10, check=False,
+            )
+            self.assertEqual(
+                stopped.returncode, 0,
+                f"Launcher stop failed. stdout:\n{stopped.stdout}\nstderr:\n{stopped.stderr}",
             )
             self.assertIn("Web Workbench stopped", stopped.stdout)
         finally:

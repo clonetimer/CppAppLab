@@ -200,43 +200,41 @@ The priority is a complete, understandable experience for the currently released
 
 ## P8 — Browser-first learning workbench
 
-**P8-A and P8-B merged into `main` via PR #40.**  
-**Merge commit:** `d4cadbfcb68fc10bb146558ef892e8d828b16c89`.  
-**Code implementation head:** `e58227d06b7252fc5023339064637512f5954ae0`; final documentation-synchronized PR head: `20c499a3cdace4f2257023a8d1872b624fa94d3d`.  
-**Final PR CI:** run [#1530 / 43991188150](https://github.com/clonetimer/CppAppLab/actions/runs/43991188150), all required PR jobs passed.  
-**Final push CI:** run [#1529 / 43991178228](https://github.com/clonetimer/CppAppLab/actions/runs/43991178228), including Ubuntu 22.04 source-build compatibility, passed.  
-**Browser evidence:** artifact `14246430386`, desktop 1440px and mobile 390px screenshots; both visually reviewed.
+**P8-A through P8-C5 are implemented and merged into `main` via PRs #40–#44.**
 
-### P8-A — Local web foundation (validated)
+- P8-A/P8-B: PR #40, merge `d4cadbf`.
+- P8-C1/C2: PR #41, merge `edc8479`.
+- P8-C3: PR #42, merge `aaef088`.
+- P8-C4: PR #43, merge `ffd25b4`.
+- P8-C5 integrated browser course, recovery, evidence automation and beginner-first lesson guidance: PR #44, merge `25686fd210098006ffcadf8891c54f043e0b148d`.
+- Final PR CI for P8-C5: [#1848](https://github.com/clonetimer/CppAppLab/actions/runs/44104945290), required jobs passed. The repository-wide formatting step was manual/opt-in and skipped; Ubuntu 22.04 source-build compatibility is push-only and was not exercised by the PR event.
+- Browser evidence from the accepted PR run includes desktop/mobile screenshots and the generated course coverage CSV. Final human visual/usability review remains a user-feedback loop, not a blocker to the code merge.
 
-- Loopback-only Python standard-library service with same-origin and CSRF protection.
-- Authoritative course catalog, lesson and progressive-hint API.
-- Task start/resume and workspace file access delegated to the existing CppAppLab engine.
-- Declared-source-only file access, traversal/symlink checks and atomic writes.
-- Responsive Chinese course shell and local start/status/stop launcher.
-- Ubuntu 22.04/24.04 API tests, real W1 browser-to-GCC acceptance, stale-evidence/prerequisite checks and launcher lifecycle smoke test passed.
-- Windows launcher syntax/handoff checks passed. Windows 11 + WSL2 target-machine browser launch remains part of P8-E.
+### Browser course interaction contract
 
-### P8-B — Professional editor and learning loop (validated)
+The authoritative catalog contains 23 registered W1–W9 tasks:
+- 14 application/service tasks have learner-facing build/run or managed network-service interaction.
+- 9 library/test-focused tasks are intentionally exercised through source editing, the registered CMake/GoogleTest build/test and formal acceptance path; they are not separate standalone applications.
+- All 23 tasks are selectable in the browser, render their lessons and prerequisite/state metadata, and include task-first guidance.
+- All 23 tasks retain the existing fixed learning-engine acceptance contracts. Build/Run/service demonstrations do not grant formal PASS.
 
-- Monaco Editor 0.52.2, loaded from pinned CDN URLs; deterministic offline fallback to the local textarea editor.
-- Per-file editor models and multi-file tabs.
-- Debounced autosave, dirty indicators, Ctrl/Cmd+S and version-aware protection against edits during in-flight saves.
-- Separate **Build**, **Run / Tests**, and **Formal Acceptance** controls.
-- Fixed-profile `cppapplab build` and `cppapplab run` commands. Direct-execution tasks run the learner program; CMake/GoogleTest tasks run the registered platform test suite.
-- Build fingerprints prevent running binaries after the source has changed.
-- Build/run do not create acceptance evidence; only `cppapplab check` records the formal PASS/FAIL result.
-- GCC/CMake diagnostics are converted into clickable file/line navigation and Monaco markers.
-- Real Chromium/Playwright acceptance covers Monaco multi-file editing, autosave, build/run/evidence separation, CMake diagnostics and source navigation, automatic prerequisite unlock, 390px mobile layout and forced-CDN-failure textarea fallback.
-- Browser testing exposed and fixed a real textarea autosave defect; the corrected fallback passed autosave, build and run.
-- Ubuntu 22.04/24.04 GCC/GoogleTest, ASan/UBSan, clang-format/clang-tidy, offline dependency verification, source/learner package builds, Windows launcher checks and browser acceptance all passed across the final PR and push CI runs.
-- Desktop and mobile screenshots were visually reviewed. The layout is two-column on desktop and vertically stacked on mobile; the editor retains its own horizontal code scrolling without page-level horizontal overflow.
+### P8-C delivered capabilities
 
-The CLI remains supported and authoritative. P8-A/P8-B do not claim Windows 11 + WSL2 target-machine acceptance or release readiness.
+- Loopback-only browser workbench, catalog/lesson/hints, secure workspace file API and local launcher.
+- Monaco multi-file editing with offline textarea fallback, autosave, dirty state, fixed build/run/check controls and source-fingerprint protection.
+- Fixed-profile learner applications, bounded stdin and workspace-local persistence.
+- Managed TCP Echo, TCP Chat and HTTP Server sessions with bounded lifecycle, logs, restart and cleanup.
+- Read-only append-only acceptance history, prerequisite/state explanations and stale-evidence handling.
+- 23-task Chromium catalog sweep, compiler/acceptance recovery, service crash/restart, web-server shutdown and dirty-source refresh recovery.
+- Desktop/mobile responsive checks and screenshot evidence; course matrix generated from `course/tasks.tsv`.
+- Beginner-first `Start here` sections across all 23 lessons and a Chinese first-task guide/glossary.
 
-### P8-C — Full course experience
+### Explicit remaining boundaries (not blockers for P8-C closeout)
 
-**C1/C2 merged in PR #41; C3 merged in PR #42. P8-C4 merged in PR #43 (`ffd25b4`), with CI #1738 passing all required jobs. P8-C5 is now active on `feat/p8-c5-full-course-browser-20261117`: the Chromium journey includes a catalog-driven sweep across all 23 task IDs and verifies each lesson, state and prerequisite API, followed by browser-refresh recovery of a formal PASS and history record. CI validation is pending.
+- Windows 11 + WSL2 target-machine end-to-end acceptance remains separate (P8-E).
+- clangd/GDB interactive debugging remains P8-D.
+- Full accessibility audit and first-time learner comprehension testing remain future usability work; keyboard history/course navigation tests do not certify full WCAG conformance.
+- Final six-artifact release package can be assembled when a release/package publication is requested; the repository contains its schema at `docs/P8_FINAL_DELIVERY_PACKAGE.md`.
 
-P8-D (clangd/GDB) and P8-E (Windows/WSL2 packaging and target-machine acceptance) remain separate milestones.
-P8-D (clangd/GDB) and P8-E (Windows/WSL2 packaging and target-machine acceptance) remain separate milestones.
+**P8-C is closed as a merged implementation milestone.** Continue the main product line with tutorial usability and learner success, not more P8 phase splitting.
+

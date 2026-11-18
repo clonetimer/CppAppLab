@@ -165,7 +165,13 @@ async function startHello(page) {
 async function passHello(page) {
   await startHello(page);
   await page.locator("#check-button").click();
-  await page.waitForFunction(() => document.querySelector("#check-result").textContent === "PASS");
+  // The PASS badge precedes the catalog refresh and release of the busy guard.
+  await page.waitForFunction(() => {
+    const calculator = document.querySelector('#course-list [data-task-id="w1.calculator"]');
+    return document.querySelector("#check-result").textContent === "PASS" &&
+      document.querySelector("#task-state").dataset.state === "PASSED" &&
+      calculator && calculator.dataset.state === "AVAILABLE" && !calculator.disabled;
+  });
 }
 
 async function startCalculator(page) {

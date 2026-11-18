@@ -43,8 +43,8 @@ try:
         health = json.load(response)
         if (
             health.get("status") != "ok"
+            or health.get("service") != "CppAppLab"
             or not isinstance(health.get("engine"), str)
-            or "CppAppLab" not in health["engine"]
             or not isinstance(health.get("task_count"), int)
             or health["task_count"] < 1
         ):

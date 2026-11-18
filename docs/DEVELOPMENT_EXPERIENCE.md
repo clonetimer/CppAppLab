@@ -67,7 +67,7 @@ W4 Quality Gate is an important example: its TaskManager application implementat
 
 - `course/tasks.tsv` and the C++ learning engine remain authoritative for task IDs, declared sources, prerequisites, workspaces, source fingerprints, and formal acceptance.
 - Each browser application profile maps one task to a fixed set of actions and typed fields. The browser must not supply executable paths, compiler flags, CMake configuration, working directories, environment maps, or arbitrary argv.
-- Every source compiled by an application profile must be declared by that task. Reject undeclared, missing, symlinked, or unsafe sources.
+- Every learner-provided source compiled by an application profile must be declared by that task. Reject undeclared, missing, symlinked, or unsafe learner sources. Any platform-owned support sources must be fixed, explicitly enumerated and documented in that task's build contract.
 - Library/test-only tasks must not receive fabricated application runners.
 - Long-running TCP/HTTP services require an explicit lifecycle contract (loopback bind, readiness, bounded sessions, stop, process-group cleanup, and idle expiry). Do not disguise a service as a one-shot CLI form.
 
@@ -118,6 +118,24 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - The HTTP request bridge always connects to `127.0.0.1`. Allowlist methods, validate the request target after URL decoding, reject absolute URLs/authority/CRLF/traversal, bound request and response bodies, apply a short timeout, and return only a small response-header allowlist.
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
+
+## 32. Finish an authorized milestone and keep its evidence and status consistent
+
+- Preserve an explicit user instruction to merge completed, verified work. Carry the existing PR through review, its required CI and the actual merge; do not repeatedly stop for the same acceptance permission. Handle later usability feedback as follow-up work.
+- Update STATUS, ROADMAP, the implementation plan and the closeout report in one coherent change. Retire stale “in progress” lines and split completed checks from genuinely untested follow-ups.
+- Record the PR head, GitHub's synthetic merge checkout and the actual main merge separately. A successful run proves its own tested tree, not an unrelated later revision.
+- Select workflow evidence by event as well as commit. A helper that only returns pull-request runs cannot establish whether the merged-main push run exists or passed.
+- Inspect job and step conclusions. Record manual/conditional SKIPPED gates separately, and name the real platform matrix: Chromium on Ubuntu 24.04; API/core tests on Ubuntu 22.04 and 24.04.
+- Close the scope that is actually delivered: 23 browser-visible task contracts and representative deep journeys. Full keyboard accessibility, learner comprehension, target-machine WSL2 acceptance and versioned release publication remain separately tracked outcomes.
+- Batch related documentation corrections and experience updates before running CI, so closure does not become a chain of avoidable tiny PRs.
+
+## 30. Close a web-workbench milestone by stating the per-task interaction contract
+
+- A course being browser-accessible does not mean every task needs a separate standalone application runner; library/test tasks still expose their registered Run / Tests action. Classify each catalog task by its actual learning contract: direct application, managed network service, or library/test-focused exercise.
+- For application/service tasks, provide a fixed-profile runtime interaction; never expose arbitrary shell commands or learner-controlled executable/host/argv fields.
+- For library/test-focused tasks, the correct browser workflow is edit declared sources → registered build/test → formal acceptance. Creating a fake standalone app for every library task would distort the learning objective.
+- Report both the total browser-accessible catalog count and the runtime-profile count. In this course, all 23 tasks are browser-accessible; 14 have application/service runtime interactions and 9 are library/test-focused. The 14 comprise Hello World's direct runner, ten structured application profiles and three managed service profiles.
+- Close the implementation milestone when the integrated PR and required CI pass, while explicitly listing separate future work such as target-machine WSL2 acceptance, full accessibility review and learner comprehension testing.
 
 ## 29. Generate course coverage from the catalog and keep evidence dimensions separate
 

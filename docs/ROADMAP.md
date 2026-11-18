@@ -281,11 +281,11 @@ The roadmap is outcome-based. Additional lessons are added only when they improv
 
 ## P8 — Browser-first learning workbench
 
-**Status: P8-A/P8-B and P8-C2 merged into `main`; P8-C3 service sessions implemented on `feat/p8-c3-network-service-sessions-20261117`, final CI qualification in progress.**  
-**P8-B validated head:** `e58227d06b7252fc5023339064637512f5954ae0`.  
-**Final PR CI:** [#1524](https://github.com/clonetimer/CppAppLab/actions/runs/43904815195) passed the required GCC/GoogleTest, ASan/UBSan, clang-format/clang-tidy, offline-dependency, package, Windows launcher and Chromium browser jobs.  
-**Final push CI:** [#1523](https://github.com/clonetimer/CppAppLab/actions/runs/43904797238) also passed Ubuntu 22.04 source-build compatibility.
-**P8-C2 final PR CI:** [#1589](https://github.com/clonetimer/CppAppLab/actions/runs/44026443959), all 12 required jobs passed; Ubuntu 22.04 source-build compatibility was skipped by workflow configuration.
+**Status: P8-A/P8-B and P8-C1–C5 are merged into `main` via PRs #40–#44; the P8-C implementation milestone is closed.**  
+**P8-C5 merge:** `25686fd210098006ffcadf8891c54f043e0b148d`.  
+**Final P8-C5 PR CI:** [#1848](https://github.com/clonetimer/CppAppLab/actions/runs/44104945290), 12 successful jobs and one push-only job skipped.  
+**Merged-main push CI:** [#1849](https://github.com/clonetimer/CppAppLab/actions/runs/44119538209), all five scheduled jobs passed, including Ubuntu 22.04 source-build compatibility.  
+Chromium journeys run on Ubuntu 24.04; API/core regression runs on Ubuntu 22.04 and 24.04. Repository-wide formatting remains a manual, opt-in step. See [the closeout report](P8_C5_CLOSEOUT.md) for coverage and remaining boundaries.
 
 The goal is to move the learner-facing workflow into one browser tab while preserving the existing C++ learning engine and CLI.
 
@@ -320,14 +320,20 @@ The goal is to move the learner-facing workflow into one browser tab while prese
 - [x] Review desktop and mobile browser screenshots; verify mobile page has no horizontal overflow.
 - [ ] Complete Windows 11 + WSL2 target-machine browser startup (P8-E).
 
-### P8-C — Full course experience
+### P8-C — Full course experience (closed)
 
-- [x] C1: audit all 23 registered W1–W9 tasks and classify their interaction contracts. See `docs/WEB_WORKBENCH_P8_C_PLAN.md`.
-- [x] C2: add fixed application build profiles and browser-managed structured CLI/stdin interaction for eligible tasks; never expose arbitrary commands. Validated in PR #41 with real Chromium CRUD, persistence, stdin-boundary and acceptance-separation coverage.
-- [x] C3: add fixed-profile start/stop/status/log controls for registered network-service tasks; no arbitrary shell or user-supplied executable/argument surface. TCP Echo round trip, Chat multi-client bridge, HTTP loopback proxy, bounded sessions and process-group cleanup are implemented; see `docs/WEB_WORKBENCH_P8_C_PLAN.md`.
-- [ ] C4: expose acceptance history, stale-evidence reasons and prerequisite dependencies from the existing learning-engine records.
-- [ ] C5: complete responsive recovery guidance and cross-task user-journey regression.
+- [x] C1: audit all 23 registered W1–W9 tasks and classify interaction contracts.
+- [x] C2: fixed application profiles and browser-managed structured CLI/stdin interactions.
+- [x] C3: managed TCP Echo, TCP Chat and HTTP Server service sessions, bounded lifecycle and process cleanup.
+- [x] C4: read-only acceptance history, stale-evidence explanations and prerequisite state.
+- [x] C5: integrated 23-task browser catalog sweep, lesson/state/prerequisite checks, editing/build/run/acceptance recovery, keyboard navigation, service crash/restart, server shutdown, dirty-source refresh/save recovery and screenshot/course-matrix evidence.
+- [x] Beginner-first `Start here` guidance on all 23 lessons and Chinese first-task guide/glossary.
+- [x] Final P8-C5 PR CI #1848 passed all required jobs; see `docs/STATUS.md` for explicitly skipped/manual gates.
 
+**Interaction contract:** 14 tasks have application/service runtime interactions; 9 library/test-focused tasks use the browser editor plus registered build/test/formal acceptance workflow rather than a standalone application. All 23 are available in the browser and retain the authoritative learning-engine acceptance.
+
+**P8-C implementation is closed.** Windows 11 + WSL2 target-machine acceptance remains P8-E; clangd/GDB remains P8-D. Tutorial usability improvements continue as the main product line.
+ 
 ### P8-D — Professional tooling
 
 - clangd completion/diagnostics.

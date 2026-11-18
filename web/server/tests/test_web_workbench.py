@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from cppapplab_web import CppAppLabWebServer, ServiceSession, safe_relative_path
+from cppapplab_web import CppAppLabWebServer, MAX_LESSON_BYTES, ServiceSession, safe_relative_path
 
 
 FAKE_ENGINE = """#!/usr/bin/env python3
@@ -187,6 +187,8 @@ class WebWorkbenchTests(unittest.TestCase):
             "## Hint 1 — Start\n\nUse main.\n\n## Hint 2 — Output\n\nUse cout.\n\n## Hint 3 — Build\n\nReturn zero.\n",
             encoding="utf-8",
         )
+        self.guide_path = self.root / "course" / "LEARNING_GUIDE_ZH.md"
+        self.guide_path.write_text("# 中文学习指南\n\n先构建，再运行，最后正式验收。\n", encoding="utf-8")
         (self.ui_root / "index.html").write_text(
             "<!doctype html><title>CppAppLab</title>", encoding="utf-8"
         )
@@ -280,6 +282,44 @@ class WebWorkbenchTests(unittest.TestCase):
         task = self.request("/api/v1/tasks/w1.hello-world")
         self.assertIn("Write your first C++ program", task["lesson_markdown"])
         self.assertEqual(task["source_files"], ["src/main.cpp"])
+
+    def test_learning_guide_is_authoritative_and_independent_of_engine(self) -> None:
+        with patch.object(self.server, "run_cli", side_effect=AssertionError("Guide must not run the engine")):
+            guide = self.request("/api/v1/learning-guide")
+        self.assertEqual(guide, {"markdown": self.guide_path.read_text(encoding="utf-8")})
+        self.assertEqual(list(self.workspace_root.iterdir()), [], "Reading help must not create a workspace")
+        self.assertEqual(
+            self.request_error("/api/v1/learning-guide/course/tasks.tsv", "GET"), 404
+        )
+
+    def test_learning_guide_missing_file_can_be_retried(self) -> None:
+        self.guide_path.unlink()
+        self.assertEqual(self.request_error("/api/v1/learning-guide", "GET"), 404)
+        self.guide_path.write_text("# 恢复后的指南\n", encoding="utf-8")
+        self.assertEqual(self.request("/api/v1/learning-guide")["markdown"], "# 恢复后的指南\n")
+
+    def test_learning_guide_rejects_oversized_utf8(self) -> None:
+        self.guide_path.write_text("学" * (MAX_LESSON_BYTES // 3 + 1), encoding="utf-8")
+        self.assertEqual(self.request_error("/api/v1/learning-guide", "GET"), 413)
+
+    def test_learning_guide_rejects_invalid_utf8(self) -> None:
+        self.guide_path.write_bytes(b"\xff\xfe")
+        self.assertEqual(self.request_error("/api/v1/learning-guide", "GET"), 400)
+
+    def test_learning_guide_rejects_non_regular_file(self) -> None:
+        self.guide_path.unlink()
+        self.guide_path.mkdir()
+        self.assertEqual(self.request_error("/api/v1/learning-guide", "GET"), 400)
+
+    def test_learning_guide_rejects_symlink(self) -> None:
+        outside = self.base / "private.md"
+        outside.write_text("Must not be served", encoding="utf-8")
+        self.guide_path.unlink()
+        try:
+            self.guide_path.symlink_to(outside)
+        except OSError as error:
+            self.skipTest(f"Symlink creation is unavailable: {error}")
+        self.assertEqual(self.request_error("/api/v1/learning-guide", "GET"), 400)
 
     def test_task_history_api_returns_attempts_and_latest_state(self) -> None:
         history = self.request("/api/v1/tasks/w1.hello-world/history")

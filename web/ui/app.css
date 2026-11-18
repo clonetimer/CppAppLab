@@ -405,3 +405,36 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 /* A remembered course title must fit narrow welcome layouts. */
 .welcome-actions { flex-wrap: wrap; }
 .resume-button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: left; }
+
+/* The guide remains independent of the active lesson and editor. */
+.welcome-guide { display: inline-flex; gap: 12px; align-items: center; margin-top: 20px; padding: 6px 0; border: 0; background: transparent; color: #a9caff; font-size: 13px; text-align: left; }
+.welcome-guide:hover { color: #edf3ff; }
+.guide-open { overflow: hidden; }
+.learning-guide { width: min(820px, calc(100vw - 32px)); height: min(820px, calc(100vh - 40px)); height: min(820px, calc(100dvh - 40px)); max-width: none; max-height: none; margin: auto; padding: 0; border: 1px solid #405778; border-radius: 14px; background: var(--surface); color: var(--text); box-shadow: 0 24px 100px rgba(0, 0, 0, .55); overflow: hidden; }
+.learning-guide[open] { display: flex; flex-direction: column; }
+.learning-guide::backdrop { background: rgba(3, 8, 18, .72); }
+.guide-heading { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 14px; padding: 18px 21px 8px; }
+.guide-heading h2 { margin: 0; font-size: 19px; }
+.guide-heading button { flex-shrink: 0; }
+.guide-intro { flex-shrink: 0; margin: 0; padding: 0 21px 13px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.guide-sections { padding-left: 21px; padding-right: 21px; }
+.guide-feedback { flex-shrink: 0; padding: 0 21px; color: #c0cde0; font-size: 12px; line-height: 1.7; }
+.guide-feedback p { margin: 12px 0; }
+.guide-feedback button { margin-bottom: 14px; }
+.guide-content { min-height: 0; min-width: 0; flex: 1 1 auto; overscroll-behavior: contain; overflow-wrap: anywhere; }
+.guide-content > :first-child { margin-top: 0; }
+.guide-task-button { max-width: 100%; padding: 2px 5px; border: 1px solid rgba(120,169,255,.3); border-radius: 5px; background: rgba(120,169,255,.07); color: #b8d2ff; text-align: left; font: inherit; font-weight: 600; overflow-wrap: anywhere; }
+.guide-task-button:hover { border-color: #7aa9ed; background: rgba(120,169,255,.15); color: #edf3ff; }
+.learning-guide :focus-visible, .welcome-guide:focus-visible { outline: 2px solid #7aa9ed; outline-offset: 3px; }
+@media (max-width: 520px) {
+  .topbar { height: auto; min-height: 76px; padding-top: 9px; padding-bottom: 9px; gap: 12px; }
+  .topbar-right { flex-direction: column; align-items: flex-end; gap: 6px; }
+  .topbar-right .secondary-button { padding: 6px 9px; font-size: 11px; white-space: nowrap; }
+  .learning-guide { width: calc(100vw - 20px); height: calc(100vh - 24px); height: calc(100dvh - 24px); border-radius: 10px; }
+  .guide-heading { padding: 15px 14px 9px; }
+  .guide-heading h2 { font-size: 17px; }
+  .guide-intro { padding: 0 14px 10px; }
+  .guide-sections { padding: 8px 14px; }
+  .guide-feedback { padding: 0 14px; }
+  .guide-content { padding: 17px 14px 24px; font-size: 13px; }
+}

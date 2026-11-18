@@ -263,10 +263,21 @@ Delivered through [PR #48](https://github.com/clonetimer/CppAppLab/pull/48), mer
 
 ### Learning-session recovery and readable guidance
 
+Delivered through [PR #49](https://github.com/clonetimer/CppAppLab/pull/49), merge `09079bf896f54d11280f0523723577fed38391bb`. [Final PR CI #1884](https://github.com/clonetimer/CppAppLab/actions/runs/44259853369) passed all 12 applicable jobs; [main push CI #1885](https://github.com/clonetimer/CppAppLab/actions/runs/44260868516) passed all five scheduled jobs. Browser evidence included 56 Node cases, the full Monaco journey and 11 focused learning cases. Conditional skips and manual repository-wide formatting were not counted as passes.
+
 - Successful course/file selections are reflected in a validated bookmark URL. Refresh restores the selected course and file, while the welcome screen offers a named return to the last course and course navigation remembers the last valid file.
 - Browser history navigation shares the existing busy and save guards. Failed destination metadata reads preserve the prior editor; workspace-read errors keep the textbook visible and provide an explicit retry.
 - Optional Monaco initialization has one 8-second deadline and a manual basic-editor action. Late callbacks cannot replace an editor after fallback has settled.
 - Existing lesson tables render as semantic tables with bounded, keyboard-reachable internal horizontal scrolling. HTML escaping and exact available-file links remain in place.
 - Application nonzero results retain diagnostics without assuming every negative input means incorrect code. The calculator's documented division-by-zero case is explained without treating the wrapper exit status as the learner process's exit code.
 - The course catalog, source/acceptance boundaries and prerequisite policy are unchanged. Real browser regressions cover the user flows; observed learner comprehension and actual WSL target-machine qualification remain separate outcomes.
+
+### Chinese orientation inside the workbench
+
+- The persistent **中文学习指南** control and the welcome page's four-step entry expose the existing `course/LEARNING_GUIDE_ZH.md` inside an independently scrollable dialog. First use, terminology, the learning route and common errors have direct section controls.
+- A fixed, bounded, read-only guide endpoint serves the authoritative document without invoking the learning engine or creating a workspace. The guide remains readable when engine health/progress initialization fails, and failed guide reads have an explicit retry.
+- All 23 registered course headings in the route become exact catalog-bound navigation controls. They use the existing course-selection path, preserve dirty work on save failure and allow locked-lesson reading without starting the task or bypassing prerequisites.
+- Opening/closing help preserves the current task, file, editor, lesson/hint view, URL and running operation. Native dialog focus, Escape, local section scrolling and focus return are covered separately from the underlying lesson controls.
+- Browser-first instructions distinguish course selection from workspace creation; the welcome sample and first-use instructions include the first task's required trailing newline. No duplicate course metadata, general document-path API or extra curriculum is introduced.
+- Local verification covers 38 server tests and 71 Node cases. The existing Chromium gate covers real DOM navigation, desktop/390 px layout, read retry and dirty-work protection; exact final-head CI and main-push closure evidence belong to the corresponding PR.
 

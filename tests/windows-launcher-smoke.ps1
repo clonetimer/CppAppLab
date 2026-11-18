@@ -84,7 +84,7 @@ foreach ($distro in @("Ubuntu-22.04", "Ubuntu-24.04")) {
     }
 
     $command = $capturedArgs[5]
-    $bootstrapPattern = '^bootstrap_file="\$\(mktemp\)" && trap ''rm -f "\$bootstrap_file"'' EXIT && printf ''%s'' ''([^'']+)'' \| base64 --decode > "\$bootstrap_file" && bash "\$bootstrap_file" ''([^'']+)'' ''1''$'
+$bootstrapPattern = '^bootstrap_file="\$\(mktemp\)" && trap ''rm -f "\$bootstrap_file'' EXIT && printf ''%s'' ''([^'']+)'' \| base64 --decode > "\$bootstrap_file" && bash "\$bootstrap_file" ''([^'']+)'' ''1'' ''1''$'
     $match = [regex]::Match($command, $bootstrapPattern)
     if (-not $match.Success) {
         throw "The WSL bootstrap must be written to a temporary file so the user's stdin remains available."
@@ -115,3 +115,4 @@ foreach ($distro in @("Ubuntu-22.04", "Ubuntu-24.04")) {
 Write-Host "Supported launcher distributions: Ubuntu-22.04 and Ubuntu-24.04"
 Write-Host "Linux path transport: ~/work/Cpp App Lab"
 Write-Host "Setup mode transport: 1"
+Write-Host "Default browser-workbench mode transport: 1"

@@ -67,6 +67,7 @@ test ! -e "$CPPAPPLAB_TEST_WSLVIEW_ARGS"
 
 # A generic HTTP 200 health endpoint must not be mistaken for our workbench.
 if CPPAPPLAB_TEST_FOREIGN_HEALTH=1 bash "$TEST_ROOT/scripts/start-web-workbench.sh" start >"$TEMP_ROOT/foreign.log" 2>&1; then
+    cat "$TEMP_ROOT/foreign.log" >&2
     echo "[FAIL] An unrelated service was accepted as the CppAppLab workbench." >&2
     exit 1
 fi

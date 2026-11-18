@@ -69,7 +69,7 @@ exit 0
 NOHUP
 chmod +x "$BIN/cmd.exe" "$BIN/wslview" "$BIN/nohup"
 
-printf '{"status":"ok","engine":"CppAppLab - C++ learning and engineering practice","task_count":23}\n' > "$HEALTH_FILE"
+printf '{"status":"ok","service":"CppAppLab","engine":"0.1.0","task_count":23}\n' > "$HEALTH_FILE"
 python3 "$TEMP_ROOT/health_server.py" "$HEALTH_FILE" "$PORT_FILE" &
 HEALTH_PID=$!
 for _ in {1..50}; do
@@ -105,7 +105,7 @@ test ! -e "$CPPAPPLAB_TEST_WINDOWS_ARGS"
 test ! -e "$CPPAPPLAB_TEST_WSLVIEW_ARGS"
 
 # A generic HTTP 200 endpoint must not be mistaken for the CppAppLab workbench.
-printf '{"status":"ok","engine":"Unrelated service","task_count":23}\n' > "$HEALTH_FILE"
+printf '{"status":"ok","service":"Unrelated service","engine":"0.1.0","task_count":23}\n' > "$HEALTH_FILE"
 if bash "$TEST_ROOT/scripts/start-web-workbench.sh" start >"$TEMP_ROOT/foreign.log" 2>&1; then
     cat "$TEMP_ROOT/foreign.log" >&2
     echo "[FAIL] An unrelated service was accepted as the CppAppLab workbench." >&2

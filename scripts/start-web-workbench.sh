@@ -70,6 +70,23 @@ stop_service() {
     return 1
 }
 
+open_browser() {
+    local url="http://$HOST:$PORT/"
+    if [[ "${CPPAPPLAB_OPEN_BROWSER:-0}" != "1" ]]; then
+        return 0
+    fi
+    if command -v cmd.exe >/dev/null 2>&1 && cmd.exe /c start "" "$url" >/dev/null 2>&1; then
+        echo "[PASS] Opened the workbench in the Windows default browser."
+        return 0
+    fi
+    if command -v wslview >/dev/null 2>&1 && wslview "$url" >/dev/null 2>&1; then
+        echo "[PASS] Opened the workbench with wslview."
+        return 0
+    fi
+    echo "[INFO] Browser auto-open is unavailable. Open this address manually: $url"
+    return 0
+}
+
 status_service() {
     if health_check >/dev/null 2>&1; then
         echo "[PASS] CppAppLab Web Workbench is ready: http://$HOST:$PORT/"
@@ -92,6 +109,7 @@ start_service() {
     fi
     if health_check >/dev/null 2>&1; then
         echo "[PASS] CppAppLab Web Workbench is already running: http://$HOST:$PORT/"
+        open_browser
         return 0
     fi
 
@@ -120,6 +138,7 @@ start_service() {
             echo "[PASS] CppAppLab Web Workbench is ready."
             echo "Open: http://$HOST:$PORT/"
             echo "Log:  $LOG_FILE"
+            open_browser
             return 0
         fi
         if ! kill -0 "$pid" 2>/dev/null; then
@@ -132,6 +151,7 @@ start_service() {
     done
 
     echo "[FAIL] The web service did not become ready within ten seconds. See $LOG_FILE." >&2
+    echo "[INFO] If port $PORT is occupied, retry with CPPAPPLAB_WEB_PORT set to an unused local port." >&2
     return 1
 }
 

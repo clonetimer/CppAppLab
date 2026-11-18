@@ -119,6 +119,14 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 30. Close a web-workbench milestone by stating the per-task interaction contract
+
+- A course being browser-accessible does not mean every task should expose a standalone Run button. Classify each catalog task by its actual learning contract: direct application, managed network service, or library/test-focused exercise.
+- For application/service tasks, provide a fixed-profile runtime interaction; never expose arbitrary shell commands or learner-controlled executable/host/argv fields.
+- For library/test-focused tasks, the correct browser workflow is edit declared sources → registered build/test → formal acceptance. Creating a fake standalone app for every library task would distort the learning objective.
+- Report both the total browser-accessible catalog count and the runtime-profile count. In this course, all 23 tasks are browser-accessible; 14 have application/service runtime profiles and 9 are library/test-focused.
+- Close the implementation milestone when the integrated PR and required CI pass, while explicitly listing separate future work such as target-machine WSL2 acceptance, full accessibility review and learner comprehension testing.
+
 ## 29. Generate course coverage from the catalog and keep evidence dimensions separate
 
 - The `course/tasks.tsv` file is the single authoritative source for task IDs, lesson paths, source files, acceptance kind and prerequisites. Never maintain a manually duplicated course matrix.

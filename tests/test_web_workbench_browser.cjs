@@ -162,6 +162,17 @@ async function waitForText(locator, expected, label, timeout = 30000) {
 }
 
 async function replaceMonacoEditor(page, value) {
+  // A repeated course click can retain its breadcrumb while the editor reloads.
+  // Wait for navigation/file readiness, while allowing intentional read-only tests.
+  await page.waitForFunction(() => {
+    const course = document.querySelector("#course-list .task-link.active");
+    const tab = document.querySelector("#file-list .file-tab.active");
+    const file = document.querySelector("#active-file")?.textContent.trim();
+    return course && !course.disabled && tab && !tab.disabled && file && file !== "未选择文件" &&
+      tab.title === file && course.dataset.taskId === document.querySelector("#task-breadcrumb")?.textContent.trim() &&
+      window.monaco?.editor && document.querySelector("#editor-engine-status")?.textContent.startsWith("Monaco ") &&
+      document.querySelector("#monaco-editor .view-lines");
+  });
   const editorLines = page.locator("#monaco-editor .view-lines");
   await editorLines.click({ position: { x: 120, y: 10 } });
   await page.keyboard.press("Control+A");

@@ -2,7 +2,8 @@
 param(
     [string]$Distro,
     [string]$RepoPath = "~/work/CppAppLab",
-    [switch]$Setup
+    [switch]$Setup,
+    [switch]$Cli
 )
 
 $ErrorActionPreference = "Stop"
@@ -84,6 +85,7 @@ if (-not ($RepoPath.StartsWith("~/") -or $RepoPath.StartsWith("/"))) {
 
 $repoPathBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($RepoPath))
 $forceSetup = if ($Setup) { "1" } else { "0" }
+$webMode = if ($Cli) { "0" } else { "1" }
 
 $bootstrapScriptPath = Join-Path $PSScriptRoot "cppapplab-wsl-launcher.sh"
 if (-not (Test-Path -LiteralPath $bootstrapScriptPath -PathType Leaf)) {
@@ -94,15 +96,15 @@ $bashScriptBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBy
 # Decode the bootstrap from the command payload into a temporary file instead of
 # piping it to "bash -s". That leaves WSL stdin attached to the user's console,
 # allowing quickstart.sh and sudo to request interactive confirmation/passwords.
-$bootstrapCommand = 'bootstrap_file="$(mktemp)" && trap ''rm -f "$bootstrap_file"'' EXIT && printf ''%s'' ''{0}'' | base64 --decode > "$bootstrap_file" && bash "$bootstrap_file" ''{1}'' ''{2}''' -f $bashScriptBase64, $repoPathBase64, $forceSetup
+$bootstrapCommand = 'bootstrap_file="$(mktemp)" && trap ''rm -f "$bootstrap_file"'' EXIT && printf ''%s'' ''{0}'' | base64 --decode > "$bootstrap_file" && bash "$bootstrap_file" ''{1}'' ''{2}'' ''{3}''' -f $bashScriptBase64, $repoPathBase64, $forceSetup, $webMode
 
 Write-Host "CppAppLab - Windows / WSL2 launcher"
 Write-Host ("Distribution: {0}" -f $Distro)
 Write-Host ("Linux checkout: {0}" -f $RepoPath)
 if ($Setup) {
-    Write-Host "Mode: force setup, build and test"
+    Write-Host "Mode: force setup, build and test, then open the browser workbench"
 } else {
-    Write-Host "Mode: open existing build, or run setup if this is the first launch"
+    Write-Host "Mode: start the browser workbench; use -Cli for the terminal home"
 }
 
 & $wslCommand.Source --distribution $Distro --exec bash -lc $bootstrapCommand

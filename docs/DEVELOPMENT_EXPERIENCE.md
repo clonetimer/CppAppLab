@@ -439,3 +439,10 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - **Why:** A browser-first entry-point change crosses Windows, WSL, shell startup, the Python HTTP adapter and the C++ learning engine. A single passing build or one green browser job cannot establish the integrated path.
 - **Pitfall:** Do not merge while any matrix job is pending or skipped unexpectedly. Verify the exact tested head SHA, inspect the final run conclusion, and separately record the real Windows 11 + WSL2 desktop launch as NOT YET VERIFIED because hosted CI cannot open the user's local desktop.
 - **Outcome:** PR #51's complete run at the recorded head SHA completed successfully; the Ubuntu 22.04 source-build compatibility job is intentionally skipped by workflow configuration, while the independent Ubuntu 22.04 source-build/package and learner entry-point checks pass.
+
+## 52. Close hosted launcher validation with a safe target-machine evidence harness
+
+- **Changed:** Added `tests/windows-target-machine-acceptance.ps1` to verify the actual Windows 11 + WSL2 path, invoke the real `.cmd` launcher, require the Windows default-browser interop success marker, query the local CppAppLab health identity and 23-task catalog, and confirm the served workbench page. It writes a timestamped JSON record and transcript.
+- **Why:** Hosted CI can validate PowerShell syntax, argument transport and mocked browser interop, but cannot prove that a user's Windows desktop actually opens the browser and reaches their local WSL service.
+- **Pitfall:** Keep target-machine acceptance distinct from hosted CI. Require Windows 11 build 22000+, WSL2 and Ubuntu 22.04/24.04; do not claim PASS on fallback-only browser opening. Never stop the workbench or mutate learner workspaces during evidence collection. Record the exact local environment and leave the service available for the learner.
+- **Regression:** The Windows CI job parses the harness under both PowerShell 7 and Windows PowerShell 5.1. Actual runtime execution remains a manual target-machine gate and is not simulated in hosted CI.

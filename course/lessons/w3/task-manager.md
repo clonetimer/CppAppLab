@@ -129,6 +129,13 @@ The platform compiles your implementation against its own copies of both headers
 5. Why is task identity based on ID, while the title and completion state remain mutable values?
 6. How does preserving the W2 file format make this a refactor rather than a replacement application?
 
+## Troubleshooting
+
+- **Copying fails to compile, or changing a copy changes the original.** Inspect both manager copy operations and the `unique_ptr` ownership in `tasks_`. A copy needs independent `Task` objects; compare the two `find` pointers and mark a task done only in the copy to check independence.
+- **Moving leaves old tasks in the destination or a nonempty source.** Inspect both move operations, then check the destination's contents and `source.empty()` after moving. Exercise self-move separately: it must preserve the manager's existing task.
+- **`find` sees a task but `list` is empty or out of order.** Inspect `size`, `empty` and `snapshot` in `src/task_manager.cpp`; the starter returns placeholder values. Make them reflect the owned collection, then check that `snapshot` returns value copies in ID order.
+- **A W2 file no longer loads after the refactor.** Compare the saved header, tab-separated fields and title escapes with `CPPAPPLAB_TODO_V1` above. Retry with a W2-format file; preserve its IDs and completion flags, and keep malformed-load failures from replacing the current manager.
+
 ## Acceptance
 
 - [ ] Task construction enforces its invariants.

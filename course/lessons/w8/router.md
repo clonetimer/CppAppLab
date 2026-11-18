@@ -6,7 +6,7 @@ A router chooses which handler receives a request. It does not parse TCP bytes a
 
 1. Read the request model produced by W8-D2.
 2. Register one exact route and send it a matching request.
-3. Register a dynamic handler and inspect how path parameters reach it.
+3. Register a dynamic handler and inspect exact method/path matching and the unchanged request passed to it.
 4. Add a static-file fallback after dynamic routes.
 5. Test an unknown route, method mismatch and malformed input.
 6. Trace the full pipeline: request → router → handler → response → serializer.
@@ -71,6 +71,13 @@ printf 'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n' | ./build/http-router parse-s
 ## Explain your design
 
 Why must method and path both participate in lookup? Why does the handler receive the original target? How does binary Echo use Content-Length? Why must a dynamic 404 remain a dynamic response? How do 404 and 405 differ? Why must a known dynamic path not fall through to a same-named file? Which layer owns socket I/O, parsing, dispatch, disk access and serialization?
+
+## Troubleshooting
+
+- **`parse-stdin` waits or curl cannot connect:** inspect the selected CLI mode. It reads one request until EOF and opens no listening socket; use the piped examples above with complete CRLF framing and exactly one request.
+- **A dynamic 404 or wrong method falls through to disk:** inspect path existence separately from method matching and returned status. Recheck the dynamic-404 and method-mismatch cases; a registered path keeps ownership of its response.
+- **A query breaks routing or changes the callback's request:** compare the lookup path with the original target. Strip the query for exact lookup only, then rerun the unchanged-request case; this task has no path-parameter matching.
+- **Echo truncates binary data or dispatches too early:** inspect parser status, declared body bytes and the serialized Content-Length. Recheck partial-body and binary-Echo cases before changing the handler's response formatting.
 
 ## Acceptance
 

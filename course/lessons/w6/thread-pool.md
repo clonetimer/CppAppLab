@@ -93,6 +93,13 @@ Coverage includes argument validation, void/value returns, move-only inputs, exc
 5. Why should task exceptions be transported through `std::future` rather than escape a worker function?
 6. What happens to a future if submission is rejected before the task is accepted?
 
+## Troubleshooting
+
+- **The CLI reports `TODO: implement ThreadPool::submit`.** Inspect the deliberate placeholder in `include/thread_pool.hpp`. Complete the submission path and trace one returning task through `submit`, `worker_loop` and `future::get` before trying several workers.
+- **A move-only argument or callable causes a copy error.** Inspect what the queued `std::function<void()>` captures. Keep the callable and arguments in move-aware task storage, and use a copyable wrapper around the existing shared `packaged_task`; retry both move-only cases.
+- **A throwing task terminates a worker or loses its exception.** Inspect whether the worker executes the `packaged_task` wrapper. The exception must reach that task's future and rethrow from `get`; follow the throwing task with a successful one to check that the worker continues.
+- **Bounded submission or shutdown never completes.** Check whether workers stop when shutdown starts even though accepted tasks remain. Keep workers draining the queue through closure, preserve the shared ordering of submission and shutdown, and make every shutdown caller wait for worker joining. Retest with one worker and queue capacity one.
+
 ## Acceptance
 
 - [ ] Positive worker count and queue capacity are enforced.

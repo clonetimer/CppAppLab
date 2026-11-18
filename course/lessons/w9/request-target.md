@@ -69,6 +69,15 @@ Implement the parser API, preserve repeated query keys and enforce all limits an
 7. Why is asterisks-form restricted to OPTIONS?
 8. Why should downstream filesystem code consume the decoded path without decoding it again?
 
+## Troubleshooting
+
+Exercise `parse_request_target` through the fixed library checks; this task has no listening server or standalone CLI.
+
+- **`%252e` becomes a dot or query bytes enter the path:** inspect the raw path/query split and count decoding passes. Recheck the double-encoding case; split the raw target first and decode each component exactly once.
+- **Encoded separators pass in a path but fail in a query:** inspect which component is being validated. Recheck path `%2F`/`%5C` rejection, decoded dot segments and the allowed encoded slash in a query value.
+- **Repeated keys vanish or plus becomes a space:** inspect the ordered query container and parameter splitting. Recheck duplicate names, literal `+` and values containing `=`; preserve input order and split a parameter at its first equals sign.
+- **Malformed escapes or unsupported target forms pass:** inspect raw bytes, method and size limits before accepting the result. Recheck incomplete escapes, absolute/authority forms and `OPTIONS *`; this API returns Error for invalid targets, not NeedMoreData.
+
 ## Acceptance
 
 - [ ] Origin-form and OPTIONS asterisk-form are handled.

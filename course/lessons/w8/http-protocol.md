@@ -129,6 +129,13 @@ The fixed fixture checks request-line parsing, malformed input, preservation of 
 11. Why will the full HTTP parser need a buffer and parser state?
 12. Why keep HttpRequest and HttpResponse separate from transport code?
 
+## Troubleshooting
+
+- **`parse-line` rejects the input:** inspect its argument for missing fields, extra tokens or embedded CR/LF. Pass only the request line, then check that parsing leaves any existing headers and body intact.
+- **Content-Length is wrong for non-ASCII text:** compare the serialized body with its byte count, not its displayed character count. Recheck the UTF-8 fixture and the case with a caller-supplied, incorrect Content-Length.
+- **The response looks right but byte comparisons fail:** inspect CRLF separators, the final blank line and header order. Compare the empty-response case byte-for-byte, including this stage's required `Connection: close`.
+- **Duplicate or injected headers are accepted:** inspect case-insensitive header names and CR/LF in values or the reason phrase. Recheck the rejection cases before changing serialization of valid responses.
+
 ## Acceptance
 
 - [ ] Request line parses into method, target and version.

@@ -8,8 +8,8 @@ Make one client send one short message to one server before thinking about multi
 2. Read the flow: `socket → bind → listen → accept`.
 3. Connect one client and send a short message.
 4. Read until the complete expected message is received; do not assume one `recv` returns everything.
-5. Send a second message and test a client disconnect.
-6. Only then add error handling, bounded I/O and clean shutdown.
+5. Restart the supplied server for a second CLI client exchange, then test a client disconnect.
+6. Only then inspect error handling, complete writes and descriptor cleanup.
 
 **Mental model:** TCP is a reliable byte stream, not a message queue. In this exercise, the server echoes every received byte until the client shuts down its write side (`SHUT_WR`). Newlines have no special meaning.
 
@@ -35,12 +35,14 @@ The application sees TCP as a reliable, ordered, bidirectional byte stream. TCP 
 
 ## Your implementation
 
-Implement:
+The starter supplies these files for you to trace, run and test:
 
-- `include/tcp_echo.hpp`: `TcpEchoServer`, `connect_tcp`, and `send_all`
+- `include/tcp_echo.hpp`: the `TcpEchoServer`, `connect_tcp`, and `send_all` interface
 - `src/tcp_echo.cpp`: IPv4 socket setup, blocking accept, echo loop and complete writes
 - `src/main.cpp`: `server` and `client` command modes
-- `tests/tcp_echo_test.cpp`: ten learner-authored tests
+- `tests/tcp_echo_test.cpp`: ten supplied learner tests with assertions
+
+Follow one exchange through the implementation and inspect the tests before making changes. Preserve all required semantics below when modifying the code or adding test cases.
 
 The server binds an IPv4 address and port, listens, accepts one client, and echoes bytes until the peer performs an orderly write shutdown. Port zero asks the OS to select an available port; query the actual port with `TcpEchoServer::port()`.
 
@@ -84,6 +86,13 @@ Coverage includes socket setup, invalid addresses/backlog, ephemeral ports, loop
 5. Why is TCP a byte stream rather than a message protocol?
 6. Who owns each descriptor, and where is it closed?
 7. Why is a blocking `accept()` suitable for this first exercise but not a high-connection-count server?
+
+## Troubleshooting
+
+- **The client cannot connect.** Check the server's printed endpoint and that it is still running. Use the IPv4 literal `127.0.0.1` and the actual bound port; if the server was started with port 0, connect to the selected port it prints, not to 0.
+- **The first CLI exchange works but the second cannot connect.** Inspect the supplied `main`: it calls `serve_one` once and exits after that client's write shutdown. Restart `./build/tcp-echo server 8080` before a second CLI client exchange; each client invocation opens a new connection.
+- **Both sides wait after the message is sent.** Inspect the client write-shutdown and receive loop. Preserve `shutdown(socket_fd, SHUT_WR)` after sending and read until `recv` returns 0; a newline does not end this byte-stream session.
+- **Short text works but binary or large payloads are truncated.** Check that each receive uses its returned byte count, including embedded zero bytes, and that `send_all` advances through partial sends. Retry binary data and fragmented writes; do not treat a buffer as a null-terminated string or one receive as the whole payload.
 
 ## Acceptance
 

@@ -5,8 +5,8 @@
 Begin with one process, not the whole Linux API surface.
 
 1. Read the fixed CLI in `src/main.cpp` and identify the command that starts a child process.
-2. Trace the data path: command arguments → `ProcessRunner` → child process → captured output and exit status.
-3. Implement the smallest bounded-queue operation first: push one item, then pop it.
+2. Trace the data path: command arguments → `run_process` → child process → captured output and exit status.
+3. Exercise the supplied bounded queue first: push one item, then pop it.
 4. Run the focused queue test before adding concurrent producers and consumers.
 5. Implement process execution with a fixed argument vector; then add timeout, output limit and child cleanup.
 6. Finish by testing invalid input, timeout and output truncation.
@@ -25,16 +25,15 @@ This week connects the C++ concurrency library to real Linux kernel interfaces. 
 
 ## Your implementation
 
-Implement:
+Implement descriptor I/O and child process management in `src/process_runner.cpp`, and complete the ten TODO tests in `tests/system_lab_test.cpp`.
 
-- `include/bounded_queue.hpp` — complete the bounded queue template
-- `src/process_runner.cpp` — implement descriptor I/O and child process management
+The bounded queue template in `include/bounded_queue.hpp` is supplied. Read its implementation and exercise its producer/consumer behavior in your tests.
 
 The CLI in `src/main.cpp` is supplied. The public API is declared in `include/process_runner.hpp`.
 
 ## Part A — bounded queue
 
-Use a fixed capacity, a mutex, two condition variables, and a deque.
+The supplied queue uses a fixed capacity, a mutex, two condition variables, and a deque.
 
 Required semantics:
 
@@ -112,6 +111,13 @@ The platform uses its own headers and CMake fixture. Learner-controlled CMake fi
 4. Why should condition-variable waits use predicates?
 5. What must happen to blocked producers and consumers when the queue is closed?
 6. Why must the parent call waitpid after killing a timed-out child?
+
+## Troubleshooting
+
+- **A queue test waits forever.** Check whether it pushes into a full queue or pops an empty one before another thread can make progress. Arrange a producer/consumer to release the wait; during shutdown, call `close` and verify both kinds of waiter wake while queued items remain drainable.
+- **The echo command produces no output and exits unsuccessfully.** Inspect `run_process` in `src/process_runner.cpp`: the starter returns an empty `ProcessResult`. Trace one `/bin/echo` child through execution, captured output and collected exit status before adding timeout cases.
+- **The child exits but the parent never sees pipe EOF.** Inspect every pipe descriptor inherited across `fork`, especially the parent's copy of the write end. Close unused ends in both processes, then finish draining the pipe and collect the child with `waitpid`.
+- **Large output or a timeout leaves the check stuck.** Inspect the output-cap and deadline paths separately. Reaching the cap must stop storing bytes without stopping reads; an expired deadline must terminate and reap the child. Retry the bounded-output and timeout cases after each path works independently.
 
 ## Acceptance
 

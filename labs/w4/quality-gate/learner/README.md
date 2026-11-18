@@ -54,11 +54,9 @@ valgrind --leak-check=full --show-leak-kinds=all \
 
 Valgrind is an additional Linux check; ASan/UBSan remain separate build configurations.
 
-## One-command quality gate
+## Reproducible quality gate
 
-```bash
-./scripts/quality-check.sh
-```
+Run the commands above in order: Debug build and CTest, a separate ASan/UBSan build and test run, formatting checks, then clang-tidy-enabled compilation. Add the optional Valgrind pass if it is installed.
 
 ## Platform acceptance
 

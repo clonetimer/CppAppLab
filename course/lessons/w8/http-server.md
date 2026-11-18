@@ -128,6 +128,13 @@ Use Ctrl+C to stop the demonstration process. The library API also exposes threa
 
 The fixed fixture uses real loopback TCP sockets and the real parser → dispatcher → serializer path. It covers dynamic and static routes, binary Echo, fragmented requests, partial writes, malformed/oversized input, overload, handler exceptions, stale worker completion and eventfd shutdown. Platform-owned CMake and tests remain authoritative; learner-controlled build files cannot weaken the acceptance check.
 
+## Troubleshooting
+
+- **curl cannot connect or `/` returns 404:** inspect server startup errors, the selected port and the configured document root. Retry `/health` on the running listener, then verify the root contains `index.html` for the static route.
+- **A slow reader receives a truncated response:** inspect the write offset, remaining bytes and EPOLLOUT registration after `EAGAIN`. Recheck the large-response fixture, resuming unsent bytes and closing this D5 connection only after the full response is written.
+- **Queue pressure freezes the Reactor or loses worker slots:** inspect outstanding queued/running jobs and undrained completions, including disconnected clients. Recheck saturation and disconnected-request cases; submission must stay bounded without blocking socket progress.
+- **A late response reaches a newly connected client:** compare both the descriptor and generation token on the completion with the current connection. Recheck the stale-completion case and keep all socket/connection mutations on the Reactor thread.
+
 ## Acceptance
 
 - [x] Real non-blocking IPv4 listener and level-triggered epoll.

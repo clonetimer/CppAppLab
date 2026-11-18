@@ -56,6 +56,15 @@ The implementation uses one Linux timerfd and an event-loop-owned min-heap of de
 
 The quota is deliberately separate from `max_connections`: short-lived close-only clients may still be served while the persistent-connection budget is full.
 
+## Troubleshooting
+
+Reproduce these states through the fixed loopback checks; the learner workspace supplies the server library rather than a standalone application.
+
+- **Trickle bytes prevent timeout:** inspect the monotonic timestamp captured when the header or body phase begins. Recheck the trickle cases without renewing the same phase's absolute deadline on every read.
+- **Idle sockets get 408 or incomplete requests close silently:** inspect whether any request byte and the complete header terminator have arrived. Recheck idle/header/body cases: idle closes silently; header/body expiry sends 408 with close; incomplete EOF remains 400.
+- **A reused connection expires immediately:** inspect deadline generations and the transition after a fully written response. Invalidate stale entries and recheck idle refresh with a new deadline for the next waiting phase.
+- **Quota exhaustion rejects valid work or never recovers:** inspect dispatch counts and reserved persistent slots separately from total connections. Recheck final-request close and quota downgrade: serve the current response, then release its slot when the socket actually closes.
+
 ## Acceptance
 
 The fixed loopback fixture covers:

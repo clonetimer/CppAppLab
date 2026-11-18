@@ -100,6 +100,15 @@ The result must report attempted/succeeded/failed requests, elapsed microseconds
 
 The load probe is a measurement tool, not a promise of a particular throughput. Report the environment and workload alongside any performance number.
 
+## Troubleshooting
+
+This learner task exposes `run_http_load_probe`, not a load-probe executable. Its five fixed checks supply the loopback server.
+
+- **The probe rejects configuration before sending:** inspect the IPv4 address, nonzero port, leading-slash target, positive client/request counts and timeout. Compare with the invalid-configuration case, then retry a valid configuration through the fixture.
+- **A client stalls between Keep-Alive requests:** inspect response framing and whether it waits for TCP EOF. Recheck body-byte Content-Length handling, one connection per client, and `Connection: close` on only that client's final request.
+- **Failures disappear from the totals:** compare attempted requests with succeeded plus failed, including clients that could not connect. Recheck unexpected-status and connection-failure cases; every configured attempt must remain accounted for.
+- **Latency percentiles or throughput look impossible:** inspect monotonic timestamps, microsecond conversion and sorted latency samples. Recheck single-client measurements and percentile ordering, then report workload and environment with the result rather than treating it as a capacity guarantee.
+
 ## Acceptance
 
 - [ ] 非法负载探测配置能够被明确拒绝，避免无意义请求。

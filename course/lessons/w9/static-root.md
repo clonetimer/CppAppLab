@@ -71,6 +71,15 @@ The completed message and request-target components are staged as known-good bas
 8. Why does an open directory descriptor remain anchored when its pathname is renamed?
 9. Why does this task reject even symlinks that point inside the document root?
 
+## Troubleshooting
+
+The fixed library checks create temporary file trees and exercise the handler directly; no server executable is staged.
+
+- **Renaming the root or destroying a handler copy breaks lookup:** inspect ownership and lifetime of the retained directory descriptor. Recheck root-rename and shared-copy cases; resolve from the open root instead of reopening its old pathname.
+- **A symlink serves a file outside the root:** inspect every component's descriptor-relative open, not only the final file. Recheck intermediate and final symlink cases with no-follow traversal; this task also rejects symlinks pointing inside the root.
+- **Opening a FIFO hangs or an oversized file is served:** inspect final-open flags, `fstat` type and read-size accounting. Recheck non-blocking FIFO rejection and exact/over-limit files, enforcing the byte limit both before and during reads.
+- **Encoded percent names fail or a query changes lookup:** inspect the completed request-target parser's decoded path. Recheck single-decoding and query-isolation cases, passing that path to traversal without stripping or decoding it again.
+
 ## Acceptance
 
 - [ ] The request target is parsed once using the W9-A2 parser.

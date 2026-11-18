@@ -538,6 +538,11 @@ int build_workspace(const std::filesystem::path& workspace_path) {
 void require_real_directory(const std::filesystem::path& path) {
     std::error_code error;
     const auto status = std::filesystem::symlink_status(path, error);
+    if (status.type() == std::filesystem::file_type::not_found &&
+        (!error || error == std::errc::no_such_file_or_directory)) {
+        throw std::runtime_error(
+            "Build is missing. Run 'cppapplab build <workspace-directory>' first.");
+    }
     if (error || !std::filesystem::is_directory(status) || std::filesystem::is_symlink(status)) {
         throw std::runtime_error("Expected a real, non-symlink build directory: " + path.string());
     }

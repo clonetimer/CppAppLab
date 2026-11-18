@@ -216,6 +216,67 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
         calculator = next(task for task in passed["tasks"] if task["id"] == "w1.calculator")
         self.assertEqual(calculator["state"], "PASSED")
 
+    def test_w1_run_without_build_reports_the_build_command(self) -> None:
+        task_id = "w1.hello-world"
+        started = self.request(f"/api/v1/tasks/{task_id}/start", method="POST", body={})
+        self.assertTrue(started["workspace_ready"])
+        history_path = f"/api/v1/tasks/{task_id}/history"
+        history_before = self.request(history_path)
+        self.assertEqual(history_before["records"], [])
+        state_directory = self.workspace_root / task_id / ".cppapplab"
+
+        for missing_path in (state_directory, state_directory / "build"):
+            with self.subTest(missing_path=missing_path.name):
+                self.assertFalse(missing_path.exists())
+                run = self.request(
+                    f"/api/v1/workspaces/{task_id}/run", method="POST", body={}
+                )
+                self.assertEqual(run["task_id"], task_id)
+                self.assertEqual(run["action"], "run")
+                self.assertFalse(run["passed"])
+                self.assertNotEqual(run["exit_code"], 0)
+                self.assertFalse(run["records_acceptance_evidence"])
+                self.assertIn("cppapplab build <workspace-directory>", run["output"])
+                self.assertFalse(missing_path.exists())
+                self.assertEqual(self.request(history_path), history_before)
+
+            if missing_path == state_directory:
+                state_directory.mkdir()
+
+    def test_w1_run_rejects_unsafe_build_paths(self) -> None:
+        task_id = "w1.hello-world"
+        started = self.request(f"/api/v1/tasks/{task_id}/start", method="POST", body={})
+        self.assertTrue(started["workspace_ready"])
+        history_path = f"/api/v1/tasks/{task_id}/history"
+        history_before = self.request(history_path)
+        state_directory = self.workspace_root / task_id / ".cppapplab"
+        existing_target = self.base / "outside-build"
+        existing_target.mkdir()
+        missing_target = self.base / "missing-target"
+
+        for unsafe_path in (state_directory, state_directory / "build"):
+            for kind, target in (("file", None), ("symlink", existing_target),
+                                 ("dangling symlink", missing_target)):
+                with self.subTest(path=unsafe_path.name, kind=kind):
+                    if target is None:
+                        unsafe_path.touch()
+                    else:
+                        unsafe_path.symlink_to(target, target_is_directory=True)
+                    try:
+                        run = self.request(
+                            f"/api/v1/workspaces/{task_id}/run", method="POST", body={}
+                        )
+                        self.assertFalse(run["passed"])
+                        self.assertNotEqual(run["exit_code"], 0)
+                        self.assertFalse(run["records_acceptance_evidence"])
+                        self.assertIn("Expected a real, non-symlink build directory", run["output"])
+                        self.assertEqual(self.request(history_path), history_before)
+                    finally:
+                        unsafe_path.unlink()
+
+            if unsafe_path == state_directory:
+                state_directory.mkdir()
+
     def test_w1_start_edit_acceptance_and_stale_evidence(self) -> None:
         tasks = self.request("/api/v1/tasks")
         hello = next(task for task in tasks["tasks"] if task["id"] == "w1.hello-world")

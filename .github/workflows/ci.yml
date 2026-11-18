@@ -36,6 +36,7 @@ jobs:
           python3 -m py_compile web/server/cppapplab_web.py
           python3 -m unittest discover -s web/server/tests -v
           node --check web/ui/app.js
+          node --test tests/test_web_guidance_state.cjs
           bash -n scripts/start-web-workbench.sh
       - name: Install C++ development toolchain
         run: |
@@ -743,6 +744,11 @@ jobs:
           CPPAPPLAB_TEST_BINARY: ${{ github.workspace }}/build-browser/cppapplab
           CPPAPPLAB_BROWSER_ARTIFACT_DIR: ${{ runner.temp }}/cppapplab-browser-artifacts
         run: node tests/test_web_workbench_browser.cjs
+      - name: Verify learning navigation and read-only references
+        env:
+          CPPAPPLAB_TEST_BINARY: ${{ github.workspace }}/build-browser/cppapplab
+          CPPAPPLAB_BROWSER_ARTIFACT_DIR: ${{ runner.temp }}/cppapplab-browser-artifacts
+        run: node tests/test_web_learning_guidance.cjs
       - name: Generate authoritative course coverage matrix
         run: python3 scripts/generate_course_coverage.py --output "${{ runner.temp }}/cppapplab-browser-artifacts/course-coverage-matrix.csv"
       - name: Generate lesson usability structure audit

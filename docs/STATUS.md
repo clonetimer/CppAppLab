@@ -249,3 +249,13 @@ The authoritative catalog contains 23 registered W1–W9 tasks:
 - Tutorial wording follows the released starter and fixture behavior, including supplied examples, exact Router matching, GET-only static files and caller-owned incremental parser buffers.
 - These changes preserve formal acceptance and the P8-C closeout. Structural checks remain review aids; learner comprehension is still NOT_TESTED.
 
+### Learning navigation and recovery
+
+- The browser exposes six supplied interface headers across W2, W3, W4 and W6 as read-only course references. Source-file writes and fixed acceptance remain scoped to the original catalog allowlist.
+- Exact available file paths in lessons and hints open the relevant editor tab. Reference content is copyable in Monaco and the offline editor without entering autosave.
+- Start here, Troubleshooting and Acceptance have direct section controls. Long hints use a scrollable reading area with a return-to-lesson action.
+- A persistent next-action guide explains build/run/check and recovery, names prerequisites for locked tasks, and offers the next available course after refreshed formal PASS.
+- Busy task transitions and task-bound asynchronous responses protect result attribution. Saving changed PASS source refreshes prerequisite-derived states and visible acceptance history immediately.
+- First run before build gives an actionable build instruction while unsafe-directory and stale-build checks remain active.
+- Dedicated state/API regressions and focused Chromium journeys complement the existing full browser course acceptance. Learner comprehension and the separate P8-D/P8-E boundaries remain explicitly untested or future work as described above.
+

@@ -101,8 +101,16 @@
                   <button data-hint="1">提示 1</button><button data-hint="2">提示 2</button><button data-hint="3">提示 3</button>
                 </div>
               </div>
-              <div id="lesson-content" class="markdown-content"><div class="loading">选择课程以查看讲解</div></div>
-              <div id="hint-content" class="hint-content" hidden></div>
+              <nav class="lesson-navigation" aria-label="教材章节">
+                <button type="button" data-lesson-section="Start here">从这里开始</button>
+                <button type="button" data-lesson-section="Troubleshooting">故障排查</button>
+                <button type="button" data-lesson-section="Acceptance">验收要求</button>
+              </nav>
+              <div id="lesson-content" class="markdown-content" tabindex="0" aria-label="课程正文"><div class="loading">选择课程以查看讲解</div></div>
+              <section id="hint-panel" class="hint-panel" hidden aria-label="课程提示">
+                <div class="hint-heading"><strong id="hint-title">渐进式提示</strong><button id="hint-close" type="button" class="secondary-button">返回讲解</button></div>
+                <div id="hint-content" class="markdown-content hint-content" tabindex="0" aria-label="提示正文"></div>
+              </section>
             </section>
 
             <section class="editor-panel panel">
@@ -118,6 +126,10 @@
                   <button id="save-button" class="secondary-button" disabled>保存</button>
                   <button id="check-button" class="primary-button compact" disabled>正式验收 <span>✓</span></button>
                 </div>
+              </div>
+              <div class="workflow-guide" aria-label="学习下一步">
+                <p id="workflow-help" role="status" aria-live="polite">先阅读课程，再开始学习。</p>
+                <button id="workflow-action" type="button" class="secondary-button" hidden></button>
               </div>
               <section id="app-runner" class="app-runner" hidden aria-label="应用程序运行面板">
                 <div class="app-runner-heading">

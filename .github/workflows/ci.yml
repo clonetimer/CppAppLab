@@ -704,6 +704,9 @@ jobs:
             'scripts/ci_prepare_ubuntu_snapshot.sh',
             'scripts/lib/ubuntu-support.sh',
             'scripts/lib/terminal.sh',
+            'scripts/cppapplab-wsl-launcher.sh',
+            'scripts/quickstart.sh',
+            'scripts/start-web-workbench.sh',
             'tests/test_ubuntu_support.sh'
           )
           foreach ($script in $scripts) {

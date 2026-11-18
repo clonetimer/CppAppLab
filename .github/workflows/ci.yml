@@ -113,7 +113,7 @@ jobs:
           printf '#!/usr/bin/env bash\nprintf "CPPAPPLAB_LAUNCHER_SMOKE_OK\\n"\n' > "$launcher_repo/build/cppapplab"
           chmod +x "$launcher_repo/build/cppapplab"
           launcher_repo_base64="$(printf '%s' "$launcher_repo" | base64 -w0)"
-          bash scripts/cppapplab-wsl-launcher.sh "$launcher_repo_base64" 0 | grep -Fq "CPPAPPLAB_LAUNCHER_SMOKE_OK"
+          bash scripts/cppapplab-wsl-launcher.sh "$launcher_repo_base64" 0 0 | grep -Fq "CPPAPPLAB_LAUNCHER_SMOKE_OK"
           foreign_repo="$RUNNER_TEMP/cppapplab foreign checkout"
           mkdir -p "$foreign_repo"
           git -C "$foreign_repo" init -q

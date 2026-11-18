@@ -675,6 +675,17 @@ jobs:
           if (-not (Test-Path 'scripts/cppapplab-wsl-launcher.sh')) {
             throw 'The WSL bootstrap script is missing.'
           }
+          $targetTokens = $null
+          $targetErrors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'tests/windows-target-machine-acceptance.ps1').Path,
+            [ref]$targetTokens,
+            [ref]$targetErrors
+          )
+          if ($targetErrors.Count -gt 0) {
+            $targetErrors | Format-List
+            exit 1
+          }
       - name: Parse PowerShell launcher with Windows PowerShell 5.1
         shell: powershell
         run: |
@@ -687,6 +698,17 @@ jobs:
           )
           if ($errors.Count -gt 0) {
             $errors | Format-List
+            exit 1
+          }
+          $targetTokens = $null
+          $targetErrors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'tests/windows-target-machine-acceptance.ps1').Path,
+            [ref]$targetTokens,
+            [ref]$targetErrors
+          )
+          if ($targetErrors.Count -gt 0) {
+            $targetErrors | Format-List
             exit 1
           }
       - name: Exercise Windows-to-WSL command handoff

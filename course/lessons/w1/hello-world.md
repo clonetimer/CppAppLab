@@ -1,6 +1,5 @@
 # W1 · First C++ Program
 
-## Goal
 ## Start here
 
 If this is your first C++ exercise, do not worry about understanding every line yet.
@@ -15,6 +14,7 @@ If this is your first C++ exercise, do not worry about understanding every line 
 
 You only need to edit the file listed in **Your task**. The platform owns the acceptance tests and reference implementation.
 
+## Goal
 
 Compile and run a small C++17 program with GCC. This is the first complete edit → build → execute → check loop in CppAppLab.
 
@@ -67,7 +67,7 @@ Then return to the CppAppLab repository and run the fixed check:
 - `#include <iostream>` makes the standard output stream available.
 - `main` is the program entry point.
 - `std::cout` writes text to standard output.
-- `\\n` ends the output line.
+- `\n` ends the output line.
 - `return 0` reports successful process termination.
 
 ## Explain your result
@@ -82,5 +82,5 @@ After the check passes, explain in your own words:
 
 - [ ] The source compiles as C++17.
 - [ ] The executable exits with code 0.
-- [ ] Standard output is exactly `Hello, CppAppLab!\\n`.
+- [ ] Standard output is exactly `Hello, CppAppLab!\n`.
 - [ ] The learner source has not changed during the check.

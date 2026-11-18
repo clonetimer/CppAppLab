@@ -17,7 +17,7 @@ DEFAULT_OUTPUT = ROOT / "artifacts" / "tutorial-usability" / "lesson-audit.csv"
 
 CHECKS = {
     "task_first_path": lambda text: bool(re.search(r"^## Start here\s*$", text, re.M)),
-    "goal": lambda text: bool(re.search(r"^## Goal\s*$", text, re.M)),
+    "goal": lambda text: bool(re.search(r"^## Goal\b", text, re.M)),
     "concrete_steps": lambda text: len(re.findall(r"^\s*\d+\.\s+", text, re.M)) >= 3,
     "mental_model": lambda text: bool(re.search(r"\*\*Mental model:", text, re.I)),
     "common_errors": lambda text: bool(re.search(r"common (error|mistake)|常见错误|troubleshoot|failure mode", text, re.I)),

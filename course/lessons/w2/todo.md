@@ -1,6 +1,5 @@
 # W2 · Persistent Todo CLI
 
-## Goal
 ## Start here
 
 Build the Todo program in small steps. Do not try to implement persistence and every command at once.
@@ -15,6 +14,7 @@ Build the Todo program in small steps. Do not try to implement persistence and e
 
 The platform's fixed acceptance checks include malformed files and interrupted/invalid persistence cases. Treat those as later robustness work after the basic Todo loop works.
 
+## Goal
 
 Build a small command-line application that manages a list of tasks across separate program runs. This exercise introduces the STL as a practical data-management toolkit and makes file persistence part of the program's behavior.
 

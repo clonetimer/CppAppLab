@@ -1,6 +1,5 @@
 # W4 · TaskManager Quality Gate
 
-## Goal
 ## Start here
 
 This lesson starts with a working application and ten deliberately incomplete learner tests. Your first job is to understand one failing test, not to make the entire quality pipeline green immediately.
@@ -16,6 +15,7 @@ This lesson starts with a working application and ten deliberately incomplete le
 
 A green application demo is not the same as a passing quality gate: the learner-owned tests and reproducible build configuration are part of this task.
 
+## Goal
 
 Turn the W3 TaskManager refactor into a reproducible, test-driven engineering deliverable. This week is about proving behavior, diagnosing failures, and keeping the project maintainable—not adding another application feature.
 

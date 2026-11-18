@@ -16,9 +16,17 @@ chmod +x "$TEST_ROOT/build/cppapplab"
 
 cat > "$BIN/python3" <<'PY'
 #!/usr/bin/env bash
-# The starter checks only the fixed loopback health URL in this fixture.
-cat >/dev/null
-printf '{"status":"ok"}\n'
+# Health-check calls use "-" as the Python program; server starts use a file path.
+if [[ "${1:-}" == "-" ]]; then
+    cat >/dev/null
+    if [[ "${CPPAPPLAB_TEST_FOREIGN_HEALTH:-0}" == "1" ]]; then
+        printf '{"status":"ok","engine":"Unrelated service","task_count":23}\n'
+    else
+        printf '{"status":"ok","engine":"CppAppLab - C++ learning and engineering practice","task_count":23}\n'
+    fi
+    exit 0
+fi
+exit 0
 PY
 cat > "$BIN/cmd.exe" <<'CMD'
 #!/usr/bin/env bash
@@ -57,4 +65,12 @@ CPPAPPLAB_OPEN_BROWSER=0 bash "$TEST_ROOT/scripts/start-web-workbench.sh" start 
 test ! -e "$CPPAPPLAB_TEST_WINDOWS_ARGS"
 test ! -e "$CPPAPPLAB_TEST_WSLVIEW_ARGS"
 
-echo "[PASS] Browser opens only when requested, prefers Windows cmd.exe and falls back to wslview."
+# A generic HTTP 200 health endpoint must not be mistaken for our workbench.
+if CPPAPPLAB_TEST_FOREIGN_HEALTH=1 bash "$TEST_ROOT/scripts/start-web-workbench.sh" start >"$TEMP_ROOT/foreign.log" 2>&1; then
+    echo "[FAIL] An unrelated service was accepted as the CppAppLab workbench." >&2
+    exit 1
+fi
+test ! -e "$CPPAPPLAB_TEST_WINDOWS_ARGS"
+test ! -e "$CPPAPPLAB_TEST_WSLVIEW_ARGS"
+
+echo "[PASS] Browser opens only for a verified CppAppLab health response, prefers Windows cmd.exe and falls back to wslview."

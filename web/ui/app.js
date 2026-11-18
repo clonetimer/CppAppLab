@@ -429,9 +429,11 @@
     if (state.restoringHistory) {
       if (entry && entry.scope === state.learningHistory.scope && entry.index === state.learningHistory.index) {
         state.restoringHistory = false;
-        const mode = state.pendingLocationMode || "replace";
+        const mode = state.pendingLocationMode;
         state.pendingLocationMode = "";
-        writeLearningLocation(mode);
+        // The restored entry already describes the last committed position.
+        // A destination may still be loading; only flush an actual completed write.
+        if (mode) writeLearningLocation(mode);
       } else restoreLearningLocation();
       return false;
     }

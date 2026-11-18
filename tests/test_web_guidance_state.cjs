@@ -696,3 +696,30 @@ test("a pending bookmarked file survives unavailable workspace reads and refresh
     assert.equal(refreshed.state.activeFile, "src/calculator.cpp");
   }
 });
+
+test("Back during a pending course read preserves the previous committed entry", async () => {
+  const app = application();
+  app.bindEvents();
+  app.state.progressFresh = true;
+  learningApi(app);
+  await app.selectTask("w1.hello-world");
+  const priorEntries = [...app.entries];
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  learningApi(app, (url) => {
+    if (url === "/api/v1/workspaces/w1.calculator/files") return gate.then(() => ({
+      files: [{ path: "src/calculator.cpp", read_only: false }]
+    }));
+  });
+  const pending = app.selectTask("w1.calculator");
+  await new Promise(setImmediate);
+  assert.equal(app.state.task.id, "w1.calculator");
+  try {
+    await app.travel(-1);
+    assert.deepEqual(app.entries, priorEntries, "rollback must not write the half-loaded destination into the previous entry");
+  } finally { release(); await pending; }
+  await app.travel(-1);
+  assert.equal(app.state.task.id, "w1.hello-world");
+  await app.travel(1);
+  assert.equal(app.state.task.id, "w1.calculator");
+});

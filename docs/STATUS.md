@@ -251,6 +251,8 @@ The authoritative catalog contains 23 registered W1–W9 tasks:
 
 ### Learning navigation and recovery
 
+Delivered through [PR #48](https://github.com/clonetimer/CppAppLab/pull/48), merge `ea16613c491330e8be5df9179287ffe5a85ed7e9`. [Final PR CI #1875](https://github.com/clonetimer/CppAppLab/actions/runs/44251132830) passed all 12 applicable jobs; [main push CI #1876](https://github.com/clonetimer/CppAppLab/actions/runs/44252172245) passed all five scheduled jobs. Conditional skips and manual repository-wide formatting were not counted as passes.
+
 - The browser exposes six supplied interface headers across W2, W3, W4 and W6 as read-only course references. Source-file writes and fixed acceptance remain scoped to the original catalog allowlist.
 - Exact available file paths in lessons and hints open the relevant editor tab. Reference content is copyable in Monaco and the offline editor without entering autosave.
 - Start here, Troubleshooting and Acceptance have direct section controls. Long hints use a scrollable reading area with a return-to-lesson action.
@@ -258,4 +260,13 @@ The authoritative catalog contains 23 registered W1–W9 tasks:
 - Busy task transitions and task-bound asynchronous responses protect result attribution. Saving changed PASS source refreshes prerequisite-derived states and visible acceptance history immediately.
 - First run before build gives an actionable build instruction while unsafe-directory and stale-build checks remain active.
 - Dedicated state/API regressions and focused Chromium journeys complement the existing full browser course acceptance. Learner comprehension and the separate P8-D/P8-E boundaries remain explicitly untested or future work as described above.
+
+### Learning-session recovery and readable guidance
+
+- Successful course/file selections are reflected in a validated bookmark URL. Refresh restores the selected course and file, while the welcome screen offers a named return to the last course and course navigation remembers the last valid file.
+- Browser history navigation shares the existing busy and save guards. Failed destination metadata reads preserve the prior editor; workspace-read errors keep the textbook visible and provide an explicit retry.
+- Optional Monaco initialization has one 8-second deadline and a manual basic-editor action. Late callbacks cannot replace an editor after fallback has settled.
+- Existing lesson tables render as semantic tables with bounded, keyboard-reachable internal horizontal scrolling. HTML escaping and exact available-file links remain in place.
+- Application nonzero results retain diagnostics without assuming every negative input means incorrect code. The calculator's documented division-by-zero case is explained without treating the wrapper exit status as the learner process's exit code.
+- The course catalog, source/acceptance boundaries and prerequisite policy are unchanged. Real browser regressions cover the user flows; observed learner comprehension and actual WSL target-machine qualification remain separate outcomes.
 

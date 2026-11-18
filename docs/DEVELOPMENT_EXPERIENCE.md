@@ -119,6 +119,33 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 39. Restore presentation context only after navigation actually succeeds
+
+- A saved source file and a restored learning session are different outcomes. Verify refresh on a non-first file without manually reselecting the course; prior tests that clicked the course again hid the missing restoration.
+- Keep task/file presentation identifiers in a validated URL and a small optional recent-position record. Resolve task IDs through the current catalog and files through the returned allowlist. Never cache source, acceptance, tokens or inferred progress in browser storage.
+- Treat unavailable/corrupt storage and stale bookmarks as recoverable input. An invalid file must not become an arbitrary file GET; use an available file and explain the fallback.
+- Fetch destination metadata before clearing the current editor. A failed save or destination request must retain the old course, source and URL; browser history navigation must obey the same busy/save guards as visible buttons.
+- Same-course file links must reuse the current workspace and preserve its editor, diagnostics and running service. A failed target file read must not become a whole-course reset. After an initial source-read failure, disable every file entry point until the explicit workspace retry succeeds; an editable buffer without a saveable workspace is a broken recovery state.
+- Reject a known Back/Forward traversal by restoring its cursor, not by replacing the destination entry. Verify that Back can be retried after the busy/save guard clears and that Forward still returns to the original course. Preserve a pending bookmarked filename until a successful file list can validate it, including refresh before Start.
+- Separate workspace-loading errors from textbook rendering. Keep the lesson visible and offer a GET-only retry; do not turn a transient read failure into an accidental start/reset operation.
+- Keep existing prerequisite access policy explicit. Presentation recovery does not bypass the server's rule for opening a downstream workspace when an earlier prerequisite is no longer current.
+
+## 40. Optional editor resources must not hold the local learning loop indefinitely
+
+- Immediate CDN rejection and a request that never settles are different failure modes. A loader with only load/error callbacks can leave the entire task transition busy forever.
+- Give the full loader/retry/AMD initialization one total deadline, not a fresh timeout per stage. The current workbench uses 8000 ms and an immediate basic-editor action while waiting.
+- Settle exactly once and bind callbacks to their current attempt. Late loader or AMD success after fallback must not create another editor, overwrite current textarea edits or restart loading.
+- Preserve existing readiness labels and distinguish a loading label from a successful editor label. A test that matches a status prefix must not accidentally accept the pending state.
+- Reproduce timing deterministically at the DOM/CDN/timer boundary, then verify actual typing, saving and formal acceptance with a pending request in Chromium. Keep these Node regressions in a CI job that runs on both PR and push events, not only a conditionally skipped job.
+
+## 41. Verify rendered instructional meaning and documented negative cases
+
+- Audit the actual lesson renderer against released Markdown. Todo commands, connection policies and metric definitions used tables, but a paragraph-only renderer displayed their pipes and separators literally.
+- Render the supported table subset semantically, retain the existing inline escaping and file links, and make horizontal overflow local to a labelled keyboard-focusable region. Check final-column reachability at 390 px rather than merely counting table tags.
+- Preserve escaped pipes and code backslashes, keep fenced code untouched, and retain ordinary or malformed pipe-containing prose instead of silently consuming it as a table row.
+- A documented negative input can correctly return nonzero. Preserve its diagnostic output and failed-result styling while asking learners to compare the outcome with the lesson, rather than unconditionally instructing them to change correct code.
+- Distinguish the application's original exit code from the learning CLI wrapper's status. The calculator intentionally exits 3 on division by zero while its wrapper may return 1; do not label the wrapper field as the learner process's exit code.
+
 ## 36. Make lesson-referenced interfaces reachable without widening edit permissions
 
 - Compare lesson reading instructions with the browser's actual file allowlist. An interface present in the learner template is not automatically available in the editor; six supplied headers across four tasks were missing from the visible file list.

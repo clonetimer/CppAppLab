@@ -54,7 +54,7 @@ function task(id, state, prerequisites = []) {
     runtime_profile: null, service_profile: null, state_reason: "", lesson_markdown: "# Lesson" };
 }
 
-function application() {
+function application(options = {}) {
   const elements = new Map();
   const byId = (id) => {
     if (!elements.has(id)) elements.set(id, new Element());
@@ -69,18 +69,58 @@ function application() {
     getElementById: byId, createElement: (tag) => new Element(tag), addEventListener() {},
     querySelectorAll(selector) {
       if (selector === "[data-hint]") return hints;
-      if (selector.includes(".task-link")) return byId("course-list").querySelectorAll(".task-link");
-      return [];
+      const matches = [];
+      if (selector.includes(".task-link")) matches.push(...byId("course-list").querySelectorAll(".task-link"));
+      if (selector.includes(".file-tab")) matches.push(...byId("file-list").children.filter((child) => child.className?.split(" ").includes("file-tab")));
+      return matches;
     }
   };
-  const context = vm.createContext({ document, console, Map, Set, URL, Headers,
-    setTimeout: () => 1, clearTimeout() {}, window: { addEventListener() {} } });
+  const location = new URL(options.url || "http://127.0.0.1:8765/");
+  const stored = new Map(Object.entries(options.storage || {}));
+  const listeners = {};
+  const entries = [location.href];
+  const historyStates = [null];
+  const pendingHistory = [];
+  let historyIndex = 0;
+  const window = {
+    location,
+    history: {
+      get state() { return historyStates[historyIndex]; },
+      pushState(value, _title, url) {
+        location.href = new URL(url, location).href;
+        entries.splice(historyIndex + 1, entries.length, location.href);
+        historyStates.splice(historyIndex + 1, historyStates.length, value);
+        historyIndex += 1;
+      },
+      replaceState(value, _title, url) {
+        location.href = new URL(url, location).href;
+        entries[historyIndex] = location.href;
+        historyStates[historyIndex] = value;
+      },
+      go(delta) {
+        const next = historyIndex + delta;
+        if (next < 0 || next >= entries.length || next === historyIndex) return;
+        historyIndex = next;
+        location.href = entries[historyIndex];
+        pendingHistory.push(Promise.resolve().then(() => Promise.all((listeners.hashchange || []).map((handler) => handler()))));
+      }
+    },
+    localStorage: {
+      getItem(key) { if (options.storageDenied) throw new Error("storage denied"); return stored.get(key) || null; },
+      setItem(key, value) { if (options.storageDenied) throw new Error("storage denied"); stored.set(key, value); }
+    },
+    addEventListener(name, handler) { (listeners[name] ||= []).push(handler); }
+  };
+  const context = vm.createContext({ document, console, Map, Set, URL, URLSearchParams, Headers,
+    setTimeout: () => 1, clearTimeout() {}, window });
   const filename = path.join(__dirname, "..", "web", "ui", "app.js");
   const source = fs.readFileSync(filename, "utf8");
   const injected = source.replace(/\n  init\(\);\n\}\)\(\);\s*$/, `
   globalThis.workbench = { state, ui, selectTask, showHint, setEditorValue,
     handleEditorInput, saveFile, loadTasks, loadTaskHistory, runWorkspaceAction, bindEvents, setBusy,
     followWorkflowAction, refreshServiceStatus, stopNetworkService,
+    init, loadFile,
+    retryWorkspaceFiles: typeof retryWorkspaceFiles === "function" ? retryWorkspaceFiles : undefined,
     setApi(handler) { api = handler; } };
 })();`);
   assert.notEqual(injected, source, "test adapter must replace only automatic startup");
@@ -91,10 +131,19 @@ function application() {
   app.state.task = task("w1.hello-world", "IN PROGRESS");
   app.state.selectedTaskId = "w1.hello-world";
   app.state.workspaceReady = true;
+  app.state.editorReady = Promise.resolve(false);
   app.state.files = [{ path: "src/main.cpp", read_only: false }];
   app.state.tasks = [app.state.task, task("w1.calculator", "LOCKED", ["w1.hello-world"]),
     task("w2.todo-cli", "LOCKED", ["w1.calculator"])];
-  return { ...app, byId };
+  async function flushHistory() {
+    while (pendingHistory.length) await Promise.all(pendingHistory.splice(0));
+  }
+  return { ...app, byId, location, stored, entries,
+    async travel(delta) { window.history.go(delta); await flushHistory(); },
+    async browserEvent(name) {
+      await Promise.all((listeners[name] || []).map((handler) => handler()));
+      await flushHistory();
+    } };
 }
 
 test("busy course selection keeps acceptance attached to its original task", async () => {
@@ -365,4 +414,285 @@ test("a service status started before stop cannot revive the stopped controls", 
   await pending;
   assert.equal(app.state.serviceSnapshot.state, "STOPPED");
   assert.equal(app.ui.serviceStopButton.disabled, true);
+});
+
+function learningApi(app, extra = () => undefined) {
+  const requests = [];
+  app.setApi(async (url, options = {}) => {
+    requests.push(url);
+    const result = extra(url, options);
+    if (result !== undefined) return result;
+    if (url.endsWith("/session")) return { csrf_token: "test" };
+    if (url.endsWith("/health")) return { status: "ok" };
+    if (url === "/api/v1/tasks") return { tasks: [task("w1.hello-world", "PASSED"), task("w1.calculator", "IN PROGRESS")] };
+    if (url === "/api/v1/tasks/w1.hello-world") return task("w1.hello-world", "PASSED");
+    if (url === "/api/v1/tasks/w1.calculator") return task("w1.calculator", "IN PROGRESS");
+    if (url.endsWith("/files")) return { files: [
+      { path: "include/calculator.hpp", read_only: false }, { path: "src/calculator.cpp", read_only: false }
+    ] };
+    if (url.includes("/files/")) return { content: "// saved learner source\n", read_only: false };
+    throw new Error("unexpected request: " + url);
+  });
+  return requests;
+}
+
+test("startup restores an explicit course and non-first file from its URL", async () => {
+  const app = application({ url: "http://127.0.0.1:8765/#task=w1.calculator&file=src%2Fcalculator.cpp" });
+  app.state.task = null;
+  app.state.selectedTaskId = "";
+  const requests = learningApi(app);
+  await app.init();
+  assert.equal(app.state.task?.id, "w1.calculator");
+  assert.equal(app.state.activeFile, "src/calculator.cpp");
+  assert.equal(app.ui.editor.value, "// saved learner source\n");
+  assert.equal(requests.some((url) => url.endsWith("/start")), false, "restoration must not create a workspace");
+});
+
+test("a failed destination read preserves the current course and editor", async () => {
+  const app = application({ url: "http://127.0.0.1:8765/#task=w1.hello-world&file=src%2Fmain.cpp" });
+  app.state.activeFile = "src/main.cpp";
+  app.ui.editor.value = "saved hello";
+  app.ui.lesson.innerHTML = "<h1>Original lesson</h1>";
+  const previous = app.state.task;
+  app.setApi(async () => { throw new Error("destination temporarily unavailable"); });
+  await app.selectTask("w1.calculator");
+  assert.equal(app.state.task, previous);
+  assert.equal(app.state.selectedTaskId, "w1.hello-world");
+  assert.equal(app.state.activeFile, "src/main.cpp");
+  assert.equal(app.ui.editor.value, "saved hello");
+  assert.equal(app.ui.lesson.innerHTML, "<h1>Original lesson</h1>");
+  assert.match(app.location.hash, /task=w1.hello-world/);
+});
+
+test("a workspace read failure retains the lesson and offers a read-only retry", async () => {
+  const app = application();
+  app.state.progressFresh = true;
+  let fail = true;
+  const requests = learningApi(app, (url) => {
+    if (fail && url.endsWith("/files")) throw new Error("workspace temporarily unavailable");
+  });
+  await app.selectTask("w1.calculator");
+  assert.doesNotMatch(app.ui.lesson.textContent, /workspace temporarily unavailable/);
+  assert.match(app.ui.lesson.innerHTML, /Lesson/);
+  assert.equal(app.ui.workflowAction.dataset.action, "workspace");
+  fail = false;
+  await app.retryWorkspaceFiles();
+  assert.equal(app.state.workspaceReady, true);
+  assert.equal(app.state.workspaceError, "");
+  assert.match(app.ui.lesson.innerHTML, /Lesson/);
+  assert.equal(requests.some((url) => url.endsWith("/start")), false);
+});
+
+test("revisiting a course returns to its last successfully opened file", async () => {
+  const app = application();
+  app.state.progressFresh = true;
+  learningApi(app);
+  await app.selectTask("w1.calculator");
+  await app.loadFile("src/calculator.cpp");
+  await app.selectTask("w1.hello-world");
+  await app.selectTask("w1.calculator");
+  assert.equal(app.state.activeFile, "src/calculator.cpp");
+  assert.equal(new URLSearchParams(app.location.hash.slice(1)).get("file"), "src/calculator.cpp");
+  assert.match(app.byId("resume-button").textContent, /Calculator/);
+  assert.equal(app.byId("resume-button").hidden, false);
+});
+
+test("a busy incoming URL cannot switch courses or leave a misleading address", async () => {
+  const app = application({ url: "http://127.0.0.1:8765/#task=w1.hello-world&file=src%2Fmain.cpp" });
+  app.state.activeFile = "src/main.cpp";
+  app.bindEvents();
+  app.state.busy = true;
+  app.location.hash = "task=w1.calculator";
+  await app.browserEvent("hashchange");
+  assert.equal(app.state.task.id, "w1.hello-world");
+  assert.match(app.location.hash, /task=w1.hello-world/);
+});
+
+test("invalid file links never read an unlisted path and blocked storage is harmless", async () => {
+  const app = application({ url: "http://127.0.0.1:8765/#task=w1.calculator&file=..%2Fsecret", storageDenied: true });
+  app.state.task = null;
+  app.state.selectedTaskId = "";
+  const requests = learningApi(app);
+  await app.init();
+  assert.equal(app.state.task?.id, "w1.calculator");
+  assert.equal(app.state.activeFile, "include/calculator.hpp");
+  assert.equal(requests.some((url) => url.includes("secret")), false);
+  assert.equal(app.state.busy, false);
+});
+
+test("a failed outgoing save keeps the original route and source", async () => {
+  const app = application({ url: "http://127.0.0.1:8765/#task=w1.hello-world&file=src%2Fmain.cpp" });
+  app.state.activeFile = "src/main.cpp";
+  app.state.dirtyFiles.add("src/main.cpp");
+  app.ui.editor.value = "unsaved draft";
+  app.bindEvents();
+  app.setApi(async () => { throw new Error("save unavailable"); });
+  app.location.hash = "task=w1.calculator";
+  await app.browserEvent("hashchange");
+  assert.equal(app.state.task.id, "w1.hello-world");
+  assert.equal(app.ui.editor.value, "unsaved draft");
+  assert.equal(app.state.dirtyFiles.has("src/main.cpp"), true);
+  assert.match(app.location.hash, /task=w1.hello-world/);
+});
+
+test("the welcome return action reopens stored presentation context only", async () => {
+  const app = application({ storage: { "cppapplab.learning-position.v1": JSON.stringify({
+    version: 1, lastTaskId: "w1.calculator", files: { "w1.calculator": "src/calculator.cpp" }
+  }) } });
+  app.state.task = null;
+  app.state.selectedTaskId = "";
+  const requests = learningApi(app);
+  await app.init();
+  assert.equal(app.ui.welcome.hidden, false, "the root URL remains a welcome page");
+  assert.match(app.ui.resumeButton.textContent, /Calculator/);
+  app.ui.resumeButton.fire("click");
+  await new Promise(setImmediate);
+  assert.equal(app.state.task?.id, "w1.calculator");
+  assert.equal(app.state.activeFile, "src/calculator.cpp");
+  assert.equal(requests.some((url) => url.endsWith("/start")), false);
+  assert.doesNotMatch(app.stored.get("cppapplab.learning-position.v1"), /saved learner source/);
+});
+
+test("an unknown task bookmark never reaches a task endpoint", async () => {
+  const app = application({ url: "http://127.0.0.1:8765/#task=unknown.course&file=src%2Fmain.cpp" });
+  app.state.task = null;
+  app.state.selectedTaskId = "";
+  const requests = learningApi(app);
+  await app.init();
+  assert.equal(app.state.task, null);
+  assert.equal(app.location.hash, "");
+  assert.equal(requests.some((url) => url.includes("unknown.course")), false);
+  assert.match(app.ui.toast.textContent, /链接中的课程不可用/);
+});
+
+test("corrupt recent-position storage does not hide the available course path", async () => {
+  const app = application({ storage: { "cppapplab.learning-position.v1": "{broken JSON" } });
+  app.state.task = null;
+  app.state.selectedTaskId = "";
+  learningApi(app);
+  await app.init();
+  assert.equal(app.ui.resumeButton.hidden, true);
+  assert.equal(app.ui.continueButton.disabled, false);
+  assert.equal(app.state.progressFresh, true);
+});
+
+test("a course-only bookmark reuses that course's remembered file", async () => {
+  const app = application({ url: "http://127.0.0.1:8765/#task=w1.calculator", storage: {
+    "cppapplab.learning-position.v1": JSON.stringify({ version: 1, lastTaskId: "w1.calculator",
+      files: { "w1.calculator": "src/calculator.cpp" } })
+  } });
+  app.state.task = null;
+  app.state.selectedTaskId = "";
+  learningApi(app);
+  await app.init();
+  assert.equal(app.state.activeFile, "src/calculator.cpp");
+});
+
+test("same-course file fragments preserve the editor and running service when the file read fails", async () => {
+  const app = application();
+  app.bindEvents();
+  app.state.progressFresh = true;
+  let fail = true;
+  const requests = learningApi(app, (url) => {
+    if (fail && url.endsWith("/files/src/calculator.cpp")) throw new Error("file unavailable");
+    if (url.endsWith("/service/stop")) return { state: "STOPPED" };
+  });
+  await app.selectTask("w1.calculator");
+  const current = app.state.task;
+  current.service_profile = { kind: "tcp_echo" };
+  app.state.serviceSnapshot = { state: "RUNNING", port: 8123, logs: "running" };
+  app.state.lastAction = { taskId: current.id, action: "check", passed: true };
+  const priorUrl = app.location.href;
+  const priorSource = app.ui.editor.value;
+  const start = requests.length;
+  app.location.hash = "task=w1.calculator&file=src%2Fcalculator.cpp";
+  await app.browserEvent("hashchange");
+  assert.equal(app.state.task, current);
+  assert.equal(app.state.activeFile, "include/calculator.hpp");
+  assert.equal(app.ui.editor.value, priorSource);
+  assert.equal(app.location.href, priorUrl);
+  assert.equal(app.state.workspaceReady, true);
+  assert.equal(app.state.serviceSnapshot.state, "RUNNING");
+  assert.equal(app.state.lastAction.action, "check");
+  assert.deepEqual(requests.slice(start), ["/api/v1/workspaces/w1.calculator/files/src/calculator.cpp"]);
+  fail = false;
+  app.location.hash = "task=w1.calculator&file=src%2Fcalculator.cpp";
+  await app.browserEvent("hashchange");
+  assert.equal(app.state.activeFile, "src/calculator.cpp");
+  assert.equal(app.state.serviceSnapshot.state, "RUNNING");
+});
+
+test("failed initial source reads keep file controls guarded until the explicit workspace retry", async () => {
+  const app = application();
+  app.state.progressFresh = true;
+  let fail = true;
+  const requests = learningApi(app, (url) => {
+    if (fail && url.includes("/files/")) throw new Error("initial source unavailable");
+  });
+  await app.selectTask("w1.calculator");
+  assert.equal(app.state.workspaceReady, false);
+  assert.ok(app.ui.fileList.children.every((button) => button.disabled));
+  fail = false;
+  const before = requests.length;
+  assert.equal(await app.loadFile("src/calculator.cpp"), false);
+  assert.equal(requests.length, before, "file links and diagnostics cannot bypass the workspace retry");
+  assert.equal(app.state.activeFile, "");
+  assert.equal(app.ui.editor.readOnly, true);
+  assert.equal(await app.retryWorkspaceFiles(), true);
+  assert.equal(app.state.workspaceReady, true);
+  assert.equal(app.state.workspaceError, "");
+  assert.ok(app.ui.fileList.children.every((button) => !button.disabled));
+  await app.loadFile("src/calculator.cpp");
+  app.ui.editor.value = "// now editable and saveable";
+  app.handleEditorInput();
+  assert.equal(await app.saveFile("src/calculator.cpp"), true);
+});
+
+for (const blockedBy of ["busy", "failed save"]) {
+  test("rejected Back preserves visited entries and can be retried after " + blockedBy, async () => {
+    const app = application();
+    app.bindEvents();
+    app.state.progressFresh = true;
+    let rejectSave = false;
+    learningApi(app, (_url, options) => {
+      if (options.method === "PUT" && rejectSave) throw new Error("save unavailable");
+    });
+    await app.selectTask("w1.hello-world");
+    await app.selectTask("w1.calculator");
+    const priorEntries = [...app.entries];
+    if (blockedBy === "busy") app.setBusy(true);
+    else {
+      app.ui.editor.value = "// unsaved current source";
+      app.handleEditorInput();
+      rejectSave = true;
+    }
+    await app.travel(-1);
+    assert.equal(app.state.task.id, "w1.calculator");
+    assert.deepEqual(app.entries, priorEntries, "rejected traversal must not rewrite the previous course entry");
+    assert.equal(new URLSearchParams(app.location.hash.slice(1)).get("task"), "w1.calculator");
+    app.setBusy(false);
+    rejectSave = false;
+    await app.travel(-1);
+    assert.equal(app.state.task.id, "w1.hello-world");
+    await app.travel(1);
+    assert.equal(app.state.task.id, "w1.calculator");
+  });
+}
+
+test("a pending bookmarked file survives unavailable workspace reads and refresh before Start", async () => {
+  for (const available of [true, false]) {
+    const app = application({ url: "http://127.0.0.1:8765/#task=w1.calculator&file=src%2Fcalculator.cpp" });
+    app.state.task = null;
+    learningApi(app, (url) => {
+      if (available && url === "/api/v1/tasks/w1.calculator") return task("w1.calculator", "AVAILABLE");
+      if (!available && url.endsWith("/files")) throw new Error("workspace unavailable");
+    });
+    await app.init();
+    assert.equal(new URLSearchParams(app.location.hash.slice(1)).get("file"), "src/calculator.cpp");
+    const refreshed = application({ url: app.location.href });
+    refreshed.state.task = null;
+    learningApi(refreshed);
+    await refreshed.init();
+    assert.equal(refreshed.state.activeFile, "src/calculator.cpp");
+  }
 });

@@ -70,13 +70,13 @@ You can also run the launcher from PowerShell:
 .\Start-CppAppLab.cmd
 ~~~
 
-The launcher detects installed Ubuntu distributions, verifies WSL2 and supports Ubuntu 22.04 and 24.04 source checkouts. If ~/work/CppAppLab does not exist inside WSL, it clones the private repository there and runs the first-time setup. If more than one Ubuntu distribution is installed, it asks you to choose one. The bootstrap is transferred through a temporary file rather than stdin, so the first-use package confirmation and sudo password prompt remain connected to the WSL terminal.
+The launcher detects installed Ubuntu distributions, verifies WSL2 and supports Ubuntu 22.04 and 24.04 source checkouts. If ~/work/CppAppLab does not exist inside WSL, it clones the private repository there and runs the first-time setup. By default, it starts the browser workbench and opens the Windows default browser after the service is ready. Use `-Cli` to open the interactive terminal learning home instead. Use `-Setup` to rebuild, run CTest and then open the browser workbench. If more than one Ubuntu distribution is installed, it asks you to choose one. The bootstrap is transferred through a temporary file rather than stdin, so the first-use package confirmation and sudo password prompt remain connected to the WSL terminal.
 
 This Windows launcher uses the source checkout and builds it inside the selected distribution, so it supports both Ubuntu 22.04 and 24.04. The published prebuilt learner package and offline dependency bundle are built separately for the selected Ubuntu 22.04 or Ubuntu 24.04 target. Use the archive whose filename matches your WSL distribution.
 
 The first clone requires GitHub authentication inside WSL. Configure Git credentials there; for example, install GitHub CLI and run gh auth login inside Ubuntu before retrying. The launcher checks the checkout origin and refuses to run an unrelated repository.
 
-After pulling project updates inside WSL, rebuild and rerun acceptance checks with:
+After updating project source inside WSL, rebuild and rerun acceptance checks, then reopen the browser workbench, with:
 
 ~~~powershell
 .\Start-CppAppLab.cmd -Setup

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import socket
 import tempfile
 import threading
 import urllib.error
@@ -103,13 +104,16 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
     def test_local_launcher_start_status_stop(self) -> None:
         runtime_dir = self.base / "runtime"
         state_dir = self.base / "state"
+        with socket.socket() as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            port = reservation.getsockname()[1]
         env = os.environ.copy()
         env.update({
             "HOME": str(self.home),
             "XDG_RUNTIME_DIR": str(runtime_dir),
             "XDG_STATE_HOME": str(state_dir),
             "CPPAPPLAB_BINARY": os.environ["CPPAPPLAB_TEST_BINARY"],
-            "CPPAPPLAB_WEB_PORT": "18765",
+            "CPPAPPLAB_WEB_PORT": str(port),
         })
         command = ["bash", str(ROOT / "scripts" / "start-web-workbench.sh")]
         try:

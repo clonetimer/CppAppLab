@@ -19,7 +19,7 @@ cat > "$BIN/python3" <<'PY'
 # Health-check calls use "-" as the Python program; server starts use a file path.
 if [[ "${1:-}" == "-" ]]; then
     cat >/dev/null
-    if [[ "${CPPAPPLAB_TEST_FOREIGN_HEALTH:-0}" == "1" ]]; then
+    if [[ -f "$CPPAPPLAB_TEST_FOREIGN_MARKER" ]]; then
         printf '{"status":"ok","engine":"Unrelated service","task_count":23}\n'
     else
         printf '{"status":"ok","engine":"CppAppLab - C++ learning and engineering practice","task_count":23}\n'
@@ -43,6 +43,7 @@ chmod +x "$BIN/python3" "$BIN/cmd.exe" "$BIN/wslview"
 export PATH="$BIN:$PATH"
 export CPPAPPLAB_TEST_WINDOWS_ARGS="$TEMP_ROOT/windows-args"
 export CPPAPPLAB_TEST_WSLVIEW_ARGS="$TEMP_ROOT/wslview-args"
+export CPPAPPLAB_TEST_FOREIGN_MARKER="$TEMP_ROOT/foreign-health"
 export CPPAPPLAB_OPEN_BROWSER=1
 export CPPAPPLAB_WEB_PORT=18765
 export XDG_RUNTIME_DIR="$TEMP_ROOT/runtime"
@@ -66,7 +67,8 @@ test ! -e "$CPPAPPLAB_TEST_WINDOWS_ARGS"
 test ! -e "$CPPAPPLAB_TEST_WSLVIEW_ARGS"
 
 # A generic HTTP 200 health endpoint must not be mistaken for our workbench.
-if CPPAPPLAB_TEST_FOREIGN_HEALTH=1 bash "$TEST_ROOT/scripts/start-web-workbench.sh" start >"$TEMP_ROOT/foreign.log" 2>&1; then
+: > "$CPPAPPLAB_TEST_FOREIGN_MARKER"
+if bash "$TEST_ROOT/scripts/start-web-workbench.sh" start >"$TEMP_ROOT/foreign.log" 2>&1; then
     cat "$TEMP_ROOT/foreign.log" >&2
     echo "[FAIL] An unrelated service was accepted as the CppAppLab workbench." >&2
     exit 1

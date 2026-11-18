@@ -81,12 +81,11 @@ try {
     $transcriptStarted = $true
 
     Write-Host "[RUN] Invoking the actual Windows double-click launcher entry."
-    $launcherOutput = @(& $launcherPath -Distro $Distro -RepoPath $RepoPath 2>&1)
+    & $launcherPath -Distro $Distro -RepoPath $RepoPath
     $launcherExit = $LASTEXITCODE
-    foreach ($line in $launcherOutput) { Write-Host $line }
     Assert-Condition ($launcherExit -eq 0) "Windows launcher exited with code $launcherExit. Inspect $transcriptPath."
 
-    $launcherText = $launcherOutput -join "`n"
+    $launcherText = Get-Content -LiteralPath $transcriptPath -Raw
     $urlMatch = [regex]::Match($launcherText, 'http://127[.]0[.]0[.]1:(?<Port>[0-9]{1,5})/?')
     Assert-Condition $urlMatch.Success "The launcher did not report its loopback workbench URL. Inspect $transcriptPath."
     $port = [int]$urlMatch.Groups["Port"].Value

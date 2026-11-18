@@ -1079,6 +1079,14 @@ class WebWorkbenchTests(unittest.TestCase):
             409,
         )
 
+    def test_health_endpoint_exposes_stable_service_identity(self) -> None:
+        health = self.request("/api/v1/health")
+        self.assertEqual(health["status"], "ok")
+        self.assertEqual(health["service"], "CppAppLab")
+        self.assertEqual(health["engine"], "CppAppLab test engine 0.0")
+        self.assertEqual(health["task_count"], len(self.server.tasks))
+        self.assertGreater(health["task_count"], 0)
+
     def test_static_shell_is_served(self) -> None:
         page = self.request("/")
         self.assertIn("CppAppLab", page)

@@ -11,7 +11,7 @@ Make one client send one short message to one server before thinking about multi
 5. Send a second message and test a client disconnect.
 6. Only then add error handling, bounded I/O and clean shutdown.
 
-**Mental model:** TCP is a reliable byte stream, not a message queue. Your application must define how many bytes form a message. For this first exercise, the fixed echo protocol is deliberately small and line-oriented.
+**Mental model:** TCP is a reliable byte stream, not a message queue. In this exercise, the server echoes every received byte until the client shuts down its write side (`SHUT_WR`). Newlines have no special meaning.
 
 
 ## Goal

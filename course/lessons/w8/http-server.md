@@ -106,7 +106,14 @@ ctest --test-dir build --output-on-failure
 ./build/http-server server 8080 www
 ```
 
-Create a small document root before starting the server so the static fallback has a file to serve:\n\n```bash\nmkdir -p www\nprintf '<h1>CppAppLab</h1>\\n' > www/index.html\n```\n\nTry the actual network server:
+Create a small document root before starting the server so the static fallback has a file to serve:
+
+```bash
+mkdir -p www
+printf '<h1>CppAppLab</h1>\n' > www/index.html
+```
+
+Try the actual network server:
 
 ```bash
 curl -i http://127.0.0.1:8080/hello

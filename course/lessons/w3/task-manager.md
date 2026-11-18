@@ -1,6 +1,5 @@
 # W3 · Task / TaskManager Refactor
 
-## Goal
 ## Start here
 
 W3 changes the internal design, not the Todo commands the learner sees. Think of it as moving from a list of records to objects with clear ownership.
@@ -16,6 +15,7 @@ W3 changes the internal design, not the Todo commands the learner sees. Think of
 
 Do not implement every advanced rule at once. Make the simple object lifecycle correct first, then add copy, move and exception-safety guarantees.
 
+## Goal
 
 Refactor the W2 Todo CLI core into an object-oriented design without changing its command-line behavior or on-disk data format. The task focuses on class invariants, encapsulation, RAII, smart-pointer ownership, copy/move semantics, and operator overloading.
 

@@ -745,6 +745,8 @@ jobs:
         run: node tests/test_web_workbench_browser.cjs
       - name: Generate authoritative course coverage matrix
         run: python3 scripts/generate_course_coverage.py --output "${{ runner.temp }}/cppapplab-browser-artifacts/course-coverage-matrix.csv"
+      - name: Generate lesson usability structure audit
+        run: python3 scripts/audit_lesson_usability.py --output "${{ runner.temp }}/cppapplab-browser-artifacts/lesson-usability-audit.csv"
       - name: Upload browser screenshots and course matrix
         if: always()
         uses: actions/upload-artifact@v4
@@ -753,6 +755,7 @@ jobs:
           path: |
             ${{ runner.temp }}/cppapplab-browser-artifacts/*.png
             ${{ runner.temp }}/cppapplab-browser-artifacts/course-coverage-matrix.csv
+            ${{ runner.temp }}/cppapplab-browser-artifacts/lesson-usability-audit.csv
           if-no-files-found: error
           retention-days: 14
 

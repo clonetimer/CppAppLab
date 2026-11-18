@@ -86,7 +86,7 @@ Coverage includes argument validation, void/value returns, move-only inputs, exc
 
 ## Explain your design
 
-1. Why does `std::packaged_task` make the callable wrapper copyable when stored in a queue of `std::function<void()>`?
+1. Why does capturing a `std::shared_ptr` to the `std::packaged_task` make the queued lambda copyable for `std::function<void()>`?
 2. What is the linearization point between `submit` and `shutdown`?
 3. Why must multiple shutdown callers wait for the same join operation to finish?
 4. How does a bounded queue apply backpressure, and what can deadlock if workers stop consuming too early?

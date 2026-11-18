@@ -1,6 +1,5 @@
 # W1 · Multi-file Calculator
 
-## Goal
 ## Start here
 
 You are not expected to understand every C++ header immediately. First follow one value through the program.
@@ -15,6 +14,7 @@ You are not expected to understand every C++ header immediately. First follow on
 
 If the compiler reports an undefined reference, check whether the function definition matches the namespace, name, parameters and return type in the header.
 
+## Goal
 
 Extend the first C++ program into a multi-file application. Separate a public interface from its implementation, compile multiple translation units, and handle an arithmetic error explicitly.
 
@@ -71,7 +71,7 @@ From the learner workspace:
 
 ```bash
 mkdir -p build
-g++ -std=c++17 -Wall -Wextra -Wpedantic -I include \\
+g++ -std=c++17 -Wall -Wextra -Wpedantic -I include \
   src/calculator.cpp src/main.cpp -o build/calculator
 
 ./build/calculator add 2 3

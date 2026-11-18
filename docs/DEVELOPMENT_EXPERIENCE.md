@@ -271,3 +271,22 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 ## 13. Keep Pimpl starter code compilable while preserving the TODO
 
 When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that throws before `Impl` is defined can fail to compile: exception cleanup instantiates the member destructor and requires the pointee type to be complete. Define a minimal `Impl` in the starter translation unit before the throwing constructor. The application should compile and then report the intentional TODO at runtime; do not let an incomplete-type error masquerade as a learner implementation failure.
+
+## 31. Audit lesson usability structurally, but never turn headings into a comprehension score
+
+- Generate a lesson audit from the authoritative `course/tasks.tsv` so lesson paths, hint paths, source files, acceptance kinds and prerequisites cannot drift from the course catalog.
+- Record observable structural signals separately: task-first entry, goal, concrete steps, mental model, common-error guidance, success criteria and hint-file presence.
+- Mark learner comprehension as `NOT_TESTED` until an actual learner walkthrough or moderated review is performed. A heading or keyword match is only a review cue, not a PASS.
+- Publish the audit as a CI artifact beside the course matrix and screenshots. This makes missing teaching scaffolding visible without pretending to measure teaching quality automatically.
+- Use the audit to prioritize human review: start with lessons missing a first action, an understandable success criterion or a path from the first working example to advanced edge cases.
+
+## 33. Lower tutorial friction by verifying explanations and copyable examples against the real contract
+
+- Inspect the rendered teaching structure as well as heading presence. A Goal heading immediately followed by Start here is empty even when a structural audit counts it; place the heading beside its actual goal text.
+- Trace technical mental models to the provided API, reference implementation and fixed fixture. TCP Echo consumes arbitrary bytes until write-side shutdown; the HTTP parser examines a caller-owned accumulated buffer; a shared_ptr capture makes the packaged-task wrapper copyable.
+- Preserve learner complexity and acceptance requirements while correcting misleading explanations. Library design, byte boundaries, move-only callables and consumed-byte reporting remain part of the task.
+- Check Markdown and shell escaping at the point learners copy it. Literal backslash-n between Markdown blocks is not a paragraph break, and a doubled shell continuation backslash does not join the intended compiler arguments.
+- Execute copyable examples in disposable directories. This pass compiled the Calculator starter using the documented command and verified the HTTP document-root example writes the intended HTML plus one newline.
+- Compare diagnostic audit rules with existing course conventions before treating a NO as a missing teaching element. The Router lesson already had a Goal and source section; matching Goal at a word boundary fixes that false negative.
+- Keep structural signals, semantic review and learner comprehension separate. A corrected report still records comprehension as NOT_TESTED until an actual learner walkthrough provides evidence.
+

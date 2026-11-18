@@ -270,8 +270,10 @@ const cases = {
 
     const editor = page.locator("#source-editor");
     const historyUrl = baseUrl + "/api/v1/tasks/w1.hello-world/history";
+    // Formal acceptance can include the same compiler diagnostic from multiple
+    // stages. Follow the first actionable error without assuming uniqueness.
     const diagnostic = page.locator("#diagnostics-list .diagnostic-button")
-      .filter({ hasText: "CPPAPPLAB_FALLBACK_DIAGNOSTIC" });
+      .filter({ hasText: "CPPAPPLAB_FALLBACK_DIAGNOSTIC" }).first();
     await editor.fill("#error CPPAPPLAB_FALLBACK_DIAGNOSTIC\n" + HELLO);
     await page.locator("#workflow-action").click();
     await page.waitForFunction(() => document.querySelector("#check-result").textContent === "构建失败");

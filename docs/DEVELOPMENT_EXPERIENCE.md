@@ -145,6 +145,7 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Provide direct Start here, Troubleshooting and Acceptance navigation so task-specific guidance remains reachable inside long lessons.
 - Separate normal first-use conditions from unsafe filesystem conditions. An absent build directory should instruct the learner to build; existing non-directory paths and dangling or live symlinks must still be rejected.
 - Render plain compiler diagnostics without depending on Monaco globals. Offline editing must preserve the real compiler output, clickable source location and formal failure state even when editor marker APIs are unavailable.
+- Acceptance output may repeat a compiler diagnostic across stages. A browser recovery test should follow the first actionable error and verify the recorded result rather than assume the diagnostic text is unique.
 - Test recovery without fabricating formal acceptance: real CLI run-before-build checks preserve history, while UI-only reference fixtures live in temporary catalogs. The full browser journey retains the released prerequisite chain.
 - Record environmental verification limits accurately. A local browser blocked by process/socket restrictions is not a product test failure; retain state/API regression evidence and complete layout and interaction verification on the existing Chromium CI runner.
 

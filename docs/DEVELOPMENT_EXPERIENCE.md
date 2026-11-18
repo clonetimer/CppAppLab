@@ -119,6 +119,18 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 45. First-use documentation must lead to the delivered learning interface
+
+- **Changed:** Moved the existing browser start command, local address, Chinese guide entry and first-exercise build/run/acceptance steps to the opening README and quick-start sections. Kept the extracted learner package's `./cppapplab` entry explicit.
+- **Why:** The workbench and its guide already existed, but the repository's first instructions sent learners directly to the terminal and the browser steps were buried below setup and troubleshooting. Surface the available path before adding another launcher or onboarding feature.
+- **Pitfall:** `docs/QUICKSTART.md` also ships inside the CLI learner archive, which does not contain `web/` or `scripts/start-web-workbench.sh`. Identify the built-source prerequisite, preserve the package path, and copy actual Chinese control labels from the UI. A new heading should not imply a new runtime or package capability.
+
+## 44. Native modal keyboard checks must distinguish browser controls from page content
+
+- **Changed:** Corrected the guide's real-browser keyboard assertion to allow focus to leave the document for browser controls, while requiring the next Tab to return to the guide and rejecting attempts to focus the background course search. Log the active element and document-focus state at the boundary so failures identify what received focus.
+- **Why:** PR #50's initial PR/push runs (`44266757612` / `44266751170`) failed the same Shift+Tab assertion; all 71 Node cases and the other 13 focused browser scenarios passed. The assertion assumed native modal focus could never leave the document. [Chrome's native-dialog guidance](https://developer.chrome.com/docs/modern-web-guidance/guides/accessibility/accessibility#12-modals-and-native-dialogs) explicitly permits browser chrome navigation and advises against adding a native-dialog focus trap.
+- **Pitfall:** `dialog.contains(document.activeElement) === false` alone does not establish that an inert background control received focus. Accept only the default BODY/HTML active-element fallback with no explicit tabindex or editable state, or an element inside the guide; keep actual background-focus and keyboard-return checks. Log document.hasFocus() for diagnosis rather than treating it as authoritative under browser focus emulation. Do not change product behavior merely to satisfy a stronger, unsupported test assumption.
+
 ## 42. Existing learner guidance needs a reachable product entry
 
 - A maintained Chinese guide in the repository or CLI is not automatically available to a web learner. Trace the path from the welcome page and an active lesson to first-use instructions, terminology, course summaries and error recovery before writing duplicate content.

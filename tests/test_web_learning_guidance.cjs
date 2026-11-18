@@ -286,10 +286,29 @@ const cases = {
         }
         await page.locator("#guide-close").focus();
         await page.keyboard.press("Shift+Tab");
-        assert.equal(await page.evaluate(() => document.querySelector("#learning-guide").contains(document.activeElement)), true,
-          "backward keyboard navigation must remain inside the modal");
+        const boundaryFocus = await page.evaluate(() => {
+          const active = document.activeElement;
+          return {
+            inGuide: document.querySelector("#learning-guide").contains(active),
+            documentFocused: document.hasFocus(),
+            documentRoot: (active === document.body || active === document.documentElement) &&
+              !active.hasAttribute("tabindex") && !active.isContentEditable,
+            activeTag: active?.tagName, activeId: active?.id
+          };
+        });
+        // Native modal dialogs keep the page inert but allow browser toolbar
+        // navigation. An unconfigured BODY/HTML active-element fallback is not
+        // a background control. Playwright may emulate document.hasFocus(), so
+        // keep that value diagnostic and verify the actual modal boundary below.
+        console.log("Guide keyboard boundary (" + width + "px): " + JSON.stringify(boundaryFocus));
+        assert.ok(boundaryFocus.inGuide || boundaryFocus.documentRoot,
+          "backward navigation must not focus background content: " + JSON.stringify(boundaryFocus));
         await page.keyboard.press("Tab");
-        assert.equal(await page.evaluate(() => document.querySelector("#learning-guide").contains(document.activeElement)), true);
+        assert.equal(await page.evaluate(() => document.querySelector("#learning-guide").contains(document.activeElement)), true,
+          "forward navigation must return to the guide from the document boundary");
+        await page.locator("#task-search").evaluate((element) => element.focus());
+        assert.equal(await page.evaluate(() => document.querySelector("#learning-guide").contains(document.activeElement)), true,
+          "the background course search must remain inert while the guide is modal");
 
         const tables = page.locator("#guide-content .markdown-table-scroll");
         assert.equal(await tables.count(), 2);

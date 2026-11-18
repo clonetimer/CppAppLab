@@ -54,3 +54,11 @@
 ## Review outcome
 
 One independent whole-branch review found late workspace-read autofocus, the first-use entry retaining an unrelated reading position, and focus restoration to a welcome entry hidden during initial bookmark navigation. Four actual-app tests reproduced these behaviors before the targeted fixes; the combined Node suites now pass 71/71. The real-browser cases include the corresponding user paths. A hypothetical future guide heading with both strong and inline-code formatting remains a documented minor; current course entries and catalog-bound navigation are unaffected. Final CI, screenshots and merge evidence are recorded in the PR closure.
+
+## Continuation and first-use documentation
+
+- Resumed from PR #50 head `0aaaca417e45db2094e67f56b344124ebaff8943` in a fresh clone with real GitHub ancestry. The original synthetic snapshot checkouts remain untouched; the synthetic-ancestry publishing restriction above applies to those checkouts, not this clone.
+- Rechecked the 71 Node state/editor/Markdown cases, 38 server cases and 23-task material audit successfully. Local Chromium remains unavailable because the host denies its process-singleton socket; no repeated browser launch attempts or local toolchain installations are part of this closeout.
+- The initial PR and push browser jobs failed only the native-dialog Shift+Tab containment assertion. Correct it against the browser's documented modal contract: allow browser chrome focus, require keyboard return, and prove the background search cannot acquire focus. Retain the real-browser CI gate and inspect the emitted focus-state evidence.
+- Continue the same learner-entry work by exposing the existing browser command and first-lesson steps near the top of README and QUICKSTART. Preserve the CLI-only learner-package entry and the source-build prerequisite. This is documentation alignment with shipped behavior; it adds no launcher, curriculum or acceptance path.
+- Record development experience 44–45. Final head, screenshot review, merge and main-push outcomes are recorded in the PR completion evidence.

@@ -420,3 +420,9 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - **Changed:** Replaced opaque `subprocess.run(check=True)` failures in the real start/status/stop integration test with explicit return-code assertions that include captured stdout and stderr.
 - **Why:** The new health identity validation changed the launch boundary, and a failed launcher test surfaced only `CalledProcessError` plus the command. That was insufficient to distinguish a port conflict, invalid health payload, missing binary, or service startup failure.
 - **Pitfall:** Keep subprocess output captured for clean passing tests, but attach both streams to assertion failures. Reserve an ephemeral loopback port rather than hardcoding one, because the stricter identity check now correctly rejects unrelated services on an occupied port. Always run stop in `finally` so a failed startup attempt cannot leak a child service into later tests.
+
+## 49. Preserve explicit CLI mode when browser becomes the default
+
+- **Changed:** Extended the Windows-to-WSL smoke test to exercise both default browser mode (including forced setup) and the explicit `-Cli` override for Ubuntu 22.04 and 24.04.
+- **Why:** Changing the primary entry point must not silently remove an established workflow. Documentation alone does not prove that PowerShell transports the override through the Base64 bootstrap into the WSL process.
+- **Pitfall:** Assert the full WSL argument vector and the two independent mode values. The default path must pass setup/browser flags as `1/1`; the explicit CLI path must pass `0/0`. Keep both distributions in the same executable Windows-side test.

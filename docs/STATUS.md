@@ -281,3 +281,11 @@ Delivered through [PR #49](https://github.com/clonetimer/CppAppLab/pull/49), mer
 - Browser-first instructions distinguish course selection from workspace creation; the welcome sample and first-use instructions include the first task's required trailing newline. No duplicate course metadata, general document-path API or extra curriculum is introduced.
 - Local verification covers 38 server tests and 71 Node cases. The existing Chromium gate covers real DOM navigation, desktop/390 px layout, read retry and dirty-work protection; exact final-head CI and main-push closure evidence belong to the corresponding PR.
 
+
+### P8-E — Windows/WSL2 delivery (implementation merged; target-machine acceptance pending)
+
+- PR [#51](https://github.com/clonetimer/CppAppLab/pull/51) merged as `5e2a689f985779574431a1498327f685942549ae`; Windows double-click launch now defaults to the browser workbench while retaining `-Cli` and `-Setup`.
+- Final PR-head CI [#44278244781](https://github.com/clonetimer/CppAppLab/actions/runs/44278244781) passed all applicable jobs, including Windows PowerShell 5.1/7, Ubuntu 22.04/24.04 build/package, GCC/GoogleTest, ASan/UBSan, clang-tidy, offline dependency closure and Chromium browser acceptance. The Ubuntu 22.04 source-build compatibility job is push-only and skipped on the PR event.
+- Post-merge main push CI [#44279663585](https://github.com/clonetimer/CppAppLab/actions/runs/44279663585) passed all five scheduled jobs, including Windows launcher, Chromium, Ubuntu 22.04/24.04 package builds and Ubuntu 22.04 source-build compatibility. GCC/sanitizer/clang-tidy/offline bundle matrices are PR-only and therefore skipped on this main push.
+- Added `tests/windows-target-machine-acceptance.ps1` to exercise the real Windows 11 + WSL2 launcher, verify the Windows default-browser handoff, query the CppAppLab health identity and 23-task catalog, and save timestamped JSON/transcript evidence under `artifacts/windows-target-machine/`.
+- The target-machine script is syntax-checked by hosted Windows CI under PowerShell 7 and Windows PowerShell 5.1. Its actual execution on the user's Windows 11 desktop remains **NOT RUN** until the user runs it locally; hosted CI is not a substitute.

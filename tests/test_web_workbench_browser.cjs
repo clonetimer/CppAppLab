@@ -283,7 +283,7 @@ async function main() {
     // the sidebar. The guide must return focus to its welcome-page opener and
     // preserve the welcome screen before the learner continues.
     assert.equal(await page.locator("#welcome-panel").isVisible(), true);
-    assert.equal(await page.locator("#workbench").isVisible(), false);
+    assert.equal(await page.locator(#workbench-panel).isVisible(), false);
     await page.locator("#welcome-guide").click();
     await page.waitForFunction(() =>
       document.querySelector("#learning-guide")?.open === true &&
@@ -300,7 +300,7 @@ async function main() {
       "A fresh learner with a loaded course catalog must be able to continue");
     await continueButton.click();
     await page.waitForFunction(() =>
-      !document.querySelector("#workbench")?.hidden &&
+      !document.querySelector(#workbench-panel)?.hidden &&
       document.querySelector("#task-title")?.textContent.includes("First C++ Program")
     );
 

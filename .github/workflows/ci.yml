@@ -707,6 +707,7 @@ jobs:
             'scripts/cppapplab-wsl-launcher.sh',
             'scripts/quickstart.sh',
             'scripts/start-web-workbench.sh',
+            'tests/test_windows_browser_open.sh',
             'tests/test_ubuntu_support.sh'
           )
           foreach ($script in $scripts) {

@@ -432,3 +432,10 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - **Changed:** Added `service: CppAppLab` to the health response and made the launcher validate that explicit identity alongside `status` and a positive task count. The integration fixture now models the actual `--version` output (`0.1.0`) and a separate service identity field.
 - **Why:** The C++ engine's `--version` output is a version string, not a product banner. Treating it as a service identity caused the launcher to reject its own valid server during real start/status/stop integration.
 - **Pitfall:** Do not infer server identity from presentation text or version output. Keep machine identity as a stable structured field; test both the real engine version representation and an unrelated HTTP 200 service response.
+
+## 51. Treat the full acceptance matrix as the merge gate, not one green job
+
+- **Changed:** Completed the P8-E acceptance matrix on the exact PR head: Windows PowerShell 5.1/7 parsing and WSL handoff for Ubuntu 22.04/24.04, browser and explicit CLI mode transport, real Chromium workbench acceptance, GCC/GoogleTest, ASan/UBSan, clang-tidy on both Ubuntu versions, offline dependency closure and source/learner package builds.
+- **Why:** A browser-first entry-point change crosses Windows, WSL, shell startup, the Python HTTP adapter and the C++ learning engine. A single passing build or one green browser job cannot establish the integrated path.
+- **Pitfall:** Do not merge while any matrix job is pending or skipped unexpectedly. Verify the exact tested head SHA, inspect the final run conclusion, and separately record the real Windows 11 + WSL2 desktop launch as NOT YET VERIFIED because hosted CI cannot open the user's local desktop.
+- **Outcome:** PR #51's complete run at the recorded head SHA completed successfully; the Ubuntu 22.04 source-build compatibility job is intentionally skipped by workflow configuration, while the independent Ubuntu 22.04 source-build/package and learner entry-point checks pass.

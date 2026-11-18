@@ -26,12 +26,17 @@ fi
 
 repo_path_base64="${1:-}"
 force_setup="${2:-0}"
+web_mode="${3:-1}"
 if [[ -z "$repo_path_base64" ]]; then
     echo "[FAIL] Missing encoded Linux checkout path." >&2
     exit 64
 fi
 if [[ "$force_setup" != "0" && "$force_setup" != "1" ]]; then
     echo "[FAIL] Invalid setup mode; expected 0 or 1." >&2
+    exit 64
+fi
+if [[ "$web_mode" != "0" && "$web_mode" != "1" ]]; then
+    echo "[FAIL] Invalid launcher mode; expected browser (1) or CLI (0)." >&2
     exit 64
 fi
 if [[ -z "${HOME:-}" ]]; then
@@ -97,9 +102,16 @@ esac
 cd "$repo_path"
 if [[ "$force_setup" == "1" || ! -x build/cppapplab ]]; then
     echo "[INFO] Running first-time setup/build/test."
+    if [[ "$web_mode" == "1" ]]; then
+        exec bash scripts/quickstart.sh --web
+    fi
     exec bash scripts/quickstart.sh
 fi
 
-echo "[INFO] Opening the existing CppAppLab build."
 echo "[INFO] No automatic git pull is performed; local changes are preserved."
+if [[ "$web_mode" == "1" ]]; then
+    echo "[INFO] Starting the browser-first learning workbench."
+    CPPAPPLAB_OPEN_BROWSER=1 exec bash scripts/start-web-workbench.sh
+fi
+echo "[INFO] Opening the interactive terminal learning home."
 exec ./build/cppapplab

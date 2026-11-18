@@ -121,9 +121,14 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
                 command + ["start"], env=env, capture_output=True, text=True,
                 timeout=20, check=False,
             )
+            launcher_log = state_dir / "cppapplab" / "web-workbench.log"
+            log_text = (
+                launcher_log.read_text(encoding="utf-8", errors="replace")
+                if launcher_log.is_file() else "(launcher log was not created)"
+            )
             self.assertEqual(
                 started.returncode, 0,
-                f"Launcher start failed. stdout:\n{started.stdout}\nstderr:\n{started.stderr}",
+                f"Launcher start failed. stdout:\n{started.stdout}\nstderr:\n{started.stderr}\nlog:\n{log_text}",
             )
             self.assertIn("Web Workbench is ready", started.stdout)
             status = subprocess.run(

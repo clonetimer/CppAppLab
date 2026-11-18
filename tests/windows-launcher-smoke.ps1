@@ -110,6 +110,28 @@ foreach ($distro in @("Ubuntu-22.04", "Ubuntu-24.04")) {
     }
 
     Write-Host "Windows-to-WSL handoff: PASS ($distro)"
+
+    & $launcherPath -Distro $distro -RepoPath "~/work/Cpp App Lab" -Cli
+    $cliExitCode = $LASTEXITCODE
+    if ($cliExitCode -ne 0) {
+        throw "The explicit CLI launcher mode failed for $distro. Actual code: $cliExitCode"
+    }
+    $cliArgs = @(Get-Content -LiteralPath $capturedArgsPath)
+    if ($cliArgs.Count -ne 6 -or $cliArgs[1] -ne $distro) {
+        throw "The CLI mode did not preserve the WSL argument vector for $distro."
+    }
+    $cliCommand = $cliArgs[5]
+    $cliPattern = '^bootstrap_file="\$\(mktemp\)" && trap ''rm -f "\$bootstrap_file"'' EXIT && printf ''%s'' ''([^'']+)'' \| base64 --decode > "\$bootstrap_file" && bash "\$bootstrap_file" ''([^'']+)'' ''0'' ''0''
+
+Write-Host "Supported launcher distributions: Ubuntu-22.04 and Ubuntu-24.04"
+Write-Host "Linux path transport: ~/work/Cpp App Lab"
+Write-Host "Setup mode transport: 1"
+Write-Host "Default browser-workbench mode transport: 1"
+
+    if (-not [regex]::IsMatch($cliCommand, $cliPattern)) {
+        throw "The explicit -Cli switch did not disable browser mode for $distro."
+    }
+    Write-Host "Explicit CLI mode: PASS ($distro)"
 }
 
 Write-Host "Supported launcher distributions: Ubuntu-22.04 and Ubuntu-24.04"

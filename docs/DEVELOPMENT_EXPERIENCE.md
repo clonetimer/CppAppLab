@@ -453,3 +453,9 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - **Why:** Existing browser acceptance thoroughly covered W1 editing/build/run/formal-check and W2 CRUD, but selected W1 directly from the course sidebar. That bypassed the first screen and its two most important beginner entry actions. A working course engine does not prove a first-time learner can find the first task.
 - **Pitfall:** Keep this as a clean browser context and use the real progress/catalog APIs. Do not seed a prior task state or click the sidebar to get to W1; doing so would mask regressions in the welcome CTA's task-selection policy. The guide must preserve the welcome screen and restore focus on close.
 - **Boundary:** This verifies the technical first-use navigation contract. It does not claim observed human comprehension or usability study results.
+
+## 54. Run a syntax gate on browser-test edits before expensive end-to-end CI
+
+- **Changed:** After extending the browser journey, the first CI attempt caught an unquoted CSS selector in the Node test file during the fast source-validation step; corrected the selector and kept the full browser acceptance as the behavioral gate.
+- **Why:** A test-only change can fail before Chromium is even installed. Catching parser errors at the earliest source-validation stage shortens feedback and avoids misreading a skipped browser run as a product failure.
+- **Pitfall:** When programmatically editing JavaScript strings containing CSS selectors, preserve the selector quotes and run `node --check tests/test_web_workbench_browser.cjs` before waiting for the full workflow. Distinguish source-validation failure from actual browser behavior failure.

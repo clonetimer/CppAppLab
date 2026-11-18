@@ -2,6 +2,7 @@
   "use strict";
 
   const MONACO_VERSION = "0.52.2";
+  const LEARNING_POSITION_KEY = "cppapplab.learning-position.v1";
   const MONACO_ROOTS = [
     "https://cdn.jsdelivr.net/npm/monaco-editor@" + MONACO_VERSION + "/min",
     "https://gcore.jsdelivr.net/npm/monaco-editor@" + MONACO_VERSION + "/min",
@@ -15,6 +16,13 @@
     files: [],
     activeFile: "",
     workspaceReady: false,
+    workspaceError: "",
+    preferredFile: "",
+    learningPosition: null,
+    learningHistory: null,
+    restoringHistory: false,
+    pendingLocationMode: "",
+    navigatingTask: false,
     dirtyFiles: new Set(),
     savingFiles: new Map(),
     fileContents: new Map(),
@@ -23,6 +31,7 @@
     monaco: null,
     editorInstance: null,
     editorReady: null,
+    editorFallback: null,
     busy: false,
     progressFresh: false,
     lastAction: null,
@@ -48,6 +57,7 @@
     welcome: $("welcome-panel"),
     workbench: $("workbench-panel"),
     continueButton: $("continue-button"),
+    resumeButton: $("resume-button"),
     historyButton: $("history-button"),
     historyPanel: $("history-panel"),
     historyClose: $("history-close"),
@@ -70,6 +80,8 @@
     editor: $("source-editor"),
     monacoContainer: $("monaco-editor"),
     editorEngineStatus: $("editor-engine-status"),
+    editorLoading: $("editor-loading"),
+    editorFallbackButton: $("editor-fallback-button"),
     buildButton: $("build-button"),
     runButton: $("run-button"),
     appRunner: $("app-runner"),
@@ -138,7 +150,43 @@
     };
     const flushText = () => { flushParagraph(); flushList(); };
 
-    for (const line of lines) {
+    // Only recognize a table after a matching delimiter row. Pipes in code or
+    // escaped as \| are cell content, and malformed rows remain ordinary text.
+    const tableCells = (line) => {
+      const row = line.trim();
+      const cells = [];
+      let cell = "";
+      let codeEnd = -1;
+      for (let index = 0; index < row.length; index += 1) {
+        const character = row[index];
+        if (character === "\\" && ["\\", "|"].includes(row[index + 1])) {
+          cell += row[index + 1] === "|" ? "|" : "\\\\";
+          index += 1;
+        } else if (character === "`" && index >= codeEnd) {
+          const delimiter = row.slice(index).match(/^`+/)[0];
+          let end = row.indexOf(delimiter, index + delimiter.length);
+          while (end !== -1 && (row[end - 1] === "`" || row[end + delimiter.length] === "`")) {
+            end = row.indexOf(delimiter, end + delimiter.length);
+          }
+          codeEnd = end === -1 ? -1 : end + delimiter.length;
+          cell += delimiter;
+          index += delimiter.length - 1;
+        } else if (character === "|" && index >= codeEnd) {
+          cells.push(cell);
+          cell = "";
+        } else {
+          cell += character;
+        }
+      }
+      if (!cells.length) return null;
+      cells.push(cell);
+      if (cells[0] === "") cells.shift();
+      if (cells[cells.length - 1] === "") cells.pop();
+      return cells.map((value) => value.trim());
+    };
+
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
       const fence = line.match(/^\x60{3}([a-zA-Z0-9_+-]*)\s*$/);
       if (fence) {
         if (codeLines === null) {
@@ -159,6 +207,24 @@
       }
       if (!line.trim()) {
         flushText();
+        continue;
+      }
+      const headers = tableCells(line);
+      const delimiters = headers && index + 1 < lines.length ? tableCells(lines[index + 1]) : null;
+      if (headers && headers.length && delimiters && headers.length === delimiters.length &&
+          delimiters.every((cell) => /^:?-{3,}:?$/.test(cell))) {
+        flushText();
+        const rows = [];
+        index += 1;
+        while (index + 1 < lines.length) {
+          const cells = tableCells(lines[index + 1]);
+          if (!cells || cells.length !== headers.length) break;
+          rows.push("<tr>" + cells.map((cell) => "<td>" + renderInline(cell) + "</td>").join("") + "</tr>");
+          index += 1;
+        }
+        output.push('<div class="markdown-table-scroll" role="region" aria-label="课程表格（可横向滚动）" tabindex="0"><table><thead><tr>' +
+          headers.map((cell) => '<th scope="col">' + renderInline(cell) + "</th>").join("") +
+          "</tr></thead><tbody>" + rows.join("") + "</tbody></table></div>");
         continue;
       }
       const heading = line.match(/^(#{1,3})\s+(.+)$/);
@@ -241,6 +307,190 @@
       "LOCKED": "未解锁",
       "UNKNOWN": "状态未知"
     })[value] || value || "未知";
+  }
+
+  function learningPosition() {
+    if (state.learningPosition) return state.learningPosition;
+    const position = { version: 1, lastTaskId: "", files: Object.create(null) };
+    try {
+      const raw = window.localStorage.getItem(LEARNING_POSITION_KEY);
+      const saved = raw && raw.length <= 32768 ? JSON.parse(raw) : null;
+      if (saved && saved.version === 1 && saved.files && typeof saved.files === "object" && !Array.isArray(saved.files)) {
+        if (state.tasks.some((task) => task.id === saved.lastTaskId)) position.lastTaskId = saved.lastTaskId;
+        for (const task of state.tasks) {
+          const file = saved.files[task.id];
+          if (typeof file === "string" && file.length <= 512) position.files[task.id] = file;
+        }
+      }
+    } catch { /* Remembering presentation context is optional. */ }
+    state.learningPosition = position;
+    return position;
+  }
+
+  function updateResumeAction() {
+    const position = learningPosition();
+    const recent = state.tasks.find((task) => task.id === position.lastTaskId);
+    ui.resumeButton.hidden = !recent;
+    ui.resumeButton.disabled = state.busy || !state.progressFresh;
+    ui.resumeButton.textContent = recent ? "返回上次：" + recent.title.replace(/^W\d+\s*[·:]\s*/, "") : "返回上次课程";
+  }
+
+  function rememberLearningPosition() {
+    if (!state.task) return;
+    const position = learningPosition();
+    position.lastTaskId = state.task.id;
+    if (state.files.some((file) => file.path === state.activeFile)) position.files[state.task.id] = state.activeFile;
+    try { window.localStorage.setItem(LEARNING_POSITION_KEY, JSON.stringify(position)); }
+    catch { /* The current URL still supports refresh and bookmarks. */ }
+    updateResumeAction();
+  }
+
+  function learningHistoryEntry() {
+    const entry = window.history && window.history.state && window.history.state.cppapplabLearning;
+    return entry && typeof entry.scope === "string" && Number.isSafeInteger(entry.index) && entry.index >= 0
+      ? entry : null;
+  }
+
+  function stampLearningHistory(entry, url, mode = "replace") {
+    window.history[mode === "push" ? "pushState" : "replaceState"](
+      { ...window.history.state, cppapplabLearning: entry }, "", url
+    );
+  }
+
+  function ensureLearningHistory() {
+    if (state.learningHistory || !window.history) return;
+    state.learningHistory = learningHistoryEntry() || {
+      scope: Date.now().toString(36) + Math.random().toString(36).slice(2), index: 0
+    };
+    try { stampLearningHistory(state.learningHistory, window.location.href); }
+    catch { /* URL navigation remains optional when history is unavailable. */ }
+  }
+
+  function writeLearningLocation(mode = "replace") {
+    if (!window.location || !window.history) return;
+    ensureLearningHistory();
+    if (state.restoringHistory) {
+      if (!state.pendingLocationMode || mode === "push") state.pendingLocationMode = mode;
+      return;
+    }
+    const parameters = new URLSearchParams();
+    if (state.task) {
+      parameters.set("task", state.task.id);
+      const file = state.activeFile || state.preferredFile;
+      if (file) parameters.set("file", file);
+    }
+    const hash = parameters.size ? "#" + parameters.toString() : "";
+    try {
+      const entry = learningHistoryEntry() || state.learningHistory;
+      const push = mode === "push" && window.location.hash !== hash;
+      const next = push ? { scope: entry.scope, index: entry.index + 1 } : entry;
+      stampLearningHistory(next, window.location.pathname + window.location.search + hash, push ? "push" : "replace");
+      state.learningHistory = next;
+    } catch { /* Navigation within the workbench remains usable without history. */ }
+  }
+
+  function restoreLearningLocation() {
+    const target = learningHistoryEntry();
+    const current = state.learningHistory;
+    if (target && current && target.scope === current.scope && target.index !== current.index) {
+      try {
+        state.restoringHistory = true;
+        window.history.go(current.index - target.index);
+        return;
+      } catch { state.restoringHistory = false; }
+    }
+    writeLearningLocation();
+  }
+
+  async function showWelcome() {
+    if (state.busy) return false;
+    setBusy(true);
+    try {
+      if (state.dirtyFiles.size && !await saveAllDirtyFiles({ silent: true })) {
+        toast("当前代码未能保存，暂不离开课程。");
+        return false;
+      }
+      if (state.task && state.task.service_profile && state.serviceSnapshot &&
+          ["STARTING", "RUNNING"].includes(state.serviceSnapshot.state)) await stopNetworkService(true, true);
+      state.task = null;
+      state.selectedTaskId = "";
+      clearTaskEditorState();
+      ui.welcome.hidden = false;
+      ui.workbench.hidden = true;
+      renderCourseList();
+      writeLearningLocation();
+      return true;
+    } finally { setBusy(false); }
+  }
+
+  async function followLearningLocation() {
+    ensureLearningHistory();
+    const entry = learningHistoryEntry();
+    if (state.restoringHistory) {
+      if (entry && entry.scope === state.learningHistory.scope && entry.index === state.learningHistory.index) {
+        state.restoringHistory = false;
+        const mode = state.pendingLocationMode;
+        state.pendingLocationMode = "";
+        // The restored entry already describes the last committed position.
+        // A destination may still be loading; only flush an actual completed write.
+        if (mode) writeLearningLocation(mode);
+      } else restoreLearningLocation();
+      return false;
+    }
+    if (!entry || entry.scope !== state.learningHistory.scope) {
+      // A newly entered fragment creates an untagged same-document entry.
+      // Tag it before attempting navigation so rejection can restore the cursor.
+      try { stampLearningHistory({ scope: state.learningHistory.scope, index: state.learningHistory.index + 1 }, window.location.href); }
+      catch { /* The guarded file/course navigation still works without history. */ }
+    }
+    const parameters = new URLSearchParams(window.location.hash.slice(1));
+    const taskId = parameters.get("task") || "";
+    const filePath = parameters.get("file") || "";
+    if (state.busy) {
+      restoreLearningLocation();
+      toast("当前课程正在处理，请等待完成后再切换。");
+      return false;
+    }
+    if (!taskId && !window.location.hash) {
+      const shown = await showWelcome();
+      if (!shown) restoreLearningLocation();
+      return shown;
+    }
+    if (!state.tasks.some((task) => task.id === taskId)) {
+      toast("链接中的课程不可用，请从课程目录选择。");
+      restoreLearningLocation();
+      return false;
+    }
+    if (state.task && state.task.id === taskId) {
+      if (!filePath || state.activeFile === filePath) {
+        writeLearningLocation();
+        return true;
+      }
+      if (!state.workspaceReady) {
+        if (!state.activeFile) {
+          state.preferredFile = filePath.slice(0, 512);
+          writeLearningLocation();
+          return true;
+        }
+        restoreLearningLocation();
+        return false;
+      }
+      const requested = state.files.find((file) => file.path === filePath);
+      const file = requested || state.files.find((item) => item.path === state.activeFile) || state.files[0];
+      setBusy(true);
+      try {
+        const opened = Boolean(file) && await loadFile(file.path);
+        if (!opened) restoreLearningLocation();
+        else if (!requested) toast("链接中的文件不可用，已保留本课可用文件。");
+        return opened;
+      } finally { setBusy(false); }
+    }
+    const selected = await selectTask(taskId, {
+      filePath: parameters.has("file") ? filePath.slice(0, 512) : undefined,
+      historyMode: "replace"
+    });
+    if (!selected) restoreLearningLocation();
+    return selected;
   }
 
   function updateProgressSummary() {
@@ -392,6 +642,7 @@
     ui.continueButton.textContent = !state.progressFresh ? "课程状态暂不可用" : next ? "继续学习  →" :
       state.tasks.every((task) => task.state === "PASSED") ? "课程已完成" : "暂无可开始课程";
     updateWorkflowGuidance();
+    updateResumeAction();
     if (!state.progressFresh) toast("课程进度暂不可用，请重试刷新。");
     return state.progressFresh;
   }
@@ -420,6 +671,10 @@
       return offer("先完成前置课程的当前源码验收；现在可以阅读本课教材和提示。",
         prerequisite ? "前往：" + prerequisite.title.replace(/^W\d+\s*[·:]\s*/, "") : "刷新课程状态",
         prerequisite ? "task" : "refresh", prerequisite && prerequisite.id);
+    }
+    if (state.workspaceError) {
+      return offer("课程讲解仍可阅读。工作区暂未加载：" + state.workspaceError,
+        "重试打开工作区", "workspace");
     }
     if (!state.workspaceReady) {
       return offer("点击开始学习创建代码工作区，再按“从这里开始”阅读并修改源文件。", "开始学习", "start");
@@ -453,6 +708,7 @@
     const action = ui.workflowAction.dataset.action;
     if (action === "task") return selectTask(ui.workflowAction.dataset.taskId);
     if (action === "start") return startTask();
+    if (action === "workspace") return retryWorkspaceFiles();
     if (action === "troubleshooting") return jumpToLessonSection("Troubleshooting");
     if (["build", "run", "check"].includes(action)) return runWorkspaceAction(action);
     if (action === "refresh") {
@@ -477,7 +733,7 @@
       button.className = "lesson-file-button";
       button.dataset.filePath = file.path;
       button.title = (file.read_only ? "查看只读参考：" : "打开源文件：") + file.path;
-      button.disabled = state.busy;
+      button.disabled = state.busy || !state.workspaceReady;
       code.replaceWith(button);
       button.append(code);
       button.addEventListener("click", () => loadFile(file.path));
@@ -525,7 +781,24 @@
   async function ensureEditorReady() {
     if (state.editorReady) return state.editorReady;
     state.editorReady = new Promise((resolve) => {
-      const configureAndLoad = (root, next) => {
+      let settled = false;
+      let attempt = 0;
+      const settle = (ready) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(deadline);
+        state.editorFallback = null;
+        ui.editorLoading.hidden = true;
+        if (!ready) fallbackToTextarea();
+        resolve(ready);
+      };
+      const deadline = setTimeout(() => settle(false), 8000);
+      state.editorFallback = () => settle(false);
+      ui.editorLoading.hidden = false;
+      ui.editorEngineStatus.textContent = "增强编辑器加载中…";
+
+      const configureAndLoad = (root, next, isCurrent) => {
+        if (!isCurrent()) return;
         try {
           window.MonacoEnvironment = {
             getWorkerUrl: () => {
@@ -537,6 +810,7 @@
           };
           window.require.config({ paths: { vs: root + "/vs" } });
           window.require(["vs/editor/editor.main"], () => {
+            if (!isCurrent()) return;
             try {
               state.monaco = window.monaco;
               state.editorInstance = state.monaco.editor.create(ui.monacoContainer, {
@@ -564,11 +838,10 @@
               ui.editor.hidden = true;
               ui.editorEngineStatus.textContent = "Monaco " + MONACO_VERSION;
               requestAnimationFrame(() => state.editorInstance && state.editorInstance.layout());
-              resolve(true);
+              settle(true);
             } catch (error) {
               console.warn("Monaco editor initialization failed:", error);
-              fallbackToTextarea();
-              resolve(false);
+              settle(false);
             }
           }, () => next());
         } catch (error) {
@@ -578,21 +851,23 @@
       };
 
       const tryLoad = (index) => {
+        if (settled) return;
         if (index >= MONACO_ROOTS.length) {
-          fallbackToTextarea();
-          resolve(false);
+          settle(false);
           return;
         }
+        const currentAttempt = ++attempt;
+        const isCurrent = () => !settled && currentAttempt === attempt;
         const root = MONACO_ROOTS[index];
-        const next = () => tryLoad(index + 1);
+        const next = () => { if (isCurrent()) tryLoad(index + 1); };
         if (window.require && typeof window.require.config === "function") {
-          configureAndLoad(root, next);
+          configureAndLoad(root, next, isCurrent);
           return;
         }
         const loader = document.createElement("script");
         loader.src = root + "/vs/loader.js";
         loader.crossOrigin = "anonymous";
-        loader.onload = () => configureAndLoad(root, next);
+        loader.onload = () => configureAndLoad(root, next, isCurrent);
         loader.onerror = next;
         document.head.append(loader);
       };
@@ -666,7 +941,7 @@
       button.type = "button";
       button.className = "file-tab" + (file.path === state.activeFile ? " active" : "");
       button.title = file.path;
-      button.disabled = state.busy;
+      button.disabled = state.busy || !state.workspaceReady;
       if (file.read_only) {
         button.setAttribute("aria-label", file.path + "，只读参考");
         const reference = document.createElement("span");
@@ -798,26 +1073,26 @@
   }
 
   async function loadFile(path) {
-    if (!state.task || !state.files.some((file) => file.path === path)) return;
+    if (!state.task || !state.workspaceReady || !state.files.some((file) => file.path === path)) return false;
     const taskId = state.task.id;
     const request = ++state.fileRequest;
     if (state.activeFile && state.dirtyFiles.has(state.activeFile)) {
       const saved = await saveFile(state.activeFile, { silent: true });
-      if (!saved) return;
+      if (!saved) return false;
     }
     await ensureEditorReady();
-    if (!state.task || state.task.id !== taskId || request !== state.fileRequest) return;
+    if (!state.task || state.task.id !== taskId || request !== state.fileRequest) return false;
     let content = state.fileContents.get(path);
     if (content === undefined) {
       const encodedPath = path.split("/").map(encodeURIComponent).join("/");
       try {
         const data = await api("/api/v1/workspaces/" + encodeURIComponent(taskId) + "/files/" + encodedPath);
-        if (!state.task || state.task.id !== taskId || request !== state.fileRequest) return;
+        if (!state.task || state.task.id !== taskId || request !== state.fileRequest) return false;
         content = data.content;
         state.fileContents.set(path, content);
       } catch (error) {
         toast(error.message);
-        return;
+        return false;
       }
     }
     setEditorValue(path, content);
@@ -829,13 +1104,17 @@
     renderFileTabs();
     if (state.editorInstance) state.editorInstance.focus();
     else ui.editor.focus();
+    rememberLearningPosition();
+    if (!state.navigatingTask) writeLearningLocation();
+    return true;
   }
 
-  async function loadWorkspaceFiles() {
-    if (!state.task) return;
+  async function loadWorkspaceFiles(preferredFile = state.preferredFile) {
+    if (!state.task) return false;
     const data = await api("/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/files");
     state.files = data.files || [];
     state.workspaceReady = true;
+    state.workspaceError = "";
     ui.workspaceState.textContent = "工作区已就绪";
     updateApplicationGuidance();
     if (state.task && state.task.service_profile) {
@@ -853,14 +1132,37 @@
       ui.buildButton.disabled = true;
       ui.runButton.disabled = true;
       ui.checkButton.disabled = true;
-      return;
+      throw new Error("工作区暂未提供可读文件，请重试。");
     }
-    if (!state.activeFile || !state.files.some((file) => file.path === state.activeFile)) {
-      await loadFile(state.files[0].path);
-    } else {
-      await loadFile(state.activeFile);
-    }
+    const preferred = state.files.find((file) => file.path === preferredFile);
+    const active = state.files.find((file) => file.path === state.activeFile);
+    const opened = await loadFile((preferred || active || state.files[0]).path);
+    if (!opened) throw new Error("源文件暂未加载，请重试打开工作区。");
+    if (preferredFile && !preferred) toast("上次或链接中的文件不可用，已打开本课可用文件。");
+    state.preferredFile = state.activeFile;
     await refreshServiceStatus(true);
+    return true;
+  }
+
+  function showWorkspaceError(error) {
+    state.workspaceReady = false;
+    state.workspaceError = error.message;
+    ui.workspaceState.textContent = "工作区暂未加载";
+    toast("工作区暂未加载，可重试打开；课程讲解仍可阅读。");
+  }
+
+  async function retryWorkspaceFiles() {
+    if (!state.task || state.busy) return false;
+    setBusy(true, "正在重新读取工作区…");
+    try {
+      await loadWorkspaceFiles();
+      writeLearningLocation();
+      toast("学习工作区已恢复。");
+      return true;
+    } catch (error) {
+      showWorkspaceError(error);
+      return false;
+    } finally { setBusy(false); }
   }
 
   function clearTaskEditorState() {
@@ -879,6 +1181,8 @@
     state.files = [];
     state.activeFile = "";
     state.workspaceReady = false;
+    state.workspaceError = "";
+    state.preferredFile = "";
     clearTimeout(state.autosaveTimer);
     ui.fileList.replaceChildren();
     ui.activeFile.textContent = "未选择文件";
@@ -909,20 +1213,23 @@
     updateDirtyState();
   }
 
-  async function selectTask(taskId) {
+  async function selectTask(taskId, options = {}) {
     if (state.busy) {
       toast("当前课程正在处理，请等待完成后再切换。");
-      return;
+      return false;
     }
+    if (!state.tasks.some((task) => task.id === taskId)) return false;
     setBusy(true);
+    state.navigatingTask = true;
     try {
+      if (state.dirtyFiles.size && !await saveAllDirtyFiles({ silent: true })) {
+        toast("当前代码未能保存，暂不切换课程。");
+        return false;
+      }
+      const task = await api("/api/v1/tasks/" + encodeURIComponent(taskId));
       if (state.task && state.task.service_profile && state.serviceSnapshot &&
           ["STARTING", "RUNNING"].includes(state.serviceSnapshot.state)) {
         await stopNetworkService(true, true);
-      }
-      if (state.dirtyFiles.size && !await saveAllDirtyFiles({ silent: true })) {
-        toast("当前代码未能保存，暂不切换课程。");
-        return;
       }
       state.selectedTaskId = taskId;
       state.serviceClients = [];
@@ -937,8 +1244,8 @@
       ui.checkResult.textContent = "等待执行";
       ui.checkResult.className = "check-result";
       renderCourseList();
-      const task = await api("/api/v1/tasks/" + encodeURIComponent(taskId));
       state.task = task;
+      state.preferredFile = options.filePath === undefined ? learningPosition().files[taskId] || "" : options.filePath;
       renderApplicationRunner();
       renderServiceRunner();
       await refreshServiceStatus(true);
@@ -961,12 +1268,17 @@
       ui.startButton.textContent = locked ? "完成前置任务后解锁" :
         task.state === "PASSED" ? "打开学习工作区  →" : "开始 / 继续学习  →";
       if (["IN PROGRESS", "NEEDS WORK", "STALE", "PASSED"].includes(task.state)) {
-        await loadWorkspaceFiles();
+        try { await loadWorkspaceFiles(); }
+        catch (error) { showWorkspaceError(error); }
       }
+      rememberLearningPosition();
+      writeLearningLocation(options.historyMode || "push");
+      return true;
     } catch (error) {
-      ui.lesson.textContent = error.message;
-      toast(error.message);
+      toast("课程暂未打开：" + error.message);
+      return false;
     } finally {
+      state.navigatingTask = false;
       setBusy(false);
     }
   }
@@ -982,7 +1294,8 @@
       state.workspaceReady = true;
       ui.workspaceState.textContent = result.resumed ? "已恢复" : "已创建";
       ui.startButton.textContent = "工作区已打开";
-      await loadWorkspaceFiles();
+      try { await loadWorkspaceFiles(); }
+      catch (error) { showWorkspaceError(error); return; }
       toast(result.resumed ? "已恢复上次的学习工作区。" : "学习工作区已创建。");
     } catch (error) {
       toast(error.message);
@@ -1088,11 +1401,15 @@
       control.disabled = value;
     });
     ui.checkButton.disabled = value || !state.workspaceReady;
-    document.querySelectorAll("#course-list .task-link, .lesson-file-button, .file-tab").forEach((button) => {
+    document.querySelectorAll("#course-list .task-link").forEach((button) => {
       button.disabled = value;
     });
+    document.querySelectorAll(".lesson-file-button, .file-tab").forEach((button) => {
+      button.disabled = value || !state.workspaceReady;
+    });
     ui.continueButton.disabled = value || !state.progressFresh || !state.tasks.some((task) => ["AVAILABLE", "IN PROGRESS", "NEEDS WORK", "STALE"].includes(task.state));
-    const readOnly = value || isReadOnlyFile(state.activeFile);
+    updateResumeAction();
+    const readOnly = value || !state.workspaceReady || isReadOnlyFile(state.activeFile);
     if (state.editorInstance) state.editorInstance.updateOptions({ readOnly });
     ui.editor.readOnly = readOnly;
     if (state.task && state.task.service_profile) {
@@ -1109,7 +1426,10 @@
     } else if (!state.workspaceReady) {
       ui.appRunnerHelp.textContent = "先点击“开始学习”创建工作区，然后构建应用、选择操作并运行。";
     } else {
-      ui.appRunnerHelp.textContent = "运行的是当前工作区里的学习者代码。输出和错误显示在下方，不会改变正式验收状态。";
+      ui.appRunnerHelp.textContent = "运行的是当前工作区里的学习者代码。请对照课程预期查看下方输出；错误输入可能按设计返回非零状态。运行不会改变正式验收状态。" +
+        (state.task.id === "w1.calculator"
+          ? "例如 divide 1 0 应输出 error: division by zero，学习者程序按设计以退出码 3 结束。"
+          : "");
     }
   }
 
@@ -1698,11 +2018,11 @@
       );
       ui.console.textContent = result.output || "(没有输出)";
       renderDiagnostics(result.output || "");
-      ui.checkResult.textContent = result.success ? "程序运行成功" : "程序运行失败";
+      ui.checkResult.textContent = result.success ? "程序运行成功" : "程序返回非零状态";
       ui.checkResult.className = "check-result " + (result.success ? "pass" : "fail");
       toast(result.success
         ? "程序运行完成；没有写入正式验收记录。"
-        : "程序运行失败；请根据输出修改代码后重试。");
+        : "程序返回非零状态；请对照课程预期核对输出。没有写入正式验收记录。");
     } catch (error) {
       ui.console.textContent = error.message;
       ui.checkResult.textContent = "程序运行失败";
@@ -1804,6 +2124,9 @@
 
   function bindEvents() {
     ui.search.addEventListener("input", renderCourseList);
+    ui.editorFallbackButton.addEventListener("click", () => {
+      if (state.editorFallback) state.editorFallback();
+    });
     ui.startButton.addEventListener("click", startTask);
     ui.saveButton.addEventListener("click", () => saveAllDirtyFiles());
     ui.buildButton.addEventListener("click", () => runWorkspaceAction("build"));
@@ -1840,6 +2163,11 @@
         || state.tasks.find((task) => task.state === "AVAILABLE");
       if (next) selectTask(next.id);
     });
+    ui.resumeButton.addEventListener("click", () => {
+      const taskId = learningPosition().lastTaskId;
+      if (taskId && state.progressFresh) selectTask(taskId);
+    });
+    window.addEventListener("hashchange", followLearningLocation);
     ui.editor.addEventListener("input", handleEditorInput);
     ui.editor.addEventListener("keydown", (event) => {
       if (event.key === "Tab" && !ui.editor.readOnly && !ui.editor.disabled) {
@@ -1874,7 +2202,7 @@
       if (health.status !== "ok") throw new Error("本地 CppAppLab 引擎未就绪。");
       ui.engine.classList.add("online");
       ui.engine.innerHTML = '<span class="pulse"></span>本地引擎已连接';
-      await loadTasks();
+      if (await loadTasks()) await followLearningLocation();
     } catch (error) {
       ui.engine.textContent = "本地引擎未连接";
       ui.engine.classList.remove("online");

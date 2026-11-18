@@ -162,6 +162,17 @@ async function waitForText(locator, expected, label, timeout = 30000) {
 }
 
 async function replaceMonacoEditor(page, value) {
+  // A repeated course click can retain its breadcrumb while the editor reloads.
+  // Wait for navigation/file readiness, while allowing intentional read-only tests.
+  await page.waitForFunction(() => {
+    const course = document.querySelector("#course-list .task-link.active");
+    const tab = document.querySelector("#file-list .file-tab.active");
+    const file = document.querySelector("#active-file")?.textContent.trim();
+    return course && !course.disabled && tab && !tab.disabled && file && file !== "未选择文件" &&
+      tab.title === file && course.dataset.taskId === document.querySelector("#task-breadcrumb")?.textContent.trim() &&
+      window.monaco?.editor && document.querySelector("#editor-engine-status")?.textContent.startsWith("Monaco ") &&
+      document.querySelector("#monaco-editor .view-lines");
+  });
   const editorLines = page.locator("#monaco-editor .view-lines");
   await editorLines.click({ position: { x: 120, y: 10 } });
   await page.keyboard.press("Control+A");
@@ -458,6 +469,26 @@ async function main() {
     assert.equal(await page.locator("#task-state").textContent(), "已通过",
       "Application build/run must not alter the formal acceptance result");
 
+    // The released calculator lesson intentionally exercises division by zero.
+    // Keep its diagnostic visible without calling the accepted source incorrect.
+    const calculatorHistoryUrl = service.baseUrl + "/api/v1/tasks/w1.calculator/history";
+    const calculatorHistory = await (await page.request.get(calculatorHistoryUrl)).json();
+    await page.locator('[data-field="operation"]').selectOption("divide");
+    await page.locator('[data-field="left"]').fill("1");
+    await page.locator('[data-field="right"]').fill("0");
+    await page.locator("#app-execute-button").click();
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "程序返回非零状态",
+    null, { timeout: 15000 });
+    assert.match(await page.locator("#console-output").textContent(), /error: division by zero/);
+    assert.match(await page.locator("#check-result").getAttribute("class"), /\bfail\b/);
+    assert.match(await page.locator("#app-runner-help").textContent(), /divide 1 0/);
+    assert.doesNotMatch(await page.locator("#app-runner-help").textContent() + await page.locator("#toast").textContent(),
+      /请修改代码|请修复代码|修改代码后重试/);
+    assert.equal(await page.locator("#task-state").getAttribute("data-state"), "PASSED");
+    assert.deepEqual(await (await page.request.get(calculatorHistoryUrl)).json(), calculatorHistory,
+      "the documented negative application run must not change formal state or history");
+
     const editorBoxDesktop = await page.locator(".editor-panel").boundingBox();
     const lessonBoxDesktop = await page.locator(".lesson-panel").boundingBox();
     assert.ok(editorBoxDesktop && lessonBoxDesktop);
@@ -512,7 +543,7 @@ async function main() {
     await page.locator("#app-action").selectOption("list");
     await page.locator("#app-execute-button").click();
     await page.waitForFunction(() =>
-      document.querySelector("#check-result")?.textContent === "程序运行失败",
+      document.querySelector("#check-result")?.textContent === "程序返回非零状态",
       null, { timeout: 15000 }
     );
     assert.match(await page.locator("#console-output").textContent(), /not implemented/);

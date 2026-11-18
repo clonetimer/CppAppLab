@@ -48,6 +48,7 @@
             <p>在同一个工作台阅读课程、编辑代码、运行固定验收。编译与测试仍由本地 Ubuntu 中真实的 GCC、CMake 和 GoogleTest 完成。</p>
             <div class="welcome-actions">
               <button id="continue-button" class="primary-button" disabled>正在准备课程… <span>→</span></button>
+              <button id="resume-button" class="secondary-button resume-button" hidden>返回上次课程</button>
               <span class="subtle-note">无需另外打开代码编辑器</span>
             </div>
           </div>
@@ -168,6 +169,10 @@
               <div class="editor-meta">
                 <span id="active-file">未选择文件</span>
                 <span class="editor-meta-right"><span id="editor-engine-status">编辑器准备中</span><span id="save-state">代码保存在本地工作区</span></span>
+              </div>
+              <div id="editor-loading" class="editor-loading" hidden>
+                <span role="status">正在加载增强编辑器，等待超过 8 秒将自动使用基础编辑器。</span>
+                <button id="editor-fallback-button" class="secondary-button" type="button">立即使用基础编辑器</button>
               </div>
               <div id="monaco-editor" class="monaco-editor" hidden></div>
               <textarea id="source-editor" class="source-editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" placeholder="开始任务后，在这里编辑 C++ 源代码…" disabled></textarea>

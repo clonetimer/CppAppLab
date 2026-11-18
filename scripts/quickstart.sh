@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+mode="${1:-cli}"
+if [[ "$mode" != "cli" && "$mode" != "--web" ]]; then
+    echo "Usage: bash scripts/quickstart.sh [--web]" >&2
+    exit 2
+fi
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
@@ -67,5 +73,10 @@ echo "== Platform tests =="
 ctest --test-dir build --output-on-failure
 
 echo
+if [[ "$mode" == "--web" ]]; then
+    echo "== Start browser learning workbench =="
+    CPPAPPLAB_OPEN_BROWSER=1 exec bash scripts/start-web-workbench.sh
+fi
+
 echo "== Open interactive learning home =="
 exec ./build/cppapplab

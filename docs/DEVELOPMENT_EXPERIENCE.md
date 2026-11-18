@@ -400,3 +400,11 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - Compare diagnostic audit rules with existing course conventions before treating a NO as a missing teaching element. The Router lesson already had a Goal and source section; matching Goal at a word boundary fixes that false negative.
 - Keep structural signals, semantic review and learner comprehension separate. A corrected report still records comprehension as NOT_TESTED until an actual learner walkthrough provides evidence.
 
+
+
+## 46. Windows first launch should land in the browser workbench
+
+- **Changed:** Made the Windows double-click launcher start the local browser workbench by default, including after first-time setup. Added `-Cli` as an explicit compatibility path to the terminal home, and `-Setup` continues to rebuild and run CTest before launch. The WSL launcher requests browser opening only after the loopback service passes its health check; it prefers the Windows default browser and falls back to `wslview`, otherwise printing the exact local URL.
+- **Why:** The browser-first workbench was available but Windows learners still landed in the terminal and had to discover and run a second command. The delivered product entry should match the primary learning interface.
+- **Pitfall:** Do not open the browser before the service is ready, do not bind beyond loopback, and do not treat browser auto-open failure as service failure. Preserve stdin for first-use package prompts, preserve the explicit CLI path, and keep setup/build/test behavior unchanged. Port conflicts remain visible with a concrete alternate-port instruction rather than silently killing or reusing an unrelated process.
+- **Regression:** Windows launcher smoke verifies the encoded bootstrap, distribution and setup arguments plus the default browser-mode argument; existing Ubuntu build/package and browser CI gates remain required before merge.

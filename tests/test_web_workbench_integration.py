@@ -115,17 +115,29 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
         try:
             started = subprocess.run(
                 command + ["start"], env=env, capture_output=True, text=True,
-                timeout=20, check=True,
+                timeout=20, check=False,
+            )
+            self.assertEqual(
+                started.returncode, 0,
+                f"Launcher start failed. stdout:\n{started.stdout}\nstderr:\n{started.stderr}",
             )
             self.assertIn("Web Workbench is ready", started.stdout)
             status = subprocess.run(
                 command + ["status"], env=env, capture_output=True, text=True,
-                timeout=10, check=True,
+                timeout=10, check=False,
+            )
+            self.assertEqual(
+                status.returncode, 0,
+                f"Launcher status failed. stdout:\n{status.stdout}\nstderr:\n{status.stderr}",
             )
             self.assertIn("is ready", status.stdout)
             stopped = subprocess.run(
                 command + ["stop"], env=env, capture_output=True, text=True,
-                timeout=10, check=True,
+                timeout=10, check=False,
+            )
+            self.assertEqual(
+                stopped.returncode, 0,
+                f"Launcher stop failed. stdout:\n{stopped.stdout}\nstderr:\n{stopped.stderr}",
             )
             self.assertIn("Web Workbench stopped", stopped.stdout)
         finally:

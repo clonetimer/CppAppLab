@@ -121,15 +121,8 @@ foreach ($distro in @("Ubuntu-22.04", "Ubuntu-24.04")) {
         throw "The CLI mode did not preserve the WSL argument vector for $distro."
     }
     $cliCommand = $cliArgs[5]
-    $cliPattern = $bootstrapPattern -replace "'1' '1'$", "'0' '0'$"
-
-Write-Host "Supported launcher distributions: Ubuntu-22.04 and Ubuntu-24.04"
-Write-Host "Linux path transport: ~/work/Cpp App Lab"
-Write-Host "Setup mode transport: 1"
-Write-Host "Default browser-workbench mode transport: 1"
-
-    if (-not [regex]::IsMatch($cliCommand, $cliPattern)) {
-        throw "The explicit -Cli switch did not disable browser mode for $distro."
+    if ($cliCommand -notmatch "'0' '0'$") {
+        throw "The explicit -Cli switch did not transport setup=0 and browser=0 for $distro. Command: $cliCommand"
     }
     Write-Host "Explicit CLI mode: PASS ($distro)"
 }

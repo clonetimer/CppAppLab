@@ -50,7 +50,7 @@ try:
         ):
             raise SystemExit(1)
         print(json.dumps(health))
-except (OSError, urllib.error.URLError):
+except (OSError, urllib.error.URLError, ValueError):
     raise SystemExit(1)
 PY
 }

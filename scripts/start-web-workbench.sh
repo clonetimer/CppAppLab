@@ -30,6 +30,7 @@ is_our_process() {
 
 health_check() {
     python3 - "$HOST" "$PORT" <<'PY'
+import json
 import sys
 import urllib.error
 import urllib.request
@@ -39,7 +40,16 @@ try:
     with urllib.request.urlopen(url, timeout=1.5) as response:
         if response.status != 200:
             raise SystemExit(1)
-        print(response.read().decode("utf-8"))
+        health = json.load(response)
+        if (
+            health.get("status") != "ok"
+            or not isinstance(health.get("engine"), str)
+            or "CppAppLab" not in health["engine"]
+            or not isinstance(health.get("task_count"), int)
+            or health["task_count"] < 1
+        ):
+            raise SystemExit(1)
+        print(json.dumps(health))
 except (OSError, urllib.error.URLError):
     raise SystemExit(1)
 PY

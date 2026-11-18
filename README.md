@@ -4,11 +4,23 @@
 
 ## 开始学习：先看课程，再做练习
 
-CppAppLab 当前发布了 **23 个可操作的 W1–W9 学习任务**。不必先研究环境安装步骤；已有支持环境的学习者可以直接进入课程：
+CppAppLab 当前发布了 **23 个可操作的 W1–W9 学习任务**。
 
-1. 在源码项目根目录运行 `./build/cppapplab`；如果使用学习者压缩包，在解压目录运行 `./cppapplab`。
-2. 选择“继续学习”自动开始下一关；输入 `guide` 或在首页选择 **5** 可阅读[中文学习导航](course/LEARNING_GUIDE_ZH.md)。
-3. 只修改任务列出的工作区文件；遇到问题按提示逐级求助，最后通过固定验收再继续下一关。
+### 已构建源码项目：打开网页工作台
+
+在 Ubuntu 的项目根目录运行下面的命令。
+
+```bash
+bash scripts/start-web-workbench.sh
+```
+
+用浏览器打开 [http://127.0.0.1:8765/](http://127.0.0.1:8765/)。第一次学习可以先点 **第一次使用？先看四步说明**，关闭指南后点 **继续学习**，再点 **开始 / 继续学习** 打开第一关的工作区。按课程要求修改 `src/main.cpp`，依次点击 **构建**、**运行程序** 和 **正式验收**。验收通过后，结果显示 **PASS**。之后可从顶栏随时打开 **中文学习指南**。
+
+如果源码目录还没有 `build/cppapplab`，先按[快速入门的构建步骤](docs/QUICKSTART.md#2-run-the-one-command-setup)完成构建，再启动工作台。
+
+### 使用学习者压缩包：打开命令行首页
+
+在解压目录运行 `./cppapplab`，选择 **1. Continue learning**（继续学习）。源码构建也可用 `./build/cppapplab` 打开命令行首页。在首页选 **5** 或在终端给启动命令加上 `guide`，即可阅读[中文学习导航](course/LEARNING_GUIDE_ZH.md)。
 
 当前发布范围为 W1–W9 已实现任务；W9-A4/A5 及 W10–W12 尚处于路线图中。环境要求与部署说明保留在后文，供确有需要时查询。
 
@@ -33,7 +45,7 @@ The main branch contains 23 hands-on tasks across W1–W9. W1–W7 cover C++ fun
 
 **推荐先读：** [中文学习导航（23 个任务）](course/LEARNING_GUIDE_ZH.md)。零基础学习者先看其中的「第一次使用」四步说明和常用词解释；也可以在终端运行 `./build/cppapplab guide`。重点是先完成第一关，再逐步理解工具和原理，不必预先读完整套安装与工程文档。
 
-**Recommended learner entry point — interactive home:**
+**Interactive command-line home:**
 
 ```bash
 ./build/cppapplab

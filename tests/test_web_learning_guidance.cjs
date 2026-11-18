@@ -124,7 +124,7 @@ async function fixture(browser, { referenceFixture = false, pendingEditor = fals
     throw error;
   }
   return {
-    page, root, baseUrl, close, releaseEditorRequests,
+    page, root, workspace, baseUrl, close, releaseEditorRequests,
     pendingEditorRequests: () => editorRequests.size
   };
 }
@@ -185,6 +185,50 @@ async function startCalculator(page) {
   assert.equal(await page.evaluate(() => history.length), entries, "file selection replaces the current history entry");
 }
 
+async function guideReady(page) {
+  await page.waitForFunction(() => document.querySelector("#learning-guide").open &&
+    !document.querySelector("#guide-content").hidden &&
+    document.querySelector("#guide-content").getAttribute("aria-busy") === "false" &&
+    document.querySelectorAll("#guide-content .guide-task-button").length === 23 &&
+    [...document.querySelectorAll("#guide-sections button")].every((button) => !button.disabled));
+}
+
+async function guideSection(page, section) {
+  await page.locator('#guide-sections [data-guide-section="' + section + '"]').focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction((section) => {
+    const content = document.querySelector("#guide-content");
+    const heading = [...content.querySelectorAll("h2")].find((item) => item.textContent.startsWith(section));
+    if (!heading || document.activeElement !== heading) return false;
+    const area = content.getBoundingClientRect();
+    const box = heading.getBoundingClientRect();
+    return box.top >= area.top - 1 && box.bottom <= area.bottom + 1 &&
+      (Math.abs(box.top - area.top - 12) <= 2 ||
+       Math.abs(content.scrollTop - (content.scrollHeight - content.clientHeight)) <= 2);
+  }, section);
+}
+
+async function learningSnapshot(page) {
+  return page.evaluate(() => {
+    const text = (selector) => document.querySelector(selector).textContent;
+    const view = (selector) => {
+      const element = document.querySelector(selector);
+      return { hidden: element.hidden, text: element.textContent, scrollTop: element.scrollTop };
+    };
+    return {
+      url: location.href, entries: history.length,
+      task: text("#task-breadcrumb"), state: text("#task-state"), file: text("#active-file"),
+      source: document.querySelector("#source-editor").value,
+      welcomeHidden: document.querySelector("#welcome-panel").hidden,
+      lesson: view("#lesson-content"), hint: view("#hint-content"),
+      hintHidden: document.querySelector("#hint-panel").hidden,
+      hintLevel: document.querySelector('[data-hint][aria-pressed="true"]')?.dataset.hint || null,
+      acceptance: view("#history-panel"), saveState: text("#save-state"),
+      dirtyFiles: [...document.querySelectorAll("#file-list .file-dirty-dot")].map((item) => item.textContent)
+    };
+  });
+}
+
 async function pendingEditorFallback(environment, manual) {
   const { page, baseUrl, pendingEditorRequests, releaseEditorRequests } = environment;
   await select(page, "w1.hello-world");
@@ -210,6 +254,350 @@ async function pendingEditorFallback(environment, manual) {
 }
 
 const cases = {
+  async guide_navigation({ page, baseUrl, workspace }) {
+    const catalog = await (await page.request.get(baseUrl + "/api/v1/tasks")).json();
+    const original = await learningSnapshot(page);
+    const requests = [];
+    const observe = (request) => requests.push([request.method(), new URL(request.url()).pathname]);
+    page.on("request", observe);
+    try {
+      await page.locator("#welcome-guide").click();
+      await guideReady(page);
+      assert.equal(await page.locator("#learning-guide").evaluate((element) => element.matches(":modal")), true);
+      assert.equal(await page.locator("#guide-close").evaluate((element) => document.activeElement === element), true);
+      const ids = await page.locator("#guide-content .guide-task-button").evaluateAll((buttons) =>
+        buttons.map((button) => button.dataset.taskId));
+      assert.equal(ids.length, 23);
+      assert.deepEqual(ids.sort(), catalog.tasks.map((task) => task.id).sort(),
+        "the real Markdown must expose each registered course exactly once");
+      const sections = ["第一次使用", "常用词解释", "按阶段学习", "常见错误"];
+      assert.deepEqual(await page.locator("#guide-sections button").evaluateAll((buttons) =>
+        buttons.map((button) => button.dataset.guideSection)), sections);
+
+      fs.mkdirSync(ARTIFACTS, { recursive: true });
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
+        const background = await page.evaluate(() => [scrollX, scrollY]);
+        for (const section of sections) {
+          await guideSection(page, section);
+          assert.deepEqual(await page.evaluate(() => [scrollX, scrollY]), background,
+            "keyboard section navigation must scroll only the guide");
+          assert.equal(page.url(), original.url, "guide sections must not replace the learning URL");
+        }
+        await page.locator("#guide-close").focus();
+        await page.keyboard.press("Shift+Tab");
+        const boundaryFocus = await page.evaluate(() => {
+          const active = document.activeElement;
+          return {
+            inGuide: document.querySelector("#learning-guide").contains(active),
+            documentFocused: document.hasFocus(),
+            documentRoot: (active === document.body || active === document.documentElement) &&
+              !active.hasAttribute("tabindex") && !active.isContentEditable,
+            activeTag: active?.tagName, activeId: active?.id
+          };
+        });
+        // Native modal dialogs keep the page inert but allow browser toolbar
+        // navigation. An unconfigured BODY/HTML active-element fallback is not
+        // a background control. Playwright may emulate document.hasFocus(), so
+        // keep that value diagnostic and verify the actual modal boundary below.
+        console.log("Guide keyboard boundary (" + width + "px): " + JSON.stringify(boundaryFocus));
+        assert.ok(boundaryFocus.inGuide || boundaryFocus.documentRoot,
+          "backward navigation must not focus background content: " + JSON.stringify(boundaryFocus));
+        await page.keyboard.press("Tab");
+        assert.equal(await page.evaluate(() => document.querySelector("#learning-guide").contains(document.activeElement)), true,
+          "forward navigation must return to the guide from the document boundary");
+        await page.locator("#task-search").evaluate((element) => element.focus());
+        assert.equal(await page.evaluate(() => document.querySelector("#learning-guide").contains(document.activeElement)), true,
+          "the background course search must remain inert while the guide is modal");
+
+        const tables = page.locator("#guide-content .markdown-table-scroll");
+        assert.equal(await tables.count(), 2);
+        for (const table of await tables.all()) {
+          await table.focus();
+          const scrolling = await table.evaluate((element) => {
+            element.scrollLeft = element.scrollWidth;
+            const last = element.querySelector("th:last-child").getBoundingClientRect();
+            const box = element.getBoundingClientRect();
+            return { overflow: getComputedStyle(element).overflowX, left: element.scrollLeft,
+              maximum: element.scrollWidth - element.clientWidth, lastRight: last.right,
+              visibleRight: box.left + element.clientLeft + element.clientWidth };
+          });
+          assert.ok(["auto", "scroll"].includes(scrolling.overflow));
+          if (width === 390) assert.ok(scrolling.maximum > 0, "guide tables must scroll inside the narrow dialog");
+          assert.ok(Math.abs(scrolling.left - scrolling.maximum) <= 2 && scrolling.lastRight <= scrolling.visibleRight + 2,
+            "each guide table's final column must be reachable");
+        }
+        const content = await page.locator("#guide-content").evaluate((element) => {
+          element.scrollTo({ top: element.scrollHeight, behavior: "instant" });
+          const box = element.getBoundingClientRect();
+          const last = element.lastElementChild.getBoundingClientRect();
+          const dialog = element.closest("dialog").getBoundingClientRect();
+          const close = document.querySelector("#guide-close").getBoundingClientRect();
+          return { overflow: getComputedStyle(element).overflowY, top: element.scrollTop,
+            maximum: element.scrollHeight - element.clientHeight, lastBottom: last.bottom, bottom: box.bottom,
+            horizontalOverflow: element.scrollWidth - element.clientWidth,
+            fits: dialog.left >= 0 && dialog.right <= innerWidth && dialog.top >= 0 && dialog.bottom <= innerHeight,
+            closeVisible: close.top >= dialog.top && close.bottom <= dialog.bottom && close.right <= dialog.right };
+        });
+        assert.ok(["auto", "scroll"].includes(content.overflow));
+        assert.ok(content.maximum > 0 && Math.abs(content.top - content.maximum) <= 2 && content.lastBottom <= content.bottom + 2,
+          "the final guide paragraph must be reachable within its own vertical scroller");
+        assert.ok(content.fits && content.closeVisible && content.horizontalOverflow <= 1,
+          "the dialog, close control and content must fit at " + width + "px");
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+        await page.locator("#guide-content").evaluate((element) => {
+          element.querySelectorAll(".markdown-table-scroll").forEach((table) => { table.scrollLeft = 0; });
+        });
+        await guideSection(page, "第一次使用");
+        await page.locator("#guide-close").focus();
+        await page.screenshot({ path: path.join(ARTIFACTS, "learning-guide-" + width + ".png") });
+      }
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => !document.querySelector("#learning-guide").open && document.activeElement.id === "welcome-guide");
+      assert.deepEqual(await learningSnapshot(page), original, "reading and closing the welcome guide must preserve learning state");
+      await page.locator("#guide-button").click();
+      await guideReady(page);
+      await guideSection(page, "常见错误");
+      await page.locator("#guide-close").click();
+      assert.equal(await page.locator("#guide-button").evaluate((element) => document.activeElement === element), true);
+      await page.locator("#welcome-guide").click();
+      await guideReady(page);
+      await page.waitForFunction(() => {
+        const content = document.querySelector("#guide-content");
+        const heading = [...content.querySelectorAll("h2")].find((item) => item.textContent.startsWith("第一次使用"));
+        return Math.abs(heading.getBoundingClientRect().top - content.getBoundingClientRect().top - 12) <= 2;
+      });
+      assert.equal(await page.locator("#guide-close").evaluate((element) => document.activeElement === element), true,
+        "the first-use entry scrolls to its promised steps while keeping dialog focus usable");
+      await page.locator("#guide-close").click();
+      await page.locator("#guide-button").click();
+      await guideReady(page);
+      await page.locator('#guide-content [data-task-id="w2.todo-cli"]').click();
+      await page.waitForFunction(() => document.querySelector("#task-breadcrumb").textContent === "w2.todo-cli" &&
+        document.querySelector("#task-state").dataset.state === "LOCKED" &&
+        !document.querySelector('#course-list [data-task-id="w2.todo-cli"]').disabled &&
+        !document.querySelector("#learning-guide").open && document.activeElement.id === "task-title");
+      assert.match(await page.locator("#lesson-content").textContent(), /Start here/);
+      assert.equal(await page.locator("#start-button").isDisabled(), true);
+      assert.equal(await page.locator("#source-editor").isDisabled(), true);
+      assert.deepEqual(requests.filter(([, url]) => url === "/api/v1/learning-guide"), [["GET", "/api/v1/learning-guide"]],
+        "reopening the guide must reuse its page cache");
+      assert.equal(requests.some(([method, url]) => method !== "GET" || url.startsWith("/api/v1/workspaces/")), false,
+        "guide reading and locked-course selection must not start a workspace or run an operation");
+      assert.deepEqual(fs.readdirSync(workspace), []);
+      assert.equal((await (await page.request.get(baseUrl + "/api/v1/tasks/w2.todo-cli/history")).json()).count, 0);
+
+      // A bookmarked course can finish initial navigation after the welcome
+      // guide has opened. Its close action still needs a visible focus target.
+      let releaseCatalog;
+      let catalogRequested;
+      const catalogGate = new Promise((resolve) => { releaseCatalog = resolve; });
+      const catalogSeen = new Promise((resolve) => { catalogRequested = resolve; });
+      const holdCatalog = async (route) => {
+        catalogRequested();
+        await catalogGate;
+        await route.continue();
+      };
+      await page.route("**/api/v1/tasks", holdCatalog, { times: 1 });
+      try {
+        await page.reload({ waitUntil: "domcontentloaded" });
+        await waitWithin(catalogSeen, 10000, "Initial guide-case catalog request did not arrive");
+        await page.locator("#welcome-guide").click();
+        await page.waitForFunction(() => document.querySelector("#learning-guide").open &&
+          !document.querySelector("#guide-content").hidden &&
+          document.querySelector("#guide-content").getAttribute("aria-busy") === "false");
+        assert.equal(await page.locator("#guide-content .guide-task-button").count(), 0,
+          "guide reading must be available before the catalog is ready");
+        releaseCatalog();
+        await guideReady(page);
+        await page.waitForFunction(() => document.querySelector("#welcome-panel").hidden &&
+          document.querySelector("#task-breadcrumb").textContent === "w2.todo-cli" &&
+          !document.querySelector('#course-list [data-task-id="w2.todo-cli"]').disabled);
+        await page.keyboard.press("Escape");
+        await page.waitForFunction(() => !document.querySelector("#learning-guide").open && document.activeElement.id === "guide-button");
+      } finally {
+        releaseCatalog();
+        await page.unroute("**/api/v1/tasks", holdCatalog);
+      }
+    } finally { page.off("request", observe); }
+  },
+
+  async guide_preservation({ page, baseUrl }) {
+    await passHello(page);
+    await position(page, "w1.hello-world", "src/main.cpp", HELLO);
+    await page.locator('[data-hint="2"]').click();
+    await page.waitForFunction(() => document.querySelector("#hint-content").textContent.includes("std::cout"));
+    await page.locator("#history-button").click();
+    await page.waitForFunction(() => document.querySelectorAll("#history-list .history-record").length === 1);
+    const historyUrl = baseUrl + "/api/v1/tasks/w1.hello-world/history";
+    const acceptedHistory = await (await page.request.get(historyUrl)).json();
+    const source = HELLO + "// keep this unsaved learning-guide draft\n";
+    const sourceRoute = "**/api/v1/workspaces/w1.hello-world/files/src/main.cpp";
+    const rejectSave = (route) => route.request().method() === "PUT"
+      ? route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "temporary guide save failure" }) })
+      : route.continue();
+    await page.route(sourceRoute, rejectSave);
+    await page.route("**/api/v1/learning-guide", (route) => route.fulfill({
+      status: 503, contentType: "application/json", body: JSON.stringify({ error: "temporary guide read failure" })
+    }), { times: 1 });
+    const requests = [];
+    const observe = (request) => requests.push([request.method(), new URL(request.url()).pathname]);
+    page.on("request", observe);
+    try {
+      // Reject autosave before opening the guide so the draft stays dirty for
+      // the entire user journey, including the explicit navigation save.
+      await page.locator("#source-editor").fill(source);
+      await page.waitForFunction(() => document.querySelector("#save-state").textContent === "保存失败");
+      const original = await learningSnapshot(page);
+      assert.ok(original.dirtyFiles.some((marker) => marker.includes("●")));
+      await page.locator("#guide-button").click();
+      await page.waitForFunction(() => !document.querySelector("#guide-retry").hidden &&
+        document.querySelector("#guide-status").textContent.includes("temporary guide read failure"));
+      assert.deepEqual(await learningSnapshot(page), original, "failed guide reads must leave the lesson and draft intact");
+      await page.locator("#guide-retry").click();
+      await guideReady(page);
+      assert.equal(await page.locator("#guide-retry").isVisible(), false);
+      await guideSection(page, "常用词解释");
+      assert.deepEqual(await learningSnapshot(page), original, "section navigation must preserve the active task/file route and panels");
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => !document.querySelector("#learning-guide").open && document.activeElement.id === "guide-button");
+      assert.deepEqual(await learningSnapshot(page), original, "guide Escape must preserve the open hint and acceptance history");
+      await page.locator("#guide-button").click();
+      await guideReady(page);
+      await page.locator('#guide-content [data-task-id="w1.calculator"]').click();
+      await page.waitForFunction(() => document.querySelector("#guide-status").textContent.includes("未能保存"));
+      await position(page, "w1.hello-world", "src/main.cpp", source);
+      assert.equal(await page.locator("#learning-guide").evaluate((element) => element.open), true);
+      assert.equal(await page.locator("#guide-content").isVisible(), true);
+      assert.deepEqual(await learningSnapshot(page), original, "a rejected navigation save must retain all learning context");
+      assert.equal(await page.locator("#save-button").isDisabled(), false);
+      assert.equal(requests.some(([, url]) => url === "/api/v1/tasks/w1.calculator"), false,
+        "the destination must not be read after saving the current draft failed");
+      assert.deepEqual(requests.filter(([, url]) => url === "/api/v1/learning-guide"),
+        [["GET", "/api/v1/learning-guide"], ["GET", "/api/v1/learning-guide"]], "retry is a fresh read and later opens use the cache");
+      const saved = await (await page.request.get(baseUrl + "/api/v1/workspaces/w1.hello-world/files/src/main.cpp")).json();
+      assert.equal(saved.content, HELLO);
+      assert.deepEqual(await (await page.request.get(historyUrl)).json(), acceptedHistory);
+    } finally {
+      page.off("request", observe);
+      await page.unroute(sourceRoute, rejectSave);
+    }
+    await page.locator('#guide-content [data-task-id="w1.calculator"]').click();
+    await page.waitForFunction(() => document.querySelector("#task-breadcrumb").textContent === "w1.calculator" &&
+      document.querySelector("#task-state").dataset.state === "LOCKED" &&
+      !document.querySelector('#course-list [data-task-id="w1.calculator"]').disabled &&
+      !document.querySelector("#learning-guide").open && document.activeElement.id === "task-title");
+    const saved = await (await page.request.get(baseUrl + "/api/v1/workspaces/w1.hello-world/files/src/main.cpp")).json();
+    assert.equal(saved.content, source, "successful guide navigation must save the original draft first");
+    assert.equal((await (await page.request.get(historyUrl)).json()).count, 1,
+      "saving and opening a course must not add an acceptance record");
+
+    let releaseRead;
+    let readRequested;
+    let readFinished;
+    let readStarted = false;
+    const readGate = new Promise((resolve) => { releaseRead = resolve; });
+    const sourceSeen = new Promise((resolve) => { readRequested = resolve; });
+    const sourceFinished = new Promise((resolve) => { readFinished = resolve; });
+    const holdSource = async (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+      readStarted = true;
+      readRequested();
+      let forwardError;
+      try {
+        await readGate;
+        await route.continue();
+      } catch (error) {
+        forwardError = error;
+        await route.abort().catch(() => {});
+      } finally { readFinished(forwardError); }
+    };
+    await page.route(sourceRoute, holdSource);
+    try {
+      await page.locator("#guide-button").click();
+      await guideReady(page);
+      await page.locator('#guide-content [data-task-id="w1.hello-world"]').click();
+      await waitWithin(sourceSeen, 10000, "Guide destination source read did not arrive");
+      await page.keyboard.press("Escape");
+      await page.locator("#task-search").focus();
+      releaseRead();
+      await position(page, "w1.hello-world", "src/main.cpp", source);
+      assert.equal(await page.locator("#learning-guide").evaluate((element) => element.open), false);
+      assert.equal(await page.locator("#task-search").evaluate((element) => document.activeElement === element), true,
+        "a late workspace read must not move focus away from the control chosen after closing help");
+    } finally {
+      releaseRead();
+      try {
+        if (readStarted) {
+          const forwardError = await waitWithin(sourceFinished, 10000, "Guide destination source read did not finish");
+          if (forwardError) throw forwardError;
+        }
+      } finally { await page.unroute(sourceRoute, holdSource); }
+    }
+  },
+
+  async guide_busy({ page, baseUrl }) {
+    await startHello(page);
+    await position(page, "w1.hello-world", "src/main.cpp", HELLO);
+    const buildRoute = "**/api/v1/workspaces/w1.hello-world/build";
+    let release;
+    let received;
+    let finished;
+    let routeStarted = false;
+    const gate = new Promise((resolve) => { release = resolve; });
+    const responseReady = new Promise((resolve) => { received = resolve; });
+    const responseFinished = new Promise((resolve) => { finished = resolve; });
+    const holdBuild = async (route) => {
+      routeStarted = true;
+      let routeError;
+      try {
+        const response = await route.fetch({ timeout: 30000 });
+        received();
+        await gate;
+        await route.fulfill({ response });
+      } catch (error) {
+        routeError = error;
+        received(error);
+        await route.abort().catch(() => {});
+      } finally { finished(routeError); }
+    };
+    await page.route(buildRoute, holdBuild, { times: 1 });
+    try {
+      await page.locator("#build-button").click();
+      const fetchError = await waitWithin(responseReady, 35000, "Timed out waiting for the real guide-case build response");
+      if (fetchError) throw fetchError;
+      const original = await learningSnapshot(page);
+      await page.locator("#guide-button").click();
+      await guideReady(page);
+      await page.locator('#guide-content [data-task-id="w2.todo-cli"]').click();
+      await page.waitForFunction(() => document.querySelector("#guide-status").textContent.includes("等待完成"));
+      assert.equal(await page.locator("#learning-guide").evaluate((element) => element.open), true);
+      assert.equal(await page.locator("#guide-content").isVisible(), true);
+      assert.equal(await page.locator("#check-button").isDisabled(), true);
+      assert.equal(await page.locator('#course-list [data-task-id="w1.hello-world"]').isDisabled(), true);
+      assert.deepEqual(await learningSnapshot(page), original, "busy guide navigation must retain the running course and its route");
+    } finally {
+      release();
+      try {
+        if (routeStarted) {
+          const routeError = await waitWithin(responseFinished, 10000, "Timed out finishing the intercepted guide-case build request");
+          if (routeError) throw routeError;
+        }
+      } finally { await page.unroute(buildRoute, holdBuild); }
+    }
+    await page.waitForFunction(() => document.querySelector("#check-result").textContent === "构建成功" &&
+      !document.querySelector('#course-list [data-task-id="w1.hello-world"]').disabled);
+    await position(page, "w1.hello-world", "src/main.cpp", HELLO);
+    assert.equal(await page.locator("#learning-guide").evaluate((element) => element.open), true,
+      "finishing the build must not dismiss the guide");
+    await page.locator('#guide-content [data-task-id="w2.todo-cli"]').click();
+    await page.waitForFunction(() => document.querySelector("#task-breadcrumb").textContent === "w2.todo-cli" &&
+      !document.querySelector("#learning-guide").open && document.activeElement.id === "task-title");
+    assert.equal(await page.locator("#start-button").isDisabled(), true);
+    assert.equal((await (await page.request.get(baseUrl + "/api/v1/tasks/w1.hello-world/history")).json()).count, 0,
+      "building while reading the guide must not create acceptance evidence");
+  },
+
   async session({ page, baseUrl }) {
     await passHello(page);
     const bookmark = baseUrl + "/#" + new URLSearchParams({ task: "w1.calculator", file: "src/calculator.cpp" });

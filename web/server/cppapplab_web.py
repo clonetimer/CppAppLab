@@ -1307,6 +1307,12 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         if parts == ["session"]:
             self._send_json(200, {"csrf_token": self.server.csrf_token})
             return
+        if parts == ["learning-guide"]:
+            guide = safe_repo_file(
+                self.server.root, "course/LEARNING_GUIDE_ZH.md", MAX_LESSON_BYTES, "Learning guide"
+            )
+            self._send_json(200, {"markdown": read_bounded(guide, MAX_LESSON_BYTES, "Learning guide")})
+            return
         if parts == ["health"]:
             exit_code, output = self.server.run_cli(["--version"], timeout=5.0)
             self._send_json(200 if exit_code == 0 else 503, {

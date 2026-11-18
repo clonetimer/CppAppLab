@@ -16,6 +16,7 @@
         <span><strong>CppAppLab</strong><small>Browser Learning Workbench</small></span>
       </a>
       <div class="topbar-right">
+        <button id="guide-button" type="button" class="secondary-button" aria-haspopup="dialog" aria-controls="learning-guide">中文学习指南</button>
         <span id="engine-status" class="connection"><span class="pulse"></span>正在连接本地引擎</span>
         <span id="progress-summary" class="progress-summary">课程进度读取中</span>
       </div>
@@ -51,6 +52,7 @@
               <button id="resume-button" class="secondary-button resume-button" hidden>返回上次课程</button>
               <span class="subtle-note">无需另外打开代码编辑器</span>
             </div>
+            <button id="welcome-guide" type="button" class="welcome-guide" aria-haspopup="dialog" aria-controls="learning-guide">第一次使用？先看四步说明 <span aria-hidden="true">→</span></button>
           </div>
           <div class="welcome-visual" aria-hidden="true">
             <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
@@ -59,7 +61,7 @@
               <pre><b>1</b>  <em>#include</em> &lt;iostream&gt;
 <b>2</b>
 <b>3</b>  <strong>int</strong> main() {
-<b>4</b>    std::cout &lt;&lt; <mark>"Hello, CppAppLab!"</mark>;
+<b>4</b>    std::cout &lt;&lt; <mark>"Hello, CppAppLab!\n"</mark>;
 <b>5</b>    <strong>return</strong> 0;
 <b>6</b>  }</pre>
               <div class="code-card-foot"><span>●</span> C++17 · GCC</div>
@@ -76,7 +78,7 @@
           <div class="workbench-heading">
             <div>
               <div class="breadcrumb"><span>CppAppLab</span><b>/</b><span id="task-breadcrumb">课程</span></div>
-              <div class="title-row"><h1 id="task-title">课程标题</h1><span id="task-state" class="state-pill">未开始</span></div>
+              <div class="title-row"><h1 id="task-title" tabindex="-1">课程标题</h1><span id="task-state" class="state-pill">未开始</span></div>
               <p id="task-subtitle" class="task-subtitle"></p>
             </div>
             <div class="workbench-heading-actions">
@@ -192,5 +194,23 @@
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
   </div>
+  <dialog id="learning-guide" class="learning-guide" aria-labelledby="guide-title" aria-describedby="guide-intro">
+    <div class="guide-heading">
+      <div><span class="eyebrow">LEARNING GUIDE</span><h2 id="guide-title">中文学习指南</h2></div>
+      <button id="guide-close" type="button" class="secondary-button" autofocus>关闭指南</button>
+    </div>
+    <p id="guide-intro" class="guide-intro">查术语、找课程、排查错误。随时关闭即可返回当前学习内容。</p>
+    <nav id="guide-sections" class="lesson-navigation guide-sections" aria-label="学习指南章节">
+      <button type="button" data-guide-section="第一次使用" disabled>第一次使用</button>
+      <button type="button" data-guide-section="常用词解释" disabled>常用词解释</button>
+      <button type="button" data-guide-section="按阶段学习" disabled>学习路线</button>
+      <button type="button" data-guide-section="常见错误" disabled>常见错误</button>
+    </nav>
+    <div class="guide-feedback">
+      <p id="guide-status" role="status" aria-live="polite" hidden></p>
+      <button id="guide-retry" type="button" class="secondary-button" hidden>重新读取指南</button>
+    </div>
+    <div id="guide-content" class="markdown-content guide-content" tabindex="0" aria-label="中文学习指南正文"></div>
+  </dialog>
 </body>
 </html>

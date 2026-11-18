@@ -119,6 +119,39 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 45. First-use documentation must lead to the delivered learning interface
+
+- **Changed:** Moved the existing browser start command, local address, Chinese guide entry and first-exercise build/run/acceptance steps to the opening README and quick-start sections. Kept the extracted learner package's `./cppapplab` entry explicit.
+- **Why:** The workbench and its guide already existed, but the repository's first instructions sent learners directly to the terminal and the browser steps were buried below setup and troubleshooting. Surface the available path before adding another launcher or onboarding feature.
+- **Pitfall:** `docs/QUICKSTART.md` also ships inside the CLI learner archive, which does not contain `web/` or `scripts/start-web-workbench.sh`. Identify the built-source prerequisite, preserve the package path, and copy actual Chinese control labels from the UI. A new heading should not imply a new runtime or package capability.
+
+## 44. Native modal keyboard checks must distinguish browser controls from page content
+
+- **Changed:** Corrected the guide's real-browser keyboard assertion to allow focus to leave the document for browser controls, while requiring the next Tab to return to the guide and rejecting attempts to focus the background course search. Log the active element and document-focus state at the boundary so failures identify what received focus.
+- **Why:** PR #50's initial PR/push runs (`44266757612` / `44266751170`) failed the same Shift+Tab assertion; all 71 Node cases and the other 13 focused browser scenarios passed. The assertion assumed native modal focus could never leave the document. [Chrome's native-dialog guidance](https://developer.chrome.com/docs/modern-web-guidance/guides/accessibility/accessibility#12-modals-and-native-dialogs) explicitly permits browser chrome navigation and advises against adding a native-dialog focus trap.
+- **Pitfall:** `dialog.contains(document.activeElement) === false` alone does not establish that an inert background control received focus. Accept only the default BODY/HTML active-element fallback with no explicit tabindex or editable state, or an element inside the guide; keep actual background-focus and keyboard-return checks. Log document.hasFocus() for diagnosis rather than treating it as authoritative under browser focus emulation. Do not change product behavior merely to satisfy a stronger, unsupported test assumption.
+
+## 42. Existing learner guidance needs a reachable product entry
+
+- A maintained Chinese guide in the repository or CLI is not automatically available to a web learner. Trace the path from the welcome page and an active lesson to first-use instructions, terminology, course summaries and error recovery before writing duplicate content.
+- Expose the authoritative document through a fixed read-only route and the same bounded, regular-file, UTF-8 checks as lessons. Reading help must not run the learning engine, create a workspace or depend on successful progress initialization; test it while engine calls are unavailable.
+- Reuse the escaped Markdown renderer. Guide section controls should scroll and focus headings inside their reading area, because the URL fragment already identifies the learner's task and file.
+- Promote only exact catalog IDs in the guide's task headings to course buttons. Do not infer lesson filenames from IDs, activate arbitrary Markdown URLs or create another course registry. Test all 23 IDs against the current catalog and leave unknown/future IDs, prose and code as text.
+- Source instructions must match the entry point. Browser Continue selects a lesson and Start creates/opens its workspace; CLI Continue creates the workspace. Explain both explicitly instead of presenting terminal commands as a required browser step. Match the first visible example to the exact first-task output, including its newline.
+- Structural audit flags are review cues. The five missing mental-model markers already had useful explanations under different headings; connecting existing guidance to learners is more useful than renaming text to increase a diagnostic count.
+
+## 43. Contextual help has its own presentation lifecycle
+
+- Help should remain available during a running operation and while code is dirty. Opening or closing it must not call course selection, save files, stop a service, reset hints/history or alter the learning URL. Only an explicit course choice uses the existing save/busy navigation guards.
+- Use the native modal dialog for focus containment, a visible close button, Escape and focus return. Keep the underlying Escape handler inactive while the guide is open so one key does not also collapse history. After a successful course choice, focus the new course heading rather than a welcome button that has become hidden.
+- Thread guide-owned autofocus behavior through workspace/file loading. A session check after awaiting course selection is too late if the nested file loader already focuses the editor; reproduce this with an existing workspace and a delayed source GET, not only a locked lesson. Preserve direct file-selection autofocus.
+- A first-use entry should reopen at its promised instructions while the persistent guide entry retains reading position. If initial bookmark navigation hides the welcome opener while help is open, restore focus to the visible topbar entry.
+- Deduplicate pending guide reads and cache the successful document for the page session. A late read can fill the cache but must not reopen a closed guide or steal focus. Give each opening a session identity so a pending course choice cannot close a subsequently reopened guide.
+- Show failed reads and rejected navigation inside the modal: a page-level toast behind the dialog is not a readable explanation. Retry only the failed guide GET. A busy operation or failed save should leave the guide, active course and unsaved source available.
+- Enhance guide task entries again when the catalog arrives; help may have loaded before engine startup completes. Reading the guide should not need a second request merely to acquire course navigation.
+- Combine state tests of real app functions with actual-browser evidence for keyboard focus, both entry points, desktop and 390 px scrolling, final-content reachability, tables and preserved dirty code. A native dialog call in a fake DOM does not prove its layout or focus behavior.
+- Deferred formatting edge: a future task heading combining strong and inline code around a registered ID would currently become a course control. The maintained guide has no such heading and navigation remains catalog-bound; future renderer work should preserve that nested code example as text.
+
 ## 39. Restore presentation context only after navigation actually succeeds
 
 - A saved source file and a restored learning session are different outcomes. Verify refresh on a non-first file without manually reselecting the course; prior tests that clicked the course again hid the missing restoration.

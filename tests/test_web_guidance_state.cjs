@@ -25,9 +25,21 @@ class Element {
     this.readOnly = false;
     this.selectionStart = 0;
     this.selectionEnd = 0;
+    this.open = false;
+    this.focusCalls = 0;
+    this.scrollTop = 0;
+    this.parentElement = null;
   }
-  append(...items) { this.children.push(...items); }
-  replaceChildren(...items) { this.children = items; }
+  append(...items) { for (const item of items) item.parentElement = this; this.children.push(...items); }
+  replaceChildren(...items) { this.children = []; this.append(...items); }
+  get firstChild() { return this.children[0] || null; }
+  replaceWith(...items) {
+    const parent = this.parentElement;
+    if (!parent) return;
+    for (const item of items) item.parentElement = parent;
+    parent.children.splice(parent.children.indexOf(this), 1, ...items);
+    this.parentElement = null;
+  }
   setAttribute(name, value) { this.attributes[name] = String(value); }
   removeAttribute(name) {
     delete this.attributes[name];
@@ -38,13 +50,19 @@ class Element {
   querySelectorAll(selector) {
     const all = this.children.flatMap((child) => [child, ...child.querySelectorAll("*")]);
     if (selector === "*") return all;
-    if (selector === ".task-link") return all.filter((child) => child.className?.split(" ").includes("task-link"));
+    if ([".task-link", ".guide-task-button"].includes(selector)) return all.filter((child) => child.className?.split(" ").includes(selector.slice(1)));
+    if (selector === "li > strong:first-child") return all.filter((child) => child.tagName === "STRONG" && child.parentElement?.tagName === "LI" && child.parentElement.firstChild === child);
+    if (selector === "h2") return all.filter((child) => child.tagName === "H2");
+    if (selector === "[data-guide-section]") return all.filter((child) => child.dataset.guideSection);
     return [];
   }
   querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
-  focus() {}
+  focus() { this.focusCalls += 1; }
+  showModal() { this.open = true; }
+  close() { this.open = false; }
   scrollIntoView() {}
-  scrollTo() {}
+  scrollTo(options) { this.scrollTop = options.top; }
+  getBoundingClientRect() { return { top: this.top || 0 }; }
   setRangeText(text, start, end) { this.value = this.value.slice(0, start) + text + this.value.slice(end); }
 }
 
@@ -65,8 +83,11 @@ function application(options = {}) {
     button.dataset.hint = String(level);
     return button;
   });
+  const documentListeners = {};
   const document = {
-    getElementById: byId, createElement: (tag) => new Element(tag), addEventListener() {},
+    body: new Element("body"),
+    getElementById: byId, createElement: (tag) => new Element(tag),
+    addEventListener(name, handler) { (documentListeners[name] ||= []).push(handler); },
     querySelectorAll(selector) {
       if (selector === "[data-hint]") return hints;
       const matches = [];
@@ -120,6 +141,12 @@ function application(options = {}) {
     handleEditorInput, saveFile, loadTasks, loadTaskHistory, runWorkspaceAction, bindEvents, setBusy,
     followWorkflowAction, refreshServiceStatus, stopNetworkService,
     init, loadFile,
+    openLearningGuide: typeof openLearningGuide === "function" ? openLearningGuide : undefined,
+    closeLearningGuide: typeof closeLearningGuide === "function" ? closeLearningGuide : undefined,
+    loadLearningGuide: typeof loadLearningGuide === "function" ? loadLearningGuide : undefined,
+    enhanceGuideCourses: typeof enhanceGuideCourses === "function" ? enhanceGuideCourses : undefined,
+    jumpToGuideSection: typeof jumpToGuideSection === "function" ? jumpToGuideSection : undefined,
+    selectGuideTask: typeof selectGuideTask === "function" ? selectGuideTask : undefined,
     retryWorkspaceFiles: typeof retryWorkspaceFiles === "function" ? retryWorkspaceFiles : undefined,
     setApi(handler) { api = handler; } };
 })();`);
@@ -135,16 +162,326 @@ function application(options = {}) {
   app.state.files = [{ path: "src/main.cpp", read_only: false }];
   app.state.tasks = [app.state.task, task("w1.calculator", "LOCKED", ["w1.hello-world"]),
     task("w2.todo-cli", "LOCKED", ["w1.calculator"])];
+  for (const section of ["第一次使用", "常用词解释", "按阶段学习", "常见错误"]) {
+    const button = new Element("button");
+    button.dataset.guideSection = section;
+    byId("guide-sections").append(button);
+  }
   async function flushHistory() {
     while (pendingHistory.length) await Promise.all(pendingHistory.splice(0));
   }
   return { ...app, byId, location, stored, entries,
+    documentEvent(name, event) { for (const handler of documentListeners[name] || []) handler(event); },
     async travel(delta) { window.history.go(delta); await flushHistory(); },
     async browserEvent(name) {
       await Promise.all((listeners[name] || []).map((handler) => handler()));
       await flushHistory();
     } };
 }
+
+test("learning guide opens and closes without changing dirty work or a running operation", async () => {
+  const app = application({ url: "http://127.0.0.1:8765/#task=w1.hello-world&file=src%2Fmain.cpp" });
+  app.state.activeFile = "src/main.cpp";
+  app.state.busy = true;
+  app.state.dirtyFiles.add("src/main.cpp");
+  app.ui.editor.value = "// keep unsaved code";
+  app.ui.lesson.hidden = true;
+  app.ui.hintPanel.hidden = false;
+  app.ui.historyPanel.hidden = false;
+  const originalTask = app.state.task;
+  const originalUrl = app.location.href;
+  const requests = [];
+  app.setApi(async (url, options = {}) => {
+    requests.push([url, options.method || "GET"]);
+    return { markdown: "# 中文学习指南\n\n<script>unsafe()</script>\n" };
+  });
+  app.bindEvents();
+  await app.openLearningGuide(app.ui.guideButton);
+  assert.equal(app.ui.guideDialog.open, true);
+  assert.match(app.ui.guideContent.innerHTML, /&lt;script&gt;/);
+  assert.doesNotMatch(app.ui.guideContent.innerHTML, /<script>/);
+  app.documentEvent("keydown", { key: "Escape", preventDefault() {} });
+  assert.equal(app.ui.historyPanel.hidden, false, "guide Escape must not close underlying history");
+  app.ui.guideDialog.fire("cancel", { preventDefault() {} });
+  assert.equal(app.ui.guideDialog.open, false);
+  assert.equal(app.ui.guideButton.focusCalls, 1);
+  assert.equal(app.state.task, originalTask);
+  assert.equal(app.state.activeFile, "src/main.cpp");
+  assert.equal(app.ui.editor.value, "// keep unsaved code");
+  assert.equal(app.state.dirtyFiles.has("src/main.cpp"), true);
+  assert.equal(app.state.busy, true);
+  assert.equal(app.ui.lesson.hidden, true);
+  assert.equal(app.ui.hintPanel.hidden, false);
+  assert.equal(app.location.href, originalUrl);
+  assert.deepEqual(requests, [["/api/v1/learning-guide", "GET"]]);
+});
+
+test("learning guide deduplicates pending reads and a late response cannot reopen or focus it", async () => {
+  const app = application();
+  let release;
+  let reads = 0;
+  app.setApi(() => { reads += 1; return new Promise((resolve) => { release = resolve; }); });
+  const first = app.openLearningGuide(app.ui.welcomeGuide);
+  const second = app.openLearningGuide(app.ui.guideButton);
+  app.closeLearningGuide();
+  const focused = app.ui.guideClose.focusCalls;
+  release({ markdown: "# 缓存的指南" });
+  await Promise.all([first, second]);
+  assert.equal(reads, 1);
+  assert.equal(app.ui.guideDialog.open, false);
+  assert.equal(app.ui.guideClose.focusCalls, focused);
+  assert.equal(app.ui.welcomeGuide.focusCalls, 1, "restore the original opener");
+  await app.openLearningGuide(app.ui.guideButton);
+  assert.equal(reads, 1, "reopening a loaded guide uses the session cache");
+  assert.equal(app.ui.guideDialog.open, true);
+});
+
+test("learning guide read failure offers a GET-only retry without clearing the lesson", async () => {
+  const app = application();
+  app.ui.lesson.innerHTML = "Keep the active lesson";
+  app.ui.editor.value = "Keep code";
+  let reads = 0;
+  app.setApi(async (url, options = {}) => {
+    assert.equal(url, "/api/v1/learning-guide");
+    assert.equal(options.method || "GET", "GET");
+    if (++reads === 1) throw new Error("temporary read failure");
+    return { markdown: "# 指南恢复" };
+  });
+  await app.openLearningGuide(app.ui.guideButton);
+  assert.match(app.ui.guideStatus.textContent, /读取失败/);
+  assert.equal(app.ui.guideRetry.hidden, false);
+  await app.loadLearningGuide();
+  assert.equal(reads, 2);
+  assert.equal(app.ui.guideRetry.hidden, true);
+  assert.match(app.ui.guideContent.innerHTML, /指南恢复/);
+  assert.equal(app.ui.lesson.innerHTML, "Keep the active lesson");
+  assert.equal(app.ui.editor.value, "Keep code");
+  assert.equal(app.state.busy, false);
+});
+
+test("learning guide remains readable when engine health and catalog startup fail", async () => {
+  const app = application();
+  app.state.tasks = [];
+  app.state.task = null;
+  const requests = [];
+  app.setApi(async (url) => {
+    requests.push(url);
+    if (url === "/api/v1/session") return { csrf_token: "session" };
+    if (url === "/api/v1/health") throw new Error("engine unavailable");
+    if (url === "/api/v1/learning-guide") return { markdown: "# 常见错误\n\n检查本地引擎。" };
+    throw new Error("unexpected request: " + url);
+  });
+  await app.init();
+  await app.openLearningGuide(app.ui.guideButton);
+  assert.equal(app.ui.guideDialog.open, true);
+  assert.match(app.ui.guideContent.innerHTML, /检查本地引擎/);
+  assert.deepEqual(requests, ["/api/v1/session", "/api/v1/health", "/api/v1/learning-guide"]);
+});
+
+test("guide course controls match all registered headings and ignore prose, code and unknown IDs", () => {
+  const app = application();
+  const root = path.join(__dirname, "..");
+  const ids = fs.readFileSync(path.join(root, "course", "tasks.tsv"), "utf8")
+    .split("\n").filter((line) => line && !line.startsWith("#")).map((line) => line.split("\t")[0]);
+  app.state.tasks = ids.map((id) => task(id, "LOCKED"));
+  const guide = fs.readFileSync(path.join(root, "course", "LEARNING_GUIDE_ZH.md"), "utf8");
+  for (const match of guide.matchAll(/^\s*(?:[-*+]|\d+\.)\s+\*\*([^*]+)\*\*/gm)) {
+    const li = new Element("li");
+    const strong = new Element("strong");
+    strong.textContent = match[1];
+    li.append(strong);
+    app.ui.guideContent.append(li);
+  }
+  for (const [parentTag, label, prefix] of [["p", ids[0], false], ["code", ids[0], false],
+    ["li", "w99.future", false], ["li", ids[0] + "x", false], ["li", ids[0], true]]) {
+    const parent = new Element(parentTag);
+    const strong = new Element("strong");
+    strong.textContent = label;
+    if (prefix) parent.append(new Element("#text"));
+    parent.append(strong);
+    app.ui.guideContent.append(parent);
+  }
+  app.enhanceGuideCourses();
+  const buttons = app.ui.guideContent.querySelectorAll(".guide-task-button");
+  assert.equal(buttons.length, 23);
+  assert.deepEqual(buttons.map((button) => button.dataset.taskId), ids);
+  app.enhanceGuideCourses();
+  assert.equal(app.ui.guideContent.querySelectorAll(".guide-task-button").length, 23, "enhancement is idempotent");
+});
+
+test("guide course controls become available when the catalog arrives after guide content", async () => {
+  const app = application();
+  app.state.tasks = [];
+  app.state.task = null;
+  app.setApi(async (url) => url.endsWith("learning-guide") ? { markdown: "- **w1.hello-world**：第一课" }
+    : { tasks: [task("w1.hello-world", "AVAILABLE")] });
+  await app.openLearningGuide(app.ui.guideButton);
+  const li = new Element("li");
+  const strong = new Element("strong");
+  strong.textContent = "w1.hello-world";
+  li.append(strong);
+  app.ui.guideContent.append(li);
+  app.enhanceGuideCourses();
+  assert.equal(app.ui.guideContent.querySelectorAll(".guide-task-button").length, 0);
+  await app.loadTasks();
+  assert.equal(app.ui.guideContent.querySelectorAll(".guide-task-button").length, 1);
+});
+
+test("guide section shortcuts focus a heading and scroll locally without changing the lesson URL", async () => {
+  const app = application({ url: "http://127.0.0.1:8765/#task=w1.hello-world" });
+  app.setApi(async () => ({ markdown: "## 常用词解释" }));
+  await app.openLearningGuide(app.ui.guideButton);
+  const heading = new Element("h2");
+  heading.textContent = "常用词解释";
+  heading.top = 340;
+  app.ui.guideContent.top = 100;
+  app.ui.guideContent.append(heading);
+  const originalUrl = app.location.href;
+  app.jumpToGuideSection("常用词解释");
+  assert.equal(heading.focusCalls, 1);
+  assert.equal(heading.attributes.tabindex, "-1");
+  assert.ok(app.ui.guideContent.scrollTop > 0);
+  assert.equal(app.location.href, originalUrl);
+});
+
+test("guide course selection opens a locked lesson through the normal read path", async () => {
+  const app = application();
+  const requests = [];
+  app.setApi(async (url, options = {}) => {
+    requests.push([url, options.method || "GET"]);
+    if (url.endsWith("learning-guide")) return { markdown: "# 学习路线" };
+    if (url === "/api/v1/tasks/w1.calculator") return task("w1.calculator", "LOCKED", ["w1.hello-world"]);
+    throw new Error("unexpected request: " + url);
+  });
+  await app.openLearningGuide(app.ui.welcomeGuide);
+  assert.equal(await app.selectGuideTask("w1.calculator"), true);
+  assert.equal(app.state.task.id, "w1.calculator");
+  assert.equal(app.ui.guideDialog.open, false);
+  assert.equal(app.ui.startButton.disabled, true);
+  assert.equal(app.ui.taskTitle.focusCalls, 1);
+  assert.deepEqual(requests, [["/api/v1/learning-guide", "GET"], ["/api/v1/tasks/w1.calculator", "GET"]]);
+});
+
+test("guide course selection stays readable and makes no request while the workbench is busy", async () => {
+  const app = application();
+  let reads = 0;
+  app.setApi(async () => { reads += 1; return { markdown: "# 指南" }; });
+  await app.openLearningGuide(app.ui.guideButton);
+  app.state.busy = true;
+  assert.equal(await app.selectGuideTask("w1.calculator"), false);
+  assert.equal(reads, 1);
+  assert.equal(app.state.task.id, "w1.hello-world");
+  assert.equal(app.ui.guideDialog.open, true);
+  assert.match(app.ui.guideStatus.textContent, /等待/);
+});
+
+test("guide course selection retains dirty code and the dialog when saving fails", async () => {
+  const app = application();
+  const requests = [];
+  app.setApi(async (url, options = {}) => {
+    requests.push([url, options.method || "GET"]);
+    if (url.endsWith("learning-guide")) return { markdown: "# 指南" };
+    if (options.method === "PUT") throw new Error("disk full");
+    throw new Error("unexpected request: " + url);
+  });
+  await app.openLearningGuide(app.ui.guideButton);
+  app.state.activeFile = "src/main.cpp";
+  app.state.dirtyFiles.add("src/main.cpp");
+  app.ui.editor.value = "// keep this draft";
+  const originalUrl = app.location.href;
+  assert.equal(await app.selectGuideTask("w1.calculator"), false);
+  assert.equal(app.state.task.id, "w1.hello-world");
+  assert.equal(app.ui.editor.value, "// keep this draft");
+  assert.equal(app.state.dirtyFiles.has("src/main.cpp"), true);
+  assert.equal(app.location.href, originalUrl);
+  assert.equal(app.ui.guideDialog.open, true);
+  assert.match(app.ui.guideStatus.textContent, /未能保存/);
+  assert.equal(requests.some(([url]) => url === "/api/v1/tasks/w1.calculator"), false);
+});
+
+test("a pending guide course selection cannot close or focus a subsequently reopened guide", async () => {
+  const app = application();
+  let release;
+  app.setApi(async (url) => {
+    if (url.endsWith("learning-guide")) return { markdown: "# 指南" };
+    return new Promise((resolve) => { release = resolve; });
+  });
+  await app.openLearningGuide(app.ui.guideButton);
+  const selecting = app.selectGuideTask("w1.calculator");
+  app.closeLearningGuide();
+  await app.openLearningGuide(app.ui.guideButton);
+  const focusCalls = app.ui.guideClose.focusCalls;
+  release(task("w1.calculator", "LOCKED", ["w1.hello-world"]));
+  assert.equal(await selecting, true);
+  assert.equal(app.ui.guideDialog.open, true);
+  assert.equal(app.ui.guideClose.focusCalls, focusCalls);
+  assert.equal(app.ui.taskTitle.focusCalls, 0);
+});
+
+for (const reopen of [false, true]) {
+  test("a late guide workspace read does not focus the editor after " + (reopen ? "reopening" : "closing") + " help", async () => {
+    const app = application();
+    let release;
+    let received;
+    const sourceRequested = new Promise((resolve) => { received = resolve; });
+    app.setApi(async (url) => {
+      if (url.endsWith("learning-guide")) return { markdown: "# 指南" };
+      if (url === "/api/v1/tasks/w1.calculator") return task("w1.calculator", "IN PROGRESS");
+      if (url === "/api/v1/workspaces/w1.calculator/files") return { files: [{ path: "src/main.cpp", read_only: false }] };
+      if (url === "/api/v1/workspaces/w1.calculator/files/src/main.cpp") {
+        received();
+        return new Promise((resolve) => { release = resolve; });
+      }
+      throw new Error("unexpected request: " + url);
+    });
+    await app.openLearningGuide(app.ui.guideButton);
+    const selecting = app.selectGuideTask("w1.calculator");
+    await sourceRequested;
+    app.closeLearningGuide();
+    if (reopen) await app.openLearningGuide(app.ui.guideButton);
+    else app.ui.search.focus();
+    const guideFocus = app.ui.guideClose.focusCalls;
+    release({ content: "// restored workspace" });
+    assert.equal(await selecting, true);
+    assert.equal(app.ui.editor.value, "// restored workspace");
+    assert.equal(app.state.activeFile, "src/main.cpp");
+    assert.equal(app.ui.guideDialog.open, reopen);
+    assert.equal(app.ui.guideClose.focusCalls, guideFocus);
+    assert.equal(app.ui.taskTitle.focusCalls, 0);
+    assert.equal(app.ui.editor.focusCalls, 0, "guide-owned navigation must not implicitly focus its loaded editor");
+  });
+}
+
+test("the welcome guide entry returns to first-use instructions while the topbar retains reading position", async () => {
+  const app = application();
+  let reads = 0;
+  app.setApi(async () => { reads += 1; return { markdown: "## 第一次使用：先完成一个最小任务" }; });
+  await app.openLearningGuide(app.ui.guideButton);
+  const firstUse = new Element("h2");
+  firstUse.textContent = "第一次使用：先完成一个最小任务";
+  firstUse.top = -560;
+  app.ui.guideContent.top = 100;
+  app.ui.guideContent.scrollTop = 860;
+  app.ui.guideContent.append(firstUse);
+  app.closeLearningGuide();
+  await app.openLearningGuide(app.ui.guideButton);
+  assert.equal(app.ui.guideContent.scrollTop, 860, "the persistent entry keeps the current reading position");
+  app.closeLearningGuide();
+  await app.openLearningGuide(app.ui.welcomeGuide);
+  assert.equal(app.ui.guideContent.scrollTop, 188, "the first-use entry must show its promised four steps");
+  assert.equal(firstUse.focusCalls, 0, "opening the dialog keeps its close control focused");
+  assert.equal(reads, 1, "finding the first-use section does not refetch the guide");
+});
+
+test("closing the learning guide restores a visible control after initial navigation hides its welcome opener", async () => {
+  const app = application();
+  app.setApi(async () => ({ markdown: "# 指南" }));
+  await app.openLearningGuide(app.ui.welcomeGuide);
+  app.ui.welcome.hidden = true;
+  app.closeLearningGuide();
+  assert.equal(app.ui.guideButton.focusCalls, 1);
+  assert.equal(app.ui.welcomeGuide.focusCalls, 0, "a hidden welcome button cannot receive focus");
+});
 
 test("busy course selection keeps acceptance attached to its original task", async () => {
   const app = application();

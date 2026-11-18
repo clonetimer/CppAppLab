@@ -2,6 +2,28 @@
 
 This guide is for a learner using Windows 11 + WSL2 + Ubuntu 22.04 LTS or Ubuntu 24.04 LTS. You do not need to know the task IDs or choose a workspace path to begin.
 
+## Open the browser workbench from a built source checkout
+
+If `build/cppapplab` is missing, follow the [one-command setup](#2-run-the-one-command-setup) first. After setup opens the command-line home, choose **0. Exit** or open another Ubuntu terminal. Run the following command from the project root.
+
+~~~bash
+bash scripts/start-web-workbench.sh
+~~~
+
+Open [http://127.0.0.1:8765/](http://127.0.0.1:8765/) in your browser. The service binds to the local loopback address. If the launcher prints a different port, use the address it prints.
+
+1. On the welcome screen, use **第一次使用？先看四步说明** to read the first-use guide, then **关闭指南** to return. You can reopen it from **中文学习指南** in the top bar.
+2. Click **继续学习** to open the first lesson on a fresh start. Click **开始 / 继续学习** to create its workspace.
+3. Follow the lesson and edit `src/main.cpp`. Edits save automatically after a short pause. Use **保存** or Ctrl+S to save immediately.
+4. Click **构建**, then **运行程序** to see the output. Check that it prints `Hello, CppAppLab!` followed by a newline. In test-based courses, the corresponding buttons are **构建测试工程** and **运行课程测试**.
+5. Click **正式验收** to run the course's fixed checks. A successful check displays **PASS** and unlocks the next lesson. If you edit the source again, rebuild before running it and repeat **正式验收** to record a result for the current source.
+
+If the enhanced Monaco editor is slow to load, click **立即使用基础编辑器** or wait for automatic fallback. To stop the workbench, run `bash scripts/start-web-workbench.sh stop` from the project root.
+
+## Start from an extracted learner package
+
+The prebuilt learner package uses the command-line home. Run `./cppapplab` from the extracted directory, then choose **1. Continue learning**. The menu's guide entry is also available as `./cppapplab guide`. Use the package README for its system-tool requirements.
+
 ## 1. Open Ubuntu and get the project
 
 In PowerShell, list installed distributions and start your existing Ubuntu 22.04 or Ubuntu 24.04 distribution:
@@ -34,7 +56,7 @@ The script:
 2. Offers to install missing packages with apt (you approve before installation).
 3. Configures and builds CppAppLab.
 4. Runs the platform's CTest suite.
-5. Opens the interactive learning home, where you can continue, search for a task or review progress.
+5. Opens the interactive command-line home, where you can continue, search for a task or review progress.
 
 The script does not delete or replace learner workspaces. It uses the default CppAppLab build directory and may reuse its build cache.
 
@@ -62,7 +84,7 @@ After pulling project updates inside WSL, rebuild and rerun acceptance checks wi
 
 The launcher deliberately does not run git pull; local changes are preserved. It can also be pointed at another Linux checkout with -RepoPath "~/projects/CppAppLab" or a specific distro with -Distro Ubuntu-22.04.
 
-## 3. Start learning
+## 3. Start learning in the terminal from a source checkout
 
 For an interactive home screen, run:
 
@@ -126,35 +148,4 @@ Your source files, progress and check history are kept between sessions. A chang
 - A workspace already exists: the guided command resumes a valid workspace. If the default path belongs to another task or is not a valid workspace, it chooses a numbered sibling path instead of overwriting it.
 - WSL2 or Ubuntu version mismatch: follow Environment setup and verify the distribution version in PowerShell with wsl -l -v.
 
-Hosted CI is not a substitute for target-machine acceptance. Windows 11 + WSL2 validation and offline dependency packaging remain separate project work.
-
-## Browser learning workbench (P8-A / P8-B validated)
-
-After building the existing CppAppLab project, start the local browser service from the repository root:
-
-~~~bash
-bash scripts/start-web-workbench.sh
-~~~
-
-Open http://127.0.0.1:8765/ in your Windows browser. The service binds to loopback only. It delegates workspace lifecycle, compilation profiles, test execution and formal acceptance to the existing CppAppLab learning engine. It does not expose an arbitrary shell endpoint.
-
-Stop the service with:
-
-~~~bash
-bash scripts/start-web-workbench.sh stop
-~~~
-
-### Browser learning loop
-
-1. Select a course task and start or resume its workspace.
-2. Read the lesson and edit the task's declared source files in the multi-file editor.
-3. Changes are saved automatically after a short pause; Ctrl+S also saves immediately.
-4. Use **Build** to compile the current source.
-5. Use **Run / Tests** to execute the learner program for direct-execution tasks or the registered CTest suite for CMake/GoogleTest tasks.
-6. Use **Formal Acceptance** to run the platform-owned acceptance contract and record PASS/FAIL evidence.
-
-Build and Run never record formal acceptance evidence. A source edit invalidates the previous build fingerprint; build again before running. Only Formal Acceptance updates the course evidence and prerequisite state.
-
-The enhanced Monaco editor is loaded from the pinned Monaco 0.52.2 CDN package. If the CDN is unreachable, the page falls back to its local plain-text editor; the local Python service and course API do not require third-party Python packages or Node.js.
-
-P8-A/P8-B have passed the Ubuntu build/test matrix and real Chromium browser acceptance, including the forced-offline editor fallback. The existing CLI remains supported and authoritative. Windows 11 + WSL2 target-machine browser startup is a separate P8-E acceptance item.
+Windows 11 + WSL2 target-machine validation, including browser startup, and offline dependency packaging remain separate from hosted CI.

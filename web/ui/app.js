@@ -44,7 +44,11 @@
     autosaveTimer: null,
     serviceSnapshot: null,
     serviceClients: [],
-    serviceMessages: []
+    serviceMessages: [],
+    guideMarkdown: null,
+    guideRequest: null,
+    guideOpener: null,
+    guideSession: 0
   };
 
   const $ = (id) => document.getElementById(id);
@@ -58,6 +62,14 @@
     workbench: $("workbench-panel"),
     continueButton: $("continue-button"),
     resumeButton: $("resume-button"),
+    guideButton: $("guide-button"),
+    welcomeGuide: $("welcome-guide"),
+    guideDialog: $("learning-guide"),
+    guideClose: $("guide-close"),
+    guideSections: $("guide-sections"),
+    guideStatus: $("guide-status"),
+    guideRetry: $("guide-retry"),
+    guideContent: $("guide-content"),
     historyButton: $("history-button"),
     historyPanel: $("history-panel"),
     historyClose: $("history-close"),
@@ -643,6 +655,7 @@
       state.tasks.every((task) => task.state === "PASSED") ? "课程已完成" : "暂无可开始课程";
     updateWorkflowGuidance();
     updateResumeAction();
+    enhanceGuideCourses();
     if (!state.progressFresh) toast("课程进度暂不可用，请重试刷新。");
     return state.progressFresh;
   }
@@ -756,6 +769,121 @@
     ui.lesson.scrollTo({ top: ui.lesson.scrollTop + offset - 12, behavior: "smooth" });
     heading.setAttribute("tabindex", "-1");
     heading.focus({ preventScroll: true });
+  }
+
+  function guideStatus(message) {
+    ui.guideStatus.hidden = !message;
+    ui.guideStatus.textContent = message;
+  }
+
+  function guideHeading(section) {
+    return Array.from(ui.guideContent.querySelectorAll("h2"))
+      .find((heading) => heading.textContent.trim().startsWith(section));
+  }
+
+  function updateGuideSections() {
+    ui.guideSections.querySelectorAll("[data-guide-section]").forEach((button) => {
+      button.disabled = !guideHeading(button.dataset.guideSection);
+    });
+  }
+
+  function enhanceGuideCourses() {
+    for (const strong of ui.guideContent.querySelectorAll("li > strong:first-child")) {
+      if (strong.parentElement.firstChild !== strong) continue;
+      const label = strong.textContent.trim();
+      const match = label.match(/^(w\d+\.[a-z0-9-]+)(?:\s+·\s+.+)?$/);
+      const task = match && state.tasks.find((item) => item.id === match[1]);
+      if (!task) continue;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "guide-task-button";
+      button.dataset.taskId = task.id;
+      button.textContent = label;
+      button.title = "打开课程讲解：" + task.title;
+      button.addEventListener("click", () => selectGuideTask(task.id));
+      strong.replaceWith(button);
+    }
+  }
+
+  async function loadLearningGuide() {
+    if (state.guideMarkdown !== null) return true;
+    if (state.guideRequest) return state.guideRequest;
+    guideStatus("正在读取中文学习指南…");
+    ui.guideRetry.hidden = true;
+    ui.guideContent.hidden = true;
+    ui.guideContent.setAttribute("aria-busy", "true");
+    state.guideRequest = (async () => {
+      try {
+        const data = await api("/api/v1/learning-guide");
+        if (typeof data.markdown !== "string") throw new Error("指南内容不可用。");
+        state.guideMarkdown = data.markdown;
+        ui.guideContent.innerHTML = renderMarkdown(data.markdown);
+        enhanceGuideCourses();
+        updateGuideSections();
+        ui.guideContent.hidden = false;
+        guideStatus("");
+        return true;
+      } catch (error) {
+        guideStatus("指南读取失败，请重试：" + error.message);
+        ui.guideRetry.hidden = false;
+        return false;
+      } finally {
+        ui.guideContent.setAttribute("aria-busy", "false");
+        state.guideRequest = null;
+      }
+    })();
+    return state.guideRequest;
+  }
+
+  async function openLearningGuide(opener) {
+    if (!ui.guideDialog.open) {
+      state.guideOpener = opener || ui.guideButton;
+      state.guideSession += 1;
+      if (state.guideMarkdown !== null) guideStatus("");
+      ui.guideDialog.showModal();
+      document.body.classList.add("guide-open");
+      ui.guideClose.focus({ preventScroll: true });
+    }
+    const session = state.guideSession;
+    const loaded = await loadLearningGuide();
+    if (loaded && ui.guideDialog.open && session === state.guideSession && state.guideOpener === ui.welcomeGuide) {
+      jumpToGuideSection("第一次使用", { focus: false, behavior: "auto" });
+    }
+    return loaded;
+  }
+
+  function closeLearningGuide(courseSelected = false) {
+    if (!ui.guideDialog.open) return;
+    const opener = state.guideOpener === ui.welcomeGuide && ui.welcome.hidden ? ui.guideButton : state.guideOpener;
+    const focusTarget = courseSelected ? ui.taskTitle : opener || ui.guideButton;
+    state.guideOpener = null;
+    state.guideSession += 1;
+    ui.guideDialog.close();
+    document.body.classList.remove("guide-open");
+    focusTarget.focus({ preventScroll: !courseSelected });
+  }
+
+  function jumpToGuideSection(section, options = {}) {
+    const heading = guideHeading(section);
+    if (!heading) return;
+    const offset = heading.getBoundingClientRect().top - ui.guideContent.getBoundingClientRect().top;
+    ui.guideContent.scrollTo({ top: ui.guideContent.scrollTop + offset - 12, behavior: options.behavior || "smooth" });
+    heading.setAttribute("tabindex", "-1");
+    if (options.focus !== false) heading.focus({ preventScroll: true });
+  }
+
+  async function selectGuideTask(taskId) {
+    if (!ui.guideDialog.open) return false;
+    const session = state.guideSession;
+    const wasBusy = state.busy;
+    guideStatus("正在打开课程讲解…");
+    const selected = await selectTask(taskId, { focusEditor: false });
+    if (!ui.guideDialog.open || session !== state.guideSession) return selected;
+    if (selected) closeLearningGuide(true);
+    else guideStatus(wasBusy ? "当前课程正在处理，请等待完成后再打开课程。" : state.dirtyFiles.size
+      ? "当前代码未能保存，课程尚未切换。关闭指南后可检查保存状态，再重试。"
+      : "课程暂未打开，请稍后重试。当前学习内容已保留。");
+    return selected;
   }
 
   function disposeEditorModels() {
@@ -1072,7 +1200,7 @@
     return true;
   }
 
-  async function loadFile(path) {
+  async function loadFile(path, options = {}) {
     if (!state.task || !state.workspaceReady || !state.files.some((file) => file.path === path)) return false;
     const taskId = state.task.id;
     const request = ++state.fileRequest;
@@ -1102,14 +1230,16 @@
     ui.checkButton.disabled = false;
     updateDirtyState();
     renderFileTabs();
-    if (state.editorInstance) state.editorInstance.focus();
-    else ui.editor.focus();
+    if (options.focusEditor !== false) {
+      if (state.editorInstance) state.editorInstance.focus();
+      else ui.editor.focus();
+    }
     rememberLearningPosition();
     if (!state.navigatingTask) writeLearningLocation();
     return true;
   }
 
-  async function loadWorkspaceFiles(preferredFile = state.preferredFile) {
+  async function loadWorkspaceFiles(preferredFile = state.preferredFile, options = {}) {
     if (!state.task) return false;
     const data = await api("/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/files");
     state.files = data.files || [];
@@ -1136,7 +1266,7 @@
     }
     const preferred = state.files.find((file) => file.path === preferredFile);
     const active = state.files.find((file) => file.path === state.activeFile);
-    const opened = await loadFile((preferred || active || state.files[0]).path);
+    const opened = await loadFile((preferred || active || state.files[0]).path, options);
     if (!opened) throw new Error("源文件暂未加载，请重试打开工作区。");
     if (preferredFile && !preferred) toast("上次或链接中的文件不可用，已打开本课可用文件。");
     state.preferredFile = state.activeFile;
@@ -1268,7 +1398,7 @@
       ui.startButton.textContent = locked ? "完成前置任务后解锁" :
         task.state === "PASSED" ? "打开学习工作区  →" : "开始 / 继续学习  →";
       if (["IN PROGRESS", "NEEDS WORK", "STALE", "PASSED"].includes(task.state)) {
-        try { await loadWorkspaceFiles(); }
+        try { await loadWorkspaceFiles(state.preferredFile, { focusEditor: options.focusEditor }); }
         catch (error) { showWorkspaceError(error); }
       }
       rememberLearningPosition();
@@ -2124,6 +2254,17 @@
 
   function bindEvents() {
     ui.search.addEventListener("input", renderCourseList);
+    ui.guideButton.addEventListener("click", () => openLearningGuide(ui.guideButton));
+    ui.welcomeGuide.addEventListener("click", () => openLearningGuide(ui.welcomeGuide));
+    ui.guideClose.addEventListener("click", () => closeLearningGuide());
+    ui.guideDialog.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      closeLearningGuide();
+    });
+    ui.guideRetry.addEventListener("click", loadLearningGuide);
+    ui.guideSections.querySelectorAll("[data-guide-section]").forEach((button) => {
+      button.addEventListener("click", () => jumpToGuideSection(button.dataset.guideSection));
+    });
     ui.editorFallbackButton.addEventListener("click", () => {
       if (state.editorFallback) state.editorFallback();
     });
@@ -2151,7 +2292,7 @@
     });
     ui.historyClose.addEventListener("click", () => { ui.historyPanel.hidden = true; });
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && !ui.historyPanel.hidden) {
+      if (event.key === "Escape" && !ui.guideDialog.open && !ui.historyPanel.hidden) {
         event.preventDefault();
         ui.historyPanel.hidden = true;
         ui.historyButton.focus();

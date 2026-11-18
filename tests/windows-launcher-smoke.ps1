@@ -121,7 +121,7 @@ foreach ($distro in @("Ubuntu-22.04", "Ubuntu-24.04")) {
         throw "The CLI mode did not preserve the WSL argument vector for $distro."
     }
     $cliCommand = $cliArgs[5]
-    $cliPattern = $bootstrapPattern -replace "''1'' ''1''$", "''0'' ''0''$"
+    $cliPattern = $bootstrapPattern -replace "'1' '1'$", "'0' '0'$"
 
 Write-Host "Supported launcher distributions: Ubuntu-22.04 and Ubuntu-24.04"
 Write-Host "Linux path transport: ~/work/Cpp App Lab"

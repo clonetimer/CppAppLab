@@ -38,6 +38,8 @@ jobs:
           node --check web/ui/app.js
           node --test tests/test_web_guidance_state.cjs tests/test_web_editor_loading.cjs tests/test_web_markdown_tables.cjs
           bash -n scripts/start-web-workbench.sh
+          bash -n tests/test_windows_browser_open.sh
+          bash tests/test_windows_browser_open.sh
       - name: Install C++ development toolchain
         run: |
           sudo apt-get -o Acquire::Retries=3 update

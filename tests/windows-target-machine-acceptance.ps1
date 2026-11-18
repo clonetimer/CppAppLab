@@ -81,25 +81,37 @@ try {
     $transcriptStarted = $true
 
     Write-Host "[RUN] Invoking the actual Windows double-click launcher entry."
-    & $launcherPath -Distro $Distro -RepoPath $RepoPath
+    $launcherOutput = @(& $launcherPath -Distro $Distro -RepoPath $RepoPath 2>&1)
     $launcherExit = $LASTEXITCODE
+    foreach ($line in $launcherOutput) { Write-Host $line }
     Assert-Condition ($launcherExit -eq 0) "Windows launcher exited with code $launcherExit. Inspect $transcriptPath."
 
-    $health = Invoke-RestMethod -Uri "http://127.0.0.1:8765/api/v1/health" -Method Get -TimeoutSec 8
+    $launcherText = $launcherOutput -join "`n"
+    $urlMatch = [regex]::Match($launcherText, 'http://127[.]0[.]0[.]1:(?<Port>[0-9]{1,5})/?')
+    Assert-Condition $urlMatch.Success "The launcher did not report its loopback workbench URL. Inspect $transcriptPath."
+    $port = [int]$urlMatch.Groups["Port"].Value
+    Assert-Condition ($port -ge 1 -and $port -le 65535) "The launcher reported an invalid workbench port: $port."
+    $serviceUrl = "http://127.0.0.1:$port/"
+    $healthUrl = "http://127.0.0.1:$port/api/v1/health"
+
+    $health = Invoke-RestMethod -Uri $healthUrl -Method Get -TimeoutSec 8
     Assert-Condition ($health.status -eq "ok") "Workbench health status is not ok."
-    Assert-Condition ($health.service -eq "CppAppLab") "Port 8765 is not serving the CppAppLab service."
+    Assert-Condition ($health.service -eq "CppAppLab") "The reported port is not serving the CppAppLab service."
     Assert-Condition ([int]$health.task_count -eq 23) "Expected 23 registered learning tasks; received $($health.task_count)."
 
-    $page = Invoke-WebRequest -Uri "http://127.0.0.1:8765/" -UseBasicParsing -TimeoutSec 8
+    $page = Invoke-WebRequest -Uri $serviceUrl -UseBasicParsing -TimeoutSec 8
     Assert-Condition ([int]$page.StatusCode -eq 200) "The browser workbench page did not return HTTP 200."
     Assert-Condition ($page.Content -match "CppAppLab") "The served page does not identify CppAppLab."
 
+    $browserOpened = $launcherText.Contains("[PASS] Opened the workbench in the Windows default browser.")
+    $browserFallback = $launcherText.Contains("[PASS] Opened the workbench with wslview.")
+    Assert-Condition $browserOpened "The Windows default-browser interop was not confirmed. wslview fallback=$browserFallback. Check WSL interop and retry."
+    Write-Host "[ACTION REQUIRED] Confirm that the Windows default browser visibly opened the CppAppLab welcome page."
+    $visualConfirmation = (Read-Host "Is the CppAppLab workbench visible in the Windows browser? Enter Y to confirm").Trim().ToUpperInvariant()
+    Assert-Condition ($visualConfirmation -eq "Y") "Visual browser confirmation was not provided; target-machine acceptance remains incomplete."
+
     Stop-Transcript | Out-Null
     $transcriptStarted = $false
-    $transcriptText = Get-Content -LiteralPath $transcriptPath -Raw
-    $browserOpened = $transcriptText.Contains("[PASS] Opened the workbench in the Windows default browser.")
-    $browserFallback = $transcriptText.Contains("[PASS] Opened the workbench with wslview.")
-    Assert-Condition $browserOpened "The Windows default-browser interop was not confirmed. wslview fallback=$browserFallback. Check WSL interop and retry."
 
     $evidence = [ordered]@{
         schema = "cppapplab.p8e.target-machine.v1"
@@ -111,12 +123,13 @@ try {
         wsl_version = 2
         ubuntu_version = $ubuntuParts[1]
         repository_path = $RepoPath
-        service_url = "http://127.0.0.1:8765/"
+        service_url = $serviceUrl
         health_status = $health.status
         service_identity = $health.service
         registered_task_count = [int]$health.task_count
         page_http_status = [int]$page.StatusCode
         windows_default_browser_opened = $browserOpened
+        windows_browser_visible_confirmed_by_user = $true
         transcript = (Split-Path -Leaf $transcriptPath)
         note = "The workbench is intentionally left running. This test does not stop the service or modify learner workspaces."
     }

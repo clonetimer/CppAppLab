@@ -253,3 +253,12 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 ## 13. Keep Pimpl starter code compilable while preserving the TODO
 
 When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that throws before `Impl` is defined can fail to compile: exception cleanup instantiates the member destructor and requires the pointee type to be complete. Define a minimal `Impl` in the starter translation unit before the throwing constructor. The application should compile and then report the intentional TODO at runtime; do not let an incomplete-type error masquerade as a learner implementation failure.
+
+## 31. Audit lesson usability structurally, but never turn headings into a comprehension score
+
+- Generate a lesson audit from the authoritative `course/tasks.tsv` so lesson paths, hint paths, source files, acceptance kinds and prerequisites cannot drift from the course catalog.
+- Record observable structural signals separately: task-first entry, goal, concrete steps, mental model, common-error guidance, success criteria and hint-file presence.
+- Mark learner comprehension as `NOT_TESTED` until an actual learner walkthrough or moderated review is performed. A heading or keyword match is only a review cue, not a PASS.
+- Publish the audit as a CI artifact beside the course matrix and screenshots. This makes missing teaching scaffolding visible without pretending to measure teaching quality automatically.
+- Use the audit to prioritize human review: start with lessons missing a first action, an understandable success criterion or a path from the first working example to advanced edge cases.
+

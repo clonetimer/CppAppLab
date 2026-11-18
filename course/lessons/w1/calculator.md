@@ -105,6 +105,13 @@ The learner's own build files and tests are not used as the acceptance authority
 2. Why should division by zero be represented as an error rather than returning an arbitrary numeric value?
 3. Why does the platform compile against its own copy of the interface header?
 
+## Troubleshooting
+
+- **The linker reports an undefined reference to `calculate`.** Compare its definition with `include/calculator.hpp`, including the namespace and parameter types. Use the build command above with both `src/calculator.cpp` and `src/main.cpp`, then rebuild.
+- **Every operation prints `0`.** Inspect the starter's `return {}` in `src/calculator.cpp`: it supplies a default result without doing arithmetic. Implement one operation first and check both `Result::value` and `Result::error` before adding the others.
+- **`divide 1 0` exits with code 3.** Read its diagnostic: `error: division by zero` is the expected CLI behavior. If it prints an ordinary number instead, inspect the division branch and return the declared error through `Result`.
+- **The four CLI commands work but the invalid-operation test fails.** The CLI rejects unknown words before calling `calculate`, while the fixed test passes `static_cast<Operation>(99)` directly. Inspect the function's handling of values outside the four named operations and return `Error::InvalidOperation` for them.
+
 ## Acceptance
 
 - [ ] The implementation compiles as C++17 with warnings treated as errors.

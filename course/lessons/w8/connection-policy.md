@@ -51,6 +51,15 @@ D6-A does **not** yet reuse a TCP connection. The D5 server continues calling th
 
 Do not enable Keep-Alive in the server before the lifecycle changes are implemented.
 
+## Troubleshooting
+
+Use the task's fixed checks to exercise these library functions; this workspace has no standalone server command.
+
+- **HTTP/1.0 and HTTP/1.1 choose the same default:** inspect the request's version before evaluating options. Recheck the no-header cases and HTTP/1.0 opt-in; unsupported versions must choose Close.
+- **`x-close` closes the connection or mixed-case options are missed:** inspect comma-separated tokens, whitespace and case handling. Recheck exact-token cases and ensure an actual `close` option wins over `keep-alive`.
+- **A Keep-Alive response still says close:** inspect which `serialize_response` overload the test calls. Exercise the policy-aware overload explicitly while keeping the legacy one-argument overload close-after-response.
+- **The wire contains duplicate policy headers or the wrong version:** inspect caller-provided headers and the selected response-version overload. Recheck one authoritative Connection header, computed body-byte Content-Length and the supported HTTP/1.0 or HTTP/1.1 status line.
+
 ## Acceptance
 
 The dedicated fixed fixture compiles and tests both maintained protocol copies:

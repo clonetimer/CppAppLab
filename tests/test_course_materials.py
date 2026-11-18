@@ -85,9 +85,15 @@ def main() -> int:
             raise AssertionError(f"Unbalanced Markdown code fences: {task_id}")
         if (chr(92) + code_fence) in lesson:
             raise AssertionError(f"Escaped Markdown code fence: {task_id}")
-        for level in (1, 2, 3):
-            if not re.search(r"(?m)^## Hint " + str(level) + r"\b", hints):
-                raise AssertionError(f"Missing progressive hint {level}: {task_id}")
+        hint_headings = re.findall(r"(?m)^## Hint[^\n]*$", hints)
+        hint_matches = [re.match(r"^## Hint ([1-3])(?:[ \t]|$)", heading)
+                        for heading in hint_headings]
+        hint_levels = [match.group(1) if match else None for match in hint_matches]
+        if hint_levels != ["1", "2", "3"]:
+            raise AssertionError(
+                f"Expected exactly three ordered hint levels (1, 2, 3): {task_id}; "
+                f"found {hint_headings}"
+            )
 
         if kind == "cmake_gtest":
             fixture = ROOT / fixture_path

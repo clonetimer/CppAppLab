@@ -69,6 +69,37 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
                 return json.loads(raw.decode("utf-8"))
             return raw.decode("utf-8")
 
+    def test_catalog_hints_match_cli_without_writing_progress(self) -> None:
+        def progress_snapshot() -> dict[str, bytes]:
+            return {
+                str(path.relative_to(self.state_root)): path.read_bytes()
+                for path in self.state_root.rglob("*") if path.is_file()
+            }
+
+        before = progress_snapshot()
+        for task in self.server.tasks:
+            # A disposable catalog marker is enough for read-only hint lookup.
+            # This does not unlock, run or accept any learner task.
+            workspace = self.base / "hint-workspaces" / task["id"]
+            workspace.mkdir(parents=True)
+            marker = workspace / ".cppapplab-workspace"
+            marker_text = f"CppAppLab Workspace v1\ntask_id={task['id']}\n"
+            marker.write_text(marker_text, encoding="utf-8")
+            for level in (1, 2, 3):
+                with self.subTest(task=task["id"], level=level):
+                    cli = subprocess.run(
+                        [os.environ["CPPAPPLAB_TEST_BINARY"], "hint", str(workspace), str(level)],
+                        env=self.server.child_env, capture_output=True, text=True,
+                        encoding="utf-8", timeout=10,
+                    )
+                    self.assertEqual(cli.returncode, 0, cli.stderr)
+                    browser = self.request(f"/api/v1/tasks/{task['id']}/hints/{level}")
+                    self.assertTrue(browser["markdown"].strip())
+                    self.assertEqual(cli.stdout.strip(), browser["markdown"].strip())
+            self.assertEqual(marker.read_text(encoding="utf-8"), marker_text)
+            self.assertEqual(list(workspace.iterdir()), [marker])
+        self.assertEqual(progress_snapshot(), before)
+
     def test_local_launcher_start_status_stop(self) -> None:
         runtime_dir = self.base / "runtime"
         state_dir = self.base / "state"

@@ -146,6 +146,13 @@ The learner's own build files and tests are not used as the acceptance authority
 4. What can go wrong if the program writes directly to the destination file and is interrupted halfway through?
 5. Why does a version header make future file-format changes easier to manage?
 
+## Troubleshooting
+
+- **Even `list` stops with `not implemented`.** Inspect `load` in `src/todo.cpp`: the supplied `main` calls it before dispatching any command. Complete its missing-file behavior first; a file that does not yet exist must load successfully as an empty list.
+- **An added task disappears on the next invocation.** Check that both commands use the same `CPPAPPLAB_TODO_FILE` path, then inspect `save` and the file it wrote. Retry the shown add/list sequence with one test path and verify the version header and saved record.
+- **Adding after a removal chooses a duplicate ID.** Inspect `next_id`; the list size is not the largest ID. Try existing IDs 2, 9 and 4: the next ID must be 10. Also check the empty-list and exhausted-ID cases before retrying the CLI.
+- **A malformed file replaces some or all existing items.** Inspect where `load` changes its caller's list. Keep parsing and validation in temporary state, and publish only after the whole file succeeds. Retest with one valid record followed by a malformed record and confirm the original list survives.
+
 ## Acceptance
 
 - [ ] The next ID is one greater than the maximum existing ID, with overflow handled.

@@ -94,6 +94,13 @@ The fixed acceptance fixture validates the learner implementation, not learner-c
 6. How does `eventfd` allow another thread to request shutdown without closing descriptors concurrently?
 7. Compare thread-per-connection, select, poll and epoll in terms of scheduling, descriptor management and scaling.
 
+## Troubleshooting
+
+- **Sending `MSG` appears to do nothing.** Check registration and which client you are observing. Register two distinct nicknames, terminate each command with a newline, and read the message from the other registered client: chat deliberately does not echo it to its sender.
+- **A split command fails, or two commands in one write lose a message.** Inspect the per-client input buffer. Retain an incomplete line, process every complete line, and keep the remaining suffix. In a test, retry `NI` followed by `CK alice\n`, then two complete commands in one write.
+- **A slow reader stalls other clients or drives a busy loop.** Inspect the pending-output queue and epoll interest flags. Preserve unsent bytes after a partial send, return to epoll on `EAGAIN/EWOULDBLOCK`, and enable `EPOLLOUT` only while bytes remain. Disconnect a client whose queued bytes would exceed `max_pending_bytes`.
+- **`request_stop` leaves the event-loop test waiting.** Inspect the stop-channel registration and `TODO(W7-CHAT-4)`. Changing a flag alone does not wake `epoll_wait`; write to the registered `eventfd`, let the loop exit, and complete cleanup before destroying its descriptors.
+
 ## Acceptance
 
 - [ ] Multiple clients can register concurrently.

@@ -240,3 +240,12 @@ The authoritative catalog contains 23 registered W1–W9 tasks:
 
 **P8-C is closed as a merged implementation milestone.** Continue the main product line with tutorial usability and learner success, not more P8 phase splitting.
 
+## Tutorial usability follow-up
+
+- All 23 registered lessons include task-specific Troubleshooting guidance: a symptom, the relevant API or boundary, and a concrete next action.
+- Seven hint documents are normalized to the existing three-level CLI/browser contract. Their deeper topics remain available inside Hint 3; Hint 1/2 and all substantive guidance are preserved.
+- A real-engine integration check compares all 69 CLI/API hint bodies and verifies that reading hints does not write progress or alter workspaces. The content gate also rejects extra, duplicate or out-of-order top-level hint levels.
+- The Chinese learning guide explains how to use task-specific recovery sections and the shared progressive hints.
+- Tutorial wording follows the released starter and fixture behavior, including supplied examples, exact Router matching, GET-only static files and caller-owned incremental parser buffers.
+- These changes preserve formal acceptance and the P8-C closeout. Structural checks remain review aids; learner comprehension is still NOT_TESTED.
+

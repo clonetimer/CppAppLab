@@ -54,6 +54,15 @@ An incomplete request at EOF receives 400 and closes. A pipeline exceeding the c
 
 The D5 acceptance fixture and CLI smoke explicitly send Connection: close. This preserves the D5 one-request regression contract while D6-B adds persistent-connection behavior in a separate fixed fixture.
 
+## Troubleshooting
+
+The fixed loopback checks drive this library task; use their failing case names to trace connection state.
+
+- **The second request hangs:** inspect the retained read buffer, parser `consumed` count and EPOLLIN state after the first full response. Recheck sequential and fragmented requests, including bytes already buffered before reads resume.
+- **Pipelined responses arrive out of order:** compare the next handler's dispatch time with completion of the current response write. Recheck the ordering case with only one request processing or response writing per connection.
+- **HTTP/1.0 gets the wrong version or reuse policy:** inspect the policy and version saved before moving the request to a worker. Recheck both HTTP/1.0 cases and explicit close, which discards later pipelined requests after its response.
+- **A peer half-close loses valid requests:** inspect EOF separately from buffered request completeness. Recheck pipeline draining; complete buffered requests still receive responses, while an incomplete request at EOF receives 400 and closes.
+
 ## Acceptance
 
 The dedicated loopback fixture covers:

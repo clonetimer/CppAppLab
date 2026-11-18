@@ -5,7 +5,7 @@
 If this is your first C++ exercise, do not worry about understanding every line yet.
 
 1. Open `src/main.cpp` in the workbench.
-2. Find the line that prints text. Change only the message so the output is exactly `Hello, CppAppLab!\n`.
+2. Find `TODO(W1-HELLO)` and add an output statement so the output is exactly `Hello, CppAppLab!\n`.
 3. Select **Build**. If it fails, read the first error and note its file and line.
 4. Select **Run / Test** and compare the output with the goal.
 5. Select **Formal check** only after the program behaves as expected.
@@ -77,6 +77,12 @@ After the check passes, explain in your own words:
 1. What is the difference between compiling and running?
 2. Why does the platform compare exact output instead of only checking the process exit code?
 3. What changes when you remove the newline?
+
+## Troubleshooting
+
+- **Build succeeds but nothing is printed.** Inspect `TODO(W1-HELLO)` in `src/main.cpp`: the starter only returns 0. Add the output inside `main`, then select **Build** and **Run / Test** again.
+- **Build fails after adding the output.** Read the first diagnostic in `src/main.cpp`. Check the quotation marks, the `std::cout` name and the statement's semicolon; fix that line before following later errors.
+- **The greeting looks right but Formal check fails.** Compare capitalization, punctuation and spaces with the goal, then check the final newline. Remove extra prompts or debug output, keep exactly one terminating newline, and keep the successful `return 0`.
 
 ## Acceptance
 

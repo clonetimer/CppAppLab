@@ -141,13 +141,7 @@ Resolve warnings where they identify real issues. If a warning is intentionally 
 
 ## Reproducible quality gate
 
-Run the supplied script:
-
-```bash
-./scripts/quality-check.sh
-```
-
-It performs a clean Debug build, CTest, a separate ASan/UBSan build, formatting checks, clang-tidy-enabled compilation, and an optional Valgrind pass.
+Run the commands above in order: Debug build and CTest, a separate ASan/UBSan build and test run, formatting checks, then clang-tidy-enabled compilation. Add the optional Valgrind pass if it is installed.
 
 Record the exact commands and tool versions in the README. A clean build must work from a new build directory, not only from a developer's existing cache.
 
@@ -162,6 +156,13 @@ Run:
 The fixed platform fixture runs 30 platform-owned behavior tests, your ten learner-authored tests, and one multi-process CLI workflow test: 41 tests total.
 
 The platform uses its own fixed CMake file and public headers. It compiles your learner test source but does not execute your learner CMakeLists.txt as the acceptance authority.
+
+## Troubleshooting
+
+- **The application works but ten learner tests fail with TODO messages.** Open `tests/task_manager_test.cpp` and inspect the reported `FAIL()` line. These are the intended test-writing exercises; replace one TODO with assertions about the named behavior, then rebuild and run that case.
+- **A filtered run executes zero tests.** Compare the filter with the exact suite and case name in the test source. Rebuild `build/task_manager_tests`, rerun the `TaskManagerLearnerTest.ManagerAddsAndFindsTasks` example above, and confirm it actually executes a test before running CTest.
+- **A persistence test passes alone but fails with the suite.** Inspect its file path and assumptions about existing records. Use the supplied `TemporaryDirectory` helper and create the input inside that test, so its result does not depend on another test's files or execution order.
+- **Formal check passes but a local quality step fails.** Inspect which stage failed: the fixed fixture does not run your learner CMake configuration. Reproduce that stage in its own build directory (`build`, `build-sanitize` or `build-tidy`) and address its diagnostic before rerunning the complete workflow.
 
 ## Acceptance
 

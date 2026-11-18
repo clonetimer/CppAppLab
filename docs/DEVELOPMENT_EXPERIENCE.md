@@ -119,6 +119,23 @@ These rules are intended to reduce repeated debugging, prevent false acceptance,
 - Service templates should default to loopback binding. The browser bridge must never accept a user-supplied host or port. CppAppLab is a local development workbench, not an operating-system sandbox against deliberately modified learner source.
 - A service demo, readiness check or successful HTTP response is not formal course acceptance. Only the platform's fixed `cppapplab check` operation writes acceptance evidence.
 
+## 34. Deliver progressive hints through the same reader contract in every interface
+
+- Audit the content against the actual CLI, HTTP API and UI level limits. Seven courses contained Hint 4–10 even though both user-facing interfaces expose only levels 1–3. The CLI stopped Hint 3 at the next numbered heading while the web reader included the remaining text.
+- Preserve instructional material when fixing the mismatch. Keep Hint 1 and Hint 2 unchanged, group the existing deeper topics under Hint 3, and use ordinary descriptive subheadings for those topics. This retained 23 previously unreachable CLI subsections without adding more interface controls.
+- Require exactly three ordered top-level hint headings in the course-content gate. Merely finding headings 1, 2 and 3 does not detect inaccessible extra levels or duplicates.
+- Verify the public readers with the real engine and HTTP API across all 23 tasks and three levels. Reproduce the old seven mismatches before accepting the 69 corrected comparisons; compare meaningful bodies while allowing the web reader's surrounding-whitespace trimming.
+- Keep hint lookup read-only. Disposable test markers may identify a task, but no progress record, source edit, prerequisite unlock or formal PASS should result from reading guidance.
+
+## 35. Give each lesson a concrete recovery path grounded in its released task
+
+- Describe the symptom, the specific interface or boundary to inspect, and one next action. Read the provided starter, command-line front end and fixed fixture before writing advice; a generic troubleshooting heading is not enough.
+- Distinguish implemented examples, intentional learner TODOs and platform failures. Do not tell a learner to implement a nonexistent TODO or run a missing helper script.
+- Keep each milestone's scope precise: the initial static-file task is GET-only; the Router matches exact method/path pairs; incremental parsing reads a caller-owned accumulated buffer. Later course capabilities must not leak into earlier task instructions.
+- For library/test-focused tasks, direct learners to the registered fixture and API rather than inventing a standalone application workflow. Preserve the existing formal acceptance criteria while making recovery easier to follow.
+- Use elements the actual lesson renderer supports. In this workbench, headings, inline code and bullet lists render directly; task-specific recovery guidance should not depend on unsupported tables.
+- Keep structural coverage separate from learner outcomes. All 23 lessons can have actionable recovery sections while learner comprehension remains NOT_TESTED until observed with learners.
+
 ## 32. Finish an authorized milestone and keep its evidence and status consistent
 
 - Preserve an explicit user instruction to merge completed, verified work. Carry the existing PR through review, its required CI and the actual merge; do not repeatedly stop for the same acceptance permission. Handle later usability feedback as follow-up work.

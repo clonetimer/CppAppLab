@@ -42,6 +42,15 @@ The shutdown deadline bounds connection draining, not arbitrary user-handler exe
 - Idle Keep-Alive connections close silently.
 - A response already partially written is completed if possible, then the socket is closed. Once part of a header has reached the peer, the server cannot safely rewrite the bytes already sent; TCP EOF still terminates the connection.
 
+## Troubleshooting
+
+The fixed loopback checks call the library's stop/join lifecycle; this task does not provide a separate server executable.
+
+- **Stop leaves the Reactor asleep or still accepting:** inspect `request_stop()`, its eventfd wakeup and the Reactor's listener cleanup. Recheck the idle-connection case with the shutdown transition performed by the socket-owning thread.
+- **Incomplete and in-flight requests get the same shutdown result:** inspect whether parsing completed and a worker owns the request. Recheck all three states: idle closes silently, incomplete bytes receive 503, and accepted handler work may finish normally.
+- **An unsent response still advertises reuse:** inspect its pending connection policy and write offset at shutdown. Recheck forced-close handling before bytes are sent; a partially sent header cannot be rewritten, so close after draining the response where possible.
+- **`run()` outlasts `shutdown_timeout`:** inspect remaining sockets and submitted worker jobs separately. Recheck the deadline case with a bounded handler; the deadline closes sockets, while completions must still drain and workers must finish before joining.
+
 ## Acceptance
 
 The fixed loopback fixture covers:

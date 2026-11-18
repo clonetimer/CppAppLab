@@ -11,7 +11,7 @@ Decode one chunked body by following its framing.
 5. Recognize the zero-size final chunk and parse trailers.
 6. Test invalid sizes, missing CRLF and body-size limits.
 
-**Mental model:** chunked encoding frames the body when its final length is not known in advance. TCP may split every part, so the decoder must preserve state between calls.
+**Mental model:** chunked encoding frames the body when its final length is not known in advance. TCP may split every part; the caller retains and extends the accumulated buffer, and the stateless parser examines it on each call.
 
 
 ## Goal
@@ -88,6 +88,15 @@ Implement the chunked framing branch in the parser. Preserve the W8 request mode
 6. Why should trailers not silently overwrite request headers?
 7. Why must consumed stop before the next pipelined request?
 8. Why does an incomplete trailer block return NeedMoreData?
+
+## Troubleshooting
+
+Use the fixed parser checks for this library task; no standalone parser application is staged.
+
+- **Fragmented chunks fail or duplicate payload bytes:** inspect the complete buffer passed to each `parse` call. Retain prior bytes while awaiting more input, and recheck split size/data/terminator cases with `NeedMoreData` and zero consumed bytes.
+- **Decoded data contains metadata or loses binary bytes:** inspect the hexadecimal size and payload boundary before its CRLF. Recheck binary payloads and embedded CRLF, counting exact payload bytes rather than reading data as lines.
+- **The following request disappears or trailers overwrite headers:** inspect the cursor through the zero chunk and final empty trailer line. Recheck consumed-byte and trailer cases, validating duplicate/forbidden fields without merging trailers into request headers.
+- **Ambiguous or oversized input is accepted:** inspect Content-Length plus Transfer-Encoding, HTTP version and the coding value. Recheck their rejection cases alongside decoded-body, chunk-line and trailer limits; W9 accepts only the bounded HTTP/1.1 chunked profile.
 
 ## Acceptance
 

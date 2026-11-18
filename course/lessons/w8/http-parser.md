@@ -107,6 +107,13 @@ The fixed fixture tests complete GET/POST requests, partial headers and bodies, 
 9. Why can a single input buffer contain two complete requests?
 10. Why should the caller loop until NeedMoreData?
 
+## Troubleshooting
+
+- **A fragmented request fails or never completes:** inspect the caller's accumulated buffer, `\r\n\r\n` and the declared body length. Call `parse` with all bytes received so far; incomplete input must retain the buffer and report `consumed == 0`.
+- **A second request disappears or body bytes become headers:** compare `consumed` with the first request's wire length. Recheck the pipeline and body-containing-CRLFCRLF cases, removing only the completed request's prefix.
+- **A familiar-looking header is rejected:** inspect HTTP version, Host, duplicate names and whitespace before the colon. Correct the input against this task's rules; HTTP/1.1 needs Host, and Transfer-Encoding remains unsupported here.
+- **Content-Length or size-boundary checks fail:** inspect the entire numeric value, including signs and trailing characters, and count header terminator bytes. Recheck strict decimal parsing and the 16 KiB header / 1 MiB body limits without raising them.
+
 ## Acceptance
 
 - [ ] Complete GET and POST requests parse correctly.

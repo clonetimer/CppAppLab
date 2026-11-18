@@ -8,7 +8,7 @@ Connect one parsed request to one response before studying the complete router.
 2. Read the returned status, headers and body.
 3. Serialize the response and inspect the exact HTTP bytes.
 4. Try a known file, a missing file and a directory index.
-5. Compare GET and HEAD: HEAD returns the same response metadata but no body.
+5. Compare GET and HEAD: this task permits GET only, so HEAD returns 405 with `Allow: GET`.
 6. Test binary content and unsafe paths.
 
 **Mental model:** parsing turns bytes into a request object; a handler turns that object into a response object; serialization turns the response back into bytes. Each step has one responsibility.
@@ -84,6 +84,13 @@ The fixed fixture covers root-to-index mapping, binary file reads, MIME types, u
 8. What is path traversal?
 9. Why should epoll/network code not perform file I/O and MIME selection?
 10. Which layer owns parsing, static-file handling, response serialization and socket I/O?
+
+## Troubleshooting
+
+- **`GET /` returns 404:** inspect the current working directory and `www/index.html`; the demonstration CLI uses a relative document root. Put a known file there and retry `handle GET /` before investigating MIME selection.
+- **HEAD or POST returns 405:** inspect the request method and `Allow` header. This stage is GET-only; compare with `handle GET /` and preserve the fixed non-GET rejection behavior.
+- **Binary bytes or Content-Length differ:** inspect file-open mode and the body's byte length before serialization. Recheck the binary-file and UTF-8 cases, avoiding line-based reads or C-string length calculations.
+- **A query changes lookup or triggers traversal rejection:** inspect the path before the first `?`. Separate it from the query before applying this stage's conservative path checks; recheck the query-value case containing `..`.
 
 ## Acceptance
 

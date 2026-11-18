@@ -77,6 +77,15 @@ Metrics are cumulative except gauges (`active_connections`, `persistent_connecti
 
 The snapshot is thread-safe per field but is not a transactional cross-counter snapshot: values may advance between individual atomic loads.
 
+## Troubleshooting
+
+Use the fixed loopback checks and their captured log sink to inspect this library task's output.
+
+- **Response counters advance before delivery finishes:** inspect where the write offset reaches the serialized response length. Recheck completed-response accounting; a worker completion or a partial write is not yet a completed response.
+- **Logs contain query values or exception details:** inspect path extraction and handler-failure formatting. Recheck redaction with a query-bearing request and a throwing handler; retain `query_present`, omit headers/bodies and avoid raw exception text.
+- **A custom sink corrupts logs or breaks requests:** inspect the temporary `std::string_view` lifetime and exception path. Copy retained lines, keep callbacks non-blocking, and recheck that a throwing sink increments `log_sink_failures` without changing the response.
+- **Connection or job gauges never return to zero:** inspect actual socket retirement and completion draining, including rejected/stale work. Recheck the Keep-Alive and queue-pressure cases after activity settles; cumulative counters should not be reset with gauges.
+
 ## Acceptance
 
 The fixed loopback fixture covers:

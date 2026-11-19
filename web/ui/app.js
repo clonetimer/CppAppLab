@@ -1860,8 +1860,9 @@
   async function refreshServiceStatus(silent = false, triggerButton = ui.serviceRefreshButton) {
     if (!state.task || !state.task.service_profile || (state.busy && !silent)) return;
     const taskId = state.task.id;
-    if (!silent) setBusy(true, "正在刷新网络服务状态…", triggerButton, "刷新中…");
+    if (!silent && triggerButton && triggerButton.dataset.pending === "true") return null;
     const request = ++state.serviceRequest;
+    if (!silent) setButtonPending(triggerButton, "刷新中…");
     try {
       const snapshot = await api(
         "/api/v1/workspaces/" + encodeURIComponent(taskId) + "/service/status"
@@ -1874,7 +1875,7 @@
       if (!silent) toast(error.message);
       return null;
     } finally {
-      if (!silent) setBusy(false);
+      if (!silent) clearButtonPending(triggerButton);
     }
   }
 

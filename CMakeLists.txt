@@ -118,6 +118,9 @@ if(BUILD_TESTING)
         endif()
     endif()
 
+    add_executable(cppapplab_process_test_child tests/process_test_child.cpp)
+    target_link_libraries(cppapplab_process_test_child PRIVATE cppapplab_build_options)
+
     add_executable(
         cppapplab_tests
         tests/smoke_test.cpp
@@ -142,6 +145,12 @@ if(BUILD_TESTING)
         tests/http_server_workflow_test.cpp
     )
     target_link_libraries(cppapplab_tests PRIVATE cppapplab_core GTest::gtest_main)
+    target_compile_definitions(
+        cppapplab_tests
+        PRIVATE
+        "CPPAPPLAB_PROCESS_TEST_CHILD=\\"$<TARGET_FILE:cppapplab_process_test_child>\\""
+    )
+    add_dependencies(cppapplab_tests cppapplab_process_test_child)
 
     include(GoogleTest)
     gtest_discover_tests(cppapplab_tests)

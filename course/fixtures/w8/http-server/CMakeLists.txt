@@ -60,6 +60,7 @@ target_compile_options(http-server PRIVATE -Wall -Wextra -Wpedantic -Wshadow -We
 
 if(BUILD_TESTING)
     find_package(GTest CONFIG REQUIRED)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
     add_executable(http_server_acceptance_tests tests/http_server_acceptance_test.cpp)
     target_link_libraries(http_server_acceptance_tests PRIVATE http_server_core GTest::gtest_main)

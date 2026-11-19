@@ -641,7 +641,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 
 /* Reserve a real bottom region for the console so it never covers editor controls. */
 :root {
-  --console-dock-height: 420px;
+  --console-dock-height: 460px;
 }
 
 .main-layout:has(#workbench-panel:not([hidden])) {
@@ -713,7 +713,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 
 @media (max-width: 820px) {
   :root {
-    --console-dock-height: min(420px, 60vh);
+    --console-dock-height: min(460px, 60vh);
   }
   .main-layout:has(#workbench-panel:not([hidden])) {
     height: calc(100vh - 68px - var(--console-dock-height));

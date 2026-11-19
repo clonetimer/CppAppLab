@@ -586,8 +586,10 @@ async function main() {
     assert.ok(consoleOutputGeometry.height >= 360,
       "The default terminal viewport has room for at least twenty output lines: " +
       JSON.stringify(consoleOutputGeometry));
-    assert.ok(consoleMetrics.fontSize >= 12 && consoleMetrics.lineHeight >= 17,
+    assert.ok(consoleOutputGeometry.fontSize >= 12 && consoleOutputGeometry.lineHeight >= 17,
       "The terminal keeps readable output text rather than shrinking its font");
+    assert.ok(Math.floor((consoleOutputGeometry.height - 24) / consoleOutputGeometry.lineHeight) >= 20,
+      "The terminal's visible text area can show twenty lines without scrolling");
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-2-console-after.png"),
       fullPage: false

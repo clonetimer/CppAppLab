@@ -794,6 +794,20 @@ async function main() {
       mobileDockViewportRect.top >= -1,
       "Mobile terminal stays inside the viewport: " + JSON.stringify(mobileDockViewportRect));
 
+    const mobileActions = page.locator("#editor-actions-group");
+    await mobileActions.locator("summary").click();
+    const mobileActionHeights = await mobileActions.locator(".editor-actions button").evaluateAll((buttons) =>
+      buttons.map((button) => ({ id: button.id, height: button.getBoundingClientRect().height }))
+    );
+    assert.ok(mobileActionHeights.length >= 4 &&
+      mobileActionHeights.every((button) => button.height >= 44),
+      "Mobile editor actions keep 44px touch targets: " + JSON.stringify(mobileActionHeights));
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-3-buttons-mobile-after.png"),
+      fullPage: true
+    });
+    await mobileActions.locator("summary").click();
+
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-2-console-mobile-after.png"),
       fullPage: true

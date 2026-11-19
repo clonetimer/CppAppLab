@@ -1,5 +1,7 @@
 # CppAppLab
 
+> **Platform direction update (2026-11-19):** The product target is now **native Windows 11 only**. Migration is in progress; the current `main` implementation still requires Ubuntu 22.04/24.04 under WSL2 and is **not yet Windows-native**. `Start-CppAppLab.cmd` currently hands off to WSL, and the existing Windows CI does not build the C++ product natively. See the [Windows-native migration inventory](docs/WINDOWS_NATIVE_MIGRATION_INVENTORY.md) and ADR-0007 in [architecture decisions](docs/DECISIONS.md).
+
 **CppAppLab** is a hands-on C++ learning and engineering-practice platform. It takes a learner from the first C++ program to maintainable Linux systems software, concurrent programs, TCP services, and an HTTP/1.1 server.
 
 ## 开始学习：先看课程，再做练习
@@ -24,7 +26,7 @@ bash scripts/start-web-workbench.sh
 
 当前发布范围为 W1–W9 已实现任务；W9-A4/A5 及 W10–W12 尚处于路线图中。环境要求与部署说明保留在后文，供确有需要时查询。
 
-## First-version baseline
+## Current implementation baseline (legacy during Windows-native migration)
 
 - **Host:** Windows 11 with WSL2
 - **Linux:** Ubuntu 22.04 LTS or Ubuntu 24.04 LTS
@@ -37,7 +39,7 @@ bash scripts/start-web-workbench.sh
 - **Quality:** compiler warnings, clang-format, clang-tidy, ASan and UBSan
 - **CI:** GitHub Actions on Ubuntu
 
-Linux/POSIX topics use real Linux APIs. The first release does not claim full native MSVC parity; Windows-native compatibility can be added for portable course modules after the Linux baseline is stable.
+The values above describe the legacy implementation still present on `main`; they are not the target architecture. The accepted target is a native Windows 11 application with no WSL, Ubuntu, Bash, Linux kernel or POSIX compatibility runtime in the product path. Do not claim native Windows support until the native toolchain, runtime, learner package and all 23 task contracts pass the Windows acceptance gates.
 
 ## Current learning tasks
 
@@ -106,7 +108,7 @@ Set `CPPAPPLAB_STATE_DIR` to move this state directory. The course catalog is ma
 | W8 | HTTP/1.1, parser, response, routing, static files, event loop | Educational HTTP server |
 | W9 | Chunked transfer, framing safety, URL and filesystem security, parser fuzzing | Hardened HTTP protocol stack |
 
-The detailed course map and acceptance boundaries live in [course/CURRICULUM.md](course/CURRICULUM.md). W2's Todo task exercises STL algorithms and durable file I/O through a cumulative command-line application.
+The detailed course map and acceptance boundaries live in [course/CURRICULUM.md](course/CURRICULUM.md). The platform migration will retain all 23 task outcomes while replacing Linux-specific implementation exercises with equivalent Windows-native APIs; tasks and formal acceptance must not be removed or weakened. W2's Todo task exercises STL algorithms and durable file I/O through a cumulative command-line application.
 
 ## Project principles
 
@@ -115,7 +117,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 3. **Fixed acceptance contracts.** Platform-owned tests validate behavior; learner tests and build files are not the authority for acceptance.
 4. **Hints do not replace implementation.** Learners can request progressive hints, implement the task, and rerun checks.
 5. **Evidence is reproducible.** A check records compiler output, toolchain metadata, source fingerprint, and exit status.
-6. **No fake portability.** POSIX and Linux networking lessons use the actual Linux APIs they teach.
+6. **No fake portability.** The legacy implementation uses real Linux APIs; the Windows-native target must use real Win32, Winsock, IOCP, timer and reparse-point-safe filesystem APIs, not Bash/WSL compatibility layers or mocks.
 7. **CI is not human learning validation.** Green automation proves build/test behavior, not that a learner understands the code.
 8. **Progress survives sessions.** Workspace locations and check history are stored outside the source checkout; current PASS state is revalidated against the workspace source fingerprint.
 

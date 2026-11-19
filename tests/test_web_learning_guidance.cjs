@@ -149,7 +149,7 @@ async function position(page, taskId, filePath, content) {
 
 async function saveSource(page, content) {
   await page.locator("#source-editor").fill(content);
-  await page.locator("#save-button").click();
+  await clickWorkbenchAction(page, "#save-button");
   await page.waitForFunction(() => document.querySelector("#save-state").textContent === "已保存到本地工作区");
 }
 
@@ -158,13 +158,13 @@ async function startHello(page) {
   await page.locator("#start-button").click();
   await page.waitForFunction(() => !document.querySelector("#source-editor").disabled);
   await page.locator("#source-editor").fill(HELLO);
-  await page.locator("#save-button").click();
+  await clickWorkbenchAction(page, "#save-button");
   await page.waitForFunction(() => document.querySelector("#save-state").textContent === "已保存到本地工作区");
 }
 
 async function passHello(page) {
   await startHello(page);
-  await page.locator("#check-button").click();
+  await clickWorkbenchAction(page, "#check-button");
   // The PASS badge precedes the catalog refresh and release of the busy guard.
   await page.waitForFunction(() => {
     const calculator = document.querySelector('#course-list [data-task-id="w1.calculator"]');
@@ -247,7 +247,7 @@ async function pendingEditorFallback(environment, manual) {
   await saveSource(page, HELLO);
   const saved = await (await page.request.get(baseUrl + "/api/v1/workspaces/w1.hello-world/files/src/main.cpp")).json();
   assert.equal(saved.content, HELLO, "the recovered editor must save to the real workspace");
-  await page.locator("#check-button").click();
+  await clickWorkbenchAction(page, "#check-button");
   await page.waitForFunction(() => document.querySelector("#check-result").textContent === "PASS", null, { timeout: 30000 });
   const history = await (await page.request.get(baseUrl + "/api/v1/tasks/w1.hello-world/history")).json();
   assert.equal(history.count, 1, "fallback must remain usable through a real formal acceptance");
@@ -563,7 +563,7 @@ const cases = {
     };
     await page.route(buildRoute, holdBuild, { times: 1 });
     try {
-      await page.locator("#build-button").click();
+      await clickWorkbenchAction(page, "#build-button");
       const fetchError = await waitWithin(responseReady, 35000, "Timed out waiting for the real guide-case build response");
       if (fetchError) throw fetchError;
       const original = await learningSnapshot(page);
@@ -861,12 +861,12 @@ const cases = {
   async continuation({ page, baseUrl }) {
     await startHello(page);
     assert.match(await page.locator("#workflow-help").textContent(), /构建/);
-    await page.locator("#build-button").click();
+    await clickWorkbenchAction(page, "#build-button");
     await page.waitForFunction(() => document.querySelector("#check-result").textContent === "构建成功");
     assert.equal(await page.locator("#task-state").textContent(), "进行中");
     assert.equal(await page.locator("#workflow-action").getAttribute("data-task-id"), null,
       "build success must not advertise completion or unlock a next course");
-    await page.locator("#check-button").click();
+    await clickWorkbenchAction(page, "#check-button");
     await page.waitForFunction(() => document.querySelector("#workflow-action")?.dataset.taskId === "w1.calculator");
     await page.locator("#workflow-action").click();
     await page.waitForFunction(() => document.querySelector("#task-breadcrumb").textContent === "w1.calculator");
@@ -907,7 +907,7 @@ const cases = {
     };
     await page.route(checkRoute, holdCheck, { times: 1 });
     try {
-      await page.locator("#check-button").click();
+      await clickWorkbenchAction(page, "#check-button");
       const fetchError = await waitWithin(responseReady, 35000, "Timed out waiting for the real acceptance response");
       if (fetchError) throw fetchError;
       const locked = page.locator('#course-list [data-task-id="w2.todo-cli"]');
@@ -962,7 +962,7 @@ const cases = {
     assert.equal(await page.locator("#workflow-action").getAttribute("data-task-id"), null);
 
     await page.locator("#source-editor").fill(HELLO);
-    await page.locator("#save-button").click();
+    await clickWorkbenchAction(page, "#save-button");
     await page.waitForFunction(() =>
       document.querySelector("#save-state").textContent === "已保存到本地工作区" &&
       document.querySelector("#task-state").dataset.state === "PASSED" &&
@@ -978,7 +978,7 @@ const cases = {
 
   async recovery({ page, baseUrl }) {
     await startHello(page);
-    await page.locator("#run-button").click();
+    await clickWorkbenchAction(page, "#run-button");
     await page.waitForFunction(() => document.querySelector("#check-result").textContent === "执行失败" &&
       document.querySelector("#workflow-action").dataset.action === "build");
     assert.match(await page.locator("#console-output").textContent(), /cppapplab build <workspace-directory>/);
@@ -999,7 +999,7 @@ const cases = {
     await diagnostic.click();
     assert.equal(await editor.evaluate((element) => document.activeElement === element), true);
 
-    await page.locator("#check-button").click();
+    await clickWorkbenchAction(page, "#check-button");
     await page.waitForFunction(() => document.querySelector("#check-result").textContent === "未通过" &&
       document.querySelector("#task-state").dataset.state === "NEEDS WORK");
     assert.match(await page.locator("#console-output").textContent(), /src\/main\.cpp:1:\d+: error:.*CPPAPPLAB_FALLBACK_DIAGNOSTIC/);
@@ -1030,7 +1030,7 @@ const cases = {
     assert.equal(await editor.evaluate((element) => element.readOnly), false);
     const source = await editor.inputValue();
     await editor.fill(source + "\n// editable source still saves\n");
-    await page.locator("#save-button").click();
+    await clickWorkbenchAction(page, "#save-button");
     await page.waitForFunction(() => document.querySelector("#save-state").textContent === "已保存到本地工作区");
     const saved = await (await page.request.get(baseUrl + "/api/v1/workspaces/w3.task-manager/files/src/task.cpp")).json();
     assert.match(saved.content, /editable source still saves/);
@@ -1040,6 +1040,16 @@ const cases = {
     assert.equal(history.count, 0, "reference viewing must not accept a course");
   }
 };
+
+async function clickWorkbenchAction(page, selector) {
+  const group = selector === "#app-build-button" || selector === "#app-execute-button"
+    ? page.locator("#app-runner-details")
+    : page.locator("#editor-actions-group");
+  if (!(await group.evaluate((element) => element.open))) {
+    await group.locator("summary").click();
+  }
+  await page.locator(selector).click();
+}
 
 async function main() {
   assert.ok(BINARY && fs.existsSync(BINARY), "CPPAPPLAB_TEST_BINARY must identify the real CLI");

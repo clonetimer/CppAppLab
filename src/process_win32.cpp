@@ -403,6 +403,9 @@ ProcessResult run_process(const std::vector<std::string>& arguments,
                                 throw_windows_error("ReadFile(stdout)", error);
                             }
                         }
+                    } else if (job_empty) {
+                        // Every process that inherited the write handle has exited and the pipe is drained.
+                        output_closed = true;
                     }
                 } else {
                     const DWORD error = GetLastError();

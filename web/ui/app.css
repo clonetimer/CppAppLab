@@ -886,3 +886,23 @@ button[data-pending="true"]:disabled::before {
   border-color: #7186a3 !important;
   opacity: 1 !important;
 }
+
+
+/* Disabled primary actions use a solid, muted surface instead of the active gradient. */
+.primary-button:disabled,
+.primary-button.compact:disabled,
+#check-button:disabled {
+  background-color: #344761 !important;
+  background-image: none !important;
+  color: #e2ebf7 !important;
+  border-color: #7186a3 !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+.primary-button[data-pending="true"]:disabled,
+.primary-button.compact[data-pending="true"]:disabled {
+  background-color: #304a68 !important;
+  background-image: none !important;
+  color: #f0f6ff !important;
+  border-color: #8fb6e8 !important;
+}

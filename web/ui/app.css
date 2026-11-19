@@ -875,3 +875,14 @@ button[data-pending="true"]:disabled::before {
   filter: none !important;
   transform: none !important;
 }
+
+
+/* Keep the formal acceptance control's disabled fill explicit inside the
+   collapsed action group, including while a sibling action is pending. */
+.editor-actions-group #check-button:disabled {
+  background-color: #344761 !important;
+  background-image: none !important;
+  color: #e2ebf7 !important;
+  border-color: #7186a3 !important;
+  opacity: 1 !important;
+}

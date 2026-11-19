@@ -192,16 +192,16 @@
               </div>
               <div id="monaco-editor" class="monaco-editor" hidden></div>
               <textarea id="source-editor" class="source-editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" placeholder="开始任务后，在这里编辑 C++ 源代码…" disabled></textarea>
-              <div class="console-panel">
-                <div class="console-heading">
-                  <span id="console-title">构建、运行与验收输出</span>
-                  <span id="check-result" class="check-result">等待执行</span>
-                </div>
-                <div id="diagnostics-list" class="diagnostics-list" hidden></div>
-                <pre id="console-output">选择课程并开始学习后，即可在这里查看构建、运行和验收结果。</pre>
-              </div>
             </section>
           </div>
+          <section class="console-panel console-dock" aria-label="运行终端" aria-live="polite">
+            <div class="console-heading">
+              <span id="console-title">构建、运行与验收输出</span>
+              <span id="check-result" class="check-result">等待执行</span>
+            </div>
+            <div id="diagnostics-list" class="diagnostics-list" hidden></div>
+            <pre id="console-output">选择课程并开始学习后，即可在这里查看构建、运行和验收结果。</pre>
+          </section>
           <div class="workbench-footer"><span>CppAppLab 固定验收 · 平台控制测试契约</span><span>Monaco 在线编辑 · 离线自动回退基础编辑器</span></div>
         </section>
       </main>

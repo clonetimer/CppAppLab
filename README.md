@@ -2,7 +2,7 @@
 
 > **Platform direction update (2026-11-19):** The product target is now **native Windows 11 only**. Migration is in progress; the current `main` implementation still requires Ubuntu 22.04/24.04 under WSL2 and is **not yet Windows-native**. `Start-CppAppLab.cmd` currently hands off to WSL, and the existing Windows CI does not build the C++ product natively. See the [Windows-native migration inventory](docs/WINDOWS_NATIVE_MIGRATION_INVENTORY.md) and ADR-0007 in [architecture decisions](docs/DECISIONS.md).
 
-**CppAppLab** is a hands-on C++ learning and engineering-practice platform. It takes a learner from the first C++ program to maintainable Linux systems software, concurrent programs, TCP services, and an HTTP/1.1 server.
+**CppAppLab** is a hands-on C++ learning and engineering-practice platform. It takes a learner from the first C++ program to maintainable systems software, concurrent programs, TCP services, and an HTTP/1.1 server.
 
 ## 开始学习：先看课程，再做练习
 
@@ -95,6 +95,8 @@ Progress is stored outside the repository by default:
 Set `CPPAPPLAB_STATE_DIR` to move this state directory. The course catalog is maintained separately in `course/tasks.tsv`; it declares lesson paths, source files, acceptance type, and prerequisite relationships.
 
 ## Learning path
+
+The current lesson labels below describe the legacy WSL implementation. Migration will retain the same learning outcomes and formal acceptance contracts while replacing Linux-only API exercises with native Windows equivalents.
 
 | Stage | Focus | Main work product |
 |---|---|---|

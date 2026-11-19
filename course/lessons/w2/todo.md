@@ -14,6 +14,32 @@ Build the Todo program in small steps. Do not try to implement persistence and e
 
 The platform's fixed acceptance checks include malformed files and interrupted/invalid persistence cases. Treat those as later robustness work after the basic Todo loop works.
 
+## From W1 to W2: reuse what you already know
+
+**Mental model:** W2 does not introduce a new way to build a C++ program. It reuses the W1 header/implementation split and the `Result` error-reporting pattern, then adds a collection of records and durable storage.
+
+| You learned in W1 | You will reuse in W2 |
+|---|---|
+| `calculator.hpp` declares an interface and `calculator.cpp` implements it | `todo.hpp` declares `Item`, `List`, `Result` and operations; `todo.cpp` implements them |
+| `Result` carries a value and an error | Todo's `Result` carries an `Error` and a diagnostic message |
+| `main.cpp` calls a function implemented in another file | The provided Todo CLI calls `load`, `add`, `mark_done`, `remove` and `save` |
+| A fixed platform test checks behavior | The platform-owned tests check both normal operations and failure cases |
+
+The new ideas are introduced one at a time: `std::vector<Item>` stores several records, STL algorithms find them, and file I/O keeps them between separate program runs. You do not need to design a new class hierarchy or write a new command-line parser.
+
+## Recommended implementation order
+
+Follow the existing `TODO(W2-TODO-1...6)` markers in `src/todo.cpp`. The order below makes the starter CLI runnable as early as possible:
+
+1. **Make an empty workspace load successfully.** `main.cpp` calls `load` before every command. If the data file does not exist yet, return success with an empty list. This is the bootstrap case, not a malformed-file error.
+2. **Implement `next_id`.** Return 1 for an empty list; otherwise find the largest ID and add one. Return 0 if the ID space is exhausted.
+3. **Implement the in-memory operations.** Complete `add`, `mark_done` and `remove`. Test one valid operation and one invalid input before moving on.
+4. **Implement save/load round-trip.** Write the version header and escaped records, then load them back. Verify that IDs, completion flags and titles are preserved.
+5. **Make loading transactional.** Parse and validate into a temporary list. Replace the caller's list only after the entire file is valid; a malformed later row must not erase existing items.
+6. **Run the multi-process CLI sequence.** Add an item in one process, list it in another, mark it done, remove another, then list again. This proves persistence rather than only in-memory behavior.
+
+If you get stuck, keep the compiler feedback narrow: implement one TODO marker, build, and read the first diagnostic before changing another function.
+
 ## Goal
 
 Build a small command-line application that manages a list of tasks across separate program runs. This exercise introduces the STL as a practical data-management toolkit and makes file persistence part of the program's behavior.

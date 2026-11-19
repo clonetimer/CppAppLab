@@ -528,6 +528,12 @@ async function main() {
     assert.ok(editorBoxDesktop && lessonBoxDesktop);
     assert.ok(editorBoxDesktop.x < lessonBoxDesktop.x,
       "Desktop places the active code editor to the left of contextual lesson guidance");
+    assert.ok(lessonBoxDesktop.x - (editorBoxDesktop.x + editorBoxDesktop.width) >= 20,
+      "Desktop workbench keeps a visible gap between editor and lesson panels");
+    assert.equal(await page.locator("#editor-actions-group").evaluate((element) => element.open), false,
+      "Workspace actions are grouped and collapsed by default");
+    assert.equal(await page.locator("#app-runner-details").evaluate((element) => element.open), false,
+      "Application controls are grouped and collapsed by default");
 
     // Avoid distorted full-page evidence from a sticky header captured while
     // the browser is scrolled to an editor control.
@@ -535,6 +541,10 @@ async function main() {
     await page.waitForFunction(() => window.scrollY === 0);
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "cppapplab-workbench-desktop.png"),
+      fullPage: true
+    });
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-1-layout-after.png"),
       fullPage: true
     });
 

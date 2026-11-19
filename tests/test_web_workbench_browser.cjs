@@ -661,6 +661,10 @@ async function main() {
         button.getAttribute("aria-busy") === "true" &&
         button.textContent.includes("构建中");
     }, null, { timeout: 15000 });
+    for (let attempt = 0; attempt < 50 && !releaseBuildRequest; attempt += 1) {
+      await page.waitForTimeout(20);
+    }
+    assert.equal(typeof releaseBuildRequest, "function", "The real build request reached the held route");
     assert.equal(buildRequestCount, 1, "Exactly one real build request is pending");
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-3-buttons-pending-after.png"),

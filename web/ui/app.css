@@ -846,3 +846,21 @@ button[data-pending="true"]:disabled::before {
     border-right-color: currentColor;
   }
 }
+
+/* Compact primary actions need the same explicit disabled contrast as secondary actions. */
+.primary-button.compact:disabled {
+  opacity: 1;
+  color: #b5c3d8;
+  background: #344761;
+  border: 1px solid #526a89;
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+.primary-button.compact[data-pending="true"]:disabled {
+  color: #f0f6ff;
+  background: #304a68;
+  border-color: #8fb6e8;
+  box-shadow: 0 0 0 2px rgba(127, 174, 231, .16), 0 5px 16px rgba(0, 0, 0, .26);
+}

@@ -639,22 +639,46 @@ button:disabled { cursor: not-allowed; opacity: .45; }
   }
 }
 
-/* The execution console is a viewport dock, independent of page and editor scrolling. */
+/* Reserve a real bottom region for the console so it never covers editor controls. */
+:root {
+  --console-dock-height: 420px;
+}
+
+.main-layout:has(#workbench-panel:not([hidden])) {
+  height: calc(100vh - 68px - var(--console-dock-height));
+  min-height: 320px;
+  overflow: hidden;
+}
+
+.main-layout:has(#workbench-panel:not([hidden])) .sidebar {
+  height: 100%;
+  min-height: 0;
+}
+
+.main-layout:has(#workbench-panel:not([hidden])) .main-content {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 24px;
+}
+
 .console-dock {
   position: fixed;
   left: 286px;
   right: 16px;
-  bottom: 12px;
+  bottom: 0;
   z-index: 25;
   display: flex;
   flex-direction: column;
-  height: min(440px, 60vh);
-  min-height: min(380px, 60vh);
-  max-height: 60vh;
+  height: var(--console-dock-height);
+  min-height: var(--console-dock-height);
+  max-height: var(--console-dock-height);
   border: 1px solid rgba(125, 158, 207, .3);
-  border-radius: 12px;
-  background: rgba(12, 21, 37, .98);
-  box-shadow: 0 18px 56px rgba(0, 0, 0, .48);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: #0c1525;
+  box-shadow: 0 -12px 38px rgba(0, 0, 0, .36);
   overflow: hidden;
 }
 
@@ -663,6 +687,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
   min-height: 44px;
   padding: 11px 16px;
   font-size: 12px;
+  background: #101c2f;
 }
 
 .console-dock .diagnostics-list {
@@ -679,10 +704,6 @@ button:disabled { cursor: not-allowed; opacity: .45; }
   line-height: 1.45;
 }
 
-.main-content:has(#workbench-panel:not([hidden])) {
-  padding-bottom: 470px;
-}
-
 @media (max-width: 1100px) {
   .console-dock {
     left: 251px;
@@ -691,17 +712,37 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 }
 
 @media (max-width: 820px) {
+  :root {
+    --console-dock-height: min(420px, 60vh);
+  }
+  .main-layout:has(#workbench-panel:not([hidden])) {
+    height: calc(100vh - 68px - var(--console-dock-height));
+    min-height: 0;
+    display: block;
+  }
+  .main-layout:has(#workbench-panel:not([hidden])) .sidebar {
+    height: 160px;
+    min-height: 160px;
+    overflow: hidden;
+  }
+  .main-layout:has(#workbench-panel:not([hidden])) .main-content {
+    height: calc(100% - 160px);
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: 20px;
+  }
   .console-dock {
     left: 12px;
     right: 12px;
-    bottom: 10px;
   }
 }
 
 @media (max-width: 520px) {
+  .main-layout:has(#workbench-panel:not([hidden])) {
+    height: calc(100vh - 58px - var(--console-dock-height));
+  }
   .console-dock {
     left: 8px;
     right: 8px;
-    bottom: 8px;
   }
 }

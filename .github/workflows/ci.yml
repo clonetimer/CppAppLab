@@ -903,9 +903,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Install native MinGW-w64 UCRT GCC toolchain
+        id: msys2
         uses: msys2/setup-msys2@v2
         with:
-          location: C:\msys64
           msystem: UCRT64
           update: true
           install: >-
@@ -915,8 +915,10 @@ jobs:
             git
       - name: Verify the compiler targets native Windows
         shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
         run: |
-          $toolBin = 'C:\msys64\ucrt64\bin'
+          $toolBin = Join-Path $env:MSYS2_LOCATION 'ucrt64\bin'
           $gcc = Join-Path $toolBin 'gcc.exe'
           if (-not (Test-Path $gcc)) { throw "UCRT64 GCC was not installed at $gcc" }
           $target = (& $gcc -dumpmachine).Trim()
@@ -929,16 +931,20 @@ jobs:
           & (Join-Path $toolBin 'ninja.exe') --version
       - name: Configure the real Win32 process backend and GoogleTest fixture
         shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
         run: |
-          $toolBin = 'C:\msys64\ucrt64\bin'
+          $toolBin = Join-Path $env:MSYS2_LOCATION 'ucrt64\bin'
           $env:PATH = "$toolBin;$env:PATH"
           $build = Join-Path $env:RUNNER_TEMP 'cppapplab windows native process'
           & (Join-Path $toolBin 'cmake.exe') -S tests/windows-native-process -B $build -G Ninja -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_CXX_COMPILER=$toolBin/g++.exe" "-DCMAKE_MAKE_PROGRAM=$toolBin/ninja.exe"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build native Windows PE executables
         shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
         run: |
-          $toolBin = 'C:\msys64\ucrt64\bin'
+          $toolBin = Join-Path $env:MSYS2_LOCATION 'ucrt64\bin'
           $env:PATH = "$toolBin;$env:PATH"
           $build = Join-Path $env:RUNNER_TEMP 'cppapplab windows native process'
           & (Join-Path $toolBin 'cmake.exe') --build $build --parallel
@@ -950,8 +956,10 @@ jobs:
           }
       - name: Run the unchanged process-runner contract on Windows
         shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
         run: |
-          $toolBin = 'C:\msys64\ucrt64\bin'
+          $toolBin = Join-Path $env:MSYS2_LOCATION 'ucrt64\bin'
           $env:PATH = "$toolBin;$env:PATH"
           $build = Join-Path $env:RUNNER_TEMP 'cppapplab windows native process'
           & (Join-Path $toolBin 'ctest.exe') --test-dir $build --output-on-failure --timeout 10

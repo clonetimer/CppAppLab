@@ -76,7 +76,9 @@ if(BUILD_TESTING)
 
     add_test(
         NAME http_server_loopback_cli_smoke
-        COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/tests/http_server_smoke.sh" "$<TARGET_FILE:http-server>"
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/http_server_smoke.py"
+            "$<TARGET_FILE:http-server>"
     )
     set_tests_properties(http_server_loopback_cli_smoke PROPERTIES TIMEOUT 10)
 endif()

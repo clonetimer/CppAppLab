@@ -819,7 +819,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
   transform: none;
 }
 
-button[data-pending="true"]:disabled::before {
+button[data-pending="true"]::before {
   content: "";
   display: inline-block;
   width: 12px;
@@ -966,4 +966,13 @@ button[data-pending="true"]:disabled::before {
 /* The output dock belongs to the learning workspace, not the welcome screen. */
 .app-shell:not(:has(#workbench-panel:not([hidden]))) .console-dock {
   display: none;
+}
+
+
+/* A status refresh is intentionally non-blocking: it marks only its own
+   control pending so Stop remains available if the learner needs it. */
+button[data-pending="true"]:not(:disabled) {
+  cursor: progress;
+  border-color: #8fb6e8;
+  box-shadow: 0 0 0 2px rgba(127, 174, 231, .14);
 }

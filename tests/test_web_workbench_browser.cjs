@@ -219,7 +219,7 @@ async function runApplicationAction(page, action, fields, expectedOutput) {
   for (const [name, value] of Object.entries(fields || {})) {
     await page.locator('[data-field="' + name + '"]').fill(value);
   }
-  await page.locator("#app-execute-button").click();
+  await clickWorkbenchAction(page, "#app-execute-button");
   await page.waitForFunction(
     () => document.querySelector("#check-result")?.textContent === "程序运行成功",
     null,
@@ -247,6 +247,16 @@ async function verifyReadOnlyReference(page, relativePath) {
   assert.match(await page.locator("#save-state").textContent(), /只读/);
   await page.locator('#file-list button[title="' + originalFile + '"]').click();
   await page.waitForFunction((file) => document.querySelector("#active-file").textContent === file, originalFile);
+}
+
+async function clickWorkbenchAction(page, selector) {
+  const group = selector === "#app-build-button" || selector === "#app-execute-button"
+    ? page.locator("#app-runner-details")
+    : page.locator("#editor-actions-group");
+  if (!(await group.evaluate((element) => element.open))) {
+    await group.locator("summary").click();
+  }
+  await page.locator(selector).click();
 }
 
 async function main() {
@@ -350,17 +360,17 @@ async function main() {
       "Monaco autosave must persist every source line (indentation may be normalized by the editor)"
     );
 
-    await page.locator("#build-button").click();
+    await clickWorkbenchAction(page, "#build-button");
     await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "构建成功", null, { timeout: 45000 });
     assert.match(await page.locator("#console-output").textContent(), /Build result: PASS/);
 
-    await page.locator("#run-button").click();
+    await clickWorkbenchAction(page, "#run-button");
     await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "执行成功", null, { timeout: 15000 });
     assert.match(await page.locator("#console-output").textContent(), /Hello, CppAppLab!/);
     assert.equal(await page.locator("#task-state").textContent(), "进行中",
       "Build and Run must not mark the task as formally passed");
 
-    await page.locator("#check-button").click();
+    await clickWorkbenchAction(page, "#check-button");
     await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "PASS", null, { timeout: 45000 });
     await page.locator("#history-button").click();
     await page.waitForFunction(() =>
@@ -426,7 +436,7 @@ async function main() {
       return data.content.includes("missing_symbol");
     }, null, { timeout: 10000 });
 
-    await page.locator("#build-button").click();
+    await clickWorkbenchAction(page, "#build-button");
     await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "构建失败", null, { timeout: 45000 });
     await page.waitForFunction(() =>
       !document.querySelector("#diagnostics-list")?.hidden &&
@@ -454,15 +464,15 @@ async function main() {
         !data.content.includes("missing_symbol");
     }, null, { timeout: 10000 });
 
-    await page.locator("#build-button").click();
+    await clickWorkbenchAction(page, "#build-button");
     await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "构建成功", null, { timeout: 60000 });
     assert.match(await page.locator("#console-output").textContent(), /Build result: PASS/);
 
-    await page.locator("#run-button").click();
+    await clickWorkbenchAction(page, "#run-button");
     await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "执行成功", null, { timeout: 60000 });
     assert.match(await page.locator("#console-output").textContent(), /100% tests passed, 0 tests failed out of 9/);
 
-    await page.locator("#check-button").click();
+    await clickWorkbenchAction(page, "#check-button");
     await page.waitForFunction(() => document.querySelector("#check-result")?.textContent === "PASS", null, { timeout: 60000 });
     await page.waitForFunction(() => {
       const button = Array.from(document.querySelectorAll("#course-list .task-link"))
@@ -475,7 +485,7 @@ async function main() {
     // the formal acceptance state.
     assert.equal(await page.locator("#app-runner").isVisible(), true);
     assert.equal(await page.locator("#app-profile-label").textContent(), "命令行计算器");
-    await page.locator("#app-build-button").click();
+    await clickWorkbenchAction(page, "#app-build-button");
     await page.waitForFunction(() =>
       document.querySelector("#check-result")?.textContent === "应用构建成功",
       null,
@@ -483,7 +493,7 @@ async function main() {
     );
     await page.locator('[data-field="left"]').fill("20");
     await page.locator('[data-field="right"]').fill("22");
-    await page.locator("#app-execute-button").click();
+    await clickWorkbenchAction(page, "#app-execute-button");
     await page.waitForFunction(() =>
       document.querySelector("#check-result")?.textContent === "程序运行成功",
       null,
@@ -500,7 +510,7 @@ async function main() {
     await page.locator('[data-field="operation"]').selectOption("divide");
     await page.locator('[data-field="left"]').fill("1");
     await page.locator('[data-field="right"]').fill("0");
-    await page.locator("#app-execute-button").click();
+    await clickWorkbenchAction(page, "#app-execute-button");
     await page.waitForFunction(() =>
       document.querySelector("#check-result")?.textContent === "程序返回非零状态",
     null, { timeout: 15000 });
@@ -559,13 +569,13 @@ async function main() {
       document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
     );
     await verifyReadOnlyReference(page, "include/todo.hpp");
-    await page.locator("#app-build-button").click();
+    await clickWorkbenchAction(page, "#app-build-button");
     await page.waitForFunction(() =>
       document.querySelector("#check-result")?.textContent === "应用构建成功",
       null, { timeout: 60000 }
     );
     await page.locator("#app-action").selectOption("list");
-    await page.locator("#app-execute-button").click();
+    await clickWorkbenchAction(page, "#app-execute-button");
     await page.waitForFunction(() =>
       document.querySelector("#check-result")?.textContent === "程序返回非零状态",
       null, { timeout: 15000 }
@@ -584,7 +594,7 @@ async function main() {
       document.querySelector("#task-breadcrumb")?.textContent.trim() === "w2.todo-cli" &&
       document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
     );
-    await page.locator("#app-build-button").click();
+    await clickWorkbenchAction(page, "#app-build-button");
     await page.waitForFunction(() =>
       document.querySelector("#check-result")?.textContent === "应用构建成功",
       null, { timeout: 60000 }
@@ -598,7 +608,7 @@ async function main() {
     assert.equal(await page.locator("#task-state").textContent(), "进行中",
       "Todo application CRUD must not write formal acceptance evidence");
 
-    await page.locator("#check-button").click();
+    await clickWorkbenchAction(page, "#check-button");
     await page.waitForFunction(() =>
       document.querySelector("#check-result")?.textContent === "PASS",
       null, { timeout: 60000 }
@@ -630,7 +640,7 @@ async function main() {
       document.querySelector("#task-breadcrumb")?.textContent.trim() === "w3.task-manager" &&
       document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
     );
-    await page.locator("#app-build-button").click();
+    await clickWorkbenchAction(page, "#app-build-button");
     await page.waitForFunction(() =>
       document.querySelector("#check-result")?.textContent === "应用构建成功",
       null, { timeout: 60000 }
@@ -658,7 +668,7 @@ async function main() {
     assert.equal(await page.locator("#task-state").textContent(), "进行中",
       "TaskManager application CRUD must not write formal acceptance evidence");
 
-    await page.locator("#check-button").click();
+    await clickWorkbenchAction(page, "#check-button");
     await page.waitForFunction(() =>
       document.querySelector("#check-result")?.textContent === "PASS",
       null, { timeout: 60000 }
@@ -680,7 +690,7 @@ async function main() {
     await page.waitForFunction(() =>
       document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
     );
-    await page.locator("#app-build-button").click();
+    await clickWorkbenchAction(page, "#app-build-button");
     await page.waitForFunction(() =>
       document.querySelector("#check-result")?.textContent === "应用构建成功",
       null, { timeout: 60000 }
@@ -694,7 +704,7 @@ async function main() {
     assert.equal(await page.locator("#task-state").textContent(), "进行中",
       "Quality Gate application runs must not write formal acceptance evidence");
 
-    await page.locator("#check-button").click();
+    await clickWorkbenchAction(page, "#check-button");
     await page.waitForFunction(() =>
       document.querySelector("#check-result")?.textContent === "未通过",
       null, { timeout: 60000 }
@@ -1042,9 +1052,9 @@ async function main() {
       normalizedLines(HELLO_SOURCE),
       "Textarea fallback autosave must persist every source line"
     );
-    await fallbackPage.locator("#build-button").click();
+    await clickWorkbenchAction(fallbackPage, "#build-button");
     await fallbackPage.waitForFunction(() => document.querySelector("#check-result")?.textContent === "构建成功", null, { timeout: 45000 });
-    await fallbackPage.locator("#run-button").click();
+    await clickWorkbenchAction(fallbackPage, "#run-button");
     await fallbackPage.waitForFunction(() => document.querySelector("#check-result")?.textContent === "执行成功", null, { timeout: 15000 });
     assert.match(await fallbackPage.locator("#console-output").textContent(), /Hello, CppAppLab!/);
     assert.deepEqual(fallbackErrors, [], "The offline fallback must not emit uncaught browser exceptions");

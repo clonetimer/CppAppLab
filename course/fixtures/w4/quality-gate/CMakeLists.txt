@@ -120,11 +120,14 @@ if(BUILD_TESTING)
     gtest_discover_tests(task_manager_acceptance_tests)
     gtest_discover_tests(learner_task_manager_tests)
 
+    get_filename_component(CPPAPPLAB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../.." ABSOLUTE)
     add_test(
         NAME task_manager_cli_workflow
-        COMMAND bash
-            "${CMAKE_CURRENT_SOURCE_DIR}/tests/task_manager_cli_workflow.sh"
-            "$<TARGET_FILE:todo_cli>"
+        COMMAND "${CMAKE_COMMAND}"
+            "-DCPPAPPLAB_TODO_EXECUTABLE=$<TARGET_FILE:todo_cli>"
+            "-DCPPAPPLAB_TODO_TITLE_1=Review class ownership"
+            "-DCPPAPPLAB_TODO_TITLE_2=Verify copy and move"
+            -P "${CPPAPPLAB_ROOT}/cmake/AssertTodoCliWorkflow.cmake"
     )
     set_tests_properties(task_manager_cli_workflow PROPERTIES TIMEOUT 15)
 endif()

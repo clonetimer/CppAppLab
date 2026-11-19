@@ -88,9 +88,9 @@ if(BUILD_TESTING)
 
     add_test(
         NAME calculator_cli_divide_zero
-        COMMAND bash
-            "${CMAKE_CURRENT_SOURCE_DIR}/tests/divide_zero.sh"
-            "$<TARGET_FILE:calculator_cli>"
+        COMMAND "${CMAKE_COMMAND}"
+            "-DCALCULATOR_EXECUTABLE=$<TARGET_FILE:calculator_cli>"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_divide_zero.cmake"
     )
-    set_tests_properties(calculator_cli_divide_zero PROPERTIES TIMEOUT 5)
+    set_tests_properties(calculator_cli_divide_zero PROPERTIES TIMEOUT 7)
 endif()

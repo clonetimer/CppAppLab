@@ -159,3 +159,15 @@ This is an ordering plan, not a claim that the work is already implemented.
 - Preserve process timeouts, output caps, no-shell argument passing, progress locking/atomicity, symlink/reparse-point rejection, real TCP loopback behavior, HTTP deadlines/Keep-Alive/shutdown/observability and W9 path-confinement guarantees.
 - Evidence records compiler identity/version, CMake version, GoogleTest version, Windows build, exact commit and per-fixture results.
 - WSL scripts and Ubuntu artifacts may be removed only after the native path is independently validated; they must not remain hidden runtime prerequisites.
+
+
+## First small migration step (in progress)
+
+The first isolated Bash dependency has now been removed without changing the acceptance contract:
+
+- Removed course/fixtures/w1/calculator/tests/divide_zero.sh.
+- Added course/fixtures/w1/calculator/tests/assert_divide_zero.cmake.
+- Changed the W1 Calculator fixture to invoke the learner executable through CMake execute_process and CTest, checking the exact exit code (3), empty stdout, exact stderr diagnostic and a bounded timeout.
+- This runner uses native CMake process execution and does not require Bash. It is suitable for both Linux and Windows CMake generators.
+
+This is deliberately only a test-harness migration. The repository root still rejects Windows, and the runtime still contains POSIX APIs; no Windows-native product support is claimed. Next small candidates are the remaining simple CLI smoke wrappers that can be expressed as direct CTest commands or a portable test helper without weakening multi-process persistence assertions.

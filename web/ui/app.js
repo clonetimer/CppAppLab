@@ -1543,12 +1543,16 @@
       if (pendingButton) setButtonPending(pendingButton, pendingLabel || "执行中…");
     } else {
       [
+        ui.startButton,
         ui.saveButton,
         ui.buildButton,
         ui.runButton,
         ui.checkButton,
         ui.appBuildButton,
-        ui.appExecuteButton
+        ui.appExecuteButton,
+        ui.serviceStartButton,
+        ui.serviceRefreshButton,
+        ui.serviceStopButton
       ].forEach(clearButtonPending);
     }
     ui.startButton.disabled = value || !state.progressFresh || !state.task || ["LOCKED", "UNKNOWN"].includes(state.task.state);

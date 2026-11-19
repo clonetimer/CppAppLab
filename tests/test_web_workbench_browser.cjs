@@ -590,6 +590,30 @@ async function main() {
       "The terminal keeps readable output text rather than shrinking its font");
     assert.ok(Math.floor((consoleOutputGeometry.height - 24) / consoleOutputGeometry.lineHeight) >= 20,
       "The terminal's visible text area can show twenty lines without scrolling");
+
+    // Compact mode must keep the terminal title/status dock visible while
+    // returning the reserved viewport to the lesson and editor.
+    const terminalToggle = page.locator("#console-toggle");
+    await terminalToggle.click();
+    await page.waitForFunction(() => {
+      const dock = document.querySelector(".console-dock");
+      return dock?.classList.contains("is-collapsed") &&
+        document.querySelector("#console-toggle")?.getAttribute("aria-expanded") === "false" &&
+        document.querySelector("#console-toggle")?.textContent.includes("展开终端");
+    });
+    const compactDockHeight = await consoleDock.evaluate((element) => element.getBoundingClientRect().height);
+    assert.ok(compactDockHeight <= 56, "Compact terminal retains a visible header without occupying the output area");
+    assert.equal(await page.locator("#console-title").isVisible(), true);
+    assert.equal(await page.locator("#check-result").isVisible(), true);
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-2-console-compact-after.png"),
+      fullPage: false
+    });
+    await terminalToggle.click();
+    await page.waitForFunction(() => !document.querySelector(".console-dock")?.classList.contains("is-collapsed"));
+    assert.ok(await consoleDock.evaluate((element) => element.getBoundingClientRect().height) >= 400,
+      "Expanding the terminal restores the full output viewport");
+
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-2-console-after.png"),
       fullPage: false

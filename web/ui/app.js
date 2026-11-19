@@ -119,7 +119,7 @@
     workspaceState: $("workspace-state"),
     consoleTitle: $("console-title"),
     consoleToggle: $("console-toggle"),
-    consoleDock: document.querySelector(".console-dock"),
+    consoleDock: $("console-dock"),
     console: $("console-output"),
     diagnostics: $("diagnostics-list"),
     checkResult: $("check-result"),

@@ -438,3 +438,203 @@ button:disabled { cursor: not-allowed; opacity: .45; }
   .guide-feedback { padding: 0 14px; }
   .guide-content { padding: 17px 14px 24px; font-size: 13px; }
 }
+
+/* Workbench usability: keep the code surface calm and reveal secondary controls on demand. */
+.workbench-grid {
+  grid-template-columns: minmax(0, 1.08fr) minmax(280px, .92fr);
+  gap: 24px;
+}
+
+.workflow-guide {
+  margin: 12px 14px;
+  padding: 13px 16px;
+  gap: 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+
+.workflow-guide p {
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.file-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 16px;
+}
+
+.file-list {
+  width: 100%;
+  min-height: 40px;
+}
+
+.file-tab {
+  max-width: 190px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.empty-files {
+  font-size: 12px;
+}
+
+.editor-actions-group {
+  min-width: 172px;
+}
+
+.editor-actions-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 42px;
+  padding: 10px 13px;
+  border: 1px solid rgba(157,177,211,.22);
+  border-radius: 8px;
+  background: #263750;
+  color: #d5e3f6;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  list-style: none;
+}
+
+.editor-actions-summary::-webkit-details-marker,
+.runner-summary::-webkit-details-marker {
+  display: none;
+}
+
+.editor-actions-summary::after {
+  content: "▾";
+  color: #9fb9dc;
+  transition: transform .15s ease;
+}
+
+.editor-actions-group[open] > .editor-actions-summary::after {
+  transform: rotate(180deg);
+}
+
+.editor-actions-summary:hover {
+  background: #304765;
+  border-color: rgba(157,190,235,.42);
+}
+
+.editor-actions-summary:focus-visible,
+.runner-summary:focus-visible {
+  outline: 2px solid #8ab8f5;
+  outline-offset: 2px;
+}
+
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 0 2px;
+}
+
+.editor-actions button {
+  min-width: 76px;
+  padding: 10px 13px;
+  font-size: 12px;
+}
+
+.app-runner,
+.service-runner {
+  padding: 0;
+}
+
+.runner-details {
+  width: 100%;
+}
+
+.runner-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 50px;
+  padding: 13px 16px;
+  color: #d9e7fa;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  list-style: none;
+}
+
+.runner-summary::after {
+  content: "展开";
+  flex: 0 0 auto;
+  color: #9fb9dc;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.runner-details[open] > .runner-summary::after {
+  content: "收起";
+}
+
+.runner-details[open] > .runner-summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.runner-content {
+  padding: 0 16px 16px;
+}
+
+.app-runner-help,
+.service-runner-help {
+  margin: 12px 0;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.service-runner-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+@media (max-width: 1100px) {
+  .workbench-grid {
+    grid-template-columns: minmax(0, 1.08fr) minmax(250px, .92fr);
+    gap: 20px;
+  }
+}
+
+@media (max-width: 820px) {
+  .workbench-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .file-toolbar {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .editor-actions-group {
+    width: 100%;
+  }
+  .editor-actions {
+    justify-content: flex-start;
+  }
+  .editor-actions button {
+    flex: 1 1 140px;
+  }
+}
+
+@media (max-width: 520px) {
+  .file-toolbar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .editor-actions-group,
+  .file-list {
+    width: 100%;
+  }
+}

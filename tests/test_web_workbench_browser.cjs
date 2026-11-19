@@ -599,6 +599,7 @@ async function main() {
     // Compact mode must keep the terminal title/status dock visible while
     // returning the reserved viewport to the lesson and editor.
     const terminalToggle = page.locator("#console-toggle");
+    const workbenchHeightBeforeCompact = await page.locator(".main-layout").evaluate((element) => element.getBoundingClientRect().height);
     await terminalToggle.click();
     await page.waitForFunction(() => {
       const dock = document.querySelector(".console-dock");
@@ -607,6 +608,9 @@ async function main() {
         document.querySelector("#console-toggle")?.textContent.includes("展开终端");
     });
     const compactDockHeight = await consoleDock.evaluate((element) => element.getBoundingClientRect().height);
+    const workbenchHeightAfterCompact = await page.locator(".main-layout").evaluate((element) => element.getBoundingClientRect().height);
+    assert.ok(workbenchHeightAfterCompact > workbenchHeightBeforeCompact + 300,
+      "Compact terminal returns the reserved viewport to the workbench");
     assert.ok(compactDockHeight <= 56, "Compact terminal retains a visible header without occupying the output area");
     assert.equal(await page.locator("#console-title").isVisible(), true);
     assert.equal(await page.locator("#check-result").isVisible(), true);

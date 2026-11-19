@@ -940,8 +940,11 @@ jobs:
             Write-Host "[PASS] $($entry.Name) $($entry.Value.version)"
           }
 
-          $compiler = Get-Command g++.exe -ErrorAction Stop
-          $prefix = Split-Path (Split-Path $compiler.Source -Parent) -Parent
+          $prefix = Join-Path $env:MSYS2_LOCATION 'ucrt64'
+          $compiler = Join-Path $prefix 'bin\g++.exe'
+          if (-not (Test-Path -LiteralPath $compiler -PathType Leaf)) {
+            throw "Native UCRT64 GCC was not found at $compiler."
+          }
           "$prefix\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "CPPAPPLAB_UCRT64_PREFIX=$prefix" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           if (-not (Test-Path (Join-Path $prefix 'lib\cmake\GTest\GTestConfig.cmake'))) {
@@ -951,7 +954,7 @@ jobs:
           $cmake = Join-Path $prefix 'bin\cmake.exe'
           $ninja = Join-Path $prefix 'bin\ninja.exe'
           $os = Get-CimInstance -ClassName Win32_OperatingSystem
-          $gccVersion = (& $compiler.Source --version | Select-Object -First 1).Trim()
+          $gccVersion = (& $compiler --version | Select-Object -First 1).Trim()
           $cmakeVersion = (& $cmake --version | Select-Object -First 1).Trim()
           $ninjaVersion = (& $ninja --version).Trim()
           $resolvedPackages = @(

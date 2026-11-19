@@ -558,6 +558,27 @@ async function main() {
       fullPage: true
     });
 
+    await page.evaluate(() => window.scrollTo(0, 700));
+    await page.waitForFunction(() => window.scrollY > 0);
+    const consoleDock = page.locator(".console-dock");
+    const consoleRect = await consoleDock.boundingBox();
+    const consoleOutputRect = await page.locator("#console-output").boundingBox();
+    const consoleMetrics = await page.locator("#console-output").evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { fontSize: parseFloat(style.fontSize), lineHeight: parseFloat(style.lineHeight) };
+    });
+    assert.ok(consoleRect && consoleOutputRect);
+    assert.ok(consoleRect.top >= 0 && consoleRect.bottom <= 1000,
+      "The execution console remains inside the viewport after page scrolling");
+    assert.ok(consoleOutputRect.height >= 360,
+      "The default terminal viewport has room for at least twenty output lines");
+    assert.ok(consoleMetrics.fontSize >= 12 && consoleMetrics.lineHeight >= 17,
+      "The terminal keeps readable output text rather than shrinking its font");
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-2-console-after.png"),
+      fullPage: false
+    });
+
     await page.setViewportSize({ width: 390, height: 844 });
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForFunction(() => window.scrollY === 0);

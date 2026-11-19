@@ -561,17 +561,31 @@ async function main() {
     await page.evaluate(() => window.scrollTo(0, 700));
     await page.waitForFunction(() => window.scrollY > 0);
     const consoleDock = page.locator(".console-dock");
-    const consoleRect = await consoleDock.boundingBox();
-    const consoleOutputRect = await page.locator("#console-output").boundingBox();
-    const consoleMetrics = await page.locator("#console-output").evaluate((element) => {
-      const style = getComputedStyle(element);
-      return { fontSize: parseFloat(style.fontSize), lineHeight: parseFloat(style.lineHeight) };
+    const consoleGeometry = await consoleDock.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        position: getComputedStyle(element).position,
+        top: rect.top,
+        bottom: rect.bottom,
+        viewportHeight: window.innerHeight
+      };
     });
-    assert.ok(consoleRect && consoleOutputRect);
-    assert.ok(consoleRect.top >= 0 && consoleRect.bottom <= 1000,
-      "The execution console remains inside the viewport after page scrolling");
-    assert.ok(consoleOutputRect.height >= 360,
-      "The default terminal viewport has room for at least twenty output lines");
+    const consoleOutputGeometry = await page.locator("#console-output").evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return {
+        height: rect.height,
+        fontSize: parseFloat(style.fontSize),
+        lineHeight: parseFloat(style.lineHeight)
+      };
+    });
+    assert.equal(consoleGeometry.position, "fixed");
+    assert.ok(consoleGeometry.top >= 0 && consoleGeometry.bottom <= consoleGeometry.viewportHeight,
+      "The execution console remains inside the viewport after page scrolling: " +
+      JSON.stringify(consoleGeometry));
+    assert.ok(consoleOutputGeometry.height >= 360,
+      "The default terminal viewport has room for at least twenty output lines: " +
+      JSON.stringify(consoleOutputGeometry));
     assert.ok(consoleMetrics.fontSize >= 12 && consoleMetrics.lineHeight >= 17,
       "The terminal keeps readable output text rather than shrinking its font");
     await page.screenshot({

@@ -49,7 +49,7 @@ The original audit found 30 Bash scripts. After PRs #59–#62, 18 remain, all us
 
 **Current remaining 18 Bash files on main**
 
-- W5 course/learner (3): `course/fixtures/w5/system-lab/tests/system_lab_cli_smoke.sh`; `labs/w5/system-lab/learner/scripts/quality-check.sh`; plus the W5 learner process-runner implementation itself remains POSIX and is tracked separately from the script count.
+- W5 course/learner scripts (2): `course/fixtures/w5/system-lab/tests/system_lab_cli_smoke.sh`; `labs/w5/system-lab/learner/scripts/quality-check.sh`. The W5 learner process-runner implementation itself also remains POSIX and is tracked separately from the script count.
 - WSL/setup/package/runtime (13): `scripts/accept_learner_package_wsl.sh`; `scripts/check_environment.sh`; `scripts/ci_prepare_ubuntu_apt.sh`; `scripts/ci_prepare_ubuntu_snapshot.sh`; `scripts/cppapplab-wsl-launcher.sh`; `scripts/install_offline_dependencies.sh`; `scripts/lib/terminal.sh`; `scripts/lib/ubuntu-support.sh`; `scripts/package_offline_dependencies.sh`; `scripts/package_release.sh`; `scripts/quickstart.sh`; `scripts/smoke_learner_package.sh`; `scripts/start-web-workbench.sh`; `scripts/verify_offline_dependency_bundle.sh`.
 - Shell test helpers (2): `tests/test_ubuntu_support.sh`; `tests/test_windows_browser_open.sh`.
 
@@ -57,7 +57,7 @@ Existing Windows-side entry points and harnesses are **not native runtime entry 
 
 
 
-### Native Windows process backend — current implementation stage (PR #63)
+### Native Windows process backend — current implementation stage (current branch)
 
 - Added `src/process_win32.cpp` as a direct Win32 implementation of the existing `run_process` contract: `CreateProcessW`, explicit inherited-handle list, merged stdout/stderr pipe, bounded stdin through a temporary file, UTF-8-to-UTF-16 argv conversion and Windows command-line quoting, process-tree Job Object cleanup, timeout and bounded-output draining.
 - Replaced POSIX-only process tests with a platform-neutral suite using a compiled child executable. The same tests cover stdin, stderr, argv with spaces/quotes/backslashes, working directories with spaces, exit codes, missing executables, timeout, descendant termination and output caps.

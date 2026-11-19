@@ -196,8 +196,12 @@
           </div>
           <section class="console-panel console-dock" aria-label="运行终端" aria-live="polite">
             <div class="console-heading">
-              <span id="console-title">构建、运行与验收输出</span>
-              <span id="check-result" class="check-result">等待执行</span>
+              <div class="console-heading-title">
+                <span id="console-title">构建、运行与验收输出</span>
+                <span id="check-result" class="check-result">等待执行</span>
+              </div>
+              <button id="console-toggle" type="button" class="secondary-button console-toggle"
+                aria-controls="console-output" aria-expanded="true">收起终端</button>
             </div>
             <div id="diagnostics-list" class="diagnostics-list" hidden></div>
             <pre id="console-output">选择课程并开始学习后，即可在这里查看构建、运行和验收结果。</pre>

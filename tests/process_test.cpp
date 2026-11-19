@@ -36,6 +36,27 @@ TEST(ProcessRunnerTest, CapturesStandardOutput) {
     EXPECT_EQ(result.output, "CppAppLab\n");
 }
 
+TEST(ProcessRunnerTest, PreservesArgumentsContainingSpacesQuotesAndTrailingBackslashes) {
+    const std::string argument = R"(value with spaces and "quotes" and trailing\)";
+    const auto result = cppapplab::run_process(
+        child_arguments({"emit", argument}), std::filesystem::current_path(),
+        std::chrono::seconds(2), 1024);
+
+    EXPECT_EQ(result.exit_code, 0);
+    EXPECT_FALSE(result.timed_out);
+    EXPECT_EQ(result.output, argument + "\n");
+}
+
+TEST(ProcessRunnerTest, PreservesEmptyArguments) {
+    const auto result = cppapplab::run_process(
+        child_arguments({"emit", ""}), std::filesystem::current_path(),
+        std::chrono::seconds(2), 1024);
+
+    EXPECT_EQ(result.exit_code, 0);
+    EXPECT_FALSE(result.timed_out);
+    EXPECT_EQ(result.output, "\n");
+}
+
 TEST(ProcessRunnerTest, UsesClosedStandardInputWhenNoInputIsProvided) {
     const auto result = cppapplab::run_process(
         child_arguments({"copy-stdin"}), std::filesystem::current_path(),

@@ -1,6 +1,6 @@
 ## Hint 1
 
-Start by treating the Todo list as a collection of records. `List` is already an alias for `std::vector<Item>`. Use the vector to preserve insertion order. Look at the signatures: `add`, `mark_done`, and `remove` should each perform one small operation and return a `Result`.
+Start from the W1 pattern: the header defines the contract and `todo.cpp` implements it. The provided `main.cpp` calls `load` before it runs any command, so first make a missing data file mean “an empty list” and return success. Then implement `next_id` and the small in-memory operations. `List` is already an alias for `std::vector<Item>`; you do not need to design the container type.
 
 ## Hint 2
 

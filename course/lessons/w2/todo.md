@@ -18,12 +18,10 @@ The platform's fixed acceptance checks include malformed files and interrupted/i
 
 **Mental model:** W2 does not introduce a new way to build a C++ program. It reuses the W1 header/implementation split and the `Result` error-reporting pattern, then adds a collection of records and durable storage.
 
-| You learned in W1 | You will reuse in W2 |
-|---|---|
-| `calculator.hpp` declares an interface and `calculator.cpp` implements it | `todo.hpp` declares `Item`, `List`, `Result` and operations; `todo.cpp` implements them |
-| `Result` carries a value and an error | Todo's `Result` carries an `Error` and a diagnostic message |
-| `main.cpp` calls a function implemented in another file | The provided Todo CLI calls `load`, `add`, `mark_done`, `remove` and `save` |
-| A fixed platform test checks behavior | The platform-owned tests check both normal operations and failure cases |
+- **Header / implementation split:** W1's `calculator.hpp` declares an interface and `calculator.cpp` implements it. W2's `todo.hpp` declares `Item`, `List`, `Result` and operations; `todo.cpp` implements them.
+- **Error reporting:** W1's `Result` carries a value and an error. Todo's `Result` carries an `Error` and a diagnostic message.
+- **Calling flow:** W1's `main.cpp` calls a function implemented in another file. The provided Todo CLI calls `load`, `add`, `mark_done`, `remove` and `save`.
+- **Acceptance:** W1's fixed platform tests check behavior; W2's platform-owned tests continue that pattern for normal operations and failure cases.
 
 The new ideas are introduced one at a time: `std::vector<Item>` stores several records, STL algorithms find them, and file I/O keeps them between separate program runs. You do not need to design a new class hierarchy or write a new command-line parser.
 

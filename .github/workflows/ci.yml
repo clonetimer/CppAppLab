@@ -894,3 +894,125 @@ jobs:
             dist/CppAppLab-offline-deps-*.tar.gz.sha256
           if-no-files-found: error
           retention-days: 14
+  windows-native-process-runner:
+    name: Native Windows GCC process runner acceptance
+    runs-on: windows-latest
+    steps:
+      - name: Set Git line-ending policy
+        shell: pwsh
+        run: git config --global core.autocrlf input
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Install native UCRT64 GCC, CMake, Ninja and GoogleTest
+        id: msys2
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-gtest
+      - name: Verify locked native toolchain packages
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $lock = Get-Content 'toolchains/windows-ucrt64.lock.json' -Raw | ConvertFrom-Json
+          $packageRoot = Join-Path $env:MSYS2_LOCATION 'var\lib\pacman\local'
+          foreach ($entry in $lock.packages.PSObject.Properties) {
+            $matches = @(Get-ChildItem -LiteralPath $packageRoot -Directory -Filter "$($entry.Name)-*")
+            if ($matches.Count -ne 1) {
+              throw "Expected one installed package directory for $($entry.Name); found $($matches.Count)."
+            }
+            $description = Get-Content (Join-Path $matches[0].FullName 'desc') -Raw
+            $versionMatch = [regex]::Match($description, '(?m)^%VERSION%\r?\n(?<version>[^\r\n]+)')
+            if (-not $versionMatch.Success -or $versionMatch.Groups['version'].Value -ne $entry.Value.version) {
+              $actual = if ($versionMatch.Success) { $versionMatch.Groups['version'].Value } else { '<missing>' }
+              throw "$($entry.Name) version mismatch. Expected $($entry.Value.version), received $actual."
+            }
+            Write-Host "[PASS] $($entry.Name) $($entry.Value.version)"
+          }
+
+          $compiler = Get-Command g++.exe -ErrorAction Stop
+          $prefix = Split-Path (Split-Path $compiler.Source -Parent) -Parent
+          "CPPAPPLAB_UCRT64_PREFIX=$prefix" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          if (-not (Test-Path (Join-Path $prefix 'lib\cmake\GTest\GTestConfig.cmake'))) {
+            throw 'Native UCRT64 GoogleTest CMake package was not found.'
+          }
+
+          $cmake = Join-Path $prefix 'bin\cmake.exe'
+          $ninja = Join-Path $prefix 'bin\ninja.exe'
+          $os = Get-CimInstance -ClassName Win32_OperatingSystem
+          $gccVersion = (& $compiler.Source --version | Select-Object -First 1).Trim()
+          $cmakeVersion = (& $cmake --version | Select-Object -First 1).Trim()
+          $ninjaVersion = (& $ninja --version).Trim()
+          $resolvedPackages = @(
+            Get-ChildItem -LiteralPath $packageRoot -Directory | ForEach-Object {
+              $description = Get-Content (Join-Path $_.FullName 'desc') -Raw
+              $nameMatch = [regex]::Match($description, '(?m)^%NAME%\r?\n(?<name>[^\r\n]+)')
+              $versionMatch = [regex]::Match($description, '(?m)^%VERSION%\r?\n(?<version>[^\r\n]+)')
+              if ($nameMatch.Success -and $versionMatch.Success) {
+                "$($nameMatch.Groups['name'].Value) $($versionMatch.Groups['version'].Value)"
+              }
+            }
+          ) | Sort-Object
+          $manifest = @(
+            "OS=$($os.Caption)"
+            "WindowsBuild=$($os.BuildNumber)"
+            "GCC=$gccVersion"
+            "CMake=$cmakeVersion"
+            "Ninja=$ninjaVersion"
+            "GoogleTest=$($lock.packages.'mingw-w64-ucrt-x86_64-gtest'.version)"
+            "UCRT64Prefix=$prefix"
+            "RunnerCommit=$env:GITHUB_SHA"
+            "ResolvedPackages=$($resolvedPackages -join ';')"
+          )
+          $manifest | Set-Content 'windows-ucrt64-toolchain-manifest.txt' -Encoding utf8
+          $manifest | ForEach-Object { Write-Host $_ }
+      - name: Configure native Windows process backend
+        shell: pwsh
+        run: |
+          $compiler = Join-Path $env:CPPAPPLAB_UCRT64_PREFIX 'bin\g++.exe'
+          $cmake = Join-Path $env:CPPAPPLAB_UCRT64_PREFIX 'bin\cmake.exe'
+          & $cmake -S tests/native-windows/process-runner -B build/native-process -G Ninja `
+            "-DCMAKE_CXX_COMPILER=$compiler" `
+            "-DCMAKE_PREFIX_PATH=$env:CPPAPPLAB_UCRT64_PREFIX" `
+            -DCMAKE_BUILD_TYPE=Debug
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build with native Windows GCC
+        shell: pwsh
+        run: |
+          & (Join-Path $env:CPPAPPLAB_UCRT64_PREFIX 'bin\cmake.exe') --build build/native-process --parallel
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run real Windows child-process acceptance
+        shell: pwsh
+        run: |
+          & (Join-Path $env:CPPAPPLAB_UCRT64_PREFIX 'bin\ctest.exe') --test-dir build/native-process --output-on-failure --timeout 10
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify binaries do not require an MSYS/Cygwin runtime
+        shell: pwsh
+        run: |
+          $objdump = Join-Path $env:CPPAPPLAB_UCRT64_PREFIX 'bin\objdump.exe'
+          $binaries = @(
+            'build/native-process/cppapplab_process_tests.exe',
+            'build/native-process/cppapplab_process_test_child.exe'
+          )
+          foreach ($binary in $binaries) {
+            $imports = & $objdump -p $binary
+            if ($imports -match 'DLL Name: (msys-2\.0|cygwin1\.dll)') {
+              throw "$binary unexpectedly depends on an MSYS/Cygwin POSIX runtime."
+            }
+            Write-Host "[PASS] $binary is a native Windows executable without MSYS/Cygwin runtime imports."
+          }
+      - name: Upload native toolchain and test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppapplab-native-windows-process-${{ github.sha }}
+          path: |
+            windows-ucrt64-toolchain-manifest.txt
+            build/native-process/Testing/Temporary/LastTest.log
+          if-no-files-found: warn
+          retention-days: 14

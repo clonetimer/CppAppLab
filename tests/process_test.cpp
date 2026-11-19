@@ -1,11 +1,11 @@
 #include "cppapplab/process.hpp"
+#include "cppapplab_process_test_config.hpp"
 
 #include <gtest/gtest.h>
 
 #include <chrono>
 #include <filesystem>
 #include <initializer_list>
-#include "cppapplab_process_test_config.hpp"
 #include <stdexcept>
 #include <string>
 #include <vector>

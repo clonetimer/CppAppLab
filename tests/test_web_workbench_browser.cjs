@@ -334,7 +334,23 @@ async function main() {
       document.querySelector("#task-title")?.textContent.includes("First C++ Program")
     );
     const startButton = page.locator("#start-button");
+    let releaseStartRequest;
+    await page.route("**/api/v1/tasks/w1.hello-world/start", async (route) => {
+      await new Promise((resolve) => { releaseStartRequest = resolve; });
+      await route.continue();
+    });
     await startButton.click();
+    await page.waitForFunction(() => {
+      const button = document.querySelector("#start-button");
+      return button?.dataset.pending === "true" && button.disabled &&
+        button.getAttribute("aria-busy") === "true" && button.textContent.includes("准备中");
+    });
+    assert.equal(typeof releaseStartRequest, "function", "The real start request reached the held route");
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-3-start-pending-after.png"),
+      fullPage: false
+    });
+    releaseStartRequest();
     await page.waitForFunction(() =>
       document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
     );

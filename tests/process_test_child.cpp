@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <cerrno>
 #include <chrono>
 #include <cstddef>
 #include <cstdlib>
@@ -76,10 +78,11 @@ int spawn_and_wait(const char* executable, unsigned long milliseconds) {
     }
 
     int status = 0;
-    while (::waitpid(child, &status, 0) < 0) {
-        // EINTR is the only expected transient wait failure in this test helper.
-    }
-    return WIFEXITED(status) && WEXITSTATUS(status) == 0 ? 0 : 92;
+    pid_t waited = -1;
+    do {
+        waited = ::waitpid(child, &status, 0);
+    } while (waited < 0 && errno == EINTR);
+    return waited == child && WIFEXITED(status) && WEXITSTATUS(status) == 0 ? 0 : 92;
 #endif
 }
 

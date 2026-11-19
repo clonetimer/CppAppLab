@@ -463,13 +463,13 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 ## 57. Replace trivial shell smoke wrappers with CMake process tests
 
 - **Changed:** Removed the W1 Calculator division-by-zero Bash wrapper and replaced it with a CMake script invoked by CTest. The test still launches the actual learner executable and asserts exit code 3, empty stdout, exact stderr diagnostic and a bounded timeout.
-- **Why:** CMake/CTest already orchestrates every formal fixture and runs natively on Windows. A small smoke test should not introduce a separate Bash runtime requirement.
+- **Why:** CMake/CTest already orchestrates the formal fixtures, and `execute_process` is supported by native Windows CMake. A small smoke test should not introduce a separate Bash runtime requirement. This PR's CI runs the fixture on Ubuntu; it does not yet prove Windows execution.
 - **Pitfall:** A nonzero exit is the expected behavior for this CLI error branch, so CTest must not invoke the executable directly as a passing test. The CMake runner captures the process result and validates the exact output contract. Normalize CRLF/LF before comparing diagnostics across Windows and Unix.
 - **Boundary:** This removes one shell dependency only. The root project still has a Linux-only CMake guard and POSIX runtime code; no native Windows support is implied.
 
 
 ## 58. Cross-check migration inventories against actual repository surfaces
 
-- **Changed:** Expanded the Windows-native inventory to include the active development guide, W2/W3 shell examples, W4 formatting instructions, and Python tests that directly launch Bash. Clarified that the existing Windows PowerShell/CMD launcher still hands off to WSL and is not a native runtime. Distinguished the 30-script `main` baseline from the 29 Bash scripts remaining after this PR removes the W1 wrapper.
+- **Changed:** Expanded the Windows-native inventory to include the active development guide, W2/W3 shell examples, W4 formatting instructions, and Python tests that directly launch Bash. Clarified that the existing Windows PowerShell/CMD launcher still hands off to WSL and is not a native runtime. Distinguished the 30-script `main` baseline from the 29 Bash scripts remaining after this PR removes the W1 wrapper. Also identified that the current `windows-latest` CI job checks only the legacy WSL launcher and Bash syntax; it does not build or test the C++ product natively.
 - **Why:** A filename-only shell inventory misses POSIX assumptions embedded in Python, documentation commands and Windows-side WSL bridges. The migration plan must describe actual execution dependencies, not just file extensions.
 - **Pitfall:** GitHub's recursive tree includes directory entries as well as tracked files; count only blob entries. Also distinguish the audit baseline from the PR branch after its own deletions, or the inventory appears internally inconsistent.

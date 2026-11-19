@@ -143,6 +143,14 @@ if(BUILD_TESTING)
     )
     target_link_libraries(cppapplab_tests PRIVATE cppapplab_core GTest::gtest_main)
 
+    add_executable(cppapplab_process_test_child tests/process_test_child.cpp)
+    target_link_libraries(cppapplab_process_test_child PRIVATE cppapplab_build_options)
+    add_dependencies(cppapplab_tests cppapplab_process_test_child)
+
     include(GoogleTest)
-    gtest_discover_tests(cppapplab_tests)
+    gtest_discover_tests(
+        cppapplab_tests
+        PROPERTIES
+            ENVIRONMENT "CPPAPPLAB_PROCESS_TEST_CHILD=$<TARGET_FILE:cppapplab_process_test_child>"
+    )
 endif()

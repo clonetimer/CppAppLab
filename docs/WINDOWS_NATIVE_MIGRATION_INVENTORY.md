@@ -8,8 +8,8 @@
 
 Audited the default-branch tree (458 tracked files), README and architecture decisions, the sole GitHub Actions workflow, root CMake configuration, repository shell/PowerShell/Python entry points, representative process/network/reactor/filesystem implementations, course fixtures and learner-facing setup/package documents.
 
-Inventory counts:
-- 30 Bash shell scripts (.sh)
+Inventory counts (default-branch baseline before the first migration in this PR):
+- 30 Bash shell scripts (.sh) on `main`; this PR removes the W1 Calculator wrapper, so the PR branch has 29 remaining `.sh` files
 - 3 PowerShell scripts (.ps1) and one Windows .cmd entry point
 - 11 Python files and 5 Node .cjs tests; Python/Node are generally cross-platform, except APT-specific utilities and any embedded POSIX paths/subprocess assumptions
 - 40 CMakeLists/CMake module files
@@ -38,14 +38,14 @@ There are 30 Bash scripts, all using Bash shebangs or invoked explicitly through
 | Course smoke scripts | Bash argument checking, pipelines, grep and shell process execution | Prefer CTest add_test(COMMAND $<TARGET_FILE:...>) and platform-owned C++/Python subprocess assertions. No shell wrapper is needed for simple executable smoke tests | Small–Medium |
 | labs/w5/system-lab/learner/scripts/quality-check.sh | Bash CMake/build/CTest wrapper | CMake preset plus PowerShell helper or direct documented CMake/CTest commands | Small |
 
-**Complete 30-file Bash inventory**
+**Complete 30-file Bash inventory (baseline `main`, before this PR's deletion)**
 
-- Course fixtures (13): course/fixtures/w1/calculator/tests/divide_zero.sh; course/fixtures/w2/todo/tests/todo_cli_workflow.sh; course/fixtures/w3/task-manager/tests/task_manager_cli_workflow.sh; course/fixtures/w4/quality-gate/tests/task_manager_cli_workflow.sh; course/fixtures/w5/system-lab/tests/system_lab_cli_smoke.sh; course/fixtures/w6/thread-pool/tests/thread_pool_smoke.sh; course/fixtures/w7/tcp-chat/tests/tcp_chat_smoke.sh; course/fixtures/w7/tcp-echo/tests/tcp_echo_smoke.sh; course/fixtures/w8/http-parser/tests/http_parser_smoke.sh; course/fixtures/w8/http-protocol/tests/http_protocol_smoke.sh; course/fixtures/w8/http-server/tests/http_server_smoke.sh; course/fixtures/w8/router/tests/router_smoke.sh; course/fixtures/w8/static-files/tests/static_files_smoke.sh.
+- Course fixtures (13): course/fixtures/w1/calculator/tests/divide_zero.sh (removed by this PR); course/fixtures/w2/todo/tests/todo_cli_workflow.sh; course/fixtures/w3/task-manager/tests/task_manager_cli_workflow.sh; course/fixtures/w4/quality-gate/tests/task_manager_cli_workflow.sh; course/fixtures/w5/system-lab/tests/system_lab_cli_smoke.sh; course/fixtures/w6/thread-pool/tests/thread_pool_smoke.sh; course/fixtures/w7/tcp-chat/tests/tcp_chat_smoke.sh; course/fixtures/w7/tcp-echo/tests/tcp_echo_smoke.sh; course/fixtures/w8/http-parser/tests/http_parser_smoke.sh; course/fixtures/w8/http-protocol/tests/http_protocol_smoke.sh; course/fixtures/w8/http-server/tests/http_server_smoke.sh; course/fixtures/w8/router/tests/router_smoke.sh; course/fixtures/w8/static-files/tests/static_files_smoke.sh.
 - Learner script (1): labs/w5/system-lab/learner/scripts/quality-check.sh.
 - Product/setup/package scripts (14): scripts/accept_learner_package_wsl.sh; scripts/check_environment.sh; scripts/ci_prepare_ubuntu_apt.sh; scripts/ci_prepare_ubuntu_snapshot.sh; scripts/cppapplab-wsl-launcher.sh; scripts/install_offline_dependencies.sh; scripts/lib/terminal.sh; scripts/lib/ubuntu-support.sh; scripts/package_offline_dependencies.sh; scripts/package_release.sh; scripts/quickstart.sh; scripts/smoke_learner_package.sh; scripts/start-web-workbench.sh; scripts/verify_offline_dependency_bundle.sh.
 - Test helpers (2): tests/test_ubuntu_support.sh; tests/test_windows_browser_open.sh.
 
-Existing native entry points worth retaining/expanding: Start-CppAppLab.cmd, scripts/Start-CppAppLab.ps1, tests/windows-launcher-smoke.ps1, tests/windows-target-machine-acceptance.ps1. The 11 Python and 5 Node scripts are not inherently Linux-only; audit individual subprocess/path assumptions rather than rewriting them wholesale.
+Existing Windows-side entry points and harnesses are **not native runtime entry points**: `Start-CppAppLab.cmd` and `scripts/Start-CppAppLab.ps1` run on Windows but currently invoke `wsl.exe`, Bash and Ubuntu; they are legacy WSL bridges that must be replaced/re-scoped for native setup and launch. `tests/windows-launcher-smoke.ps1` tests that WSL handoff, while `tests/windows-target-machine-acceptance.ps1` validates Windows + WSL2; neither is evidence of native Windows runtime support. Retain PowerShell as the Windows automation surface, but rewrite the launcher and acceptance harness for a native toolchain. The 11 Python and 5 Node scripts are not inherently Linux-only; audit individual subprocess/path assumptions rather than rewriting them wholesale. Two concrete Python exceptions are `tests/test_interactive_prompt.py` (executes `/bin/bash`) and `tests/test_web_workbench_integration.py` (invokes `bash scripts/start-web-workbench.sh`).
 
 ## ② Paths and symbolic links
 
@@ -54,7 +54,7 @@ Existing native entry points worth retaining/expanding: Start-CppAppLab.cmd, scr
 - Tracked symlinks: **0**. No repository file itself is a symlink.
 - Symlink/reparse-point behavior is nevertheless part of the product security contract. src/workspace.cpp uses std::filesystem::symlink_status to reject symlinked workspaces, source files and learner-template entries. src/progress.cpp rejects symlinked state files/directories and uses O_NOFOLLOW when creating progress files.
 - Fixed acceptance explicitly creates symlinks in four fixture files: course/fixtures/w2/todo/tests/todo_acceptance_test.cpp, course/fixtures/w3/task-manager/tests/task_manager_acceptance_test.cpp, course/fixtures/w4/quality-gate/tests/task_manager_acceptance_test.cpp, and course/fixtures/w9/static-root/tests/secure_static_root_acceptance_test.cpp.
-- Linux-only path/runtime assumptions found: /proc/<pid>/cmdline in scripts/start-web-workbench.sh; /dev/null in src/process.cpp, process tests and web integration; /dev/tty in scripts/lib/terminal.sh; /bin/echo, /bin/cat, /bin/sh, /usr/bin/printf in process demonstrations/tests; /tmp in tests/CI; HOME, ~/.local/share, XDG runtime/state variables in progress, Todo workspaces and service PID/log handling; Linux executable mode checks (-x), chmod, and install -m in scripts.
+- Linux-only path/runtime assumptions found: `/proc/<pid>/cmdline` in `scripts/start-web-workbench.sh`; `/dev/null` in `src/process.cpp`, process tests and web integration; `/dev/tty` in `scripts/lib/terminal.sh`; `/bin/echo`, `/bin/cat`, `/bin/sh`, `/usr/bin/printf` in process demonstrations/tests; `/bin/bash` in `tests/test_interactive_prompt.py` and `bash` subprocess invocation in `tests/test_web_workbench_integration.py`; `/tmp` in tests/CI; `HOME`, `~/.local/share`, XDG runtime/state variables in progress, Todo workspaces and service PID/log handling; Linux executable-mode checks (`-x`), `chmod`, and `install -m` in scripts.
 - src/progress.cpp also uses POSIX flock, open, write, fsync, getpid, O_CLOEXEC, O_NOFOLLOW, and file-descriptor semantics. src/workspace.cpp uses portable filesystem APIs, but its security checks need Windows reparse-point/race review rather than assuming symlink equivalence.
 
 | Area | Windows-native replacement | Effort |
@@ -113,13 +113,18 @@ Recommended CI baseline: Windows x64 runner + pinned native MinGW-w64 GCC + nati
 
 ### Primary user-facing documents requiring conversion
 
-- Root README.md: Ubuntu source checkout, Bash workbench/quickstart commands, ./build/cppapplab, $HOME, ~/cppapplab-work and Linux build/launch assumptions.
+- Root README.md: Ubuntu source checkout, Bash workbench/quickstart commands, `./build/cppapplab`, `$HOME`, `~/cppapplab-work` and Linux build/launch assumptions.
+- docs/DEVELOPMENT.md: says to build from Ubuntu and uses a Linux `find`/`xargs` pipeline for clang-format; convert the environment wording and file enumeration while keeping the CMake/CTest commands.
+- docs/LEARNING_ENGINE_DESIGN.md: records the W5 POSIX process runner and Linux-only task acceptance boundary; update the implementation/platform descriptions without changing the task contract.
 - docs/QUICKSTART.md: WSL distribution selection, Ubuntu clone path, Bash quickstart/workbench commands, apt approval, shell package commands and WSL-specific troubleshooting.
 - docs/ENVIRONMENT_WSL2_UBUNTU.md: WSL status/version commands, Ubuntu apt, uname, g++, gdb, code ., Linux filesystem guidance and Bash environment checks.
 - docs/RELEASE_PACKAGING.md, docs/TARGET_ACCEPTANCE.md: Bash packaging/smoke scripts, tar.gz package names, Ubuntu version checks, APT/offline dependency instructions.
 - packaging/LEARNER-README.md, packaging/OFFLINE-DEPENDENCIES-README.md: apt installation, Bash launcher/environment check, .deb, tar extraction and Ubuntu-specific package identity.
 - docs/ARCHITECTURE.md, docs/DECISIONS.md, docs/STATUS.md, docs/ROADMAP.md: Linux/WSL as supported platform and explicit Linux-only architecture decisions. Preserve historical decisions as superseded records; add a new Windows-native decision rather than rewriting history.
-- course/CURRICULUM.md, course/LEARNING_GUIDE_ZH.md, W5/W7/W8/W9 lesson and hint files: CMake/CTest commands are largely portable, but Bash wrappers, /bin/*, POSIX process/socket/epoll APIs, openat/O_NOFOLLOW, Linux filesystem assumptions and descriptions of Linux-only outcomes must be replaced by Windows-native equivalents while retaining the same learning objectives and acceptance depth.
+- course/CURRICULUM.md and course/LEARNING_GUIDE_ZH.md: remove WSL/Ubuntu as the future supported setup path once native setup is ready; retain course coverage and acceptance boundaries.
+- course/lessons/w2/todo.md and course/lessons/w3/task-manager.md: replace shell-specific `mkdir -p`, `export`, `$PWD` and `./build/...` examples with PowerShell directory/environment-variable/executable commands.
+- course/lessons/w4/quality-gate.md and `labs/w4/quality-gate/learner/README.md`: replace the Linux `find`/`xargs` clang-format pipeline with a native PowerShell or Python file-enumeration command that propagates formatter failures.
+- W5/W7/W8/W9 lesson and hint files: CMake/CTest commands are largely portable, but Bash wrappers, `/bin/*`, POSIX process/socket/epoll APIs, `openat`/`O_NOFOLLOW`, Linux filesystem assumptions and descriptions of Linux-only outcomes must be replaced by Windows-native equivalents while retaining the same learning objectives and acceptance depth.
 
 ### Windows-native command replacements
 
@@ -130,6 +135,8 @@ Recommended CI baseline: Windows x64 runner + pinned native MinGW-w64 GCC + nati
 | cmake -S . -B build, cmake --build build, ctest --test-dir build | Keep these commands; run from PowerShell with native CMake/Ninja and Windows paths | Small |
 | ./build/cppapplab, ./cppapplab | .\build\cppapplab.exe, .\cppapplab.exe | Small |
 | tar -xzf, sha256sum --check, chmod +x | Expand ZIP, Get-FileHash -Algorithm SHA256, no executable-bit step for .exe/.ps1 | Small |
+| find/xargs-based clang-format enumeration | PowerShell `Get-ChildItem -Recurse -File` or a Python helper that passes file paths as an argument array and propagates nonzero formatter exits | Small |
+| `mkdir -p`, `export VAR=...`, `./build/program` in W2/W3 lessons | `New-Item -ItemType Directory -Force`, `$env:VAR = ...`, `.\build\program.exe` | Small |
 | $HOME/.local/share, ~/cppapplab-work | %LOCALAPPDATA%\CppAppLab for progress/state and a documented workspace root under the user's profile | Medium |
 | /bin/echo, /bin/cat, /bin/sh | C++ test-helper executable or explicit Windows system executable, launched through the native process runner | Medium |
 

@@ -1,0 +1,41 @@
+{
+  "schema": "cppapplab.windows-ucrt64-toolchain.v1",
+  "target": "x86_64-w64-mingw32-ucrt",
+  "environment": "MSYS2 UCRT64 package repository; compiler, CMake, Ninja and tests execute as native Windows PE binaries",
+  "provisioner": {
+    "action": "msys2/setup-msys2",
+    "commit": "ec48f7c5447b3140e2b088413ae3a55687bccb6e",
+    "msystem": "UCRT64"
+  },
+  "packages": {
+    "mingw-w64-ucrt-x86_64-gcc": {
+      "version": "16.2.0-6",
+      "sha256": "0290e91f5a9a8a3699bcea6221a899403bb9bd5d6f7dbd98c883d74e2ef36338"
+    },
+    "mingw-w64-ucrt-x86_64-cmake": {
+      "version": "4.5.0-1",
+      "sha256": "146cfea017827e0203c23fe8317442fa052650bbb59f8d40427e37687cd38222"
+    },
+    "mingw-w64-ucrt-x86_64-ninja": {
+      "version": "1.13.2-1",
+      "sha256": "514685563a84a6ebddbbeee7bbafae5f3994e363c49364fc4507fabcaa049f2b"
+    },
+    "mingw-w64-ucrt-x86_64-gtest": {
+      "version": "1.18.0-1",
+      "sha256": "1980f0deca5ce1eb4830d7f3cfb6902b6815fe5aaf0d869e6153d034e6f6ebd1"
+    }
+  },
+  "acceptance": {
+    "generator": "Ninja",
+    "test_framework": "GoogleTest/CTest",
+    "required_compiler": "GCC 16.2.0",
+    "required_cmake": "4.5.0",
+    "required_ninja": "1.13.2",
+    "required_googletest": "1.18.0",
+    "forbidden_runtime_imports": [
+      "msys-2.0.dll",
+      "cygwin1.dll"
+    ]
+  },
+  "note": "The listed direct package versions and archive digests are a CI lock. The package manager resolves their transitive dependencies; CI records the complete resolved environment in the uploaded manifest."
+}

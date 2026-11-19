@@ -667,6 +667,14 @@ async function main() {
     }
     assert.equal(typeof releaseBuildRequest, "function", "The real build request reached the held route");
     assert.equal(buildRequestCount, 1, "Exactly one real build request is pending");
+    const formalDisabledStyle = await page.locator("#check-button").evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { disabled: element.disabled, opacity: style.opacity, background: style.backgroundColor, color: style.color };
+    });
+    assert.equal(formalDisabledStyle.disabled, true, "Formal acceptance is unavailable while another action runs");
+    assert.equal(formalDisabledStyle.opacity, "1", "Disabled primary action remains fully opaque");
+    assert.notEqual(formalDisabledStyle.background, idleStyle,
+      "Disabled primary action has its own clearly visible surface");
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-3-buttons-pending-after.png"),
       fullPage: false

@@ -466,3 +466,9 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - **Why:** W2 introduces several new ideas at once (STL containers, algorithms, serialization, file safety and persistence). Learners should be able to reuse the W1 mental model instead of experiencing W2 as a completely new architecture.
 - **Pitfall:** The CLI calls `load` before dispatching every command, so the missing-file case must be implemented before a learner can successfully run `add`. A vague instruction to “start with add” conflicts with the actual control flow. Keep the learning sequence grounded in the starter TODOs and platform acceptance tests.
 - **Boundary:** This is instructional scaffolding based on code and fixed tests; it is not evidence of improved human learning outcomes until novice trials are conducted.
+
+## 56. Preserve established lesson-rendering contracts when adding instructional structure
+
+- **Changed:** The first W1→W2 bridge draft added a second Markdown table to `w2/todo.md`. The existing renderer regression explicitly requires that released lesson to expose exactly one semantic table, so the concept mapping was converted to a short bullet list while preserving the original CLI command table.
+- **Why:** A content-only lesson edit can still violate a frontend rendering contract. Existing lesson-specific tests are part of the product interface, not incidental snapshots.
+- **Pitfall:** Before adding tables, inspect the lesson's established semantic structure and run `tests/test_web_markdown_tables.cjs`. Prefer bullets for a small concept map when a lesson already owns a required table.

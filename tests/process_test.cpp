@@ -96,7 +96,7 @@ TEST(ProcessRunnerTest, PassesBoundedStandardInputToChild) {
 }
 
 TEST(ProcessRunnerTest, PreservesBinaryStandardInput) {
-    const std::string payload("A\\0B\\r\\nC", 6U);
+    const std::string payload("A\0B\r\nC", 6U);
     const auto result = cppapplab::run_process(
         child_command({"copy-stdin"}), std::filesystem::current_path(),
         std::chrono::seconds(2), 1024, payload);

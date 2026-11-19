@@ -26,6 +26,7 @@ target_link_libraries(http-router PRIVATE router_under_test)
 target_compile_options(http-router PRIVATE -Wall -Wextra -Wpedantic -Wshadow -Werror)
 
 if(BUILD_TESTING)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
     add_executable(router_acceptance_tests tests/router_acceptance_test.cpp)
     target_include_directories(router_acceptance_tests BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
     target_link_libraries(router_acceptance_tests PRIVATE router_under_test GTest::gtest_main)

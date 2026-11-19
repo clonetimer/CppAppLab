@@ -961,3 +961,9 @@ button[data-pending="true"]:disabled::before {
 .app-shell:has(.console-dock.is-collapsed) {
   --console-dock-height: 52px;
 }
+
+
+/* The output dock belongs to the learning workspace, not the welcome screen. */
+.app-shell:not(:has(#workbench-panel:not([hidden]))) .console-dock {
+  display: none;
+}

@@ -1425,6 +1425,7 @@
       updateTaskState(state.task.id, state.task.state === "PASSED" ? "PASSED" : "IN PROGRESS");
       state.workspaceReady = true;
       ui.workspaceState.textContent = result.resumed ? "已恢复" : "已创建";
+      clearButtonPending(triggerButton);
       ui.startButton.textContent = "工作区已打开";
       try { await loadWorkspaceFiles(); }
       catch (error) { showWorkspaceError(error); return; }

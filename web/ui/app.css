@@ -841,7 +841,7 @@ button[data-pending="true"]::before {
   .primary-button {
     transition: none;
   }
-  button[data-pending="true"]:disabled::before {
+  button[data-pending="true"]::before {
     animation: none;
     border-right-color: currentColor;
   }

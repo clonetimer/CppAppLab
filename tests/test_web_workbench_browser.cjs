@@ -617,6 +617,7 @@ async function main() {
     });
 
     const buildButton = page.locator("#build-button");
+    const originalBuildLabel = (await buildButton.textContent()).trim();
     const idleStyle = await buildButton.evaluate((element) => getComputedStyle(element).backgroundColor);
     await buildButton.hover();
     await page.waitForTimeout(180);
@@ -688,8 +689,8 @@ async function main() {
     await page.unroute(buildRoute);
     assert.equal(await buildButton.getAttribute("data-pending"), null);
     assert.equal(await buildButton.getAttribute("aria-busy"), "false");
-    assert.equal((await buildButton.textContent()).trim(), "构建",
-      "The original action label is restored after completion");
+    assert.equal((await buildButton.textContent()).trim(), originalBuildLabel,
+      "The original task-specific action label is restored after completion");
     await page.locator("#editor-actions-group summary").click();
 
     await page.setViewportSize({ width: 390, height: 844 });

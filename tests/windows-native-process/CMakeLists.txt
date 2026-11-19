@@ -28,11 +28,11 @@ FetchContent_MakeAvailable(googletest)
 
 find_package(Threads REQUIRED)
 
-get_filename_component(CPPAPPLAB_ROOT "\${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+get_filename_component(CPPAPPLAB_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 
 add_executable(
     cppapplab_process_test_child
-    "\${CPPAPPLAB_ROOT}/tests/process_test_child.cpp"
+    "${CPPAPPLAB_ROOT}/tests/process_test_child.cpp"
 )
 target_compile_definitions(cppapplab_process_test_child PRIVATE _WIN32_WINNT=0x0A00)
 target_compile_options(
@@ -48,13 +48,13 @@ target_link_libraries(cppapplab_process_test_child PRIVATE Threads::Threads)
 
 add_executable(
     cppapplab_process_tests
-    "\${CPPAPPLAB_ROOT}/src/process_win32.cpp"
-    "\${CPPAPPLAB_ROOT}/tests/process_test.cpp"
+    "${CPPAPPLAB_ROOT}/src/process_win32.cpp"
+    "${CPPAPPLAB_ROOT}/tests/process_test.cpp"
 )
 target_include_directories(
     cppapplab_process_tests
     PRIVATE
-    "\${CPPAPPLAB_ROOT}/include"
+    "${CPPAPPLAB_ROOT}/include"
 )
 target_compile_definitions(cppapplab_process_tests PRIVATE _WIN32_WINNT=0x0A00)
 target_compile_options(
@@ -74,13 +74,13 @@ target_link_libraries(
 )
 
 file(GENERATE
-    OUTPUT "\${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/cppapplab_process_test_config.hpp"
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/cppapplab_process_test_config.hpp"
     CONTENT "#pragma once\n#define CPPAPPLAB_PROCESS_TEST_CHILD R\"CPPAPPLAB_PATH($<TARGET_FILE:cppapplab_process_test_child>)CPPAPPLAB_PATH\"\n"
 )
 target_include_directories(
     cppapplab_process_tests
     PRIVATE
-    "\${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>"
+    "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>"
 )
 add_dependencies(cppapplab_process_tests cppapplab_process_test_child)
 

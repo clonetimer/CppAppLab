@@ -118,6 +118,8 @@
     saveState: $("save-state"),
     workspaceState: $("workspace-state"),
     consoleTitle: $("console-title"),
+    consoleToggle: $("console-toggle"),
+    consoleDock: document.querySelector(".console-dock"),
     console: $("console-output"),
     diagnostics: $("diagnostics-list"),
     checkResult: $("check-result"),
@@ -1413,9 +1415,9 @@
     }
   }
 
-  async function startTask() {
+  async function startTask(triggerButton = ui.startButton) {
     if (!state.task || state.busy) return;
-    setBusy(true, "正在准备学习工作区…");
+    setBusy(true, "正在准备学习工作区…", triggerButton, "准备中…");
     try {
       const result = await api("/api/v1/tasks/" + encodeURIComponent(state.task.id) + "/start", {
         method: "POST", body: {}
@@ -1850,10 +1852,11 @@
     updateServiceSnapshot(state.serviceSnapshot || { state: "STOPPED", port: null, logs: "" });
   }
 
-  async function refreshServiceStatus(silent = false) {
+  async function refreshServiceStatus(silent = false, triggerButton = ui.serviceRefreshButton) {
     if (!state.task || !state.task.service_profile || (state.busy && !silent)) return;
     const taskId = state.task.id;
     const request = ++state.serviceRequest;
+    if (!silent) setBusy(true, "正在刷新网络服务状态…", triggerButton, "刷新中…");
     try {
       const snapshot = await api(
         "/api/v1/workspaces/" + encodeURIComponent(taskId) + "/service/status"
@@ -1865,12 +1868,14 @@
       if (!state.task || state.task.id !== taskId || request !== state.serviceRequest) return null;
       if (!silent) toast(error.message);
       return null;
+    } finally {
+      if (!silent) setBusy(false);
     }
   }
 
-  async function startNetworkService() {
+  async function startNetworkService(triggerButton = ui.serviceStartButton) {
     if (!state.task || !state.task.service_profile || !state.workspaceReady || state.busy) return;
-    setBusy(true, "正在保存代码…");
+    setBusy(true, "正在保存代码…", triggerButton, "准备中…");
     const saved = await saveAllDirtyFiles({ silent: true });
     if (!saved) {
       setBusy(false);
@@ -1896,10 +1901,10 @@
     }
   }
 
-  async function stopNetworkService(silent = false, navigationOwnsBusy = false) {
+  async function stopNetworkService(silent = false, navigationOwnsBusy = false, triggerButton = ui.serviceStopButton) {
     if (!state.task || !state.task.service_profile || (state.busy && !navigationOwnsBusy)) return;
     try {
-      setBusy(true);
+      setBusy(true, "正在停止网络服务…", silent ? null : triggerButton, "停止中…");
       const snapshot = await api(
         "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/stop",
         { method: "POST", body: {} }
@@ -2319,9 +2324,16 @@
     ui.appBuildButton.addEventListener("click", runApplicationBuild);
     ui.appExecuteButton.addEventListener("click", runApplication);
     ui.appAction.addEventListener("change", renderApplicationFields);
-    ui.serviceStartButton.addEventListener("click", startNetworkService);
-    ui.serviceRefreshButton.addEventListener("click", () => refreshServiceStatus());
-    ui.serviceStopButton.addEventListener("click", () => stopNetworkService());
+    ui.serviceStartButton.addEventListener("click", () => startNetworkService(ui.serviceStartButton));
+    ui.serviceRefreshButton.addEventListener("click", () => refreshServiceStatus(false, ui.serviceRefreshButton));
+    ui.serviceStopButton.addEventListener("click", () => stopNetworkService(false, false, ui.serviceStopButton));
+    ui.consoleToggle.addEventListener("click", () => {
+      const collapsed = ui.consoleDock.classList.toggle("is-collapsed");
+      ui.consoleToggle.setAttribute("aria-expanded", String(!collapsed));
+      ui.consoleToggle.textContent = collapsed ? "展开终端" : "收起终端";
+      ui.consoleToggle.setAttribute("aria-label", collapsed ? "展开运行终端" : "收起运行终端");
+      ui.consoleDock.dataset.collapsed = String(collapsed);
+    });
     ui.checkButton.addEventListener("click", () => runWorkspaceAction("check"));
     ui.workflowAction.addEventListener("click", followWorkflowAction);
     ui.hintClose.addEventListener("click", () => closeHint());

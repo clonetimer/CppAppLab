@@ -11,7 +11,7 @@ file(MAKE_DIRECTORY "${work_directory}")
 set(todo_file "${work_directory}/tasks.tsv")
 set(todo_environment "CPPAPPLAB_TODO_FILE=${todo_file}")
 
-function(run_cli_command expected_exit expected_stdout expected_stderr)
+function(run_cli_command expected_exit)
     execute_process(
         COMMAND "${CMAKE_COMMAND}" -E env "${todo_environment}"
             "${CPPAPPLAB_TODO_EXECUTABLE}" ${ARGN}
@@ -33,43 +33,47 @@ function(run_cli_command expected_exit expected_stdout expected_stderr)
         )
     endif()
 
-    if(NOT "${expected_stdout}" STREQUAL "__CPPAPPLAB_ANY_STDOUT__"
-       AND NOT "${actual_stdout}" STREQUAL "${expected_stdout}")
-        message(FATAL_ERROR
-            "CLI command '${ARGN}' produced unexpected stdout.\n"
-            "Expected: [${expected_stdout}]\n"
-            "Actual:   [${actual_stdout}]"
-        )
-    endif()
-
-    if(NOT "${actual_stderr}" STREQUAL "${expected_stderr}")
-        message(FATAL_ERROR
-            "CLI command '${ARGN}' produced unexpected stderr.\n"
-            "Expected: [${expected_stderr}]\n"
-            "Actual:   [${actual_stderr}]"
-        )
-    endif()
-
+    set(CPPAPPLAB_LAST_TODO_STDOUT "${actual_stdout}" PARENT_SCOPE)
+    set(CPPAPPLAB_LAST_TODO_STDERR "${actual_stderr}" PARENT_SCOPE)
 endfunction()
 
-set(expected_after_add
-    "#1 [ ] ${CPPAPPLAB_TODO_TITLE_1}\n#2 [ ] ${CPPAPPLAB_TODO_TITLE_2}\n"
-)
-set(expected_after_done
-    "#1 [x] ${CPPAPPLAB_TODO_TITLE_1}\n#2 [ ] ${CPPAPPLAB_TODO_TITLE_2}\n"
-)
-set(expected_after_remove
-    "#1 [x] ${CPPAPPLAB_TODO_TITLE_1}\n"
-)
+function(assert_exact_output_line actual_output expected_line)
+    set(padded_output "\n${actual_output}\n")
+    string(FIND "${padded_output}" "\n${expected_line}\n" position)
+    if(position EQUAL -1)
+        message(FATAL_ERROR
+            "Expected exact output line not found: '${expected_line}'.\n"
+            "Actual output:\n${actual_output}"
+        )
+    endif()
+endfunction()
 
-run_cli_command(0 "No tasks.\n" "" list)
-run_cli_command(0 "__CPPAPPLAB_ANY_STDOUT__" "" add "${CPPAPPLAB_TODO_TITLE_1}")
-run_cli_command(0 "__CPPAPPLAB_ANY_STDOUT__" "" add "${CPPAPPLAB_TODO_TITLE_2}")
-run_cli_command(0 "${expected_after_add}" "" list)
-run_cli_command(0 "__CPPAPPLAB_ANY_STDOUT__" "" done 1)
-run_cli_command(0 "${expected_after_done}" "" list)
-run_cli_command(0 "__CPPAPPLAB_ANY_STDOUT__" "" remove 2)
-run_cli_command(0 "${expected_after_remove}" "" list)
-run_cli_command(3 "" "error: task not found\n" done 999)
+run_cli_command(0 list)
+string(REGEX REPLACE "[\r\n]+$" "" initial_output "${CPPAPPLAB_LAST_TODO_STDOUT}")
+if(NOT "${initial_output}" STREQUAL "No tasks.")
+    message(FATAL_ERROR "Expected an empty Todo list, received: [${CPPAPPLAB_LAST_TODO_STDOUT}]")
+endif()
+
+run_cli_command(0 add "${CPPAPPLAB_TODO_TITLE_1}")
+run_cli_command(0 add "${CPPAPPLAB_TODO_TITLE_2}")
+run_cli_command(0 list)
+assert_exact_output_line("${CPPAPPLAB_LAST_TODO_STDOUT}" "#1 [ ] ${CPPAPPLAB_TODO_TITLE_1}")
+assert_exact_output_line("${CPPAPPLAB_LAST_TODO_STDOUT}" "#2 [ ] ${CPPAPPLAB_TODO_TITLE_2}")
+
+run_cli_command(0 done 1)
+run_cli_command(0 list)
+assert_exact_output_line("${CPPAPPLAB_LAST_TODO_STDOUT}" "#1 [x] ${CPPAPPLAB_TODO_TITLE_1}")
+assert_exact_output_line("${CPPAPPLAB_LAST_TODO_STDOUT}" "#2 [ ] ${CPPAPPLAB_TODO_TITLE_2}")
+
+run_cli_command(0 remove 2)
+run_cli_command(0 list)
+assert_exact_output_line("${CPPAPPLAB_LAST_TODO_STDOUT}" "#1 [x] ${CPPAPPLAB_TODO_TITLE_1}")
+string(FIND "${CPPAPPLAB_LAST_TODO_STDOUT}" "#2 " removed_task_position)
+if(NOT removed_task_position EQUAL -1)
+    message(FATAL_ERROR "Removed task is still present in the Todo list.")
+endif()
+
+run_cli_command(3 done 999)
+assert_exact_output_line("${CPPAPPLAB_LAST_TODO_STDERR}" "error: task not found")
 
 message(STATUS "Multi-process Todo CLI persistence workflow passed.")

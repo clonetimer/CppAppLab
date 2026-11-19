@@ -123,50 +123,64 @@
               </div>
               <div class="file-toolbar">
                 <div id="file-list" class="file-list"><span class="empty-files">开始任务后显示源文件</span></div>
-                <div class="editor-actions">
-                  <button id="build-button" class="secondary-button" disabled>构建</button>
-                  <button id="run-button" class="secondary-button" disabled>运行 / 测试</button>
-                  <button id="save-button" class="secondary-button" disabled>保存</button>
-                  <button id="check-button" class="primary-button compact" disabled>正式验收 <span>✓</span></button>
-                </div>
+                <details id="editor-actions-group" class="editor-actions-group">
+                  <summary class="editor-actions-summary">
+                    <span>工作区操作</span>
+                    <span class="editor-actions-count">构建 · 运行 · 保存 · 验收</span>
+                  </summary>
+                  <div class="editor-actions">
+                    <button id="build-button" class="secondary-button" disabled>构建</button>
+                    <button id="run-button" class="secondary-button" disabled>运行 / 测试</button>
+                    <button id="save-button" class="secondary-button" disabled>保存</button>
+                    <button id="check-button" class="primary-button compact" disabled>正式验收 <span>✓</span></button>
+                  </div>
+                </details>
               </div>
               <div class="workflow-guide" aria-label="学习下一步">
                 <p id="workflow-help" role="status" aria-live="polite">先阅读课程，再开始学习。</p>
                 <button id="workflow-action" type="button" class="secondary-button" hidden></button>
               </div>
               <section id="app-runner" class="app-runner" hidden aria-label="应用程序运行面板">
-                <div class="app-runner-heading">
-                  <div><span class="eyebrow">APPLICATION PROFILE</span><strong>运行你编写的程序</strong></div>
-                  <span id="app-profile-label" class="subtle-note"></span>
-                </div>
-                <p id="app-runner-help" class="app-runner-help">这里运行当前工作区中的学习者程序。程序输出与错误会显示在下方；此操作不会写入正式验收记录。</p>
-                <div class="app-runner-controls">
-                  <label class="app-action-label" for="app-action">操作</label>
-                  <select id="app-action" class="app-action-select"></select>
-                  <div id="app-fields" class="app-fields"></div>
-                  <div class="app-runner-buttons">
-                    <button id="app-build-button" class="secondary-button" disabled>构建应用</button>
-                    <button id="app-execute-button" class="primary-button compact" disabled>运行程序</button>
+                <details id="app-runner-details" class="runner-details">
+                  <summary class="runner-summary">
+                    <span>运行你编写的程序</span>
+                    <span id="app-profile-label" class="subtle-note"></span>
+                  </summary>
+                  <div class="runner-content">
+                    <p id="app-runner-help" class="app-runner-help">这里运行当前工作区中的学习者程序。程序输出与错误会显示在下方；此操作不会写入正式验收记录。</p>
+                    <div class="app-runner-controls">
+                      <label class="app-action-label" for="app-action">操作</label>
+                      <select id="app-action" class="app-action-select"></select>
+                      <div id="app-fields" class="app-fields"></div>
+                      <div class="app-runner-buttons">
+                        <button id="app-build-button" class="secondary-button" disabled>构建应用</button>
+                        <button id="app-execute-button" class="primary-button compact" disabled>运行程序</button>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </details>
               </section>
               <section id="service-runner" class="service-runner" hidden aria-label="网络服务运行面板">
-                <div class="service-runner-heading">
-                  <div><span class="eyebrow">NETWORK SERVICE</span><strong id="service-profile-label">网络服务</strong></div>
-                  <div class="service-runner-status">
-                    <span id="service-state" class="service-state" data-state="STOPPED">未启动</span>
-                    <span id="service-port" class="subtle-note"></span>
+                <details id="service-runner-details" class="runner-details">
+                  <summary class="runner-summary">
+                    <span id="service-profile-label">网络服务</span>
+                    <span class="service-runner-status">
+                      <span id="service-state" class="service-state" data-state="STOPPED">未启动</span>
+                      <span id="service-port" class="subtle-note"></span>
+                    </span>
+                  </summary>
+                  <div class="runner-content">
+                    <p id="service-runner-help" class="service-runner-help">服务只绑定本机回环地址；运行、日志和停止由本地工作台管理。</p>
+                    <div id="service-controls" class="service-controls"></div>
+                    <div class="service-runner-buttons">
+                      <button id="service-start-button" class="primary-button compact" disabled>启动服务</button>
+                      <button id="service-refresh-button" class="secondary-button" disabled>刷新状态</button>
+                      <button id="service-stop-button" class="secondary-button" disabled>停止服务</button>
+                    </div>
+                    <div class="service-log-heading">服务日志</div>
+                    <pre id="service-logs" class="service-logs">尚未启动网络服务。</pre>
                   </div>
-                </div>
-                <p id="service-runner-help" class="service-runner-help">服务只绑定本机回环地址；运行、日志和停止由本地工作台管理。</p>
-                <div id="service-controls" class="service-controls"></div>
-                <div class="service-runner-buttons">
-                  <button id="service-start-button" class="primary-button compact" disabled>启动服务</button>
-                  <button id="service-refresh-button" class="secondary-button" disabled>刷新状态</button>
-                  <button id="service-stop-button" class="secondary-button" disabled>停止服务</button>
-                </div>
-                <div class="service-log-heading">服务日志</div>
-                <pre id="service-logs" class="service-logs">尚未启动网络服务。</pre>
+                </details>
               </section>
               <div class="editor-meta">
                 <span id="active-file">未选择文件</span>

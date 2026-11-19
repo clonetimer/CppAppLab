@@ -1415,7 +1415,8 @@
     }
   }
 
-  async function startTask(triggerButton = ui.startButton) {
+  async function startTask(event) {
+    const triggerButton = event && event.currentTarget ? event.currentTarget : ui.startButton;
     if (!state.task || state.busy) return;
     setBusy(true, "正在准备学习工作区…", triggerButton, "准备中…");
     try {

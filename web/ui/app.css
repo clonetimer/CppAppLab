@@ -746,3 +746,103 @@ button:disabled { cursor: not-allowed; opacity: .45; }
     right: 8px;
   }
 }
+
+/* Workbench action feedback: visible hover, press, unavailable and in-flight states. */
+.secondary-button,
+.primary-button {
+  transition:
+    background .14s ease,
+    border-color .14s ease,
+    color .14s ease,
+    box-shadow .14s ease,
+    transform .08s ease;
+}
+
+.secondary-button:hover:not(:disabled) {
+  background: #385777;
+  border-color: rgba(157, 190, 235, .58);
+  color: #f1f6ff;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, .24);
+  transform: translateY(-1px);
+}
+
+.secondary-button:active:not(:disabled) {
+  background: #1b2a40;
+  border-color: #8fb4e3;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .34);
+  transform: translateY(2px) scale(.985);
+}
+
+.primary-button:hover:not(:disabled) {
+  filter: brightness(1.12);
+  box-shadow: 0 6px 18px rgba(63, 126, 211, .3);
+  transform: translateY(-1px);
+}
+
+.primary-button:active:not(:disabled) {
+  filter: brightness(.88);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, .28);
+  transform: translateY(2px) scale(.985);
+}
+
+.secondary-button:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+  color: #8292aa;
+  background: #172438;
+  border: 1px solid #3a4c66;
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+.primary-button:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+  color: #b5c3d8;
+  background: #344761;
+  border: 1px solid #526a89;
+  box-shadow: none;
+  filter: saturate(.62);
+  transform: none;
+}
+
+.secondary-button[data-pending="true"]:disabled,
+.primary-button[data-pending="true"]:disabled {
+  opacity: 1;
+  cursor: progress;
+  color: #f0f6ff;
+  background: #304a68;
+  border: 1px solid #8fb6e8;
+  box-shadow: 0 0 0 2px rgba(127, 174, 231, .16), 0 5px 16px rgba(0, 0, 0, .26);
+  filter: none;
+  transform: none;
+}
+
+button[data-pending="true"]:disabled::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  vertical-align: -2px;
+  animation: workbench-button-spin .72s linear infinite;
+}
+
+@keyframes workbench-button-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .secondary-button,
+  .primary-button {
+    transition: none;
+  }
+  button[data-pending="true"]:disabled::before {
+    animation: none;
+    border-right-color: currentColor;
+  }
+}

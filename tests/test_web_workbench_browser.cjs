@@ -331,10 +331,15 @@ async function main() {
     await page.waitForFunction(() =>
       document.querySelector("#task-title")?.textContent.includes("First C++ Program")
     );
-    await page.locator("#start-button").click();
+    const startButton = page.locator("#start-button");
+    await startButton.click();
     await page.waitForFunction(() =>
       document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
     );
+    assert.equal(await startButton.getAttribute("aria-busy"), "false",
+      "Start action clears its pending state after the workspace is ready");
+    assert.equal(await startButton.getAttribute("data-pending"), null,
+      "Start action returns to its normal button state after completion");
     await page.waitForFunction(() => {
       const value = document.querySelector("#editor-engine-status")?.textContent || "";
       return value.startsWith("Monaco ") || value === "基础编辑器（离线）";

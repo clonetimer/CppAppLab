@@ -47,9 +47,13 @@ if(BUILD_TESTING)
     gtest_discover_tests(static_file_acceptance_tests)
     gtest_discover_tests(static_file_learner_tests)
 
-    add_test(
+    get_filename_component(CPPAPPLAB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../.." ABSOLUTE)
+    include("${CPPAPPLAB_ROOT}/cmake/CppAppLabCliSmoke.cmake")
+    cppapplab_add_cli_smoke(
         NAME static_files_cli_smoke
-        COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/tests/static_files_smoke.sh" "$<TARGET_FILE:http-static-files>"
+        TARGET http-static-files
+        TIMEOUT 10
+        ARGUMENTS --help
+        EXPECTED_SUBSTRINGS "handle"
     )
-    set_tests_properties(static_files_cli_smoke PROPERTIES TIMEOUT 10)
 endif()

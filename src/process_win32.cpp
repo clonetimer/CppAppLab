@@ -333,7 +333,8 @@ ProcessResult run_process(const std::vector<std::string>& arguments,
 
     if (!AssignProcessToJobObject(job.get(), process.get())) {
         const DWORD error = GetLastError();
-        terminate_and_reap(job.get(), process.get(), *static_cast<std::thread*>(nullptr));
+        (void)TerminateProcess(process.get(), kTerminateExitCode);
+        (void)WaitForSingleObject(process.get(), INFINITE);
         throw_windows_error("AssignProcessToJobObject", error);
     }
 
@@ -353,8 +354,9 @@ ProcessResult run_process(const std::vector<std::string>& arguments,
     } else {
         const HANDLE writer_handle = input_write.release();
         try {
-            input_writer = std::thread(write_child_input, writer_handle,
-                                       std::cref(standard_input), std::ref(input_write_error));
+            input_writer = std::thread([writer_handle, &standard_input, &input_write_error]() {
+                write_child_input(writer_handle, standard_input, input_write_error);
+            });
         } catch (...) {
             (void)CloseHandle(writer_handle);
             (void)TerminateJobObject(job.get(), kTerminateExitCode);

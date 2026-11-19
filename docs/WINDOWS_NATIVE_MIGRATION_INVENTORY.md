@@ -93,7 +93,8 @@ winget may be offered as a convenience for a developer workstation, but it shoul
 ### Findings
 
 - Only workflow: .github/workflows/ci.yml.
-- Current jobs run on ubuntu-22.04, ubuntu-24.04, and an Ubuntu matrix. Steps use sudo apt-get, Bash, GNU timeout, /tmp, chmod, base64 -w0, grep, bash -n, /dev/null, Linux paths and Ubuntu-specific package verification.
+- Current runners: `ubuntu-22.04` push-only source compatibility; `ubuntu-22.04`/`ubuntu-24.04` PR matrices for GCC build/GoogleTest, ASan/UBSan, clang-tidy, package/offline checks and Chromium; plus `windows-latest` (`windows-launcher-syntax`).
+- The Windows job only parses the existing PowerShell launcher, exercises Windows-to-WSL handoff through a stub, and syntax-checks legacy Bash scripts with Git Bash. It does not configure root CMake, compile learner C++ with Windows GCC, or run Windows CTest; there is currently **no native Windows C++ build/acceptance job**. Ubuntu steps use sudo apt-get, Bash, GNU timeout, /tmp, chmod, base64 -w0, grep, bash -n, /dev/null, Linux paths and Ubuntu-specific package verification.
 - Root CMakeLists.txt explicitly terminates configuration unless CMAKE_SYSTEM_NAME is Linux. The repository contains 40 CMakeLists/CMake module files; CMake itself is portable, but task sources and test fixtures are not yet Windows-buildable.
 - Root CMake already has MSVC warning flags, but that does not establish Windows support: core src/process.cpp and W5–W9 labs include POSIX headers and APIs.
 - CI currently validates real GCC, GoogleTest/CTest, ASan/UBSan, clang-format/clang-tidy, browser acceptance and task-specific fixtures on Ubuntu. These gates must be re-established on Windows rather than simply deleted.
@@ -151,7 +152,7 @@ This is an ordering plan, not a claim that the work is already implemented.
 1. **Inventory and decision baseline (Small).** Keep this file as the audit source of truth; add a new ADR stating Windows 11 native-only support supersedes WSL/Ubuntu. Do not change runtime yet.
 2. **Portable test/script surface (Small–Medium).** Convert the 13 course shell smoke wrappers and two shell test helpers to CTest direct commands, Python or PowerShell. Keep every assertion and process exit/output contract.
 3. **Native user entry and paths (Medium).** Expand the existing PowerShell launcher/quickstart; centralize LocalAppData/workspace/temp paths; replace Linux service PID/log lifecycle and remove WSL probing from the default path.
-4. **Pinned Windows GCC toolchain and CI (Medium–Large).** Build a checksummed native GCC/GDB/CMake/Ninja/GoogleTest toolchain bundle. Add Windows runner validation and retain real GCC + GoogleTest/CTest. Do not mark Windows support complete while the root CMake guard or POSIX sources still fail.
+4. **Pinned Windows GCC toolchain and CI (Medium–Large).** Build a checksummed native GCC/GDB/CMake/Ninja/GoogleTest toolchain bundle. Replace the current `windows-launcher-syntax` WSL-bridge check with native Windows configure/build/CTest acceptance on a pinned Windows runner; keep legacy WSL checks only as explicitly temporary during migration. Retain real GCC + GoogleTest/CTest. Do not mark Windows support complete while the root CMake guard or POSIX sources still fail.
 5. **Core process/progress/workspace layer (Large).** Port process execution to CreateProcessW + pipes + Job Objects; locking/atomic state writes to LockFileEx and Win32 file APIs; preserve timeout, output bounds, no-shell execution, no-follow/reparse-point security and persistence tests.
 6. **W7 Winsock (Large).** Port TCP echo/chat to Winsock while retaining real loopback sockets, partial I/O, backpressure, disconnect and shutdown tests.
 7. **W8 IOCP reactor and timers (Large).** Port epoll/eventfd/timerfd semantics to IOCP, completion/wakeup handles and waitable timers. Retain concurrency, deadline, quota, graceful-shutdown, observability and load/soak contracts.
@@ -175,8 +176,8 @@ The first isolated Bash dependency has now been removed without changing the acc
 - Removed course/fixtures/w1/calculator/tests/divide_zero.sh.
 - Added course/fixtures/w1/calculator/tests/assert_divide_zero.cmake.
 - Changed the W1 Calculator fixture to invoke the learner executable through CMake execute_process and CTest, checking the exact exit code (3), empty stdout, exact stderr diagnostic and a bounded timeout.
-- This runner uses native CMake process execution and does not require Bash. It is suitable for both Linux and Windows CMake generators.
+- This runner uses CMake `execute_process` and does not require Bash. Its contract is designed to be platform-neutral; this PR's CI currently executes it on Ubuntu only. Actual Windows execution remains unverified until the native GCC/GoogleTest toolchain and Windows CI job are implemented.
 
 This is deliberately only a test-harness migration. The repository root still rejects Windows, and the runtime still contains POSIX APIs; no Windows-native product support is claimed. Next small candidates are the remaining simple CLI smoke wrappers that can be expressed as direct CTest commands or a portable test helper without weakening multi-process persistence assertions.
 
-- Added a dedicated CI step that configures/builds the W1 Calculator platform-owned fixture against the reference implementation and runs its CTest suite. This ensures the new CMake runner is actually executed by CI, not merely parsed.
+- Added a dedicated CI step that configures/builds the W1 Calculator platform-owned fixture against the reference implementation and runs its CTest suite. This ensures the Bash-free CMake runner is actually executed in the current Ubuntu PR matrix, not merely parsed; it is not a Windows-native CI result.

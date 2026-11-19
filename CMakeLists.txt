@@ -123,6 +123,7 @@ if(BUILD_TESTING)
         tests/smoke_test.cpp
         tests/catalog_test.cpp
         tests/progress_test.cpp
+        tests/process_test_main.cpp
         tests/process_test.cpp
         tests/workspace_test.cpp
         tests/learning_workflow_test.cpp
@@ -141,16 +142,12 @@ if(BUILD_TESTING)
         tests/router_workflow_test.cpp
         tests/http_server_workflow_test.cpp
     )
-    target_link_libraries(cppapplab_tests PRIVATE cppapplab_core GTest::gtest_main)
+    target_link_libraries(cppapplab_tests PRIVATE cppapplab_core GTest::gtest)
 
     add_executable(cppapplab_process_test_child tests/process_test_child.cpp)
     target_link_libraries(cppapplab_process_test_child PRIVATE cppapplab_build_options)
     add_dependencies(cppapplab_tests cppapplab_process_test_child)
 
     include(GoogleTest)
-    gtest_discover_tests(
-        cppapplab_tests
-        PROPERTIES
-            ENVIRONMENT "CPPAPPLAB_PROCESS_TEST_CHILD=$<TARGET_FILE:cppapplab_process_test_child>"
-    )
+    gtest_discover_tests(cppapplab_tests)
 endif()

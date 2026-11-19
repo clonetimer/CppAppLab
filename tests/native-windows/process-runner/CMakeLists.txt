@@ -25,12 +25,13 @@ add_executable(cppapplab_process_test_child
     "${CMAKE_CURRENT_LIST_DIR}/../../process_test_child.cpp"
 )
 add_executable(cppapplab_process_tests
+    "${CMAKE_CURRENT_LIST_DIR}/../../process_test_main.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/../../process_test.cpp"
 )
 target_link_libraries(cppapplab_process_tests
     PRIVATE
     cppapplab_process_backend
-    GTest::gtest_main
+    GTest::gtest
 )
 
 if(MSVC)
@@ -47,10 +48,5 @@ add_dependencies(cppapplab_process_tests cppapplab_process_test_child)
 
 if(BUILD_TESTING)
     include(GoogleTest)
-    gtest_discover_tests(
-        cppapplab_process_tests
-        PROPERTIES
-            TIMEOUT 10
-            ENVIRONMENT "CPPAPPLAB_PROCESS_TEST_CHILD=$<TARGET_FILE:cppapplab_process_test_child>"
-    )
+    gtest_discover_tests(cppapplab_process_tests PROPERTIES TIMEOUT 10)
 endif()

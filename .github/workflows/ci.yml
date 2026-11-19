@@ -128,7 +128,7 @@ jobs:
             launcher_status=$?
             test "$launcher_status" -eq 6
           fi
-      - name: W1 Calculator native CTest smoke acceptance
+      - name: W1 Calculator CMake/CTest smoke acceptance (Bash-free)
         run: |
           cmake -S course/fixtures/w1/calculator -B build-w1-calculator \
             -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w1/calculator/reference" \

@@ -4,13 +4,11 @@
 
 #include <chrono>
 #include <filesystem>
+#include <initializer_list>
+#include "cppapplab_process_test_config.hpp"
 #include <stdexcept>
 #include <string>
 #include <vector>
-
-#ifndef CPPAPPLAB_PROCESS_TEST_CHILD
-#error "CPPAPPLAB_PROCESS_TEST_CHILD must identify the native process test fixture."
-#endif
 
 namespace {
 

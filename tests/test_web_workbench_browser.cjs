@@ -523,6 +523,9 @@ async function main() {
     assert.deepEqual(await (await page.request.get(calculatorHistoryUrl)).json(), calculatorHistory,
       "the documented negative application run must not change formal state or history");
 
+    await page.locator("#editor-actions-group").evaluate((element) => { element.open = false; });
+    await page.locator("#app-runner-details").evaluate((element) => { element.open = false; });
+
     const editorBoxDesktop = await page.locator(".editor-panel").boundingBox();
     const lessonBoxDesktop = await page.locator(".lesson-panel").boundingBox();
     assert.ok(editorBoxDesktop && lessonBoxDesktop);

@@ -48,9 +48,13 @@ if(BUILD_TESTING)
     gtest_discover_tests(tcp_chat_acceptance_tests)
     gtest_discover_tests(tcp_chat_learner_tests)
 
-    add_test(
+    get_filename_component(CPPAPPLAB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../.." ABSOLUTE)
+    include("${CPPAPPLAB_ROOT}/cmake/CppAppLabCliSmoke.cmake")
+    cppapplab_add_cli_smoke(
         NAME tcp_chat_cli_smoke
-        COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/tests/tcp_chat_smoke.sh" "$<TARGET_FILE:tcp-chat>"
+        TARGET tcp-chat
+        TIMEOUT 10
+        ARGUMENTS --help
+        EXPECTED_SUBSTRINGS "server <port>"
     )
-    set_tests_properties(tcp_chat_cli_smoke PROPERTIES TIMEOUT 10)
 endif()

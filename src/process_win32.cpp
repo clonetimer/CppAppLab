@@ -367,12 +367,13 @@ ProcessResult run_process(const std::vector<std::string>& arguments,
 
     bool process_exited = false;
     bool output_closed = false;
+    bool job_empty = false;
     bool timeout_terminated = false;
     DWORD child_exit_code = STILL_ACTIVE;
     const auto deadline = std::chrono::steady_clock::now() + timeout;
 
     try {
-        while (!process_exited || !output_closed) {
+        while (!process_exited || !output_closed || !job_empty) {
             if (!timeout_terminated && std::chrono::steady_clock::now() >= deadline) {
                 result.timed_out = true;
                 if (!TerminateJobObject(job.get(), kTerminateExitCode)) {
@@ -425,7 +426,14 @@ ProcessResult run_process(const std::vector<std::string>& arguments,
                 }
             }
 
-            if (!process_exited || !output_closed) {
+            JOBOBJECT_BASIC_ACCOUNTING_INFORMATION job_accounting{};
+            if (!QueryInformationJobObject(job.get(), JobObjectBasicAccountingInformation,
+                                           &job_accounting, sizeof(job_accounting), nullptr)) {
+                throw_windows_error("QueryInformationJobObject");
+            }
+            job_empty = job_accounting.ActiveProcesses == 0U;
+
+            if (!process_exited || !output_closed || !job_empty) {
                 Sleep(kPipePollMilliseconds);
             }
         }

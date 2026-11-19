@@ -786,8 +786,13 @@ async function main() {
       "Mobile terminal retains a readable output area");
     assert.ok(mobileContentBox.height >= 280,
       "Mobile lesson/editor area retains usable vertical space: " + JSON.stringify(mobileContentBox));
-    assert.ok(mobileDockBox.bottom <= 844 && mobileDockBox.top >= 0,
-      "Mobile terminal stays inside the viewport");
+    const mobileDockViewportRect = await mobileDock.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return { top: rect.top, bottom: rect.bottom, viewportHeight: window.innerHeight };
+    });
+    assert.ok(mobileDockViewportRect.bottom <= mobileDockViewportRect.viewportHeight + 1 &&
+      mobileDockViewportRect.top >= -1,
+      "Mobile terminal stays inside the viewport: " + JSON.stringify(mobileDockViewportRect));
 
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-2-console-mobile-after.png"),

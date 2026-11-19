@@ -128,6 +128,13 @@ jobs:
             launcher_status=$?
             test "$launcher_status" -eq 6
           fi
+      - name: W1 Calculator CMake/CTest smoke acceptance (Bash-free)
+        run: |
+          cmake -S course/fixtures/w1/calculator -B build-w1-calculator \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w1/calculator/reference" \
+            -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-w1-calculator --parallel
+          ctest --test-dir build-w1-calculator --output-on-failure --timeout 10
       - name: Build and test HTTP server reference workspace
         run: |
           cmake -S labs/w8/http-server/reference -B build-http-server-reference \

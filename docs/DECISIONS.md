@@ -39,3 +39,21 @@
 **Reason:** the course baseline is C++17, the source requires CMake 3.18 or newer, and both supported LTS releases provide a compatible GCC/CMake toolchain and the Linux/POSIX interfaces used by W5–W9. CI verifies the Ubuntu 22.04 source-build path and retains the complete opt-in validation matrix for both releases.
 
 **Consequence:** the Windows launcher, quick-start script, environment checker, and source-build documentation accept both releases. The prebuilt learner package and offline dependency bundle remain separately versioned Ubuntu 24.04 artifacts until a matching Ubuntu 22.04 package is built and qualified.
+
+
+## ADR-0007 — Windows 11 native is the sole supported runtime target
+
+**Status:** Accepted; migration work is in progress.
+
+**Decision:** The product target is Windows 11 running CppAppLab directly as a native Windows application. WSL, Ubuntu, a Linux kernel, Bash, apt/dpkg and a POSIX compatibility runtime are not product prerequisites. This decision supersedes the runtime-environment choices in ADR-0001 and ADR-0006; those records remain unchanged as historical decisions.
+
+**Preserved engineering requirements:**
+- Native Windows GCC/G++ is the compiler of record; C++17 remains the language baseline.
+- CMake remains the build system.
+- GoogleTest and CTest remain the formal acceptance framework.
+- Platform-owned acceptance contracts, source fingerprints, process timeouts/output bounds, filesystem safety, real loopback TCP behavior and HTTP lifecycle/security checks must remain at least as strict.
+- W5–W9 retain their learning outcomes. Their Linux/POSIX-specific implementation exercises are ported to equivalent Windows process, Winsock, IOCP/timer and reparse-point-safe filesystem APIs; they are not removed or replaced by mocks.
+
+**Migration policy:** Keep WSL/Ubuntu scripts and packages only as temporary legacy assets while the native path is being implemented. They must not be required by the Windows path. Remove or archive them only after the native Windows build, toolchain bootstrap, learner package and all 23 task acceptance contracts pass on a clean Windows 11 machine and in Windows CI.
+
+**Reason:** The product should install, build, run, teach and formally accept learner code on Windows without a hidden Linux environment. Portability must be demonstrated by native executables and platform-owned tests, not by a shell compatibility layer.

@@ -147,7 +147,7 @@ if(BUILD_TESTING)
     target_link_libraries(cppapplab_tests PRIVATE cppapplab_core GTest::gtest_main)
     file(GENERATE
         OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/cppapplab_process_test_config.hpp"
-        CONTENT "#pragma once\\n#define CPPAPPLAB_PROCESS_TEST_CHILD R\\"CPPAPPLAB_PATH($<TARGET_FILE:cppapplab_process_test_child>)CPPAPPLAB_PATH\\"\\n"
+        CONTENT "#pragma once\n#define CPPAPPLAB_PROCESS_TEST_CHILD R\"CPPAPPLAB_PATH($<TARGET_FILE:cppapplab_process_test_child>)CPPAPPLAB_PATH\"\n"
     )
     target_include_directories(cppapplab_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
     add_dependencies(cppapplab_tests cppapplab_process_test_child)

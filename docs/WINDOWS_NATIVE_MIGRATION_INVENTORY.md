@@ -267,7 +267,7 @@ This is deliberately only a test-harness migration. The repository root still re
 ### F. Execution order and acceptance boundaries
 
 1. **Inventory baseline — complete:** corrected counts and exact residual files above are the source of truth. PR #65 is merged; the core process test harness is now portable.
-2. **Win32 process backend — next:** implement `CreateProcessW`, restricted inherited handles, concurrent bounded pipes, timeout and Job Object descendant cleanup. Run the unchanged `ProcessRunnerTest` contract on Windows with real GCC and the real child executable. Keep root CMake's Linux guard until this isolated Windows process target passes.
+2. **Win32 process backend — in progress (PR #66):** `src/process_win32.cpp` now implements `CreateProcessW`, restricted inherited handles, concurrent bounded pipes, timeout and Job Object descendant cleanup. `tests/windows-native-process/CMakeLists.txt` reuses the same `ProcessRunnerTest` contract, and a Windows 2025 CI job uses native MinGW-w64 UCRT GCC. Keep root CMake's Linux guard until this isolated Windows process target passes.
 3. **Core state and workspace:** port environment/console/time helpers, progress locking/atomic writes and reparse-point-safe workspace operations; run the real persistence/security tests.
 4. **W7 networking:** Winsock port and real loopback acceptance.
 5. **W8 reactor:** IOCP/wakeup/timer implementation and complete lifecycle/load regression.
@@ -276,3 +276,11 @@ This is deliberately only a test-harness migration. The repository root still re
 8. **Documentation closeout:** update current entry paths and course commands; preserve historical decisions and migration evidence.
 
 **Do not call the project Windows-native until all 23 task contracts, real GCC/CMake/GoogleTest/CTest, process/network/filesystem security, packaging and first-use launch pass on a clean Windows 11 machine and in Windows CI. A skipped target is not a pass.**
+
+## Implementation status — 2026-11-19, PR #66 in progress
+
+- Added `src/process_win32.cpp`; the POSIX `src/process.cpp` remains the Linux backend and has not been changed.
+- Added `tests/windows-native-process/CMakeLists.txt`, which compiles the real Win32 backend plus the existing GoogleTest process suite and native C++ child executable. It does not configure or weaken the root product build.
+- Added a Windows 2025 CI job using the MinGW-w64 UCRT64 GCC target (`x86_64-w64-mingw32`). The job runs through PowerShell, builds in a path containing spaces, verifies the output is a native x64 PE executable, and runs CTest.
+- Expanded the shared process contract with argv edge cases: empty arguments, spaces, embedded quotes and trailing backslashes.
+- **Not yet validated:** the new Windows CI job has not completed on the current PR head. The root CMake Linux-only guard, core POSIX progress backend, W7 Winsock and W8 IOCP remain in place. No full Windows product build is claimed.

@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <cstdio>
 #include <cstdlib>
+#include <exception>
 #include <filesystem>
 #include <stdexcept>
 #include <string>
@@ -13,14 +15,13 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
-#else
-#include <cerrno>
 #endif
 
 namespace {
 
 std::filesystem::path current_executable_path(const char* argv0) {
 #ifdef _WIN32
+    (void)argv0;
     std::wstring buffer(32768U, L'\0');
     const DWORD length = ::GetModuleFileNameW(nullptr, buffer.data(),
                                                static_cast<DWORD>(buffer.size()));

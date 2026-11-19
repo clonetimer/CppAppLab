@@ -773,6 +773,57 @@ async function main() {
     assert.ok(lessonBoxMobile && editorBoxMobile);
     assert.ok(lessonBoxMobile.y < editorBoxMobile.y,
       "Mobile retains the instructional sequence: lesson before source editor");
+
+    const mobileDock = page.locator("#console-dock");
+    const mobileDockBox = await mobileDock.boundingBox();
+    const mobileOutputBox = await page.locator("#console-output").boundingBox();
+    const mobileMainBox = await page.locator(".main-layout").boundingBox();
+    const mobileContentBox = await page.locator(".main-content").boundingBox();
+    assert.ok(mobileDockBox && mobileOutputBox && mobileMainBox && mobileContentBox);
+    assert.ok(mobileDockBox.height >= 280 && mobileDockBox.height <= 360,
+      "Mobile terminal remains visible without taking most of the viewport: " + JSON.stringify(mobileDockBox));
+    assert.ok(mobileOutputBox.height >= 180,
+      "Mobile terminal retains a readable output area");
+    assert.ok(mobileContentBox.height >= 280,
+      "Mobile lesson/editor area retains usable vertical space: " + JSON.stringify(mobileContentBox));
+    const mobileDockViewportRect = await mobileDock.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return { top: rect.top, bottom: rect.bottom, viewportHeight: window.innerHeight };
+    });
+    assert.ok(mobileDockViewportRect.bottom <= mobileDockViewportRect.viewportHeight + 1 &&
+      mobileDockViewportRect.top >= -1,
+      "Mobile terminal stays inside the viewport: " + JSON.stringify(mobileDockViewportRect));
+
+    const mobileActions = page.locator("#editor-actions-group");
+    await mobileActions.locator("summary").click();
+    const mobileActionHeights = await mobileActions.locator(".editor-actions button").evaluateAll((buttons) =>
+      buttons.map((button) => ({ id: button.id, height: button.getBoundingClientRect().height }))
+    );
+    assert.ok(mobileActionHeights.length >= 4 &&
+      mobileActionHeights.every((button) => button.height >= 44),
+      "Mobile editor actions keep 44px touch targets: " + JSON.stringify(mobileActionHeights));
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-3-buttons-mobile-after.png"),
+      fullPage: true
+    });
+    await mobileActions.locator("summary").click();
+
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-2-console-mobile-after.png"),
+      fullPage: true
+    });
+    const mobileMainBeforeCollapse = mobileMainBox.height;
+    await page.locator("#console-toggle").click();
+    await page.waitForFunction(() => document.querySelector("#console-dock")?.classList.contains("is-collapsed"));
+    const mobileMainAfterCollapse = await page.locator(".main-layout").evaluate((element) => element.getBoundingClientRect().height);
+    assert.ok(mobileMainAfterCollapse > mobileMainBeforeCollapse + 200,
+      "Collapsing the mobile terminal returns substantial height to the editor");
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-2-console-mobile-compact-after.png"),
+      fullPage: true
+    });
+    await page.locator("#console-toggle").click();
+    await page.waitForFunction(() => !document.querySelector("#console-dock")?.classList.contains("is-collapsed"));
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "cppapplab-workbench-mobile.png"),
       fullPage: true

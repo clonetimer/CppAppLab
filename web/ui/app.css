@@ -864,3 +864,14 @@ button[data-pending="true"]:disabled::before {
   border-color: #8fb6e8;
   box-shadow: 0 0 0 2px rgba(127, 174, 231, .16), 0 5px 16px rgba(0, 0, 0, .26);
 }
+
+/* The formal-acceptance primary button must remain legible while other work is running. */
+#check-button:disabled {
+  opacity: 1 !important;
+  color: #e2ebf7 !important;
+  background: #344761 !important;
+  border: 1px solid #7186a3 !important;
+  box-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
+}

@@ -301,6 +301,8 @@ async function main() {
     // preserve the welcome screen before the learner continues.
     assert.equal(await page.locator("#welcome-panel").isVisible(), true);
     assert.equal(await page.locator("#workbench-panel").isVisible(), false);
+    assert.equal(await page.locator("#console-dock").isVisible(), false,
+      "The output dock appears only after the learner enters a workbench");
     await page.locator("#welcome-guide").click();
     await page.waitForFunction(() =>
       document.querySelector("#learning-guide")?.open === true &&

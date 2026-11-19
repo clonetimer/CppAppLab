@@ -6,10 +6,10 @@
 
 ## Audit scope and method
 
-Audited the default-branch tree (458 tracked files), README and architecture decisions, the sole GitHub Actions workflow, root CMake configuration, repository shell/PowerShell/Python entry points, representative process/network/reactor/filesystem implementations, course fixtures and learner-facing setup/package documents.
+Initial audit covered 458 tracked files. After PRs #59–#62, current main contains 453 tracked files. The audit covers README and architecture decisions, the sole GitHub Actions workflow, root CMake configuration, repository shell/PowerShell/Python entry points, representative process/network/reactor/filesystem implementations, course fixtures and learner-facing setup/package documents.
 
-Inventory counts (default-branch baseline before the first migration in this PR):
-- 30 Bash shell scripts (.sh) on the original `main` baseline; PR #59 removed the W1 Calculator wrapper, PR #60 removed six W6–W8 wrappers, PR #61 removed three W2–W4 persistence wrappers, and this follow-up removes two W8 integration wrappers, leaving 18 `.sh` files on the current migration branch
+Inventory counts (current `main`, after PRs #59–#62):
+- 18 Bash shell scripts (.sh) remain from the original baseline of 30: PR #59 removed W1; PR #60 removed six W6–W8 wrappers; PR #61 removed three W2–W4 persistence wrappers; PR #62 removed the W8 HTTP Server and Router wrappers
 - 3 PowerShell scripts (.ps1) and one Windows .cmd entry point
 - 11 Python files and 5 Node .cjs tests; Python/Node are generally cross-platform, except APT-specific utilities and any embedded POSIX paths/subprocess assumptions
 - 40 CMakeLists/CMake module files
@@ -23,7 +23,7 @@ Effort labels: **Small** = isolated script/test/documentation change; **Medium**
 
 ### Findings
 
-There are 30 Bash scripts, all using Bash shebangs or invoked explicitly through Bash. Windows PowerShell and cmd.exe cannot execute them natively. Git Bash/MSYS Bash is not an acceptable final dependency because the target is a pure Windows-native workflow.
+The original audit found 30 Bash scripts. After PRs #59–#62, 18 remain, all using Bash shebangs or invoked explicitly through Bash. Windows PowerShell and cmd.exe cannot execute them natively. Git Bash/MSYS Bash is not an acceptable final product dependency because the target is a pure Windows-native workflow.
 
 | Inventory | Current dependency | Windows-native replacement | Effort |
 |---|---|---|---|
@@ -38,14 +38,32 @@ There are 30 Bash scripts, all using Bash shebangs or invoked explicitly through
 | Course smoke scripts | Bash argument checking, pipelines, grep and shell process execution | Prefer CTest add_test(COMMAND $<TARGET_FILE:...>) and platform-owned C++/Python subprocess assertions. No shell wrapper is needed for simple executable smoke tests | Small–Medium |
 | labs/w5/system-lab/learner/scripts/quality-check.sh | Bash CMake/build/CTest wrapper | CMake preset plus PowerShell helper or direct documented CMake/CTest commands | Small |
 
-**Complete 30-file Bash inventory (baseline `main`, before this PR's deletion)**
+**Historical 30-file Bash inventory (original `main` baseline; removal PRs noted inline)**
 
-- Course fixtures (13): course/fixtures/w1/calculator/tests/divide_zero.sh (removed by PR #59); course/fixtures/w2/todo/tests/todo_cli_workflow.sh (removed by this follow-up); course/fixtures/w3/task-manager/tests/task_manager_cli_workflow.sh (removed by this follow-up); course/fixtures/w4/quality-gate/tests/task_manager_cli_workflow.sh (removed by this follow-up); course/fixtures/w5/system-lab/tests/system_lab_cli_smoke.sh; course/fixtures/w6/thread-pool/tests/thread_pool_smoke.sh (removed by this follow-up); course/fixtures/w7/tcp-chat/tests/tcp_chat_smoke.sh (removed by this follow-up); course/fixtures/w7/tcp-echo/tests/tcp_echo_smoke.sh (removed by this follow-up); course/fixtures/w8/http-parser/tests/http_parser_smoke.sh (removed by this follow-up); course/fixtures/w8/http-protocol/tests/http_protocol_smoke.sh (removed by this follow-up); course/fixtures/w8/http-server/tests/http_server_smoke.sh (removed by this follow-up); course/fixtures/w8/router/tests/router_smoke.sh (removed by this follow-up); course/fixtures/w8/static-files/tests/static_files_smoke.sh (removed by this follow-up).
+- Course fixtures (13): course/fixtures/w1/calculator/tests/divide_zero.sh (removed by PR #59); course/fixtures/w2/todo/tests/todo_cli_workflow.sh (removed by PR #61); course/fixtures/w3/task-manager/tests/task_manager_cli_workflow.sh (removed by PR #61); course/fixtures/w4/quality-gate/tests/task_manager_cli_workflow.sh (removed by PR #61); course/fixtures/w5/system-lab/tests/system_lab_cli_smoke.sh; course/fixtures/w6/thread-pool/tests/thread_pool_smoke.sh (removed by PR #60); course/fixtures/w7/tcp-chat/tests/tcp_chat_smoke.sh (removed by PR #60); course/fixtures/w7/tcp-echo/tests/tcp_echo_smoke.sh (removed by PR #60); course/fixtures/w8/http-parser/tests/http_parser_smoke.sh (removed by PR #60); course/fixtures/w8/http-protocol/tests/http_protocol_smoke.sh (removed by PR #60); course/fixtures/w8/http-server/tests/http_server_smoke.sh (removed by PR #62); course/fixtures/w8/router/tests/router_smoke.sh (removed by PR #62); course/fixtures/w8/static-files/tests/static_files_smoke.sh (removed by PR #60).
 - Learner script (1): labs/w5/system-lab/learner/scripts/quality-check.sh.
 - Product/setup/package scripts (14): scripts/accept_learner_package_wsl.sh; scripts/check_environment.sh; scripts/ci_prepare_ubuntu_apt.sh; scripts/ci_prepare_ubuntu_snapshot.sh; scripts/cppapplab-wsl-launcher.sh; scripts/install_offline_dependencies.sh; scripts/lib/terminal.sh; scripts/lib/ubuntu-support.sh; scripts/package_offline_dependencies.sh; scripts/package_release.sh; scripts/quickstart.sh; scripts/smoke_learner_package.sh; scripts/start-web-workbench.sh; scripts/verify_offline_dependency_bundle.sh.
 - Test helpers (2): tests/test_ubuntu_support.sh; tests/test_windows_browser_open.sh.
 
+
+
+**Current remaining 18 Bash files on main**
+
+- W5 course/learner (3): `course/fixtures/w5/system-lab/tests/system_lab_cli_smoke.sh`; `labs/w5/system-lab/learner/scripts/quality-check.sh`; plus the W5 learner process-runner implementation itself remains POSIX and is tracked separately from the script count.
+- WSL/setup/package/runtime (13): `scripts/accept_learner_package_wsl.sh`; `scripts/check_environment.sh`; `scripts/ci_prepare_ubuntu_apt.sh`; `scripts/ci_prepare_ubuntu_snapshot.sh`; `scripts/cppapplab-wsl-launcher.sh`; `scripts/install_offline_dependencies.sh`; `scripts/lib/terminal.sh`; `scripts/lib/ubuntu-support.sh`; `scripts/package_offline_dependencies.sh`; `scripts/package_release.sh`; `scripts/quickstart.sh`; `scripts/smoke_learner_package.sh`; `scripts/start-web-workbench.sh`; `scripts/verify_offline_dependency_bundle.sh`.
+- Shell test helpers (2): `tests/test_ubuntu_support.sh`; `tests/test_windows_browser_open.sh`.
+
 Existing Windows-side entry points and harnesses are **not native runtime entry points**: `Start-CppAppLab.cmd` and `scripts/Start-CppAppLab.ps1` run on Windows but currently invoke `wsl.exe`, Bash and Ubuntu; they are legacy WSL bridges that must be replaced/re-scoped for native setup and launch. `tests/windows-launcher-smoke.ps1` tests that WSL handoff, while `tests/windows-target-machine-acceptance.ps1` validates Windows + WSL2; neither is evidence of native Windows runtime support. Retain PowerShell as the Windows automation surface, but rewrite the launcher and acceptance harness for a native toolchain. The 11 Python and 5 Node scripts are not inherently Linux-only; audit individual subprocess/path assumptions rather than rewriting them wholesale. Two concrete Python exceptions are `tests/test_interactive_prompt.py` (executes `/bin/bash`) and `tests/test_web_workbench_integration.py` (invokes `bash scripts/start-web-workbench.sh`).
+
+
+
+### Native Windows process backend — current implementation stage (PR #63)
+
+- Added `src/process_win32.cpp` as a direct Win32 implementation of the existing `run_process` contract: `CreateProcessW`, explicit inherited-handle list, merged stdout/stderr pipe, bounded stdin through a temporary file, UTF-8-to-UTF-16 argv conversion and Windows command-line quoting, process-tree Job Object cleanup, timeout and bounded-output draining.
+- Replaced POSIX-only process tests with a platform-neutral suite using a compiled child executable. The same tests cover stdin, stderr, argv with spaces/quotes/backslashes, working directories with spaces, exit codes, missing executables, timeout, descendant termination and output caps.
+- Added `tests/native-windows/process-runner` to build the actual Win32 backend with native UCRT64 GCC/CMake/Ninja/GoogleTest on a Windows runner. The CI runs CTest under PowerShell and rejects binaries importing `msys-2.0.dll` or `cygwin1.dll`.
+- Toolchain lock: `toolchains/windows-ucrt64.lock.json` (GCC 16.2.0, CMake 4.5.0, Ninja 1.13.2, GoogleTest 1.18.0; package versions are asserted in CI). MSYS2 is used only to provision UCRT64 packages; the compiled executables and tests run as Windows PE processes, not under its POSIX shell runtime.
+- **Boundary:** this is a native backend component acceptance, not a full Windows product build. Root CMake still rejects Windows; `src/progress.cpp`, `src/learning.cpp`, W7/W8/W9 networking/reactor sources and filesystem security still need Win32 ports and full native CTest acceptance.
 
 ## ② Paths and symbolic links
 
@@ -150,7 +168,7 @@ Historical/archive documents can remain as historical records, but must be clear
 This is an ordering plan, not a claim that the work is already implemented.
 
 1. **Inventory and decision baseline (Small).** Keep this file as the audit source of truth; add a new ADR stating Windows 11 native-only support supersedes WSL/Ubuntu. Do not change runtime yet.
-2. **Portable test/script surface (Small–Medium).** Convert the one remaining course shell wrapper (W5 process execution) and two shell test helpers to CTest, Python or PowerShell. PR #59 removed W1; PR #60 removed W6 ThreadPool, W7 TCP Chat/Echo and W8 HTTP Parser/Protocol/Static Files; PR #61 removed the W2–W4 multi-process persistence wrappers; this follow-up removes the W8 HTTP server and Router wrappers. Keep every assertion and process exit/output contract.
+2. **Portable test/script surface (Small–Medium).** Convert the remaining W5 platform smoke wrapper, W5 learner quality-check script and two shell test helpers to CTest, Python or PowerShell. PRs #59–#62 removed the W1, W2–W4, W6–W8 wrappers; the W5 process tests must use a real child executable and preserve process-tree/timeout behavior. Keep every assertion and process exit/output contract.
 3. **Native user entry and paths (Medium).** Expand the existing PowerShell launcher/quickstart; centralize LocalAppData/workspace/temp paths; replace Linux service PID/log lifecycle and remove WSL probing from the default path.
 4. **Pinned Windows GCC toolchain and CI (Medium–Large).** Build a checksummed native GCC/GDB/CMake/Ninja/GoogleTest toolchain bundle. Replace the current `windows-launcher-syntax` WSL-bridge check with native Windows configure/build/CTest acceptance on a pinned Windows runner; keep legacy WSL checks only as explicitly temporary during migration. Retain real GCC + GoogleTest/CTest. Do not mark Windows support complete while the root CMake guard or POSIX sources still fail.
 5. **Core process/progress/workspace layer (Large).** Port process execution to CreateProcessW + pipes + Job Objects; locking/atomic state writes to LockFileEx and Win32 file APIs; preserve timeout, output bounds, no-shell execution, no-follow/reparse-point security and persistence tests.
@@ -169,7 +187,7 @@ This is an ordering plan, not a claim that the work is already implemented.
 - WSL scripts and Ubuntu artifacts may be removed only after the native path is independently validated; they must not remain hidden runtime prerequisites.
 
 
-## First small migration step (in progress)
+## Completed portable test-harness migrations (PRs #59–#62)
 
 The first isolated Bash dependency has now been removed without changing the acceptance contract:
 
@@ -178,6 +196,6 @@ The first isolated Bash dependency has now been removed without changing the acc
 - Changed the W1 Calculator fixture to invoke the learner executable through CMake execute_process and CTest, checking the exact exit code (3), empty stdout, exact stderr diagnostic and a bounded timeout.
 - This runner uses CMake `execute_process` and does not require Bash. Its contract is designed to be platform-neutral; this PR's CI currently executes it on Ubuntu only. Actual Windows execution remains unverified until the native GCC/GoogleTest toolchain and Windows CI job are implemented.
 
-This is deliberately only a test-harness migration. The repository root still rejects Windows, and the runtime still contains POSIX APIs; no Windows-native product support is claimed. PR #59 removed W1; PR #60 removed six W6–W8 CLI smoke wrappers; PR #61 removed the W2–W4 multi-process persistence wrappers; this follow-up replaces the W8 HTTP server and Router shell wrappers with Python 3 tests. The only remaining course shell wrapper is W5 process execution, which must wait for the native Windows process backend so its real child-process semantics are preserved.
+These four PRs only migrate test harnesses. The repository root still rejects Windows, and the runtime still contains POSIX APIs; no Windows-native product support is claimed. PR #59 removed W1; PR #60 removed six W6–W8 CLI wrappers; PR #61 removed W2–W4 persistence wrappers; PR #62 replaced the W8 HTTP Server and Router wrappers with Python 3 tests. The remaining W5 process runner and learner quality-check still require a real native process backend before they can be fully ported.
 
 - Added a dedicated CI step that configures/builds the W1 Calculator platform-owned fixture against the reference implementation and runs its CTest suite. This ensures the Bash-free CMake runner is actually executed in the current Ubuntu PR matrix, not merely parsed; it is not a Windows-native CI result.

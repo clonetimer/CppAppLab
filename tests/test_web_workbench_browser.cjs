@@ -301,6 +301,8 @@ async function main() {
     // preserve the welcome screen before the learner continues.
     assert.equal(await page.locator("#welcome-panel").isVisible(), true);
     assert.equal(await page.locator("#workbench-panel").isVisible(), false);
+    assert.equal(await page.locator("#console-dock").isVisible(), false,
+      "The output dock appears only after the learner enters a workbench");
     await page.locator("#welcome-guide").click();
     await page.waitForFunction(() =>
       document.querySelector("#learning-guide")?.open === true &&
@@ -331,10 +333,31 @@ async function main() {
     await page.waitForFunction(() =>
       document.querySelector("#task-title")?.textContent.includes("First C++ Program")
     );
-    await page.locator("#start-button").click();
+    const startButton = page.locator("#start-button");
+    let releaseStartRequest;
+    await page.route("**/api/v1/tasks/w1.hello-world/start", async (route) => {
+      await new Promise((resolve) => { releaseStartRequest = resolve; });
+      await route.continue();
+    });
+    await startButton.click();
+    await page.waitForFunction(() => {
+      const button = document.querySelector("#start-button");
+      return button?.dataset.pending === "true" && button.disabled &&
+        button.getAttribute("aria-busy") === "true" && button.textContent.includes("准备中");
+    });
+    assert.equal(typeof releaseStartRequest, "function", "The real start request reached the held route");
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-3-start-pending-after.png"),
+      fullPage: false
+    });
+    releaseStartRequest();
     await page.waitForFunction(() =>
       document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
     );
+    assert.equal(await startButton.getAttribute("aria-busy"), "false",
+      "Start action clears its pending state after the workspace is ready");
+    assert.equal(await startButton.getAttribute("data-pending"), null,
+      "Start action returns to its normal button state after completion");
     await page.waitForFunction(() => {
       const value = document.querySelector("#editor-engine-status")?.textContent || "";
       return value.startsWith("Monaco ") || value === "基础编辑器（离线）";
@@ -590,6 +613,34 @@ async function main() {
       "The terminal keeps readable output text rather than shrinking its font");
     assert.ok(Math.floor((consoleOutputGeometry.height - 24) / consoleOutputGeometry.lineHeight) >= 20,
       "The terminal's visible text area can show twenty lines without scrolling");
+
+    // Compact mode must keep the terminal title/status dock visible while
+    // returning the reserved viewport to the lesson and editor.
+    const terminalToggle = page.locator("#console-toggle");
+    const workbenchHeightBeforeCompact = await page.locator(".main-layout").evaluate((element) => element.getBoundingClientRect().height);
+    await terminalToggle.click();
+    await page.waitForFunction(() => {
+      const dock = document.querySelector(".console-dock");
+      return dock?.classList.contains("is-collapsed") &&
+        document.querySelector("#console-toggle")?.getAttribute("aria-expanded") === "false" &&
+        document.querySelector("#console-toggle")?.textContent.includes("展开终端");
+    });
+    const compactDockHeight = await consoleDock.evaluate((element) => element.getBoundingClientRect().height);
+    const workbenchHeightAfterCompact = await page.locator(".main-layout").evaluate((element) => element.getBoundingClientRect().height);
+    assert.ok(workbenchHeightAfterCompact > workbenchHeightBeforeCompact + 300,
+      "Compact terminal returns the reserved viewport to the workbench");
+    assert.ok(compactDockHeight <= 56, "Compact terminal retains a visible header without occupying the output area");
+    assert.equal(await page.locator("#console-title").isVisible(), true);
+    assert.equal(await page.locator("#check-result").isVisible(), true);
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-2-console-compact-after.png"),
+      fullPage: false
+    });
+    await terminalToggle.click();
+    await page.waitForFunction(() => !document.querySelector(".console-dock")?.classList.contains("is-collapsed"));
+    assert.ok(await consoleDock.evaluate((element) => element.getBoundingClientRect().height) >= 400,
+      "Expanding the terminal restores the full output viewport");
+
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-2-console-after.png"),
       fullPage: false

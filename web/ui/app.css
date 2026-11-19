@@ -641,7 +641,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 
 /* Reserve a real bottom region for the console so it never covers editor controls. */
 :root {
-  --console-dock-height: 420px;
+  --console-dock-height: 460px;
 }
 
 .main-layout:has(#workbench-panel:not([hidden])) {
@@ -713,7 +713,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 
 @media (max-width: 820px) {
   :root {
-    --console-dock-height: min(420px, 60vh);
+    --console-dock-height: min(460px, 60vh);
   }
   .main-layout:has(#workbench-panel:not([hidden])) {
     height: calc(100vh - 68px - var(--console-dock-height));
@@ -819,7 +819,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
   transform: none;
 }
 
-button[data-pending="true"]:disabled::before {
+button[data-pending="true"]::before {
   content: "";
   display: inline-block;
   width: 12px;
@@ -841,7 +841,7 @@ button[data-pending="true"]:disabled::before {
   .primary-button {
     transition: none;
   }
-  button[data-pending="true"]:disabled::before {
+  button[data-pending="true"]::before {
     animation: none;
     border-right-color: currentColor;
   }
@@ -905,4 +905,74 @@ button[data-pending="true"]:disabled::before {
   background-image: none !important;
   color: #f0f6ff !important;
   border-color: #8fb6e8 !important;
+}
+
+
+/* A compact terminal keeps its title and latest status visible while returning
+   most of the viewport to the lesson and code editor. */
+.console-heading {
+  gap: 12px;
+}
+.console-heading-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex: 1 1 auto;
+}
+.console-toggle {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 6px 10px;
+  font-size: 11px;
+}
+.console-dock.is-collapsed {
+  height: 52px;
+  min-height: 52px;
+  max-height: 52px;
+}
+.console-dock.is-collapsed #console-output,
+.console-dock.is-collapsed #diagnostics-list {
+  display: none !important;
+}
+.console-dock.is-collapsed .console-heading {
+  min-height: 51px;
+  border-bottom: 0;
+}
+.console-dock.is-collapsed .console-toggle {
+  background: #304765;
+  border-color: rgba(157, 190, 235, .42);
+}
+@media (max-width: 520px) {
+  .console-heading-title {
+    flex-wrap: wrap;
+    gap: 4px 10px;
+  }
+  .console-heading {
+    padding: 8px 10px;
+  }
+  .console-toggle {
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+}
+
+.app-shell:has(.console-dock.is-collapsed) {
+  --console-dock-height: 52px;
+}
+
+
+/* The output dock belongs to the learning workspace, not the welcome screen. */
+.app-shell:not(:has(#workbench-panel:not([hidden]))) .console-dock {
+  display: none;
+}
+
+
+/* A status refresh is intentionally non-blocking: it marks only its own
+   control pending so Stop remains available if the learner needs it. */
+button[data-pending="true"]:not(:disabled) {
+  cursor: progress;
+  border-color: #8fb6e8;
+  box-shadow: 0 0 0 2px rgba(127, 174, 231, .14);
 }

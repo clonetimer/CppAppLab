@@ -746,6 +746,10 @@ test("a service status started before stop cannot revive the stopped controls", 
     throw new Error("unexpected request: " + url);
   });
   const pending = app.refreshServiceStatus();
+  assert.equal(app.ui.serviceRefreshButton.dataset.pending, "true",
+    "Refresh marks only its own button as pending");
+  assert.equal(app.ui.serviceStopButton.disabled, false,
+    "A pending status refresh does not block the Stop action");
   await app.stopNetworkService();
   release({ state: "RUNNING", port: 8123, logs: "before stop" });
   await pending;

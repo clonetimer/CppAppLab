@@ -118,6 +118,8 @@
     saveState: $("save-state"),
     workspaceState: $("workspace-state"),
     consoleTitle: $("console-title"),
+    consoleToggle: $("console-toggle"),
+    consoleDock: $("console-dock"),
     console: $("console-output"),
     diagnostics: $("diagnostics-list"),
     checkResult: $("check-result"),
@@ -1413,9 +1415,10 @@
     }
   }
 
-  async function startTask() {
+  async function startTask(event) {
+    const triggerButton = event && event.currentTarget ? event.currentTarget : ui.startButton;
     if (!state.task || state.busy) return;
-    setBusy(true, "正在准备学习工作区…");
+    setBusy(true, "正在准备学习工作区…", triggerButton, "准备中…");
     try {
       const result = await api("/api/v1/tasks/" + encodeURIComponent(state.task.id) + "/start", {
         method: "POST", body: {}
@@ -1423,6 +1426,7 @@
       updateTaskState(state.task.id, state.task.state === "PASSED" ? "PASSED" : "IN PROGRESS");
       state.workspaceReady = true;
       ui.workspaceState.textContent = result.resumed ? "已恢复" : "已创建";
+      clearButtonPending(triggerButton);
       ui.startButton.textContent = "工作区已打开";
       try { await loadWorkspaceFiles(); }
       catch (error) { showWorkspaceError(error); return; }
@@ -1541,12 +1545,16 @@
       if (pendingButton) setButtonPending(pendingButton, pendingLabel || "执行中…");
     } else {
       [
+        ui.startButton,
         ui.saveButton,
         ui.buildButton,
         ui.runButton,
         ui.checkButton,
         ui.appBuildButton,
-        ui.appExecuteButton
+        ui.appExecuteButton,
+        ui.serviceStartButton,
+        ui.serviceRefreshButton,
+        ui.serviceStopButton
       ].forEach(clearButtonPending);
     }
     ui.startButton.disabled = value || !state.progressFresh || !state.task || ["LOCKED", "UNKNOWN"].includes(state.task.state);
@@ -1850,10 +1858,12 @@
     updateServiceSnapshot(state.serviceSnapshot || { state: "STOPPED", port: null, logs: "" });
   }
 
-  async function refreshServiceStatus(silent = false) {
+  async function refreshServiceStatus(silent = false, triggerButton = ui.serviceRefreshButton) {
     if (!state.task || !state.task.service_profile || (state.busy && !silent)) return;
     const taskId = state.task.id;
+    if (!silent && triggerButton && triggerButton.dataset.pending === "true") return null;
     const request = ++state.serviceRequest;
+    if (!silent) setButtonPending(triggerButton, "刷新中…");
     try {
       const snapshot = await api(
         "/api/v1/workspaces/" + encodeURIComponent(taskId) + "/service/status"
@@ -1865,12 +1875,14 @@
       if (!state.task || state.task.id !== taskId || request !== state.serviceRequest) return null;
       if (!silent) toast(error.message);
       return null;
+    } finally {
+      if (!silent) clearButtonPending(triggerButton);
     }
   }
 
-  async function startNetworkService() {
+  async function startNetworkService(triggerButton = ui.serviceStartButton) {
     if (!state.task || !state.task.service_profile || !state.workspaceReady || state.busy) return;
-    setBusy(true, "正在保存代码…");
+    setBusy(true, "正在保存代码…", triggerButton, "准备中…");
     const saved = await saveAllDirtyFiles({ silent: true });
     if (!saved) {
       setBusy(false);
@@ -1896,10 +1908,10 @@
     }
   }
 
-  async function stopNetworkService(silent = false, navigationOwnsBusy = false) {
+  async function stopNetworkService(silent = false, navigationOwnsBusy = false, triggerButton = ui.serviceStopButton) {
     if (!state.task || !state.task.service_profile || (state.busy && !navigationOwnsBusy)) return;
     try {
-      setBusy(true);
+      setBusy(true, "正在停止网络服务…", silent ? null : triggerButton, "停止中…");
       const snapshot = await api(
         "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/stop",
         { method: "POST", body: {} }
@@ -1913,7 +1925,8 @@
     }
   }
 
-  async function sendTcpEchoMessage() {
+  async function sendTcpEchoMessage(event) {
+    const triggerButton = event && event.currentTarget;
     if (!state.task || !state.task.service_profile || state.task.service_profile.kind !== "tcp_echo" || state.busy) return;
     const input = ui.serviceControls.querySelector("#service-echo-message");
     const message = input ? input.value : "";
@@ -1921,7 +1934,7 @@
       toast("请输入要发送的消息。");
       return;
     }
-    setBusy(true, "正在连接 TCP Echo 服务…");
+    setBusy(true, "正在连接 TCP Echo 服务…", triggerButton, "发送中…");
     try {
       const result = await api(
         "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/echo",
@@ -1939,6 +1952,7 @@
       ui.console.textContent = error.message;
     } finally {
       setBusy(false);
+      clearButtonPending(triggerButton);
     }
   }
 
@@ -1974,7 +1988,8 @@
     if (output) output.textContent = state.serviceMessages.join("\n") || "暂无聊天消息。";
   }
 
-  async function connectChatClient() {
+  async function connectChatClient(event) {
+    const triggerButton = event && event.currentTarget;
     if (!state.task || !state.serviceSnapshot || state.serviceSnapshot.state !== "RUNNING" || state.busy) return;
     const input = ui.serviceControls.querySelector("#service-chat-nickname");
     const nickname = input ? input.value.trim() : "";
@@ -1982,7 +1997,7 @@
       toast("请先填写客户端昵称。");
       return;
     }
-    setBusy(true, "正在连接 TCP Chat 客户端…");
+    setBusy(true, "正在连接 TCP Chat 客户端…", triggerButton, "连接中…");
     try {
       const result = await api(
         "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/chat/connect",
@@ -2000,10 +2015,12 @@
       ui.console.textContent = error.message;
     } finally {
       setBusy(false);
+      clearButtonPending(triggerButton);
     }
   }
 
-  async function sendChatMessage() {
+  async function sendChatMessage(event) {
+    const triggerButton = event && event.currentTarget;
     if (!state.task || state.busy) return;
     const select = ui.serviceControls.querySelector("#service-chat-client");
     const input = ui.serviceControls.querySelector("#service-chat-message");
@@ -2013,7 +2030,7 @@
       toast("请选择客户端并填写消息。");
       return;
     }
-    setBusy(true, "正在发送 TCP Chat 消息…");
+    setBusy(true, "正在发送 TCP Chat 消息…", triggerButton, "发送中…");
     try {
       const result = await api(
         "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/chat/send",
@@ -2026,10 +2043,12 @@
       toast(error.message);
     } finally {
       setBusy(false);
+      clearButtonPending(triggerButton);
     }
   }
 
-  async function pollChatMessages() {
+  async function pollChatMessages(event) {
+    const triggerButton = event && event.currentTarget;
     if (!state.task || state.busy) return;
     const select = ui.serviceControls.querySelector("#service-chat-client");
     const clientId = select ? select.value : "";
@@ -2037,7 +2056,7 @@
       toast("请先连接一个 Chat 客户端。");
       return;
     }
-    setBusy(true, "正在刷新 TCP Chat 消息…");
+    setBusy(true, "正在刷新 TCP Chat 消息…", triggerButton, "刷新中…");
     try {
       const result = await api(
         "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/chat/poll",
@@ -2049,10 +2068,12 @@
       toast(error.message);
     } finally {
       setBusy(false);
+      clearButtonPending(triggerButton);
     }
   }
 
-  async function disconnectChatClient() {
+  async function disconnectChatClient(event) {
+    const triggerButton = event && event.currentTarget;
     if (!state.task || state.busy) return;
     const select = ui.serviceControls.querySelector("#service-chat-client");
     const clientId = select ? select.value : "";
@@ -2061,7 +2082,7 @@
       toast("请选择需要断开的客户端。");
       return;
     }
-    setBusy(true, "正在断开 TCP Chat 客户端…");
+    setBusy(true, "正在断开 TCP Chat 客户端…", triggerButton, "断开中…");
     try {
       const result = await api(
         "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/chat/disconnect",
@@ -2075,15 +2096,17 @@
       toast(error.message);
     } finally {
       setBusy(false);
+      clearButtonPending(triggerButton);
     }
   }
 
-  async function sendHttpServiceRequest() {
+  async function sendHttpServiceRequest(event) {
+    const triggerButton = event && event.currentTarget;
     if (!state.task || state.busy) return;
     const method = ui.serviceControls.querySelector("#service-http-method")?.value || "GET";
     const target = ui.serviceControls.querySelector("#service-http-target")?.value || "/";
     const body = ui.serviceControls.querySelector("#service-http-body")?.value || "";
-    setBusy(true, "正在向学习者 HTTP Server 发送请求…");
+    setBusy(true, "正在向学习者 HTTP Server 发送请求…", triggerButton, "请求中…");
     try {
       const result = await api(
         "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/http",
@@ -2110,6 +2133,7 @@
       toast(error.message);
     } finally {
       setBusy(false);
+      clearButtonPending(triggerButton);
     }
   }
 
@@ -2319,9 +2343,16 @@
     ui.appBuildButton.addEventListener("click", runApplicationBuild);
     ui.appExecuteButton.addEventListener("click", runApplication);
     ui.appAction.addEventListener("change", renderApplicationFields);
-    ui.serviceStartButton.addEventListener("click", startNetworkService);
-    ui.serviceRefreshButton.addEventListener("click", () => refreshServiceStatus());
-    ui.serviceStopButton.addEventListener("click", () => stopNetworkService());
+    ui.serviceStartButton.addEventListener("click", () => startNetworkService(ui.serviceStartButton));
+    ui.serviceRefreshButton.addEventListener("click", () => refreshServiceStatus(false, ui.serviceRefreshButton));
+    ui.serviceStopButton.addEventListener("click", () => stopNetworkService(false, false, ui.serviceStopButton));
+    ui.consoleToggle.addEventListener("click", () => {
+      const collapsed = ui.consoleDock.classList.toggle("is-collapsed");
+      ui.consoleToggle.setAttribute("aria-expanded", String(!collapsed));
+      ui.consoleToggle.textContent = collapsed ? "展开终端" : "收起终端";
+      ui.consoleToggle.setAttribute("aria-label", collapsed ? "展开运行终端" : "收起运行终端");
+      ui.consoleDock.dataset.collapsed = String(collapsed);
+    });
     ui.checkButton.addEventListener("click", () => runWorkspaceAction("check"));
     ui.workflowAction.addEventListener("click", followWorkflowAction);
     ui.hintClose.addEventListener("click", () => closeHint());

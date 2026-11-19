@@ -922,12 +922,17 @@ jobs:
           $lock = Get-Content 'toolchains/windows-ucrt64.lock.json' -Raw | ConvertFrom-Json
           $packageRoot = Join-Path $env:MSYS2_LOCATION 'var\lib\pacman\local'
           foreach ($entry in $lock.packages.PSObject.Properties) {
-            $matches = @(Get-ChildItem -LiteralPath $packageRoot -Directory -Filter "$($entry.Name)-*")
-            if ($matches.Count -ne 1) {
-              throw "Expected one installed package directory for $($entry.Name); found $($matches.Count)."
+            $packageDirectory = Join-Path $packageRoot "$($entry.Name)-$($entry.Value.version)"
+            $descriptionPath = Join-Path $packageDirectory 'desc'
+            if (-not (Test-Path -LiteralPath $descriptionPath -PathType Leaf)) {
+              throw "Locked package directory is missing: $packageDirectory"
             }
-            $description = Get-Content (Join-Path $matches[0].FullName 'desc') -Raw
+            $description = Get-Content -LiteralPath $descriptionPath -Raw
+            $nameMatch = [regex]::Match($description, '(?m)^%NAME%\r?\n(?<name>[^\r\n]+)')
             $versionMatch = [regex]::Match($description, '(?m)^%VERSION%\r?\n(?<version>[^\r\n]+)')
+            if (-not $nameMatch.Success -or $nameMatch.Groups['name'].Value -ne $entry.Name) {
+              throw "Package metadata name mismatch for $($entry.Name)."
+            }
             if (-not $versionMatch.Success -or $versionMatch.Groups['version'].Value -ne $entry.Value.version) {
               $actual = if ($versionMatch.Success) { $versionMatch.Groups['version'].Value } else { '<missing>' }
               throw "$($entry.Name) version mismatch. Expected $($entry.Value.version), received $actual."
@@ -937,6 +942,7 @@ jobs:
 
           $compiler = Get-Command g++.exe -ErrorAction Stop
           $prefix = Split-Path (Split-Path $compiler.Source -Parent) -Parent
+          "$prefix\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "CPPAPPLAB_UCRT64_PREFIX=$prefix" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           if (-not (Test-Path (Join-Path $prefix 'lib\cmake\GTest\GTestConfig.cmake'))) {
             throw 'Native UCRT64 GoogleTest CMake package was not found.'

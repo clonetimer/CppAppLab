@@ -857,6 +857,48 @@ async function main() {
       fullPage: true
     });
 
+    // Compact-phone regression: the same three usability guarantees must hold
+    // at a narrower 320px viewport without changing the visual design.
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.locator(".main-content").evaluate((element) => { element.scrollTop = 0; });
+    await page.waitForTimeout(150);
+    const narrowViewport = await page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      height: window.innerHeight
+    }));
+    assert.ok(narrowViewport.scrollWidth <= narrowViewport.width + 1,
+      "Compact mobile workbench has no horizontal overflow: " + JSON.stringify(narrowViewport));
+    const narrowDock = await page.locator("#console-dock").evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return { top: rect.top, bottom: rect.bottom, height: rect.height };
+    });
+    assert.ok(narrowDock.top >= 0 && narrowDock.bottom <= narrowViewport.height + 1,
+      "Compact mobile terminal remains visible: " + JSON.stringify(narrowDock));
+    assert.ok(narrowDock.height >= 240 && narrowDock.height <= 310,
+      "Compact mobile terminal retains a usable dock height: " + JSON.stringify(narrowDock));
+    const narrowLesson = await page.locator(".lesson-panel").boundingBox();
+    const narrowEditor = await page.locator(".editor-panel").boundingBox();
+    assert.ok(narrowLesson && narrowEditor &&
+      narrowLesson.x >= -1 && narrowLesson.x + narrowLesson.width <= 321 &&
+      narrowEditor.x >= -1 && narrowEditor.x + narrowEditor.width <= 321,
+      "Lesson and editor remain within the compact-phone viewport");
+    await page.locator("#editor-actions-group summary").click();
+    const narrowActionHeights = await page.locator("#editor-actions-group .editor-actions button").evaluateAll((buttons) =>
+      buttons.map((button) => ({ id: button.id, height: button.getBoundingClientRect().height }))
+    );
+    assert.ok(narrowActionHeights.length >= 4 &&
+      narrowActionHeights.every((button) => button.height >= 44),
+      "Compact-phone editor actions retain 44px touch targets: " + JSON.stringify(narrowActionHeights));
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-1-layout-320-after.png"),
+      fullPage: true
+    });
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-2-console-320-after.png"),
+      fullPage: false
+    });
+
     // W2 Todo is unlocked by the real W1 calculator acceptance above.
     // First verify that the incomplete learner implementation surfaces its TODO.
     await page.setViewportSize({ width: 1440, height: 1000 });

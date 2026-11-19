@@ -50,7 +50,6 @@ function(run_cli_command expected_exit expected_stdout expected_stderr)
         )
     endif()
 
-    set(CPPAPPLAB_LAST_TODO_STDOUT "${actual_stdout}" PARENT_SCOPE)
 endfunction()
 
 set(expected_after_add

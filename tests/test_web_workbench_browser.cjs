@@ -547,8 +547,8 @@ async function main() {
 
     // Avoid distorted full-page evidence from a sticky header captured while
     // the browser is scrolled to an editor control.
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await page.waitForFunction(() => window.scrollY === 0);
+    await page.locator('.main-content').evaluate((element) => { element.scrollTop = 0; });
+    await page.waitForFunction(() => document.querySelector('.main-content')?.scrollTop === 0);
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "cppapplab-workbench-desktop.png"),
       fullPage: true
@@ -558,8 +558,8 @@ async function main() {
       fullPage: true
     });
 
-    await page.evaluate(() => window.scrollTo(0, 700));
-    await page.waitForFunction(() => window.scrollY > 0);
+    await page.locator('.main-content').evaluate((element) => { element.scrollTop = 700; });
+    await page.waitForFunction(() => document.querySelector('.main-content')?.scrollTop > 0);
     const consoleDock = page.locator(".console-dock");
     const consoleGeometry = await consoleDock.evaluate((element) => {
       const rect = element.getBoundingClientRect();
@@ -596,8 +596,8 @@ async function main() {
     });
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await page.waitForFunction(() => window.scrollY === 0);
+    await page.locator('.main-content').evaluate((element) => { element.scrollTop = 0; });
+    await page.waitForFunction(() => document.querySelector('.main-content')?.scrollTop === 0);
     await page.waitForTimeout(200);
     const mobileOverflow = await page.evaluate(() =>
       document.documentElement.scrollWidth > document.documentElement.clientWidth + 1

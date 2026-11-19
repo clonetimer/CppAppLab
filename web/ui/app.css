@@ -906,3 +906,54 @@ button[data-pending="true"]:disabled::before {
   color: #f0f6ff !important;
   border-color: #8fb6e8 !important;
 }
+
+
+/* A compact terminal keeps its title and latest status visible while returning
+   most of the viewport to the lesson and code editor. */
+.console-heading {
+  gap: 12px;
+}
+.console-heading-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex: 1 1 auto;
+}
+.console-toggle {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 6px 10px;
+  font-size: 11px;
+}
+.console-dock.is-collapsed {
+  height: 52px;
+  min-height: 52px;
+  max-height: 52px;
+}
+.console-dock.is-collapsed #console-output,
+.console-dock.is-collapsed #diagnostics-list {
+  display: none !important;
+}
+.console-dock.is-collapsed .console-heading {
+  min-height: 51px;
+  border-bottom: 0;
+}
+.console-dock.is-collapsed .console-toggle {
+  background: #304765;
+  border-color: rgba(157, 190, 235, .42);
+}
+@media (max-width: 520px) {
+  .console-heading-title {
+    flex-wrap: wrap;
+    gap: 4px 10px;
+  }
+  .console-heading {
+    padding: 8px 10px;
+  }
+  .console-toggle {
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+}

@@ -905,7 +905,7 @@ jobs:
       - name: Install native MinGW-w64 UCRT GCC toolchain
         uses: msys2/setup-msys2@v2
         with:
-          install_dir: C:\msys64
+          location: C:\msys64
           msystem: UCRT64
           update: true
           install: >-

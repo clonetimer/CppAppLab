@@ -95,6 +95,18 @@ TEST(ProcessRunnerTest, PassesBoundedStandardInputToChild) {
     EXPECT_EQ(result.output, request);
 }
 
+TEST(ProcessRunnerTest, PreservesBinaryStandardInput) {
+    const std::string payload("A\\0B\\r\\nC", 6U);
+    const auto result = cppapplab::run_process(
+        child_command({"copy-stdin"}), std::filesystem::current_path(),
+        std::chrono::seconds(2), 1024, payload);
+
+    EXPECT_EQ(result.exit_code, 0);
+    EXPECT_FALSE(result.timed_out);
+    EXPECT_FALSE(result.output_truncated);
+    EXPECT_EQ(result.output, payload);
+}
+
 TEST(ProcessRunnerTest, RejectsOversizedStandardInputBeforeStartingChild) {
     const std::string oversized(256U * 1024U + 1U, 'x');
     EXPECT_THROW(
@@ -154,6 +166,17 @@ TEST(ProcessRunnerTest, UsesRequestedWorkingDirectoryContainingSpaces) {
     EXPECT_EQ(result.exit_code, 0);
     EXPECT_TRUE(std::filesystem::is_regular_file(
         temporary.path() / "process-runner-child.marker"));
+}
+
+TEST(ProcessRunnerTest, ReturnsConventionalCodeWhenWorkingDirectoryDoesNotExist) {
+    TemporaryDirectory temporary;
+    const auto missing = temporary.path() / "missing-working-directory";
+    const auto result = cppapplab::run_process(
+        child_command({"emit", "not reached"}), missing, std::chrono::seconds(2), 1024);
+
+    EXPECT_EQ(result.exit_code, 126);
+    EXPECT_FALSE(result.timed_out);
+    EXPECT_FALSE(result.output.empty());
 }
 
 TEST(ProcessRunnerTest, ReturnsTheChildExitCode) {

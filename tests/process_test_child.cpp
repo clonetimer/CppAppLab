@@ -70,7 +70,9 @@ int spawn_wait(const char* duration, const char* executable_argument) {
     }
     executable.resize(executable_length);
 
-    std::wstring command_line = L"child-sleep " + std::to_wstring(milliseconds);
+    // argv[0] must identify the executable; quote it because the build path may contain spaces.
+    std::wstring command_line = L"\"" + executable + L"\" child-sleep " +
+                                std::to_wstring(milliseconds);
     STARTUPINFOW startup{};
     startup.cb = sizeof(startup);
     startup.dwFlags = STARTF_USESTDHANDLES;

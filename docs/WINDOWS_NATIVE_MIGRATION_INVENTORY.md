@@ -171,3 +171,5 @@ The first isolated Bash dependency has now been removed without changing the acc
 - This runner uses native CMake process execution and does not require Bash. It is suitable for both Linux and Windows CMake generators.
 
 This is deliberately only a test-harness migration. The repository root still rejects Windows, and the runtime still contains POSIX APIs; no Windows-native product support is claimed. Next small candidates are the remaining simple CLI smoke wrappers that can be expressed as direct CTest commands or a portable test helper without weakening multi-process persistence assertions.
+
+- Added a dedicated CI step that configures/builds the W1 Calculator platform-owned fixture against the reference implementation and runs its CTest suite. This ensures the new CMake runner is actually executed by CI, not merely parsed.

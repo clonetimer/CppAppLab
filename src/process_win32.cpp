@@ -390,8 +390,18 @@ ProcessResult run_process(const std::vector<std::string>& arguments,
             result.timed_out = true;
             if (!::TerminateJobObject(job.get(), 137)) {
                 const DWORD error = ::GetLastError();
-                if (!process_finished && !::TerminateProcess(process.get(), 137)) {
-                    throw_system_error("TerminateJobObject/TerminateProcess", error);
+                // Closing a kill-on-close job is the final cleanup path if explicit
+                // termination races with the last process leaving the job.
+                job.reset();
+                if (!process_finished) {
+                    const DWORD wait_result = ::WaitForSingleObject(process.get(), 1000);
+                    if (wait_result != WAIT_OBJECT_0) {
+                        if (!::TerminateProcess(process.get(), 137)) {
+                            throw_system_error("TerminateJobObject/TerminateProcess", error);
+                        }
+                        (void)::WaitForSingleObject(process.get(), INFINITE);
+                    }
+                    process_finished = true;
                 }
             }
         }

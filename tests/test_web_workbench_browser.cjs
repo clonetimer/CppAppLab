@@ -595,6 +595,99 @@ async function main() {
       fullPage: false
     });
 
+    await page.locator("#editor-actions-group summary").click();
+    const saveButton = page.locator("#save-button");
+    const disabledStyle = await saveButton.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        disabled: element.disabled,
+        opacity: style.opacity,
+        background: style.backgroundColor,
+        color: style.color,
+        border: style.borderColor
+      };
+    });
+    assert.equal(disabledStyle.disabled, true, "Save is unavailable when no file has unsaved edits");
+    assert.equal(disabledStyle.opacity, "1", "Disabled controls stay fully opaque and legible");
+    assert.notEqual(disabledStyle.background, "rgba(0, 0, 0, 0)",
+      "Disabled controls have an explicit surface, not only reduced opacity");
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-3-buttons-disabled-after.png"),
+      fullPage: false
+    });
+
+    const buildButton = page.locator("#build-button");
+    const idleStyle = await buildButton.evaluate((element) => getComputedStyle(element).backgroundColor);
+    await buildButton.hover();
+    await page.waitForTimeout(180);
+    const hoverStyle = await buildButton.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { background: style.backgroundColor, transform: style.transform };
+    });
+    assert.notEqual(hoverStyle.background, idleStyle, "Hover has a perceptible surface change");
+    assert.notEqual(hoverStyle.transform, "none", "Hover has a small lift response");
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-3-buttons-hover-after.png"),
+      fullPage: false
+    });
+
+    let releaseBuildRequest;
+    let buildRequestCount = 0;
+    const buildRoute = "**/api/v1/workspaces/w1.calculator/build";
+    await page.route(buildRoute, async (route) => {
+      buildRequestCount += 1;
+      await new Promise((resolve) => { releaseBuildRequest = resolve; });
+      await route.continue();
+    });
+
+    await page.mouse.down();
+    await page.waitForTimeout(180);
+    const activeStyle = await buildButton.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { background: style.backgroundColor, transform: style.transform };
+    });
+    assert.notEqual(activeStyle.background, hoverStyle.background, "Active has a distinct pressed color");
+    assert.notEqual(activeStyle.transform, hoverStyle.transform, "Active visibly presses the button down");
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-3-buttons-active-after.png"),
+      fullPage: false
+    });
+    await page.mouse.up();
+
+    await page.waitForFunction(() => {
+      const button = document.querySelector("#build-button");
+      return button?.dataset.pending === "true" &&
+        button.disabled &&
+        button.getAttribute("aria-busy") === "true" &&
+        button.textContent.includes("构建中");
+    }, null, { timeout: 15000 });
+    assert.equal(buildRequestCount, 1, "Exactly one real build request is pending");
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-3-buttons-pending-after.png"),
+      fullPage: false
+    });
+
+    await page.evaluate(() => {
+      document.querySelector("#build-button").dispatchEvent(
+        new MouseEvent("click", { bubbles: true })
+      );
+    });
+    await page.waitForTimeout(100);
+    assert.equal(buildRequestCount, 1, "A second click while pending cannot start another build");
+    assert.equal(typeof releaseBuildRequest, "function");
+    releaseBuildRequest();
+    await page.waitForFunction(
+      () => document.querySelector("#check-result")?.textContent === "构建成功",
+      null,
+      { timeout: 60000 }
+    );
+    await page.unroute(buildRoute);
+    assert.equal(await buildButton.getAttribute("data-pending"), null);
+    assert.equal(await buildButton.getAttribute("aria-busy"), "false");
+    assert.equal((await buildButton.textContent()).trim(), "构建",
+      "The original action label is restored after completion");
+    await page.locator("#editor-actions-group summary").click();
+
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator('.main-content').evaluate((element) => { element.scrollTop = 0; });
     await page.waitForFunction(() => document.querySelector('.main-content')?.scrollTop === 0);

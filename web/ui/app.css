@@ -957,3 +957,7 @@ button[data-pending="true"]:disabled::before {
     font-size: 10px;
   }
 }
+
+.app-shell:has(.console-dock.is-collapsed) {
+  --console-dock-height: 52px;
+}

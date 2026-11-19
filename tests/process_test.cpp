@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
+#include <initializer_list>
 #include <fstream>
 #include <stdexcept>
 #include <string>

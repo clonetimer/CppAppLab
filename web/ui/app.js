@@ -1516,9 +1516,39 @@
     }
   }
 
-  function setBusy(value, saveLabel) {
+  function setButtonPending(button, label) {
+    if (!button) return;
+    if (button.dataset.pending !== "true") {
+      button.dataset.idleLabel = button.textContent.trim();
+    }
+    button.dataset.pending = "true";
+    button.setAttribute("aria-busy", "true");
+    if (label) button.textContent = label;
+  }
+
+  function clearButtonPending(button) {
+    if (!button || button.dataset.pending !== "true") return;
+    button.textContent = button.dataset.idleLabel || button.textContent;
+    delete button.dataset.idleLabel;
+    delete button.dataset.pending;
+    button.setAttribute("aria-busy", "false");
+  }
+
+  function setBusy(value, saveLabel, pendingButton, pendingLabel) {
     state.busy = value;
-    if (value) state.serviceRequest += 1;
+    if (value) {
+      state.serviceRequest += 1;
+      if (pendingButton) setButtonPending(pendingButton, pendingLabel || "执行中…");
+    } else {
+      [
+        ui.saveButton,
+        ui.buildButton,
+        ui.runButton,
+        ui.checkButton,
+        ui.appBuildButton,
+        ui.appExecuteButton
+      ].forEach(clearButtonPending);
+    }
     ui.startButton.disabled = value || !state.progressFresh || !state.task || ["LOCKED", "UNKNOWN"].includes(state.task.state);
     ui.saveButton.disabled = value || !state.workspaceReady || state.dirtyFiles.size === 0;
     ui.buildButton.disabled = value || !state.workspaceReady;
@@ -2085,13 +2115,14 @@
 
   async function runApplicationBuild() {
     if (!state.task || !state.task.runtime_profile || !state.workspaceReady || state.busy) return;
-    setBusy(true, "正在保存代码…");
+    setBusy(true, "正在保存代码…", ui.appBuildButton, "准备中…");
     const saved = await saveAllDirtyFiles({ silent: true });
     if (!saved) {
       setBusy(false);
       toast("代码保存失败，已取消应用构建。");
       return;
     }
+    setButtonPending(ui.appBuildButton, "构建中…");
     ui.consoleTitle.textContent = "应用程序构建输出";
     ui.console.textContent = "正在构建当前任务的固定应用配置…";
     ui.diagnostics.hidden = true;
@@ -2129,13 +2160,14 @@
       .map((control) => control.dataset.fieldType === "multiline"
         ? control.value.replace(/\r?\n/g, "\r\n")
         : control.value);
-    setBusy(true, "正在保存代码…");
+    setBusy(true, "正在保存代码…", ui.appExecuteButton, "准备中…");
     const saved = await saveAllDirtyFiles({ silent: true });
     if (!saved) {
       setBusy(false);
       toast("代码保存失败，已取消程序运行。");
       return;
     }
+    setButtonPending(ui.appExecuteButton, "运行中…");
     ui.consoleTitle.textContent = "程序交互输出";
     ui.console.textContent = "正在执行：" + (action.label || action.id);
     ui.diagnostics.hidden = true;
@@ -2166,7 +2198,10 @@
   async function runWorkspaceAction(action) {
     if (!state.task || !state.workspaceReady || state.busy) return;
     const taskId = state.task.id;
-    setBusy(true, "正在保存代码…");
+    const pendingButton = action === "build" ? ui.buildButton :
+      action === "run" ? ui.runButton : ui.checkButton;
+    const pendingLabels = { build: "构建中…", run: "运行 / 测试中…", check: "正式验收中…" };
+    setBusy(true, "正在保存代码…", pendingButton, "准备中…");
     const saved = await saveAllDirtyFiles({ silent: true });
     if (!saved) {
       setBusy(false);
@@ -2185,6 +2220,7 @@
     ui.diagnostics.hidden = true;
     ui.checkResult.textContent = "执行中";
     ui.checkResult.className = "check-result";
+    setButtonPending(pendingButton, pendingLabels[action]);
     setBusy(true, labels[action]);
     try {
       const result = await api(
@@ -2269,7 +2305,15 @@
       if (state.editorFallback) state.editorFallback();
     });
     ui.startButton.addEventListener("click", startTask);
-    ui.saveButton.addEventListener("click", () => saveAllDirtyFiles());
+    ui.saveButton.addEventListener("click", async () => {
+      if (state.busy) return;
+      setBusy(true, "正在保存代码…", ui.saveButton, "保存中…");
+      try {
+        await saveAllDirtyFiles();
+      } finally {
+        setBusy(false);
+      }
+    });
     ui.buildButton.addEventListener("click", () => runWorkspaceAction("build"));
     ui.runButton.addEventListener("click", () => runWorkspaceAction("run"));
     ui.appBuildButton.addEventListener("click", runApplicationBuild);

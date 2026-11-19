@@ -758,6 +758,34 @@ async function main() {
     assert.equal(await buildButton.getAttribute("aria-busy"), "false");
     assert.equal((await buildButton.textContent()).trim(), originalBuildLabel,
       "The original task-specific action label is restored after completion");
+
+    // A rejected request must also leave the action usable and expose failure.
+    await page.route(buildRoute, (route) => route.abort("failed"));
+    await buildButton.click();
+    await page.waitForFunction(() => {
+      const button = document.querySelector("#build-button");
+      return button?.dataset.pending === "true" && button.disabled &&
+        button.getAttribute("aria-busy") === "true";
+    });
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-3-buttons-failure-pending-after.png"),
+      fullPage: false
+    });
+    await page.waitForFunction(() =>
+      document.querySelector("#check-result")?.textContent === "执行失败" &&
+      document.querySelector("#build-button")?.dataset.pending !== "true"
+    );
+    assert.equal(await buildButton.getAttribute("aria-busy"), "false",
+      "Failed build clears aria-busy");
+    assert.equal(await buildButton.isEnabled(), true,
+      "Failed build restores the build action for retry");
+    assert.equal((await buildButton.textContent()).trim(), originalBuildLabel,
+      "Failed build restores the original action label");
+    await page.screenshot({
+      path: path.join(ARTIFACT_DIR, "stage-3-buttons-failure-after.png"),
+      fullPage: false
+    });
+    await page.unroute(buildRoute);
     await page.locator("#editor-actions-group summary").click();
 
     await page.setViewportSize({ width: 390, height: 844 });

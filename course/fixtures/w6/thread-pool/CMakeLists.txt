@@ -39,6 +39,12 @@ if(BUILD_TESTING)
   include(GoogleTest)
   gtest_discover_tests(thread_pool_acceptance_tests)
   gtest_discover_tests(thread_pool_learner_tests)
-  add_test(NAME thread_pool_cli_smoke COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/tests/thread_pool_smoke.sh" "$<TARGET_FILE:thread-pool>")
-  set_tests_properties(thread_pool_cli_smoke PROPERTIES TIMEOUT 10)
+  get_filename_component(CPPAPPLAB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../.." ABSOLUTE)
+  include("${CPPAPPLAB_ROOT}/cmake/CppAppLabCliSmoke.cmake")
+  cppapplab_add_cli_smoke(
+    NAME thread_pool_cli_smoke
+    TARGET thread-pool
+    TIMEOUT 10
+    EXPECTED_LINES "CppAppLab W6" "42"
+  )
 endif()

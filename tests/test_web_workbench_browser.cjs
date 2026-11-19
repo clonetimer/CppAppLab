@@ -673,8 +673,8 @@ async function main() {
     });
     assert.equal(formalDisabledStyle.disabled, true, "Formal acceptance is unavailable while another action runs");
     assert.equal(formalDisabledStyle.opacity, "1", "Disabled primary action remains fully opaque");
-    assert.notEqual(formalDisabledStyle.background, idleStyle,
-      "Disabled primary action has its own clearly visible surface");
+    assert.equal(formalDisabledStyle.background, "rgb(52, 71, 97)",
+      "Formal acceptance uses a clearly visible disabled surface");
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-3-buttons-pending-after.png"),
       fullPage: false

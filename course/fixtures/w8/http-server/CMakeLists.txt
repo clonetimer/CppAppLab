@@ -60,6 +60,7 @@ target_compile_options(http-server PRIVATE -Wall -Wextra -Wpedantic -Wshadow -We
 
 if(BUILD_TESTING)
     find_package(GTest CONFIG REQUIRED)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
     add_executable(http_server_acceptance_tests tests/http_server_acceptance_test.cpp)
     target_link_libraries(http_server_acceptance_tests PRIVATE http_server_core GTest::gtest_main)
@@ -75,7 +76,9 @@ if(BUILD_TESTING)
 
     add_test(
         NAME http_server_loopback_cli_smoke
-        COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/tests/http_server_smoke.sh" "$<TARGET_FILE:http-server>"
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/http_server_smoke.py"
+            "$<TARGET_FILE:http-server>"
     )
     set_tests_properties(http_server_loopback_cli_smoke PROPERTIES TIMEOUT 10)
 endif()

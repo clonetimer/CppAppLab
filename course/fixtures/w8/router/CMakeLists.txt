@@ -26,6 +26,7 @@ target_link_libraries(http-router PRIVATE router_under_test)
 target_compile_options(http-router PRIVATE -Wall -Wextra -Wpedantic -Wshadow -Werror)
 
 if(BUILD_TESTING)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
     add_executable(router_acceptance_tests tests/router_acceptance_test.cpp)
     target_include_directories(router_acceptance_tests BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
     target_link_libraries(router_acceptance_tests PRIVATE router_under_test GTest::gtest_main)
@@ -36,7 +37,11 @@ if(BUILD_TESTING)
     include(GoogleTest)
     gtest_discover_tests(router_acceptance_tests PROPERTIES TIMEOUT 15)
     gtest_discover_tests(router_learner_tests PROPERTIES TIMEOUT 15)
-    add_test(NAME router_cli_smoke
-        COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/tests/router_smoke.sh" "$<TARGET_FILE:http-router>")
+    add_test(
+        NAME router_cli_smoke
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/router_smoke.py"
+            "$<TARGET_FILE:http-router>"
+    )
     set_tests_properties(router_cli_smoke PROPERTIES TIMEOUT 15)
 endif()

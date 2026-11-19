@@ -63,11 +63,14 @@ if(BUILD_TESTING)
     include(GoogleTest)
     gtest_discover_tests(todo_acceptance_tests)
 
+    get_filename_component(CPPAPPLAB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../.." ABSOLUTE)
     add_test(
         NAME todo_cli_workflow
-        COMMAND bash
-            "${CMAKE_CURRENT_SOURCE_DIR}/tests/todo_cli_workflow.sh"
-            "$<TARGET_FILE:todo_cli>"
+        COMMAND "${CMAKE_COMMAND}"
+            "-DCPPAPPLAB_TODO_EXECUTABLE=$<TARGET_FILE:todo_cli>"
+            "-DCPPAPPLAB_TODO_TITLE_1=Review STL containers"
+            "-DCPPAPPLAB_TODO_TITLE_2=Implement file persistence"
+            -P "${CPPAPPLAB_ROOT}/cmake/AssertTodoCliWorkflow.cmake"
     )
     set_tests_properties(todo_cli_workflow PROPERTIES TIMEOUT 15)
 endif()

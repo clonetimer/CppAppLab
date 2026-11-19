@@ -215,6 +215,7 @@ async function copyReferenceSources(page, baseUrl, taskId, referenceRoot, relati
 }
 
 async function runApplicationAction(page, action, fields, expectedOutput) {
+  await openApplicationRunner(page);
   await page.locator("#app-action").selectOption(action);
   for (const [name, value] of Object.entries(fields || {})) {
     await page.locator('[data-field="' + name + '"]').fill(value);
@@ -249,10 +250,16 @@ async function verifyReadOnlyReference(page, relativePath) {
   await page.waitForFunction((file) => document.querySelector("#active-file").textContent === file, originalFile);
 }
 
+async function openApplicationRunner(page) {
+  const group = page.locator("#app-runner-details");
+  if (!(await group.evaluate((element) => element.open))) {
+    await group.locator("summary").click();
+  }
+}
+
 async function clickWorkbenchAction(page, selector) {
-  const group = selector === "#app-build-button" || selector === "#app-execute-button"
-    ? page.locator("#app-runner-details")
-    : page.locator("#editor-actions-group");
+  const isApplicationAction = selector === "#app-build-button" || selector === "#app-execute-button";
+  const group = isApplicationAction ? page.locator("#app-runner-details") : page.locator("#editor-actions-group");
   if (!(await group.evaluate((element) => element.open))) {
     await group.locator("summary").click();
   }
@@ -587,6 +594,7 @@ async function main() {
       document.querySelector("#check-result")?.textContent === "应用构建成功",
       null, { timeout: 60000 }
     );
+    await openApplicationRunner(page);
     await page.locator("#app-action").selectOption("list");
     await clickWorkbenchAction(page, "#app-execute-button");
     await page.waitForFunction(() =>
@@ -758,6 +766,7 @@ async function main() {
     assert.deepEqual(await page.locator("#app-action option").evaluateAll((items) =>
       items.map((item) => item.value)
     ), ["parse-line", "response"]);
+    await openApplicationRunner(page);
     await page.locator("#app-action").selectOption("parse-line");
     assert.equal(await page.locator('[data-field="request_line"]').count(), 1);
     await page.locator("#app-action").selectOption("response");

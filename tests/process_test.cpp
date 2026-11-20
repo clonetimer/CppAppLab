@@ -1,11 +1,11 @@
 #include "cppapplab/process.hpp"
+#include "cppapplab_process_test_config.hpp"
 
 #include <gtest/gtest.h>
 
 #include <chrono>
 #include <filesystem>
 #include <initializer_list>
-#include "cppapplab_process_test_config.hpp"
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -34,6 +34,27 @@ TEST(ProcessRunnerTest, CapturesStandardOutput) {
     EXPECT_FALSE(result.timed_out);
     EXPECT_FALSE(result.output_truncated);
     EXPECT_EQ(result.output, "CppAppLab\n");
+}
+
+TEST(ProcessRunnerTest, PreservesArgumentsContainingSpacesQuotesAndTrailingBackslashes) {
+    const std::string argument = R"(value with spaces and "quotes" and trailing\)";
+    const auto result = cppapplab::run_process(
+        child_arguments({"emit", argument}), std::filesystem::current_path(),
+        std::chrono::seconds(2), 1024);
+
+    EXPECT_EQ(result.exit_code, 0);
+    EXPECT_FALSE(result.timed_out);
+    EXPECT_EQ(result.output, argument + "\n");
+}
+
+TEST(ProcessRunnerTest, PreservesEmptyArguments) {
+    const auto result = cppapplab::run_process(
+        child_arguments({"emit", ""}), std::filesystem::current_path(),
+        std::chrono::seconds(2), 1024);
+
+    EXPECT_EQ(result.exit_code, 0);
+    EXPECT_FALSE(result.timed_out);
+    EXPECT_EQ(result.output, "\n");
 }
 
 TEST(ProcessRunnerTest, UsesClosedStandardInputWhenNoInputIsProvided) {

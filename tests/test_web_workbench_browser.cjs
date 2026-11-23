@@ -354,8 +354,12 @@ async function main() {
       fullPage: false
     });
     releaseStartRequest();
+    // Text can be populated during source loading while the status is hidden.
+    // Observe the learner-visible ready state, then independently verify that
+    // the initiating button has released its pending feedback.
     await page.waitForFunction(() =>
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     assert.equal(await startButton.getAttribute("aria-busy"), "false",
       "Start action clears its pending state after the workspace is ready");
@@ -439,7 +443,8 @@ async function main() {
     );
     await page.locator("#start-button").click();
     await page.waitForFunction(() =>
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     const fileTabs = page.locator("#file-list .file-tab");
     assert.equal(await fileTabs.count(), 3, "Calculator task must expose all three declared files");
@@ -954,7 +959,8 @@ async function main() {
     assert.equal(await page.locator("#app-profile-label").textContent(), "持久化 Todo CLI");
     await page.locator("#start-button").click();
     await page.waitForFunction(() =>
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     await verifyReadOnlyReference(page, "include/todo.hpp");
     await clickWorkbenchAction(page, "#app-build-button");
@@ -981,7 +987,8 @@ async function main() {
     await page.locator('#course-list .task-link[data-task-id="w2.todo-cli"]').click();
     await page.waitForFunction(() =>
       document.querySelector("#task-breadcrumb")?.textContent.trim() === "w2.todo-cli" &&
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     await clickWorkbenchAction(page, "#app-build-button");
     await page.waitForFunction(() =>
@@ -1016,7 +1023,8 @@ async function main() {
     assert.equal(await page.locator("#app-profile-label").textContent(), "TaskManager CLI");
     await page.locator("#start-button").click();
     await page.waitForFunction(() =>
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     await verifyReadOnlyReference(page, "include/task.hpp");
     await verifyReadOnlyReference(page, "include/task_manager.hpp");
@@ -1027,7 +1035,8 @@ async function main() {
     await page.locator('#course-list .task-link[data-task-id="w3.task-manager"]').click();
     await page.waitForFunction(() =>
       document.querySelector("#task-breadcrumb")?.textContent.trim() === "w3.task-manager" &&
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     await clickWorkbenchAction(page, "#app-build-button");
     await page.waitForFunction(() =>
@@ -1047,7 +1056,8 @@ async function main() {
     await page.locator('#course-list .task-link[data-task-id="w3.task-manager"]').click();
     await page.waitForFunction(() =>
       document.querySelector("#task-breadcrumb")?.textContent.trim() === "w3.task-manager" &&
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     await runApplicationAction(page, "list", {}, "#1 [ ] browser task");
     await runApplicationAction(page, "done", { id: "1" }, "Completed #1");
@@ -1077,7 +1087,8 @@ async function main() {
     assert.equal(await page.locator("#app-profile-label").textContent(), "TaskManager Quality Gate CLI");
     await page.locator("#start-button").click();
     await page.waitForFunction(() =>
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     await clickWorkbenchAction(page, "#app-build-button");
     await page.waitForFunction(() =>
@@ -1413,7 +1424,8 @@ async function main() {
     );
     await fallbackPage.locator("#start-button").click();
     await fallbackPage.waitForFunction(() =>
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     await fallbackPage.waitForFunction(() =>
       document.querySelector("#editor-engine-status")?.textContent === "基础编辑器（离线）",

@@ -1323,11 +1323,11 @@
 
   async function loadWorkspaceFiles(preferredFile = state.preferredFile, options = {}) {
     if (!state.task) return false;
+    ui.workspaceState.textContent = "正在加载工作区…";
     const data = await api("/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/files");
     state.files = data.files || [];
     state.workspaceReady = true;
     state.workspaceError = "";
-    ui.workspaceState.textContent = "工作区已就绪";
     updateApplicationGuidance();
     if (state.task && state.task.service_profile) {
       updateServiceSnapshot(state.serviceSnapshot || { state: "STOPPED", port: null, logs: "" });
@@ -1353,6 +1353,7 @@
     if (preferredFile && !preferred) toast("上次或链接中的文件不可用，已打开本课可用文件。");
     state.preferredFile = state.activeFile;
     await refreshServiceStatus(true);
+    ui.workspaceState.textContent = "工作区已就绪";
     return true;
   }
 

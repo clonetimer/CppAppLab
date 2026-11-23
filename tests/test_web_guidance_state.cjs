@@ -1458,3 +1458,32 @@ for (const action of ["start", "workspace"]) {
     assert.equal(requests.filter((url) => url.endsWith("/start")).length, action === "start" ? 1 : 0);
   });
 }
+
+test("learning-space: workspace retry does not announce readiness before the source has loaded", async () => {
+  const app = application();
+  app.state.progressFresh = true;
+  learningApi(app, (url) => {
+    if (url.includes("/files/")) throw new Error("initial source unavailable");
+  });
+  await app.selectTask("w1.calculator");
+  assert.equal(app.state.workspaceReady, false);
+  assert.equal(app.ui.workspaceState.hidden, false, "the failed workspace has a visible status");
+  assert.equal(app.ui.workflowAction.dataset.action, "workspace");
+  const source = deferred();
+  learningApi(app, (url) => url.includes("/files/") ? source.promise : undefined);
+  const pending = app.followWorkflowAction();
+  try {
+    await new Promise(setImmediate);
+    assert.equal(app.state.activeFile, "", "no source has reached the editor yet");
+    assert.equal(app.ui.workflowAction.dataset.pending, "true");
+    assert.ok(app.ui.workspaceState.hidden || !/已就绪/.test(app.ui.workspaceState.textContent),
+      "a visible ready status must not contradict the still-pending source read");
+  } finally {
+    source.resolve({ content: "// recovered learner source\n", read_only: false });
+    await pending;
+  }
+  assert.equal(app.ui.editor.value, "// recovered learner source\n");
+  assert.equal(app.ui.workspaceState.hidden, false);
+  assert.match(app.ui.workspaceState.textContent, /已就绪/);
+  assert.equal(app.ui.workflowAction.dataset.pending, undefined);
+});

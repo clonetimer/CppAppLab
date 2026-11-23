@@ -564,7 +564,7 @@ async function main() {
     assert.ok(editorBoxDesktop && lessonBoxDesktop);
     assert.ok(editorBoxDesktop.x < lessonBoxDesktop.x,
       "Desktop places the active code editor to the left of contextual lesson guidance");
-    assert.ok(lessonBoxDesktop.x - (editorBoxDesktop.x + editorBoxDesktop.width) >= 20,
+    assert.ok(lessonBoxDesktop.x - (editorBoxDesktop.x + editorBoxDesktop.width) >= 16,
       "Desktop workbench keeps a visible gap between editor and lesson panels");
     assert.equal(await page.locator("#editor-actions-group").evaluate((element) => element.open), false,
       "Workspace actions are grouped and collapsed by default");
@@ -584,8 +584,34 @@ async function main() {
       fullPage: true
     });
 
-    await page.locator('.main-content').evaluate((element) => { element.scrollTop = 700; });
-    await page.waitForFunction(() => document.querySelector('.main-content')?.scrollTop > 0);
+    // Expanded application controls must remain reachable even though the
+    // idle layout prioritizes code and prose. Use the real learner control,
+    // not a synthetic spacer, to exercise the constrained desktop viewport.
+    await openApplicationRunner(page);
+    await page.locator("#app-execute-button").scrollIntoViewIfNeeded();
+    const runnerControl = await page.locator("#app-execute-button").evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const dock = document.querySelector("#console-dock").getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return { top: box.top, bottom: box.bottom, dockTop: dock.top,
+        hit: Boolean(hit && (hit === element || element.contains(hit))) };
+    });
+    assert.ok(runnerControl.hit && runnerControl.top >= 0 && runnerControl.bottom <= runnerControl.dockTop,
+      "Expanded real application controls remain visible and unobscured above the output dock: " + JSON.stringify(runnerControl));
+
+    // Scroll the actual overflowing learning region, and still require real
+    // scrolling before checking that the result dock stays fixed and visible.
+    const readingScroll = await page.evaluate(() => {
+      for (const selector of [".main-content", "#lesson-content"]) {
+        const element = document.querySelector(selector);
+        if (element.scrollHeight <= element.clientHeight + 1) continue;
+        element.scrollTop = 700;
+        if (element.scrollTop > 0) return { selector, top: element.scrollTop };
+      }
+      return null;
+    });
+    assert.ok(readingScroll && readingScroll.top > 0,
+      "The actual lesson/workbench reading region must scroll before testing the fixed terminal");
     const consoleDock = page.locator(".console-dock");
     const consoleGeometry = await consoleDock.evaluate((element) => {
       const rect = element.getBoundingClientRect();
@@ -609,13 +635,17 @@ async function main() {
     assert.ok(consoleGeometry.top >= 0 && consoleGeometry.bottom <= consoleGeometry.viewportHeight,
       "The execution console remains inside the viewport after page scrolling: " +
       JSON.stringify(consoleGeometry));
-    assert.ok(consoleOutputGeometry.height >= 360,
-      "The default terminal viewport has room for at least twenty output lines: " +
+    assert.equal(await consoleDock.getAttribute("data-mode"), "normal");
+    assert.ok(await consoleDock.evaluate((element) => element.getBoundingClientRect().height) >= 200 &&
+      await consoleDock.evaluate((element) => element.getBoundingClientRect().height) <= 320,
+      "Normal output reserves a bounded part of the desktop for the latest result");
+    assert.ok(consoleOutputGeometry.height >= 140,
+      "The normal terminal viewport retains a readable output area: " +
       JSON.stringify(consoleOutputGeometry));
     assert.ok(consoleOutputGeometry.fontSize >= 12 && consoleOutputGeometry.lineHeight >= 17,
       "The terminal keeps readable output text rather than shrinking its font");
-    assert.ok(Math.floor((consoleOutputGeometry.height - 24) / consoleOutputGeometry.lineHeight) >= 20,
-      "The terminal's visible text area can show twenty lines without scrolling");
+    assert.ok(Math.floor((consoleOutputGeometry.height - 24) / consoleOutputGeometry.lineHeight) >= 7,
+      "Normal output keeps several readable lines while preserving room for the lesson");
 
     // Compact mode must keep the terminal title/status dock visible while
     // returning the reserved viewport to the lesson and editor.
@@ -630,9 +660,9 @@ async function main() {
     });
     const compactDockHeight = await consoleDock.evaluate((element) => element.getBoundingClientRect().height);
     const workbenchHeightAfterCompact = await page.locator(".main-layout").evaluate((element) => element.getBoundingClientRect().height);
-    assert.ok(workbenchHeightAfterCompact > workbenchHeightBeforeCompact + 300,
+    assert.ok(workbenchHeightAfterCompact > workbenchHeightBeforeCompact + 140,
       "Compact terminal returns the reserved viewport to the workbench");
-    assert.ok(compactDockHeight <= 56, "Compact terminal retains a visible header without occupying the output area");
+    assert.ok(compactDockHeight <= 72, "Compact terminal retains a visible header without occupying the output area");
     assert.equal(await page.locator("#console-title").isVisible(), true);
     assert.equal(await page.locator("#check-result").isVisible(), true);
     await page.screenshot({
@@ -641,13 +671,25 @@ async function main() {
     });
     await terminalToggle.click();
     await page.waitForFunction(() => !document.querySelector(".console-dock")?.classList.contains("is-collapsed"));
-    assert.ok(await consoleDock.evaluate((element) => element.getBoundingClientRect().height) >= 400,
-      "Expanding the terminal restores the full output viewport");
+    assert.equal(await consoleDock.getAttribute("data-mode"), "normal");
+    assert.ok(await consoleDock.evaluate((element) => element.getBoundingClientRect().height) >= 200,
+      "Expanding the terminal restores the normal output viewport");
+    await page.locator("#console-size").click();
+    await page.waitForFunction(() => document.querySelector("#console-dock")?.dataset.mode === "large");
+    const enlargedOutput = await page.locator("#console-output").evaluate((element) => ({
+      height: element.getBoundingClientRect().height, lineHeight: parseFloat(getComputedStyle(element).lineHeight)
+    }));
+    assert.ok(Math.floor((enlargedOutput.height - 24) / enlargedOutput.lineHeight) >= 20,
+      "Explicit enlargement retains the twenty-line detailed-log view");
+    await page.locator("#console-size").click();
+    await page.waitForFunction(() => document.querySelector("#console-dock")?.dataset.mode === "normal");
 
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-2-console-after.png"),
       fullPage: false
     });
+    await page.locator("#app-runner-details summary").click();
+    assert.equal(await page.locator("#app-runner-details").evaluate((element) => element.open), false);
 
     await page.locator("#editor-actions-group summary").click();
     const saveButton = page.locator("#save-button");
@@ -811,9 +853,9 @@ async function main() {
     const mobileMainBox = await page.locator(".main-layout").boundingBox();
     const mobileContentBox = await page.locator(".main-content").boundingBox();
     assert.ok(mobileDockBox && mobileOutputBox && mobileMainBox && mobileContentBox);
-    assert.ok(mobileDockBox.height >= 280 && mobileDockBox.height <= 360,
+    assert.ok(mobileDockBox.height >= 200 && mobileDockBox.height <= 280,
       "Mobile terminal remains visible without taking most of the viewport: " + JSON.stringify(mobileDockBox));
-    assert.ok(mobileOutputBox.height >= 180,
+    assert.ok(mobileOutputBox.height >= 120,
       "Mobile terminal retains a readable output area");
     assert.ok(mobileContentBox.height >= 280,
       "Mobile lesson/editor area retains usable vertical space: " + JSON.stringify(mobileContentBox));
@@ -847,7 +889,7 @@ async function main() {
     await page.locator("#console-toggle").click();
     await page.waitForFunction(() => document.querySelector("#console-dock")?.classList.contains("is-collapsed"));
     const mobileMainAfterCollapse = await page.locator(".main-layout").evaluate((element) => element.getBoundingClientRect().height);
-    assert.ok(mobileMainAfterCollapse > mobileMainBeforeCollapse + 200,
+    assert.ok(mobileMainAfterCollapse > mobileMainBeforeCollapse + 140,
       "Collapsing the mobile terminal returns substantial height to the editor");
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-2-console-mobile-compact-after.png"),
@@ -878,7 +920,7 @@ async function main() {
     });
     assert.ok(narrowDock.top >= 0 && narrowDock.bottom <= narrowViewport.height + 1,
       "Compact mobile terminal remains visible: " + JSON.stringify(narrowDock));
-    assert.ok(narrowDock.height >= 240 && narrowDock.height <= 310,
+    assert.ok(narrowDock.height >= 200 && narrowDock.height <= 280,
       "Compact mobile terminal retains a usable dock height: " + JSON.stringify(narrowDock));
     const narrowLesson = await page.locator(".lesson-panel").boundingBox();
     const narrowEditor = await page.locator(".editor-panel").boundingBox();

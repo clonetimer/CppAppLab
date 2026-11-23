@@ -935,6 +935,8 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .primary-button[data-pending="true"]:disabled {
   opacity: 1;
   cursor: progress;
+  /* A request may finish before a color fade: keep its label readable at once. */
+  transition: none;
   color: #f0f6ff;
   background: #304a68;
   border: 1px solid #8fb6e8;

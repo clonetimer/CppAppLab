@@ -16,6 +16,21 @@ const EDITOR_CDN = /https?:\/\/(cdn\.jsdelivr\.net|gcore\.jsdelivr\.net|cdnjs\.c
 const HELLO = '#include <iostream>\nint main() { std::cout << "Hello, CppAppLab!\\n"; }\n';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function contrastRatio(foreground, background) {
+  const luminance = (color) => {
+    const values = color.match(/[\d.]+/g)?.map(Number) || [];
+    assert.ok(values.length === 3 || (values.length === 4 && values[3] === 1),
+      "Button contrast evidence requires opaque computed RGB colors: " + color);
+    const linear = values.slice(0, 3).map((value) => {
+      const channel = value / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+  };
+  const first = luminance(foreground), second = luminance(background);
+  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+}
+
 async function waitWithin(promise, timeout, message) {
   let timer;
   try {
@@ -212,6 +227,7 @@ async function measurements(page) {
     const prose = [...document.querySelectorAll("#lesson-content p")].find((element) => element.textContent.trim().length > 20);
     const status = document.querySelector("#workspace-state");
     const button = document.querySelector("#workflow-action");
+    const buttonStyle = getComputedStyle(button);
     return { viewport: { width: innerWidth, height: innerHeight }, pageWidth: document.documentElement.scrollWidth,
       dock: { top: dockBox.top, bottom: dockBox.bottom, height: dockBox.height, state: dock.dataset.state,
         mode: dock.dataset.mode, collapsed: dock.classList.contains("is-collapsed") },
@@ -219,7 +235,9 @@ async function measurements(page) {
       editor: describe(document.querySelector("#source-editor")),
       workspace: { tag: status.tagName, text: status.textContent, parent: status.parentElement.className },
       nextAction: { text: button.textContent, hidden: button.hidden, disabled: button.disabled,
-        pending: button.dataset.pending, busy: button.getAttribute("aria-busy"), action: button.dataset.action },
+        pending: button.dataset.pending, busy: button.getAttribute("aria-busy"), action: button.dataset.action,
+        color: buttonStyle.color, background: buttonStyle.backgroundColor,
+        backgroundImage: buttonStyle.backgroundImage, opacity: buttonStyle.opacity },
       result: document.querySelector("#check-result").textContent,
       summary: document.querySelector("#console-summary")?.textContent || "" };
   });
@@ -303,6 +321,14 @@ async function pendingBuild(page) {
     await page.locator("#workflow-action").click();
     await waitWithin(reached, 10000, "The real Calculator build request must reach the held route");
     await page.waitForFunction(() => document.querySelector("#check-result").textContent === "执行中");
+    if (!BASELINE) {
+      // Check the first pending feedback without waiting for any color transition.
+      const feedback = (await measurements(page)).nextAction;
+      assert.equal(feedback.opacity, "1", "Pending next-action feedback is immediately opaque");
+      assert.equal(feedback.backgroundImage, "none", "Pending next-action feedback uses its solid background");
+      assert.ok(contrastRatio(feedback.color, feedback.background) >= 4.5,
+        "The pending next-action label is immediately readable, before any transition wait: " + JSON.stringify(feedback));
+    }
     const metrics = await evidence(page, "build-pending");
     if (!BASELINE) {
       assert.equal(metrics.dock.state, "running");

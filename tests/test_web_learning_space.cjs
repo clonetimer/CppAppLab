@@ -284,10 +284,21 @@ async function pendingBuild(page) {
   const pattern = "**/api/v1/workspaces/w1.calculator/build";
   let release;
   let entered;
+  let completed;
+  let routeStarted = false;
   const reached = new Promise((resolve) => { entered = resolve; });
   const gate = new Promise((resolve) => { release = resolve; });
-  const handler = async (route) => { entered(); await gate; await route.continue(); };
+  const handled = new Promise((resolve) => { completed = resolve; });
+  const handler = async (route) => {
+    routeStarted = true;
+    entered();
+    let error;
+    try { await gate; await route.continue(); }
+    catch (failure) { error = failure; }
+    finally { completed(error); }
+  };
   await page.route(pattern, handler);
+  let captureError;
   try {
     await page.locator("#workflow-action").click();
     await waitWithin(reached, 10000, "The real Calculator build request must reach the held route");
@@ -310,9 +321,24 @@ async function pendingBuild(page) {
     await page.waitForFunction(() => document.querySelector("#console-dock").classList.contains("is-collapsed"));
     assert.equal(await page.locator("#source-editor").inputValue(), before,
       "collapsing output during the operation must not change source code");
+  } catch (error) {
+    captureError = error;
+    throw error;
   } finally {
     release();
-    await page.unroute(pattern, handler);
+    const cleanupErrors = [];
+    if (routeStarted) {
+      try {
+        const error = await waitWithin(handled, 10000, "The released Calculator route must finish before interception is removed");
+        if (error) cleanupErrors.push(error);
+      } catch (error) { cleanupErrors.push(error); }
+    }
+    try { await page.unroute(pattern, handler); }
+    catch (error) { cleanupErrors.push(error); }
+    if (cleanupErrors.length) {
+      throw new AggregateError(captureError ? [captureError, ...cleanupErrors] : cleanupErrors,
+        "Calculator build capture cleanup failed" + (captureError ? " after the original capture failure" : ""));
+    }
   }
   await page.waitForFunction(() => document.querySelector("#check-result").textContent === "构建成功" &&
     !document.querySelector('#course-list [data-task-id="w1.calculator"]').disabled, null, { timeout: 60000 });
@@ -412,4 +438,4 @@ async function main() {
   }
 }
 
-main().catch((error) => { console.error(error.stack); process.exitCode = 1; });
+main().catch((error) => { console.error(error); process.exitCode = 1; });

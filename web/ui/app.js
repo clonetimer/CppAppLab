@@ -3,6 +3,7 @@
 
   const MONACO_VERSION = "0.52.2";
   const LEARNING_POSITION_KEY = "cppapplab.learning-position.v1";
+  const LESSON_LANGUAGE_KEY = "cppapplab.lesson-language.v1";
   const MONACO_ROOTS = [
     "https://cdn.jsdelivr.net/npm/monaco-editor@" + MONACO_VERSION + "/min",
     "https://gcore.jsdelivr.net/npm/monaco-editor@" + MONACO_VERSION + "/min",
@@ -13,6 +14,8 @@
     tasks: [],
     selectedTaskId: "",
     task: null,
+    lessonLanguage: readLessonLanguage(),
+    hintDocument: null,
     files: [],
     activeFile: "",
     workspaceReady: false,
@@ -81,6 +84,8 @@
     taskSubtitle: $("task-subtitle"),
     startButton: $("start-button"),
     lesson: $("lesson-content"),
+    lessonLanguage: $("lesson-language"),
+    lessonLanguageStatus: $("lesson-language-status"),
     hint: $("hint-content"),
     hintPanel: $("hint-panel"),
     hintTitle: $("hint-title"),
@@ -323,6 +328,65 @@
     })[value] || value || "未知";
   }
 
+  function readLessonLanguage() {
+    try { return window.localStorage.getItem(LESSON_LANGUAGE_KEY) === "en" ? "en" : "zh-CN"; }
+    catch { return "zh-CN"; }
+  }
+
+  function courseTitle(task) {
+    return task.title_translations?.[state.lessonLanguage] || task.title;
+  }
+
+  function renderCourseDocument(element, original, translations) {
+    const translated = translations?.[state.lessonLanguage];
+    const available = typeof translated === "string" && translated.trim();
+    const language = available ? state.lessonLanguage : "en";
+    const oldScroll = element.scrollTop;
+    element.innerHTML = renderMarkdown(available ? translated : original);
+    element.lang = language;
+    enhanceLessonFiles(element);
+    element.scrollTop = oldScroll;
+    return language;
+  }
+
+  function updateLessonLanguageStatus() {
+    const content = ui.hintPanel.hidden ? ui.lesson : ui.hint;
+    const loaded = ui.hintPanel.hidden || Boolean(state.hintDocument);
+    const fallback = loaded && state.lessonLanguage === "zh-CN" && content.lang === "en";
+    ui.lessonLanguageStatus.hidden = !fallback;
+    ui.lessonLanguageStatus.textContent = fallback
+      ? (ui.hintPanel.hidden ? "本课" : "此提示") + "暂无中文译文，当前显示英文原文。" : "";
+  }
+
+  function renderLesson() {
+    if (!state.task) return;
+    renderCourseDocument(ui.lesson, state.task.lesson_markdown, state.task.lesson_translations);
+    updateLessonLanguageStatus();
+  }
+
+  function renderHint() {
+    if (!state.hintDocument) return;
+    renderCourseDocument(ui.hint, state.hintDocument.markdown, state.hintDocument.translations);
+    updateLessonLanguageStatus();
+  }
+
+  function changeLessonLanguage(language) {
+    if (!["zh-CN", "en"].includes(language)) {
+      ui.lessonLanguage.value = state.lessonLanguage;
+      return;
+    }
+    state.lessonLanguage = language;
+    ui.lessonLanguage.value = language;
+    try { window.localStorage.setItem(LESSON_LANGUAGE_KEY, language); }
+    catch { /* Language switching still works when browser storage is unavailable. */ }
+    if (state.task) ui.taskTitle.textContent = courseTitle(state.task);
+    renderLesson();
+    if (!ui.hintPanel.hidden) renderHint();
+    renderCourseList();
+    updateResumeAction();
+    updateWorkflowGuidance();
+  }
+
   function learningPosition() {
     if (state.learningPosition) return state.learningPosition;
     const position = { version: 1, lastTaskId: "", files: Object.create(null) };
@@ -346,7 +410,7 @@
     const recent = state.tasks.find((task) => task.id === position.lastTaskId);
     ui.resumeButton.hidden = !recent;
     ui.resumeButton.disabled = state.busy || !state.progressFresh;
-    ui.resumeButton.textContent = recent ? "返回上次：" + recent.title.replace(/^W\d+\s*[·:]\s*/, "") : "返回上次课程";
+    ui.resumeButton.textContent = recent ? "返回上次：" + courseTitle(recent).replace(/^W\d+\s*[·:]\s*/, "") : "返回上次课程";
   }
 
   function rememberLearningPosition() {
@@ -518,7 +582,8 @@
     ui.courseList.replaceChildren();
     const weeks = new Map();
     for (const task of state.tasks) {
-      const searchable = (task.id + " " + task.title + " W" + task.week).toLocaleLowerCase();
+      const searchable = (task.id + " " + task.title + " " +
+        Object.values(task.title_translations || {}).join(" ") + " W" + task.week).toLocaleLowerCase();
       if (query && !searchable.includes(query)) continue;
       if (!weeks.has(task.week)) weeks.set(task.week, []);
       weeks.get(task.week).push(task);
@@ -544,14 +609,14 @@
         button.dataset.taskId = task.id;
         button.dataset.state = task.state;
         button.disabled = state.busy;
-        button.title = task.title;
+        button.title = courseTitle(task);
         const marker = document.createElement("span");
         marker.className = "task-marker";
         marker.textContent = task.state === "PASSED" ? "✓" : task.state === "LOCKED" ? "·" : task.id.split(".").slice(-1)[0].slice(0, 2).toUpperCase();
         const copy = document.createElement("span");
         copy.className = "task-link-copy";
         const title = document.createElement("strong");
-        title.textContent = task.title.replace(/^W\d+\s*[·:]\s*/, "");
+        title.textContent = courseTitle(task).replace(/^W\d+\s*[·:]\s*/, "");
         const subtitle = document.createElement("small");
         subtitle.textContent = stateLabel(task.state);
         copy.append(title, subtitle);
@@ -684,7 +749,7 @@
       const prerequisite = (state.task.prerequisites || []).map((id) => state.tasks.find((task) => task.id === id))
         .find((task) => task && task.state !== "PASSED");
       return offer("先完成前置课程的当前源码验收；现在可以阅读本课教材和提示。",
-        prerequisite ? "前往：" + prerequisite.title.replace(/^W\d+\s*[·:]\s*/, "") : "刷新课程状态",
+        prerequisite ? "前往：" + courseTitle(prerequisite).replace(/^W\d+\s*[·:]\s*/, "") : "刷新课程状态",
         prerequisite ? "task" : "refresh", prerequisite && prerequisite.id);
     }
     if (state.workspaceError) {
@@ -707,7 +772,7 @@
       const following = state.tasks.slice(index + 1).concat(state.tasks.slice(0, Math.max(index, 0)));
       const next = following.find((task) => ["AVAILABLE", "IN PROGRESS", "NEEDS WORK", "STALE"].includes(task.state));
       return offer(next ? "当前源码已通过正式验收，可以继续学习下一课。" : "当前源码已通过正式验收，可以回顾教材或选择其他课程。",
-        next && "继续：" + next.title.replace(/^W\d+\s*[·:]\s*/, ""), "task", next && next.id);
+        next && "继续：" + courseTitle(next).replace(/^W\d+\s*[·:]\s*/, ""), "task", next && next.id);
     }
     if (result && result.taskId === state.task.id && result.passed) {
       if (result.action === "build") return offer("构建成功。接着运行程序或课程测试，查看实际结果。", "运行 / 测试", "run");
@@ -757,15 +822,19 @@
 
   function closeHint(restoreFocus = true) {
     state.hintRequest += 1;
+    state.hintDocument = null;
     ui.hintPanel.hidden = true;
     ui.lesson.hidden = false;
+    updateLessonLanguageStatus();
     document.querySelectorAll("[data-hint]").forEach((button) => button.setAttribute("aria-pressed", "false"));
     if (restoreFocus) ui.lesson.focus({ preventScroll: true });
   }
 
   function jumpToLessonSection(section) {
     closeHint(false);
-    const heading = Array.from(ui.lesson.querySelectorAll("h2")).find((item) => item.textContent.trim() === section);
+    const translated = { "Start here": "从这里开始", "Troubleshooting": "故障排查", "Acceptance": "验收要求" }[section];
+    const heading = Array.from(ui.lesson.querySelectorAll("h2"))
+      .find((item) => [section, translated].includes(item.textContent.trim()));
     if (!heading) return;
     const offset = heading.getBoundingClientRect().top - ui.lesson.getBoundingClientRect().top;
     ui.lesson.scrollTo({ top: ui.lesson.scrollTop + offset - 12, behavior: "smooth" });
@@ -801,7 +870,7 @@
       button.className = "guide-task-button";
       button.dataset.taskId = task.id;
       button.textContent = label;
-      button.title = "打开课程讲解：" + task.title;
+      button.title = "打开课程讲解：" + courseTitle(task);
       button.addEventListener("click", () => selectGuideTask(task.id));
       strong.replaceWith(button);
     }
@@ -1382,7 +1451,7 @@
       renderServiceRunner();
       await refreshServiceStatus(true);
       ui.taskBreadcrumb.textContent = task.id;
-      ui.taskTitle.textContent = task.title;
+      ui.taskTitle.textContent = courseTitle(task);
       const prerequisiteText = task.prerequisites && task.prerequisites.length
         ? "前置任务：" + task.prerequisites.join("、")
         : "无前置任务";
@@ -1394,7 +1463,7 @@
       ui.runButton.textContent = task.acceptance_kind === "exact_stdout" ? "运行程序" : "运行课程测试";
       ui.taskState.textContent = stateLabel(task.state);
       ui.taskState.dataset.state = task.state;
-      ui.lesson.innerHTML = renderMarkdown(task.lesson_markdown);
+      renderLesson();
       const locked = task.state === "LOCKED";
       ui.startButton.disabled = locked;
       ui.startButton.textContent = locked ? "完成前置任务后解锁" :
@@ -2291,18 +2360,21 @@
     if (!state.task) return;
     const taskId = state.task.id;
     const request = ++state.hintRequest;
+    state.hintDocument = null;
     ui.hintTitle.textContent = "渐进式提示 " + level;
     ui.hint.innerHTML = '<div class="loading">正在读取提示…</div>';
     ui.lesson.hidden = true;
     ui.hintPanel.hidden = false;
+    ui.hint.lang = "zh-CN";
+    updateLessonLanguageStatus();
     document.querySelectorAll("[data-hint]").forEach((button) => {
       button.setAttribute("aria-pressed", String(Number(button.dataset.hint) === level));
     });
     try {
       const data = await api("/api/v1/tasks/" + encodeURIComponent(taskId) + "/hints/" + level);
       if (!state.task || state.task.id !== taskId || request !== state.hintRequest) return;
-      ui.hint.innerHTML = renderMarkdown(data.markdown);
-      enhanceLessonFiles(ui.hint);
+      state.hintDocument = data;
+      renderHint();
       ui.hint.scrollTop = 0;
       ui.hint.focus({ preventScroll: true });
     } catch (error) {
@@ -2313,6 +2385,8 @@
   }
 
   function bindEvents() {
+    ui.lessonLanguage.value = state.lessonLanguage;
+    ui.lessonLanguage.addEventListener("change", () => changeLessonLanguage(ui.lessonLanguage.value));
     ui.search.addEventListener("input", renderCourseList);
     ui.guideButton.addEventListener("click", () => openLearningGuide(ui.guideButton));
     ui.welcomeGuide.addEventListener("click", () => openLearningGuide(ui.welcomeGuide));

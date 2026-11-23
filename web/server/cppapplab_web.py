@@ -45,7 +45,7 @@ SERVICE_IDLE_SECONDS = 5 * 60
 SERVICE_MAX_LIFETIME_SECONDS = 30 * 60
 TASK_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,95}$")
 PROGRESS_RE = re.compile(r"^\[(?P<state>[^\]]+)\]\s+(?P<task>[a-z0-9][a-z0-9._-]*)\s+·")
-HINT_RE = re.compile(r"^## Hint ([1-3])(?:\s|$)", re.MULTILINE)
+HINT_RE = re.compile(r"^## (?:Hint|提示) ([1-3])(?:\s|$)", re.MULTILINE)
 ALLOWED_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 RUNTIME_PROFILES: dict[str, dict[str, Any]] = {
@@ -253,6 +253,29 @@ def read_bounded(path: Path, max_bytes: int, label: str) -> str:
     if len(value.encode("utf-8")) > max_bytes:
         raise ApiError(413, f"{label} exceeds its size limit.")
     return value
+
+
+def course_translations(root: Path, relative: str, max_bytes: int, label: str) -> dict[str, str]:
+    """Read bundled documents; only a missing optional sibling permits fallback."""
+    original = safe_repo_file(root, relative, max_bytes, label)
+    translations = {"en": read_bounded(original, max_bytes, label)}
+    translated_relative = PurePosixPath(relative).with_suffix(".zh-CN.md").as_posix()
+    try:
+        translated = safe_repo_file(root, translated_relative, max_bytes, label)
+    except ApiError as exc:
+        if exc.status == 404:
+            return translations
+        raise
+    translations["zh-CN"] = read_bounded(translated, max_bytes, label)
+    return translations
+
+
+def course_titles(task: dict[str, Any], translations: dict[str, str]) -> dict[str, str]:
+    titles = {"en": task["title"]}
+    heading = re.search(r"^#\s+(.+)$", translations.get("zh-CN", ""), re.MULTILINE)
+    if heading:
+        titles["zh-CN"] = heading.group(1).strip()
+    return titles
 
 
 def load_catalog(root: Path) -> list[dict[str, Any]]:
@@ -1326,9 +1349,18 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             states = self.server.progress_states()
             values = []
             for task in self.server.tasks:
+                try:
+                    translations = course_translations(
+                        self.server.root, task["lesson_path"], MAX_LESSON_BYTES, "Task lesson"
+                    )
+                except ApiError:
+                    # One damaged document must not hide the catalog. Opening
+                    # that lesson still enforces and reports the file guards.
+                    translations = {}
                 values.append({
                     "id": task["id"],
                     "title": task["title"],
+                    "title_translations": course_titles(task, translations),
                     "week": task["week"],
                     "order": task["order"],
                     "prerequisites": task["prerequisites"],
@@ -1364,10 +1396,9 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         task = self.server.task_by_id.get(task_id)
         if task is None:
             raise ApiError(404, "Unknown task ID.")
-        lesson_path = safe_repo_file(
+        translations = course_translations(
             self.server.root, task["lesson_path"], MAX_LESSON_BYTES, "Task lesson"
         )
-        lesson = read_bounded(lesson_path, MAX_LESSON_BYTES, "Task lesson")
         states = self.server.progress_states()
         current_state = states.get(task_id, "UNKNOWN")
         state_reason = ""
@@ -1381,6 +1412,7 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         self._send_json(200, {
             "id": task["id"],
             "title": task["title"],
+            "title_translations": course_titles(task, translations),
             "week": task["week"],
             "order": task["order"],
             "prerequisites": task["prerequisites"],
@@ -1391,7 +1423,8 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             "service_profile": SERVICE_PROFILES.get(task_id),
             "state": current_state,
             "state_reason": state_reason,
-            "lesson_markdown": lesson,
+            "lesson_markdown": translations["en"],
+            "lesson_translations": translations,
         })
 
     def _get_task_history(self, task_id: str) -> None:
@@ -1435,14 +1468,23 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             raise ApiError(404, "Unknown task ID.")
         if level_text not in {"1", "2", "3"}:
             raise ApiError(400, "Hint level must be 1, 2, or 3.")
-        hints_path = safe_repo_file(
+        documents = course_translations(
             self.server.root, task["hints_path"], MAX_HINT_BYTES, "Task hints"
         )
-        content = read_bounded(hints_path, MAX_HINT_BYTES, "Task hints")
+        translations = {"en": extract_hint(documents["en"], int(level_text))}
+        if "zh-CN" in documents:
+            try:
+                translations["zh-CN"] = extract_hint(documents["zh-CN"], int(level_text))
+            except ApiError as exc:
+                if exc.status != 404:
+                    raise
+                # An incomplete optional translation falls back one level at
+                # a time, without hiding the original or disclosing later hints.
         self._send_json(200, {
             "task_id": task_id,
             "level": int(level_text),
-            "markdown": extract_hint(content, int(level_text)),
+            "markdown": translations["en"],
+            "translations": translations,
         })
 
     def _get_workspace_files(self, task_id: str) -> None:

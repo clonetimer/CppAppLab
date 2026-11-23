@@ -98,8 +98,16 @@
 
           <div class="workbench-grid">
             <section class="lesson-panel panel">
-              <div class="panel-heading">
-                <div><span class="eyebrow">LEARN</span><h2>课程讲解</h2></div>
+              <div class="panel-heading lesson-heading">
+                <div class="lesson-heading-title">
+                  <div><span class="eyebrow">LEARN</span><h2>课程讲解</h2></div>
+                  <label class="lesson-language-label">教程语言
+                    <select id="lesson-language" aria-label="教程语言 / Lesson language">
+                      <option value="zh-CN" lang="zh-CN">中文</option>
+                      <option value="en" lang="en">English</option>
+                    </select>
+                  </label>
+                </div>
                 <div class="hint-controls" aria-label="渐进式提示">
                   <button data-hint="1">提示 1</button><button data-hint="2">提示 2</button><button data-hint="3">提示 3</button>
                 </div>
@@ -109,6 +117,7 @@
                 <button type="button" data-lesson-section="Troubleshooting">故障排查</button>
                 <button type="button" data-lesson-section="Acceptance">验收要求</button>
               </nav>
+              <p id="lesson-language-status" class="lesson-language-status" role="status" hidden></p>
               <div id="lesson-content" class="markdown-content" tabindex="0" aria-label="课程正文"><div class="loading">选择课程以查看讲解</div></div>
               <section id="hint-panel" class="hint-panel" hidden aria-label="课程提示">
                 <div class="hint-heading"><strong id="hint-title">渐进式提示</strong><button id="hint-close" type="button" class="secondary-button">返回讲解</button></div>

@@ -141,6 +141,8 @@ function application(options = {}) {
     handleEditorInput, saveFile, loadTasks, loadTaskHistory, runWorkspaceAction, bindEvents, setBusy,
     followWorkflowAction, refreshServiceStatus, stopNetworkService,
     init, loadFile,
+    changeLessonLanguage: typeof changeLessonLanguage === "function" ? changeLessonLanguage : undefined,
+    jumpToLessonSection,
     openLearningGuide: typeof openLearningGuide === "function" ? openLearningGuide : undefined,
     closeLearningGuide: typeof closeLearningGuide === "function" ? closeLearningGuide : undefined,
     loadLearningGuide: typeof loadLearningGuide === "function" ? loadLearningGuide : undefined,
@@ -178,6 +180,126 @@ function application(options = {}) {
       await flushHistory();
     } };
 }
+
+function bilingualTask(app) {
+  Object.assign(app.state.task, {
+    title: "W1 · First C++ Program",
+    title_translations: { en: "W1 · First C++ Program", "zh-CN": "W1 · 第一个 C++ 程序" },
+    lesson_markdown: "# First C++ Program\n\n## Start here\n\nRead `src/main.cpp`.",
+    lesson_translations: {
+      en: "# First C++ Program\n\n## Start here\n\nRead `src/main.cpp`.",
+      "zh-CN": "# 第一个 C++ 程序\n\n## 从这里开始\n\n阅读 `src/main.cpp`。"
+    }
+  });
+}
+
+test("lesson language defaults to Chinese and remembers only valid browser preferences", () => {
+  const first = application();
+  first.bindEvents();
+  assert.equal(first.ui.lessonLanguage?.value, "zh-CN");
+  const returning = application({ storage: { "cppapplab.lesson-language.v1": "en" } });
+  returning.bindEvents();
+  assert.equal(returning.ui.lessonLanguage?.value, "en");
+  const invalid = application({ storage: { "cppapplab.lesson-language.v1": "../../invalid" } });
+  invalid.bindEvents();
+  assert.equal(invalid.ui.lessonLanguage?.value, "zh-CN");
+});
+
+test("language switching preserves dirty code, console, task state and running service without requests", () => {
+  const app = application();
+  bilingualTask(app);
+  app.state.activeFile = "src/main.cpp";
+  app.state.dirtyFiles.add("src/main.cpp");
+  app.ui.editor.value = "// my unsaved program";
+  app.ui.console.textContent = "existing compiler diagnostics";
+  app.state.busy = true;
+  const service = { state: "RUNNING", port: 12345 };
+  app.state.serviceSnapshot = service;
+  const originalTask = app.state.task;
+  const originalUrl = app.location.href;
+  app.setApi(() => { throw new Error("Changing a language must not request or mutate anything"); });
+  assert.equal(typeof app.changeLessonLanguage, "function");
+  app.changeLessonLanguage("zh-CN");
+  assert.match(app.ui.lesson.innerHTML, /从这里开始/);
+  assert.equal(app.ui.taskTitle.textContent, "W1 · 第一个 C++ 程序");
+  app.changeLessonLanguage("en");
+  assert.match(app.ui.lesson.innerHTML, /Start here/);
+  assert.equal(app.stored.get("cppapplab.lesson-language.v1"), "en");
+  assert.equal(app.state.task, originalTask);
+  assert.equal(app.state.task.state, "IN PROGRESS");
+  assert.equal(app.state.serviceSnapshot, service);
+  assert.equal(app.state.busy, true);
+  assert.equal(app.state.activeFile, "src/main.cpp");
+  assert.equal(app.ui.editor.value, "// my unsaved program");
+  assert.equal(app.state.dirtyFiles.size, 1);
+  assert.equal(app.ui.console.textContent, "existing compiler diagnostics");
+  assert.equal(app.location.href, originalUrl);
+});
+
+test("language changes work when storage is blocked and missing translations are labelled", () => {
+  const app = application({ storageDenied: true });
+  assert.equal(typeof app.changeLessonLanguage, "function");
+  app.changeLessonLanguage("zh-CN");
+  assert.match(app.ui.lesson.innerHTML, /Lesson/);
+  assert.equal(app.ui.lesson.lang, "en");
+  assert.equal(app.ui.lessonLanguageStatus.hidden, false);
+  assert.match(app.ui.lessonLanguageStatus.textContent, /中文.*英文/);
+  app.changeLessonLanguage("en");
+  assert.equal(app.ui.lessonLanguageStatus.hidden, true);
+  app.changeLessonLanguage("invalid");
+  assert.equal(app.state.lessonLanguage, "en");
+});
+
+test("a delayed hint uses the latest language and an open hint switches in place", async () => {
+  const app = application();
+  bilingualTask(app);
+  let resolveHint;
+  app.setApi(() => new Promise((resolve) => { resolveHint = resolve; }));
+  const pending = app.showHint(2);
+  assert.equal(typeof app.changeLessonLanguage, "function");
+  app.changeLessonLanguage("en");
+  resolveHint({ level: 2, markdown: "Use cout.", translations: { en: "Use cout.", "zh-CN": "使用 cout。" } });
+  await pending;
+  assert.match(app.ui.hint.innerHTML, /Use cout/);
+  app.changeLessonLanguage("zh-CN");
+  assert.equal(app.ui.hintPanel.hidden, false);
+  assert.match(app.ui.hint.innerHTML, /使用 cout/);
+  assert.equal(app.ui.hint.lang, "zh-CN");
+});
+
+test("section shortcuts reach translated headings and bilingual search finds the same course", () => {
+  const app = application();
+  bilingualTask(app);
+  assert.equal(typeof app.changeLessonLanguage, "function");
+  app.ui.search.value = "First C++";
+  app.changeLessonLanguage("zh-CN");
+  assert.equal(app.ui.courseList.querySelectorAll(".task-link").length, 1);
+  app.ui.search.value = "第一个";
+  app.changeLessonLanguage("en");
+  assert.equal(app.ui.courseList.querySelectorAll(".task-link").length, 1);
+  app.changeLessonLanguage("zh-CN");
+  const heading = new Element("h2");
+  heading.textContent = "故障排查";
+  heading.top = 200;
+  app.ui.lesson.append(heading);
+  app.jumpToLessonSection("Troubleshooting");
+  assert.equal(heading.focusCalls, 1);
+});
+
+test("pending and failed hints never announce an unverified missing translation", async () => {
+  const app = application({ storage: { "cppapplab.lesson-language.v1": "en" } });
+  bilingualTask(app);
+  let rejectHint;
+  app.setApi(() => new Promise((_resolve, reject) => { rejectHint = reject; }));
+  const pending = app.showHint(1);
+  app.changeLessonLanguage("zh-CN");
+  assert.equal(app.ui.lessonLanguageStatus.hidden, true);
+  rejectHint(new Error("offline"));
+  await pending;
+  assert.match(app.ui.hint.textContent, /提示读取失败/);
+  assert.equal(app.ui.lessonLanguageStatus.hidden, true);
+  assert.equal(app.ui.hint.lang, "zh-CN");
+});
 
 test("learning guide opens and closes without changing dirty work or a running operation", async () => {
   const app = application({ url: "http://127.0.0.1:8765/#task=w1.hello-world&file=src%2Fmain.cpp" });

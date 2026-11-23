@@ -1286,6 +1286,8 @@ test("learning-space: collapsed failure exposes the first actionable compiler er
   assert.equal(app.ui.consoleDock.dataset.state, "error");
   assert.equal(app.ui.consoleDock.dataset.mode, "collapsed");
   assert.match(app.ui.consoleSummary.textContent, /expected semicolon/);
+  assert.doesNotMatch(app.ui.consoleSummary.textContent, /\/workspace\//,
+    "a compact error summary must lead with the reason, not a long absolute path");
   assert.equal(app.ui.console.textContent, output);
   assert.equal(app.state.task.state, "PASSED", "a build error is not a new formal acceptance record");
   const retry = deferred();

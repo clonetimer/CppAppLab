@@ -1647,8 +1647,12 @@
     if (!summary && !passed) {
       const lines = ui.console.textContent.replace(/\x1b\[[0-9;]*m/g, "")
         .split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-      const error = lines.find((line) => /:\d+(?::\d+)?:\s*(?:fatal )?error:/i.test(line)) ||
-        lines.find((line) => /error|failed|failure|错误|失败/i.test(line)) || lines[0];
+      const compilerError = lines.find((line) => /:\d+(?::\d+)?:\s*(?:fatal )?error:/i.test(line));
+      // Put the reason before long temporary paths so a compact phone header
+      // reveals the actual problem. The full location stays in diagnostics/logs.
+      const error = compilerError
+        ? compilerError.replace(/^.*?:\d+(?::\d+)?:\s*(?:fatal )?error:\s*/i, "")
+        : lines.find((line) => /error|failed|failure|错误|失败/i.test(line)) || lines[0];
       summary = error ? ui.checkResult.textContent + " · " + error : ui.checkResult.textContent;
     }
     ui.consoleSummary.textContent = summary || ui.checkResult.textContent;

@@ -109,6 +109,13 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .hint-controls button { border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; background: #1a2a42; color: #9db0ca; font-size: 9px; }
 .hint-controls button:hover { color: var(--text); border-color: rgba(126,169,239,.45); }
 .hint-controls button[aria-pressed="true"] { color: #edf3ff; border-color: #7aa9ed; background: #273f63; }
+.lesson-heading { flex-wrap: wrap; }
+.lesson-heading-title { display: flex; align-items: center; justify-content: space-between; flex: 1 1 auto; flex-wrap: wrap; gap: 10px 14px; min-width: 0; }
+.lesson-language-label { display: flex; align-items: center; gap: 8px; color: #9db0ca; font-size: 11px; }
+#lesson-language { min-height: 44px; max-width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px; background: #1a2a42; color: #edf3ff; font: inherit; font-size: 12px; cursor: pointer; }
+#lesson-language:hover { border-color: #7aa9ed; }
+#lesson-language:focus-visible { outline: 2px solid #7aa9ed; outline-offset: 2px; }
+.lesson-language-status { flex-shrink: 0; margin: 0; padding: 8px 17px; color: var(--amber); font-size: 12px; }
 .lesson-navigation { display: flex; flex-wrap: wrap; flex-shrink: 0; gap: 6px; padding: 9px 17px; border-bottom: 1px solid var(--border); }
 .lesson-navigation button { padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: #b4c9e7; font-size: 11px; }
 .lesson-navigation button:hover, .lesson-file-button:hover { border-color: #7aa9ed; color: #edf3ff; }
@@ -212,6 +219,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
   .feature-strip { grid-template-columns: 1fr; gap: 14px; }
   .workbench-heading { align-items: flex-start; flex-direction: column; }.workbench-heading > button { width: 100%; }
   .panel-heading { align-items: flex-start; flex-direction: column; }.hint-controls { width: 100%; }.hint-controls button { flex: 1; }
+  .lesson-heading-title { width: 100%; }
   .file-toolbar { align-items: flex-start; flex-direction: column; }.file-list { width: 100%; }.editor-actions { width: 100%; }.editor-actions button { flex: 1; }
   .editor-meta { font-size: 8px; }.workbench-footer { flex-direction: column; }
 }

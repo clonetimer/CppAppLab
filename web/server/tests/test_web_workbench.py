@@ -283,6 +283,70 @@ class WebWorkbenchTests(unittest.TestCase):
         self.assertIn("Write your first C++ program", task["lesson_markdown"])
         self.assertEqual(task["source_files"], ["src/main.cpp"])
 
+    def test_translated_course_keeps_english_api_fields_and_localizes_titles(self) -> None:
+        translated = "# W1 · 第一个 C++ 程序\n\n## 从这里开始\n\n编写第一个 C++ 程序。\n"
+        (self.root / "course/lessons/w1/hello-world.zh-CN.md").write_text(translated, encoding="utf-8")
+        task = self.request("/api/v1/tasks/w1.hello-world")
+        self.assertEqual(task.get("lesson_translations", {}).get("zh-CN"), translated)
+        self.assertEqual(task["lesson_translations"]["en"], task["lesson_markdown"])
+        self.assertEqual(task["title"], "W1 · First C++ Program")
+        self.assertEqual(task["title_translations"]["zh-CN"], "W1 · 第一个 C++ 程序")
+        catalog_task = self.request("/api/v1/tasks")["tasks"][0]
+        self.assertEqual(catalog_task["title_translations"], task["title_translations"])
+        self.assertEqual(list(self.workspace_root.iterdir()), [], "Reading languages must not create workspaces")
+
+    def test_missing_translation_returns_explicit_english_only_map(self) -> None:
+        task = self.request("/api/v1/tasks/w1.hello-world")
+        self.assertEqual(task.get("lesson_translations"), {"en": task["lesson_markdown"]})
+        hint = self.request("/api/v1/tasks/w1.hello-world/hints/2")
+        self.assertEqual(hint.get("translations"), {"en": "Use cout."})
+
+    def test_translated_hints_expose_only_the_requested_level(self) -> None:
+        (self.root / "course/lessons/w1/hello-world.hints.zh-CN.md").write_text(
+            "## 提示 1 — 入口\n\n从 main 开始。\n\n## 提示 2 — 输出\n\n使用 cout。\n\n"
+            "## 提示 3 — 返回值\n\n返回零。\n", encoding="utf-8"
+        )
+        hint = self.request("/api/v1/tasks/w1.hello-world/hints/2")
+        self.assertEqual(hint.get("translations"), {"en": "Use cout.", "zh-CN": "使用 cout。"})
+        self.assertEqual(hint["markdown"], "Use cout.")
+
+    def test_translated_lesson_retains_size_utf8_and_symlink_guards(self) -> None:
+        translated = self.root / "course/lessons/w1/hello-world.zh-CN.md"
+        translated.write_text("学" * (MAX_LESSON_BYTES // 3 + 1), encoding="utf-8")
+        self.assertEqual(self.request_error("/api/v1/tasks/w1.hello-world", "GET"), 413)
+        translated.write_bytes(b"\xff")
+        self.assertEqual(self.request_error("/api/v1/tasks/w1.hello-world", "GET"), 400)
+        translated.unlink()
+        outside = self.base / "outside.md"
+        outside.write_text("private text", encoding="utf-8")
+        translated.symlink_to(outside)
+        self.assertEqual(self.request_error("/api/v1/tasks/w1.hello-world", "GET"), 400)
+
+    def test_translated_hint_retains_symlink_guard(self) -> None:
+        outside = self.base / "outside-hints.md"
+        outside.write_text("## 提示 1\nprivate text\n", encoding="utf-8")
+        (self.root / "course/lessons/w1/hello-world.hints.zh-CN.md").symlink_to(outside)
+        self.assertEqual(self.request_error("/api/v1/tasks/w1.hello-world/hints/1", "GET"), 400)
+
+    def test_missing_translated_hint_level_preserves_original_hint(self) -> None:
+        (self.root / "course/lessons/w1/hello-world.hints.zh-CN.md").write_text(
+            "## 提示 1\n\n从 main 开始。\n", encoding="utf-8"
+        )
+        hint = self.request("/api/v1/tasks/w1.hello-world/hints/2")
+        self.assertEqual(hint["markdown"], "Use cout.")
+        self.assertEqual(hint["translations"], {"en": "Use cout."})
+
+    def test_unreadable_lesson_does_not_hide_the_course_catalog(self) -> None:
+        translated = self.root / "course/lessons/w1/hello-world.zh-CN.md"
+        translated.write_bytes(b"\xff")
+        catalog = self.request("/api/v1/tasks")
+        self.assertEqual(catalog["count"], 1)
+        self.assertEqual(catalog["tasks"][0]["title_translations"], {"en": "W1 · First C++ Program"})
+        self.assertEqual(self.request_error("/api/v1/tasks/w1.hello-world", "GET"), 400)
+        (self.root / "course/lessons/w1/hello-world.md").unlink()
+        self.assertEqual(self.request("/api/v1/tasks")["count"], 1)
+        self.assertEqual(self.request_error("/api/v1/tasks/w1.hello-world", "GET"), 404)
+
     def test_learning_guide_is_authoritative_and_independent_of_engine(self) -> None:
         with patch.object(self.server, "run_cli", side_effect=AssertionError("Guide must not run the engine")):
             guide = self.request("/api/v1/learning-guide")

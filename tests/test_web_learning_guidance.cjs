@@ -68,6 +68,9 @@ async function fixture(browser, { referenceFixture = false, pendingEditor = fals
   let errors = "";
   child.stderr.on("data", (data) => { errors += data; });
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  // This pre-existing navigation suite checks English headings deliberately.
+  // Chinese defaults, switching and translated shortcuts have their own suite.
+  await context.addInitScript(() => localStorage.setItem("cppapplab.lesson-language.v1", "en"));
   let releaseEditorGate;
   const editorGate = new Promise((resolve) => { releaseEditorGate = resolve; });
   const editorRequests = new Set();

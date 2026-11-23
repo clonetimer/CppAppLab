@@ -285,6 +285,9 @@ async function main() {
       viewport: { width: 1440, height: 1000 },
       deviceScaleFactor: 1
     });
+    // Keep the original English-content regression journey explicit; the
+    // separate language journey owns the new Chinese default and switching.
+    await context.addInitScript(() => localStorage.setItem("cppapplab.lesson-language.v1", "en"));
     const page = await context.newPage();
     page.on("pageerror", (error) => pageErrors.push(error.message));
 
@@ -1346,6 +1349,7 @@ async function main() {
     const fallbackContext = await browser.newContext({
       viewport: { width: 1280, height: 900 }
     });
+    await fallbackContext.addInitScript(() => localStorage.setItem("cppapplab.lesson-language.v1", "en"));
     const fallbackPage = await fallbackContext.newPage();
     // Block the exact Monaco loader path on every configured CDN so the
     // offline branch is deterministic even if another host is reachable.

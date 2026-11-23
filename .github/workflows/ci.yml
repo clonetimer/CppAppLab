@@ -760,6 +760,7 @@ jobs:
           node --check web/ui/app.js
           node --check tests/test_web_workbench_browser.cjs
           node --check tests/test_web_learning_guidance.cjs
+          node --check tests/test_web_lesson_language.cjs
           node --test tests/test_web_guidance_state.cjs tests/test_web_editor_loading.cjs tests/test_web_markdown_tables.cjs
           bash -n scripts/start-web-workbench.sh
       - name: Install C++ development toolchain
@@ -786,6 +787,22 @@ jobs:
           CPPAPPLAB_TEST_BINARY: ${{ github.workspace }}/build-browser/cppapplab
           CPPAPPLAB_BROWSER_ARTIFACT_DIR: ${{ runner.temp }}/cppapplab-browser-artifacts
         run: node tests/test_web_learning_guidance.cjs
+      - name: Capture tutorial baseline from pull request base
+        if: github.event_name == 'pull_request'
+        env:
+          CPPAPPLAB_BASELINE_SHA: ${{ github.event.pull_request.base.sha }}
+          CPPAPPLAB_TEST_BINARY: ${{ github.workspace }}/build-browser/cppapplab
+          CPPAPPLAB_TEST_ROOT: ${{ runner.temp }}/cppapplab-tutorial-before
+          CPPAPPLAB_BROWSER_ARTIFACT_DIR: ${{ runner.temp }}/cppapplab-browser-artifacts
+        run: |
+          git fetch --no-tags --depth=1 origin "$CPPAPPLAB_BASELINE_SHA"
+          git worktree add --detach "$CPPAPPLAB_TEST_ROOT" "$CPPAPPLAB_BASELINE_SHA"
+          node tests/test_web_lesson_language.cjs --baseline
+      - name: Verify bilingual lessons and capture language screenshots
+        env:
+          CPPAPPLAB_TEST_BINARY: ${{ github.workspace }}/build-browser/cppapplab
+          CPPAPPLAB_BROWSER_ARTIFACT_DIR: ${{ runner.temp }}/cppapplab-browser-artifacts
+        run: node tests/test_web_lesson_language.cjs
       - name: Generate authoritative course coverage matrix
         run: python3 scripts/generate_course_coverage.py --output "${{ runner.temp }}/cppapplab-browser-artifacts/course-coverage-matrix.csv"
       - name: Generate lesson usability structure audit

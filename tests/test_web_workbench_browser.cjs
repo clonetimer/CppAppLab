@@ -55,6 +55,45 @@ function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+async function settleFiniteButtonTransitions(page) {
+  await page.locator("#editor-actions-group button").evaluateAll(async (buttons) => {
+    const finite = buttons.flatMap((button) => button.getAnimations({ subtree: true }))
+      .filter((animation) => Number.isFinite(animation.effect?.getComputedTiming().endTime));
+    await Promise.all(finite.map((animation) => animation.finished.catch(() => {})));
+  });
+}
+
+async function assertToastAboveDock(page) {
+  const geometry = await page.evaluate(() => {
+    const toast = document.querySelector("#toast");
+    const toastBox = toast.getBoundingClientRect();
+    const dockBox = document.querySelector("#console-dock").getBoundingClientRect();
+    return { text: toast.textContent.trim(), height: toastBox.height, bottom: toastBox.bottom,
+      opacity: getComputedStyle(toast).opacity, dockTop: dockBox.top };
+  });
+  assert.ok(geometry.text.length > 0 && geometry.height > 0,
+    "Toast geometry comes from the existing real operation message: " + JSON.stringify(geometry));
+  // Fading the last message must not leave the next message positioned over
+  // the collapsed terminal's status or Expand button.
+  assert.ok(geometry.bottom <= geometry.dockTop,
+    "Toast stays above the terminal header, including while faded: " + JSON.stringify(geometry));
+}
+
+function contrastRatio(foreground, background) {
+  const luminance = (color) => {
+    const values = color.match(/[\d.]+/g)?.map(Number) || [];
+    assert.ok(values.length === 3 || (values.length === 4 && values[3] === 1),
+      "Button contrast evidence requires opaque computed RGB colors: " + color);
+    const linear = values.slice(0, 3).map((value) => {
+      const channel = value / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+  };
+  const first = luminance(foreground), second = luminance(background);
+  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+}
+
 async function freePort() {
   const server = net.createServer();
   await new Promise((resolve, reject) => {
@@ -670,6 +709,7 @@ async function main() {
     assert.ok(compactDockHeight <= 72, "Compact terminal retains a visible header without occupying the output area");
     assert.equal(await page.locator("#console-title").isVisible(), true);
     assert.equal(await page.locator("#check-result").isVisible(), true);
+    await assertToastAboveDock(page);
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-2-console-compact-after.png"),
       fullPage: false
@@ -768,6 +808,8 @@ async function main() {
     }
     assert.equal(typeof releaseBuildRequest, "function", "The real build request reached the held route");
     assert.equal(buildRequestCount, 1, "Exactly one real build request is pending");
+    // Capture settled button colors, without waiting for the infinite spinner.
+    await settleFiniteButtonTransitions(page);
     const formalDisabledStyle = await page.locator("#check-button").evaluate((element) => {
       const style = getComputedStyle(element);
       return {
@@ -775,6 +817,7 @@ async function main() {
         opacity: style.opacity,
         color: style.color,
         border: style.borderColor,
+        background: style.backgroundColor,
         backgroundImage: style.backgroundImage
       };
     });
@@ -784,6 +827,9 @@ async function main() {
       "Disabled formal-acceptance label remains visible");
     assert.notEqual(formalDisabledStyle.border, "rgba(0, 0, 0, 0)",
       "Disabled formal-acceptance control retains a visible boundary");
+    assert.equal(formalDisabledStyle.backgroundImage, "none", "Disabled acceptance uses its explicit solid background");
+    assert.ok(contrastRatio(formalDisabledStyle.color, formalDisabledStyle.background) >= 4.5,
+      "Disabled formal-acceptance label retains readable contrast after finite transitions: " + JSON.stringify(formalDisabledStyle));
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-3-buttons-pending-after.png"),
       fullPage: false
@@ -809,18 +855,34 @@ async function main() {
     assert.equal((await buildButton.textContent()).trim(), originalBuildLabel,
       "The original task-specific action label is restored after completion");
 
-    // A rejected request must also leave the action usable and expose failure.
-    await page.route(buildRoute, (route) => route.abort("failed"));
-    await buildButton.click();
-    await page.waitForFunction(() => {
-      const button = document.querySelector("#build-button");
-      return button?.dataset.pending === "true" && button.disabled &&
-        button.getAttribute("aria-busy") === "true";
-    });
-    await page.screenshot({
-      path: path.join(ARTIFACT_DIR, "stage-3-buttons-failure-pending-after.png"),
-      fullPage: false
-    });
+    // Hold the real request until its pending feedback has been observed.
+    // An immediate abort can complete before the browser samples that state.
+    let releaseRejectedRequest;
+    let rejectedRequestCount = 0;
+    const rejectedRequestGate = new Promise((resolve) => { releaseRejectedRequest = resolve; });
+    const rejectBuild = async (route) => {
+      rejectedRequestCount += 1;
+      await rejectedRequestGate;
+      await route.abort("failed");
+    };
+    await page.route(buildRoute, rejectBuild);
+    try {
+      await Promise.all([page.waitForRequest(buildRoute), buildButton.click()]);
+      await page.waitForFunction(() => {
+        const button = document.querySelector("#build-button");
+        return button?.dataset.pending === "true" && button.disabled &&
+          button.getAttribute("aria-busy") === "true";
+      });
+      assert.equal(rejectedRequestCount, 1, "The rejected build remains pending until feedback is captured");
+      await settleFiniteButtonTransitions(page);
+      await page.screenshot({
+        path: path.join(ARTIFACT_DIR, "stage-3-buttons-failure-pending-after.png"),
+        fullPage: false
+      });
+    } finally {
+      releaseRejectedRequest();
+      await page.unroute(buildRoute, rejectBuild);
+    }
     await page.waitForFunction(() =>
       document.querySelector("#check-result")?.textContent === "执行失败" &&
       document.querySelector("#build-button")?.dataset.pending !== "true"
@@ -831,11 +893,11 @@ async function main() {
       "Failed build restores the build action for retry");
     assert.equal((await buildButton.textContent()).trim(), originalBuildLabel,
       "Failed build restores the original action label");
+    await settleFiniteButtonTransitions(page);
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-3-buttons-failure-after.png"),
       fullPage: false
     });
-    await page.unroute(buildRoute);
     await page.locator("#editor-actions-group summary").click();
 
     await page.setViewportSize({ width: 390, height: 844 });
@@ -896,6 +958,7 @@ async function main() {
     const mobileMainAfterCollapse = await page.locator(".main-layout").evaluate((element) => element.getBoundingClientRect().height);
     assert.ok(mobileMainAfterCollapse > mobileMainBeforeCollapse + 140,
       "Collapsing the mobile terminal returns substantial height to the editor");
+    await assertToastAboveDock(page);
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-2-console-mobile-compact-after.png"),
       fullPage: true

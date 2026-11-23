@@ -36,6 +36,7 @@
     editorReady: null,
     editorFallback: null,
     busy: false,
+    busyLabel: "",
     progressFresh: false,
     lastAction: null,
     catalogRequest: 0,
@@ -124,6 +125,8 @@
     workspaceState: $("workspace-state"),
     consoleTitle: $("console-title"),
     consoleToggle: $("console-toggle"),
+    consoleSize: $("console-size"),
+    consoleSummary: $("console-summary"),
     consoleDock: $("console-dock"),
     console: $("console-output"),
     diagnostics: $("diagnostics-list"),
@@ -728,6 +731,14 @@
   }
 
   function updateWorkflowGuidance() {
+    // Keep feedback on the control the learner actually clicked, including
+    // the autosave and source-loading phases before the operation starts.
+    if (state.busy && ui.workflowAction.dataset.pending === "true") {
+      ui.workflowAction.hidden = false;
+      ui.workflowAction.disabled = true;
+      ui.workflowHelp.textContent = state.busyLabel || "正在处理当前课程，请等待结果。";
+      return;
+    }
     ui.workflowAction.hidden = true;
     ui.workflowAction.disabled = state.busy;
     delete ui.workflowAction.dataset.action;
@@ -759,7 +770,7 @@
     if (!state.workspaceReady) {
       return offer("点击开始学习创建代码工作区，再按“从这里开始”阅读并修改源文件。", "开始学习", "start");
     }
-    if (state.dirtyFiles.size) return offer("代码有修改。先保存并构建，再运行或测试；最后执行正式验收。", "保存并构建", "build");
+    if (state.dirtyFiles.size) return offer("代码有修改，保存并构建后继续。", "保存并构建", "build");
     const result = state.lastAction;
     if (result && result.taskId === state.task.id && !result.passed) {
       return offer(result.action === "run"
@@ -780,17 +791,17 @@
     }
     if (state.task.state === "STALE") return offer("源码已修改，之前的通过记录仍保留；请构建当前代码并重新正式验收。", "构建当前代码", "build");
     if (state.task.state === "NEEDS WORK") return offer("最近一次验收未通过。按本课故障排查修改源文件，再重新构建、运行和验收。", "查看故障排查", "troubleshooting");
-    offer("先按教材完成源文件中的任务，再依次构建、运行 / 测试、正式验收。教材中的文件按钮可以直接打开代码。", "构建当前代码", "build");
+    offer("按教材修改源文件，完成后构建当前代码。", "构建当前代码", "build");
   }
 
   async function followWorkflowAction() {
     if (state.busy) return;
     const action = ui.workflowAction.dataset.action;
     if (action === "task") return selectTask(ui.workflowAction.dataset.taskId);
-    if (action === "start") return startTask();
-    if (action === "workspace") return retryWorkspaceFiles();
+    if (action === "start") return startTask({ currentTarget: ui.workflowAction });
+    if (action === "workspace") return retryWorkspaceFiles(ui.workflowAction);
     if (action === "troubleshooting") return jumpToLessonSection("Troubleshooting");
-    if (["build", "run", "check"].includes(action)) return runWorkspaceAction(action);
+    if (["build", "run", "check"].includes(action)) return runWorkspaceAction(action, ui.workflowAction);
     if (action === "refresh") {
       try {
         if (await loadTasks() && state.task && !ui.historyPanel.hidden) await loadTaskHistory(state.task.id);
@@ -1312,11 +1323,11 @@
 
   async function loadWorkspaceFiles(preferredFile = state.preferredFile, options = {}) {
     if (!state.task) return false;
+    ui.workspaceState.textContent = "正在加载工作区…";
     const data = await api("/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/files");
     state.files = data.files || [];
     state.workspaceReady = true;
     state.workspaceError = "";
-    ui.workspaceState.textContent = "工作区已就绪";
     updateApplicationGuidance();
     if (state.task && state.task.service_profile) {
       updateServiceSnapshot(state.serviceSnapshot || { state: "STOPPED", port: null, logs: "" });
@@ -1342,6 +1353,7 @@
     if (preferredFile && !preferred) toast("上次或链接中的文件不可用，已打开本课可用文件。");
     state.preferredFile = state.activeFile;
     await refreshServiceStatus(true);
+    ui.workspaceState.textContent = "工作区已就绪";
     return true;
   }
 
@@ -1352,9 +1364,9 @@
     toast("工作区暂未加载，可重试打开；课程讲解仍可阅读。");
   }
 
-  async function retryWorkspaceFiles() {
+  async function retryWorkspaceFiles(triggerButton = ui.workflowAction) {
     if (!state.task || state.busy) return false;
-    setBusy(true, "正在重新读取工作区…");
+    setBusy(true, "正在重新读取工作区…", triggerButton, "打开中…");
     try {
       await loadWorkspaceFiles();
       writeLearningLocation();
@@ -1440,10 +1452,7 @@
       ui.welcome.hidden = true;
       ui.workbench.hidden = false;
       ui.lesson.innerHTML = '<div class="loading">正在读取课程讲解…</div>';
-      ui.console.textContent = "开始任务后，可以在这里查看构建、运行与验收输出。";
-      ui.diagnostics.hidden = true;
-      ui.checkResult.textContent = "等待执行";
-      ui.checkResult.className = "check-result";
+      resetConsole();
       renderCourseList();
       state.task = task;
       state.preferredFile = options.filePath === undefined ? learningPosition().files[taskId] || "" : options.filePath;
@@ -1495,14 +1504,16 @@
       updateTaskState(state.task.id, state.task.state === "PASSED" ? "PASSED" : "IN PROGRESS");
       state.workspaceReady = true;
       ui.workspaceState.textContent = result.resumed ? "已恢复" : "已创建";
-      clearButtonPending(triggerButton);
-      ui.startButton.textContent = "工作区已打开";
       try { await loadWorkspaceFiles(); }
       catch (error) { showWorkspaceError(error); return; }
       toast(result.resumed ? "已恢复上次的学习工作区。" : "学习工作区已创建。");
     } catch (error) {
       toast(error.message);
+      beginConsoleOperation("工作区打开结果", "正在显示工作区错误…");
       ui.console.textContent = error.message;
+      ui.checkResult.textContent = "打开失败";
+      ui.checkResult.className = "check-result fail";
+      finishConsoleOperation(false);
     } finally {
       setBusy(false);
     }
@@ -1589,6 +1600,79 @@
     }
   }
 
+  function setConsoleMode(mode) {
+    if (!["collapsed", "normal", "large"].includes(mode)) return;
+    const collapsed = mode === "collapsed";
+    const large = mode === "large";
+    ui.consoleDock.dataset.mode = mode;
+    ui.consoleDock.dataset.collapsed = String(collapsed);
+    ui.consoleDock.classList.toggle("is-collapsed", collapsed);
+    ui.consoleToggle.setAttribute("aria-expanded", String(!collapsed));
+    ui.consoleToggle.textContent = collapsed ? "展开终端" : "收起终端";
+    ui.consoleToggle.setAttribute("aria-label", collapsed ? "展开运行终端" : "收起运行终端");
+    ui.consoleSize.hidden = collapsed;
+    ui.consoleSize.textContent = large ? "还原" : "放大";
+    ui.consoleSize.setAttribute("aria-expanded", String(large));
+    ui.consoleSize.setAttribute("aria-label", large ? "还原终端大小" : "放大终端查看完整日志");
+    state.editorInstance?.layout?.();
+  }
+
+  function resetConsole() {
+    ui.consoleDock.dataset.state = "idle";
+    ui.consoleTitle.textContent = "运行终端";
+    ui.consoleSummary.textContent = "执行构建、运行或验收时自动展开。";
+    ui.consoleSummary.title = ui.consoleSummary.textContent;
+    ui.console.textContent = "开始任务后，可以在这里查看构建、运行与验收输出。";
+    ui.diagnostics.replaceChildren();
+    ui.diagnostics.hidden = true;
+    ui.checkResult.textContent = "等待执行";
+    ui.checkResult.className = "check-result";
+    setConsoleMode("collapsed");
+  }
+
+  function beginConsoleOperation(title, progress) {
+    ui.consoleDock.dataset.state = "running";
+    ui.consoleTitle.textContent = title;
+    ui.console.textContent = progress;
+    ui.consoleSummary.textContent = progress;
+    ui.consoleSummary.title = progress;
+    ui.diagnostics.replaceChildren();
+    ui.diagnostics.hidden = true;
+    ui.checkResult.textContent = "执行中";
+    ui.checkResult.className = "check-result";
+    setConsoleMode("normal");
+  }
+
+  function finishConsoleOperation(passed, summary) {
+    ui.consoleDock.dataset.state = passed ? "success" : "error";
+    if (!summary && !passed) {
+      const lines = ui.console.textContent.replace(/\x1b\[[0-9;]*m/g, "")
+        .split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const compilerError = lines.find((line) => /:\d+(?::\d+)?:\s*(?:fatal )?error:/i.test(line));
+      // Put the reason before long temporary paths so a compact phone header
+      // reveals the actual problem. The full location stays in diagnostics/logs.
+      const error = compilerError
+        ? compilerError.replace(/^.*?:\d+(?::\d+)?:\s*(?:fatal )?error:\s*/i, "")
+        : lines.find((line) => /error|failed|failure|错误|失败/i.test(line)) || lines[0];
+      summary = error ? ui.checkResult.textContent + " · " + error : ui.checkResult.textContent;
+    }
+    ui.consoleSummary.textContent = summary || ui.checkResult.textContent;
+    ui.consoleSummary.title = ui.consoleSummary.textContent;
+    // A learner may collapse while an operation is running. Keep that choice
+    // and announce the new outcome in the always-visible header instead.
+  }
+
+  function updateStartAction() {
+    const ready = state.workspaceReady && !state.workspaceError;
+    const focused = ready && document.activeElement === ui.startButton;
+    ui.startButton.hidden = ready;
+    ui.workspaceState.hidden = !ready && !state.workspaceError;
+    if (focused) {
+      if (!ui.workflowAction.hidden) ui.workflowAction.focus({ preventScroll: true });
+      else ui.taskTitle.focus({ preventScroll: true });
+    }
+  }
+
   function setButtonPending(button, label) {
     if (!button) return;
     if (button.dataset.pending !== "true") {
@@ -1609,12 +1693,15 @@
 
   function setBusy(value, saveLabel, pendingButton, pendingLabel) {
     state.busy = value;
+    if (saveLabel) state.busyLabel = saveLabel;
+    if (!value) state.busyLabel = "";
     if (value) {
       state.serviceRequest += 1;
       if (pendingButton) setButtonPending(pendingButton, pendingLabel || "执行中…");
     } else {
       [
         ui.startButton,
+        ui.workflowAction,
         ui.saveButton,
         ui.buildButton,
         ui.runButton,
@@ -1654,6 +1741,7 @@
     }
     if (saveLabel) ui.saveState.textContent = saveLabel;
     updateWorkflowGuidance();
+    updateStartAction();
   }
 
   function updateApplicationGuidance() {
@@ -2004,6 +2092,7 @@
       return;
     }
     setBusy(true, "正在连接 TCP Echo 服务…", triggerButton, "发送中…");
+    beginConsoleOperation("TCP Echo 客户端输出", "正在连接 TCP Echo 服务…");
     try {
       const result = await api(
         "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/echo",
@@ -2014,11 +2103,15 @@
       ui.console.textContent = result.output || "(没有输出)";
       ui.checkResult.textContent = result.success ? "回显成功" : "回显失败";
       ui.checkResult.className = "check-result " + (result.success ? "pass" : "fail");
+      finishConsoleOperation(result.success);
       toast(result.success ? "已收到学习者 TCP Echo 服务的真实回显。" : "TCP Echo 客户端执行失败，请查看输出和服务日志。");
     } catch (error) {
       toast(error.message);
       ui.consoleTitle.textContent = "TCP Echo 客户端输出";
       ui.console.textContent = error.message;
+      ui.checkResult.textContent = "回显失败";
+      ui.checkResult.className = "check-result fail";
+      finishConsoleOperation(false);
     } finally {
       setBusy(false);
       clearButtonPending(triggerButton);
@@ -2080,8 +2173,11 @@
       toast("客户端 " + nickname + " 已连接。可以再连接另一个昵称进行多客户端测试。");
     } catch (error) {
       toast(error.message);
-      ui.consoleTitle.textContent = "TCP Chat 连接结果";
+      beginConsoleOperation("TCP Chat 连接结果", "正在显示连接错误…");
       ui.console.textContent = error.message;
+      ui.checkResult.textContent = "连接失败";
+      ui.checkResult.className = "check-result fail";
+      finishConsoleOperation(false);
     } finally {
       setBusy(false);
       clearButtonPending(triggerButton);
@@ -2176,6 +2272,7 @@
     const target = ui.serviceControls.querySelector("#service-http-target")?.value || "/";
     const body = ui.serviceControls.querySelector("#service-http-body")?.value || "";
     setBusy(true, "正在向学习者 HTTP Server 发送请求…", triggerButton, "请求中…");
+    beginConsoleOperation("HTTP 请求 / 响应", "正在向学习者 HTTP Server 发送请求…");
     try {
       const result = await api(
         "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/service/http",
@@ -2194,11 +2291,14 @@
       ].join("\n");
       ui.checkResult.textContent = "HTTP " + result.status_code;
       ui.checkResult.className = "check-result " + (result.status_code >= 200 && result.status_code < 400 ? "pass" : "fail");
+      finishConsoleOperation(result.status_code >= 200 && result.status_code < 400,
+        method + " " + target + " · HTTP " + result.status_code + " " + result.reason);
     } catch (error) {
       ui.consoleTitle.textContent = "HTTP 请求 / 响应";
       ui.console.textContent = error.message;
       ui.checkResult.textContent = "请求失败";
       ui.checkResult.className = "check-result fail";
+      finishConsoleOperation(false);
       toast(error.message);
     } finally {
       setBusy(false);
@@ -2216,11 +2316,7 @@
       return;
     }
     setButtonPending(ui.appBuildButton, "构建中…");
-    ui.consoleTitle.textContent = "应用程序构建输出";
-    ui.console.textContent = "正在构建当前任务的固定应用配置…";
-    ui.diagnostics.hidden = true;
-    ui.checkResult.textContent = "执行中";
-    ui.checkResult.className = "check-result";
+    beginConsoleOperation("应用程序构建输出", "正在构建当前任务的固定应用配置…");
     try {
       const result = await api(
         "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/app-build",
@@ -2230,11 +2326,13 @@
       renderDiagnostics(result.output || "");
       ui.checkResult.textContent = result.success ? "应用构建成功" : "应用构建失败";
       ui.checkResult.className = "check-result " + (result.success ? "pass" : "fail");
+      finishConsoleOperation(result.success);
       toast(result.success ? "应用程序构建成功；正式验收状态未改变。" : "应用构建失败，请查看编译诊断。");
     } catch (error) {
       ui.console.textContent = error.message;
       ui.checkResult.textContent = "应用构建失败";
       ui.checkResult.className = "check-result fail";
+      finishConsoleOperation(false);
       toast(error.message);
     } finally {
       setBusy(false);
@@ -2261,11 +2359,7 @@
       return;
     }
     setButtonPending(ui.appExecuteButton, "运行中…");
-    ui.consoleTitle.textContent = "程序交互输出";
-    ui.console.textContent = "正在执行：" + (action.label || action.id);
-    ui.diagnostics.hidden = true;
-    ui.checkResult.textContent = "执行中";
-    ui.checkResult.className = "check-result";
+    beginConsoleOperation("程序交互输出", "正在执行：" + (action.label || action.id));
     try {
       const result = await api(
         "/api/v1/workspaces/" + encodeURIComponent(state.task.id) + "/app-run",
@@ -2275,6 +2369,7 @@
       renderDiagnostics(result.output || "");
       ui.checkResult.textContent = result.success ? "程序运行成功" : "程序返回非零状态";
       ui.checkResult.className = "check-result " + (result.success ? "pass" : "fail");
+      finishConsoleOperation(result.success);
       toast(result.success
         ? "程序运行完成；没有写入正式验收记录。"
         : "程序返回非零状态；请对照课程预期核对输出。没有写入正式验收记录。");
@@ -2282,19 +2377,22 @@
       ui.console.textContent = error.message;
       ui.checkResult.textContent = "程序运行失败";
       ui.checkResult.className = "check-result fail";
+      finishConsoleOperation(false);
       toast(error.message);
     } finally {
       setBusy(false);
     }
   }
 
-  async function runWorkspaceAction(action) {
+  async function runWorkspaceAction(action, triggerButton) {
     if (!state.task || !state.workspaceReady || state.busy) return;
     const taskId = state.task.id;
     const pendingButton = action === "build" ? ui.buildButton :
       action === "run" ? ui.runButton : ui.checkButton;
+    const clickedButton = triggerButton || pendingButton;
     const pendingLabels = { build: "构建中…", run: "运行 / 测试中…", check: "正式验收中…" };
-    setBusy(true, "正在保存代码…", pendingButton, "准备中…");
+    setButtonPending(pendingButton, "准备中…");
+    setBusy(true, "正在保存代码…", clickedButton, "准备中…");
     const saved = await saveAllDirtyFiles({ silent: true });
     if (!saved) {
       setBusy(false);
@@ -2306,14 +2404,12 @@
       run: "正在运行程序 / 测试…",
       check: "正在执行平台固定验收…"
     };
-    ui.consoleTitle.textContent = action === "build" ? "构建输出" :
+    const title = action === "build" ? "构建输出" :
       action === "run" ? (state.task.acceptance_kind === "exact_stdout" ? "程序运行输出" : "测试运行输出") :
       "平台固定验收输出";
-    ui.console.textContent = labels[action];
-    ui.diagnostics.hidden = true;
-    ui.checkResult.textContent = "执行中";
-    ui.checkResult.className = "check-result";
+    beginConsoleOperation(title, labels[action]);
     setButtonPending(pendingButton, pendingLabels[action]);
+    setButtonPending(clickedButton, pendingLabels[action]);
     setBusy(true, labels[action]);
     try {
       const result = await api(
@@ -2329,6 +2425,7 @@
         action === "build" ? (passed ? "构建成功" : "构建失败") :
         (passed ? "执行成功" : "执行失败");
       ui.checkResult.className = "check-result " + (passed ? "pass" : "fail");
+      finishConsoleOperation(passed);
       if (action === "check") {
         updateTaskState(taskId, passed ? "PASSED" : "NEEDS WORK");
         try {
@@ -2350,9 +2447,11 @@
       ui.console.textContent = error.message;
       ui.checkResult.textContent = "执行失败";
       ui.checkResult.className = "check-result fail";
+      finishConsoleOperation(false);
       toast(error.message);
     } finally {
       setBusy(false);
+      updateDirtyState();
     }
   }
 
@@ -2421,11 +2520,10 @@
     ui.serviceRefreshButton.addEventListener("click", () => refreshServiceStatus(false, ui.serviceRefreshButton));
     ui.serviceStopButton.addEventListener("click", () => stopNetworkService(false, false, ui.serviceStopButton));
     ui.consoleToggle.addEventListener("click", () => {
-      const collapsed = ui.consoleDock.classList.toggle("is-collapsed");
-      ui.consoleToggle.setAttribute("aria-expanded", String(!collapsed));
-      ui.consoleToggle.textContent = collapsed ? "展开终端" : "收起终端";
-      ui.consoleToggle.setAttribute("aria-label", collapsed ? "展开运行终端" : "收起运行终端");
-      ui.consoleDock.dataset.collapsed = String(collapsed);
+      setConsoleMode(ui.consoleDock.dataset.mode === "collapsed" ? "normal" : "collapsed");
+    });
+    ui.consoleSize.addEventListener("click", () => {
+      setConsoleMode(ui.consoleDock.dataset.mode === "large" ? "normal" : "large");
     });
     ui.checkButton.addEventListener("click", () => runWorkspaceAction("check"));
     ui.workflowAction.addEventListener("click", followWorkflowAction);

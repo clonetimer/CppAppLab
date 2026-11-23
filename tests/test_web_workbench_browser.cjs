@@ -55,6 +55,45 @@ function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+async function settleFiniteButtonTransitions(page) {
+  await page.locator("#editor-actions-group button").evaluateAll(async (buttons) => {
+    const finite = buttons.flatMap((button) => button.getAnimations({ subtree: true }))
+      .filter((animation) => Number.isFinite(animation.effect?.getComputedTiming().endTime));
+    await Promise.all(finite.map((animation) => animation.finished.catch(() => {})));
+  });
+}
+
+async function assertToastAboveDock(page) {
+  const geometry = await page.evaluate(() => {
+    const toast = document.querySelector("#toast");
+    const toastBox = toast.getBoundingClientRect();
+    const dockBox = document.querySelector("#console-dock").getBoundingClientRect();
+    return { text: toast.textContent.trim(), height: toastBox.height, bottom: toastBox.bottom,
+      opacity: getComputedStyle(toast).opacity, dockTop: dockBox.top };
+  });
+  assert.ok(geometry.text.length > 0 && geometry.height > 0,
+    "Toast geometry comes from the existing real operation message: " + JSON.stringify(geometry));
+  // Fading the last message must not leave the next message positioned over
+  // the collapsed terminal's status or Expand button.
+  assert.ok(geometry.bottom <= geometry.dockTop,
+    "Toast stays above the terminal header, including while faded: " + JSON.stringify(geometry));
+}
+
+function contrastRatio(foreground, background) {
+  const luminance = (color) => {
+    const values = color.match(/[\d.]+/g)?.map(Number) || [];
+    assert.ok(values.length === 3 || (values.length === 4 && values[3] === 1),
+      "Button contrast evidence requires opaque computed RGB colors: " + color);
+    const linear = values.slice(0, 3).map((value) => {
+      const channel = value / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+  };
+  const first = luminance(foreground), second = luminance(background);
+  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+}
+
 async function freePort() {
   const server = net.createServer();
   await new Promise((resolve, reject) => {
@@ -354,8 +393,12 @@ async function main() {
       fullPage: false
     });
     releaseStartRequest();
+    // Text can be populated during source loading while the status is hidden.
+    // Observe the learner-visible ready state, then independently verify that
+    // the initiating button has released its pending feedback.
     await page.waitForFunction(() =>
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     assert.equal(await startButton.getAttribute("aria-busy"), "false",
       "Start action clears its pending state after the workspace is ready");
@@ -439,7 +482,8 @@ async function main() {
     );
     await page.locator("#start-button").click();
     await page.waitForFunction(() =>
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     const fileTabs = page.locator("#file-list .file-tab");
     assert.equal(await fileTabs.count(), 3, "Calculator task must expose all three declared files");
@@ -564,7 +608,7 @@ async function main() {
     assert.ok(editorBoxDesktop && lessonBoxDesktop);
     assert.ok(editorBoxDesktop.x < lessonBoxDesktop.x,
       "Desktop places the active code editor to the left of contextual lesson guidance");
-    assert.ok(lessonBoxDesktop.x - (editorBoxDesktop.x + editorBoxDesktop.width) >= 20,
+    assert.ok(lessonBoxDesktop.x - (editorBoxDesktop.x + editorBoxDesktop.width) >= 16,
       "Desktop workbench keeps a visible gap between editor and lesson panels");
     assert.equal(await page.locator("#editor-actions-group").evaluate((element) => element.open), false,
       "Workspace actions are grouped and collapsed by default");
@@ -584,8 +628,34 @@ async function main() {
       fullPage: true
     });
 
-    await page.locator('.main-content').evaluate((element) => { element.scrollTop = 700; });
-    await page.waitForFunction(() => document.querySelector('.main-content')?.scrollTop > 0);
+    // Expanded application controls must remain reachable even though the
+    // idle layout prioritizes code and prose. Use the real learner control,
+    // not a synthetic spacer, to exercise the constrained desktop viewport.
+    await openApplicationRunner(page);
+    await page.locator("#app-execute-button").scrollIntoViewIfNeeded();
+    const runnerControl = await page.locator("#app-execute-button").evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const dock = document.querySelector("#console-dock").getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return { top: box.top, bottom: box.bottom, dockTop: dock.top,
+        hit: Boolean(hit && (hit === element || element.contains(hit))) };
+    });
+    assert.ok(runnerControl.hit && runnerControl.top >= 0 && runnerControl.bottom <= runnerControl.dockTop,
+      "Expanded real application controls remain visible and unobscured above the output dock: " + JSON.stringify(runnerControl));
+
+    // Scroll the actual overflowing learning region, and still require real
+    // scrolling before checking that the result dock stays fixed and visible.
+    const readingScroll = await page.evaluate(() => {
+      for (const selector of [".main-content", "#lesson-content"]) {
+        const element = document.querySelector(selector);
+        if (element.scrollHeight <= element.clientHeight + 1) continue;
+        element.scrollTop = 700;
+        if (element.scrollTop > 0) return { selector, top: element.scrollTop };
+      }
+      return null;
+    });
+    assert.ok(readingScroll && readingScroll.top > 0,
+      "The actual lesson/workbench reading region must scroll before testing the fixed terminal");
     const consoleDock = page.locator(".console-dock");
     const consoleGeometry = await consoleDock.evaluate((element) => {
       const rect = element.getBoundingClientRect();
@@ -609,13 +679,17 @@ async function main() {
     assert.ok(consoleGeometry.top >= 0 && consoleGeometry.bottom <= consoleGeometry.viewportHeight,
       "The execution console remains inside the viewport after page scrolling: " +
       JSON.stringify(consoleGeometry));
-    assert.ok(consoleOutputGeometry.height >= 360,
-      "The default terminal viewport has room for at least twenty output lines: " +
+    assert.equal(await consoleDock.getAttribute("data-mode"), "normal");
+    assert.ok(await consoleDock.evaluate((element) => element.getBoundingClientRect().height) >= 200 &&
+      await consoleDock.evaluate((element) => element.getBoundingClientRect().height) <= 320,
+      "Normal output reserves a bounded part of the desktop for the latest result");
+    assert.ok(consoleOutputGeometry.height >= 140,
+      "The normal terminal viewport retains a readable output area: " +
       JSON.stringify(consoleOutputGeometry));
     assert.ok(consoleOutputGeometry.fontSize >= 12 && consoleOutputGeometry.lineHeight >= 17,
       "The terminal keeps readable output text rather than shrinking its font");
-    assert.ok(Math.floor((consoleOutputGeometry.height - 24) / consoleOutputGeometry.lineHeight) >= 20,
-      "The terminal's visible text area can show twenty lines without scrolling");
+    assert.ok(Math.floor((consoleOutputGeometry.height - 24) / consoleOutputGeometry.lineHeight) >= 7,
+      "Normal output keeps several readable lines while preserving room for the lesson");
 
     // Compact mode must keep the terminal title/status dock visible while
     // returning the reserved viewport to the lesson and editor.
@@ -630,24 +704,37 @@ async function main() {
     });
     const compactDockHeight = await consoleDock.evaluate((element) => element.getBoundingClientRect().height);
     const workbenchHeightAfterCompact = await page.locator(".main-layout").evaluate((element) => element.getBoundingClientRect().height);
-    assert.ok(workbenchHeightAfterCompact > workbenchHeightBeforeCompact + 300,
+    assert.ok(workbenchHeightAfterCompact > workbenchHeightBeforeCompact + 140,
       "Compact terminal returns the reserved viewport to the workbench");
-    assert.ok(compactDockHeight <= 56, "Compact terminal retains a visible header without occupying the output area");
+    assert.ok(compactDockHeight <= 72, "Compact terminal retains a visible header without occupying the output area");
     assert.equal(await page.locator("#console-title").isVisible(), true);
     assert.equal(await page.locator("#check-result").isVisible(), true);
+    await assertToastAboveDock(page);
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-2-console-compact-after.png"),
       fullPage: false
     });
     await terminalToggle.click();
     await page.waitForFunction(() => !document.querySelector(".console-dock")?.classList.contains("is-collapsed"));
-    assert.ok(await consoleDock.evaluate((element) => element.getBoundingClientRect().height) >= 400,
-      "Expanding the terminal restores the full output viewport");
+    assert.equal(await consoleDock.getAttribute("data-mode"), "normal");
+    assert.ok(await consoleDock.evaluate((element) => element.getBoundingClientRect().height) >= 200,
+      "Expanding the terminal restores the normal output viewport");
+    await page.locator("#console-size").click();
+    await page.waitForFunction(() => document.querySelector("#console-dock")?.dataset.mode === "large");
+    const enlargedOutput = await page.locator("#console-output").evaluate((element) => ({
+      height: element.getBoundingClientRect().height, lineHeight: parseFloat(getComputedStyle(element).lineHeight)
+    }));
+    assert.ok(Math.floor((enlargedOutput.height - 24) / enlargedOutput.lineHeight) >= 20,
+      "Explicit enlargement retains the twenty-line detailed-log view");
+    await page.locator("#console-size").click();
+    await page.waitForFunction(() => document.querySelector("#console-dock")?.dataset.mode === "normal");
 
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-2-console-after.png"),
       fullPage: false
     });
+    await page.locator("#app-runner-details summary").click();
+    assert.equal(await page.locator("#app-runner-details").evaluate((element) => element.open), false);
 
     await page.locator("#editor-actions-group summary").click();
     const saveButton = page.locator("#save-button");
@@ -721,6 +808,8 @@ async function main() {
     }
     assert.equal(typeof releaseBuildRequest, "function", "The real build request reached the held route");
     assert.equal(buildRequestCount, 1, "Exactly one real build request is pending");
+    // Capture settled button colors, without waiting for the infinite spinner.
+    await settleFiniteButtonTransitions(page);
     const formalDisabledStyle = await page.locator("#check-button").evaluate((element) => {
       const style = getComputedStyle(element);
       return {
@@ -728,6 +817,7 @@ async function main() {
         opacity: style.opacity,
         color: style.color,
         border: style.borderColor,
+        background: style.backgroundColor,
         backgroundImage: style.backgroundImage
       };
     });
@@ -737,6 +827,9 @@ async function main() {
       "Disabled formal-acceptance label remains visible");
     assert.notEqual(formalDisabledStyle.border, "rgba(0, 0, 0, 0)",
       "Disabled formal-acceptance control retains a visible boundary");
+    assert.equal(formalDisabledStyle.backgroundImage, "none", "Disabled acceptance uses its explicit solid background");
+    assert.ok(contrastRatio(formalDisabledStyle.color, formalDisabledStyle.background) >= 4.5,
+      "Disabled formal-acceptance label retains readable contrast after finite transitions: " + JSON.stringify(formalDisabledStyle));
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-3-buttons-pending-after.png"),
       fullPage: false
@@ -762,18 +855,34 @@ async function main() {
     assert.equal((await buildButton.textContent()).trim(), originalBuildLabel,
       "The original task-specific action label is restored after completion");
 
-    // A rejected request must also leave the action usable and expose failure.
-    await page.route(buildRoute, (route) => route.abort("failed"));
-    await buildButton.click();
-    await page.waitForFunction(() => {
-      const button = document.querySelector("#build-button");
-      return button?.dataset.pending === "true" && button.disabled &&
-        button.getAttribute("aria-busy") === "true";
-    });
-    await page.screenshot({
-      path: path.join(ARTIFACT_DIR, "stage-3-buttons-failure-pending-after.png"),
-      fullPage: false
-    });
+    // Hold the real request until its pending feedback has been observed.
+    // An immediate abort can complete before the browser samples that state.
+    let releaseRejectedRequest;
+    let rejectedRequestCount = 0;
+    const rejectedRequestGate = new Promise((resolve) => { releaseRejectedRequest = resolve; });
+    const rejectBuild = async (route) => {
+      rejectedRequestCount += 1;
+      await rejectedRequestGate;
+      await route.abort("failed");
+    };
+    await page.route(buildRoute, rejectBuild);
+    try {
+      await Promise.all([page.waitForRequest(buildRoute), buildButton.click()]);
+      await page.waitForFunction(() => {
+        const button = document.querySelector("#build-button");
+        return button?.dataset.pending === "true" && button.disabled &&
+          button.getAttribute("aria-busy") === "true";
+      });
+      assert.equal(rejectedRequestCount, 1, "The rejected build remains pending until feedback is captured");
+      await settleFiniteButtonTransitions(page);
+      await page.screenshot({
+        path: path.join(ARTIFACT_DIR, "stage-3-buttons-failure-pending-after.png"),
+        fullPage: false
+      });
+    } finally {
+      releaseRejectedRequest();
+      await page.unroute(buildRoute, rejectBuild);
+    }
     await page.waitForFunction(() =>
       document.querySelector("#check-result")?.textContent === "执行失败" &&
       document.querySelector("#build-button")?.dataset.pending !== "true"
@@ -784,11 +893,11 @@ async function main() {
       "Failed build restores the build action for retry");
     assert.equal((await buildButton.textContent()).trim(), originalBuildLabel,
       "Failed build restores the original action label");
+    await settleFiniteButtonTransitions(page);
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-3-buttons-failure-after.png"),
       fullPage: false
     });
-    await page.unroute(buildRoute);
     await page.locator("#editor-actions-group summary").click();
 
     await page.setViewportSize({ width: 390, height: 844 });
@@ -811,9 +920,9 @@ async function main() {
     const mobileMainBox = await page.locator(".main-layout").boundingBox();
     const mobileContentBox = await page.locator(".main-content").boundingBox();
     assert.ok(mobileDockBox && mobileOutputBox && mobileMainBox && mobileContentBox);
-    assert.ok(mobileDockBox.height >= 280 && mobileDockBox.height <= 360,
+    assert.ok(mobileDockBox.height >= 200 && mobileDockBox.height <= 280,
       "Mobile terminal remains visible without taking most of the viewport: " + JSON.stringify(mobileDockBox));
-    assert.ok(mobileOutputBox.height >= 180,
+    assert.ok(mobileOutputBox.height >= 120,
       "Mobile terminal retains a readable output area");
     assert.ok(mobileContentBox.height >= 280,
       "Mobile lesson/editor area retains usable vertical space: " + JSON.stringify(mobileContentBox));
@@ -847,8 +956,9 @@ async function main() {
     await page.locator("#console-toggle").click();
     await page.waitForFunction(() => document.querySelector("#console-dock")?.classList.contains("is-collapsed"));
     const mobileMainAfterCollapse = await page.locator(".main-layout").evaluate((element) => element.getBoundingClientRect().height);
-    assert.ok(mobileMainAfterCollapse > mobileMainBeforeCollapse + 200,
+    assert.ok(mobileMainAfterCollapse > mobileMainBeforeCollapse + 140,
       "Collapsing the mobile terminal returns substantial height to the editor");
+    await assertToastAboveDock(page);
     await page.screenshot({
       path: path.join(ARTIFACT_DIR, "stage-2-console-mobile-compact-after.png"),
       fullPage: true
@@ -878,7 +988,7 @@ async function main() {
     });
     assert.ok(narrowDock.top >= 0 && narrowDock.bottom <= narrowViewport.height + 1,
       "Compact mobile terminal remains visible: " + JSON.stringify(narrowDock));
-    assert.ok(narrowDock.height >= 240 && narrowDock.height <= 310,
+    assert.ok(narrowDock.height >= 200 && narrowDock.height <= 280,
       "Compact mobile terminal retains a usable dock height: " + JSON.stringify(narrowDock));
     const narrowLesson = await page.locator(".lesson-panel").boundingBox();
     const narrowEditor = await page.locator(".editor-panel").boundingBox();
@@ -912,7 +1022,8 @@ async function main() {
     assert.equal(await page.locator("#app-profile-label").textContent(), "持久化 Todo CLI");
     await page.locator("#start-button").click();
     await page.waitForFunction(() =>
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     await verifyReadOnlyReference(page, "include/todo.hpp");
     await clickWorkbenchAction(page, "#app-build-button");
@@ -939,7 +1050,8 @@ async function main() {
     await page.locator('#course-list .task-link[data-task-id="w2.todo-cli"]').click();
     await page.waitForFunction(() =>
       document.querySelector("#task-breadcrumb")?.textContent.trim() === "w2.todo-cli" &&
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     await clickWorkbenchAction(page, "#app-build-button");
     await page.waitForFunction(() =>
@@ -974,7 +1086,8 @@ async function main() {
     assert.equal(await page.locator("#app-profile-label").textContent(), "TaskManager CLI");
     await page.locator("#start-button").click();
     await page.waitForFunction(() =>
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     await verifyReadOnlyReference(page, "include/task.hpp");
     await verifyReadOnlyReference(page, "include/task_manager.hpp");
@@ -985,7 +1098,8 @@ async function main() {
     await page.locator('#course-list .task-link[data-task-id="w3.task-manager"]').click();
     await page.waitForFunction(() =>
       document.querySelector("#task-breadcrumb")?.textContent.trim() === "w3.task-manager" &&
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     await clickWorkbenchAction(page, "#app-build-button");
     await page.waitForFunction(() =>
@@ -1005,7 +1119,8 @@ async function main() {
     await page.locator('#course-list .task-link[data-task-id="w3.task-manager"]').click();
     await page.waitForFunction(() =>
       document.querySelector("#task-breadcrumb")?.textContent.trim() === "w3.task-manager" &&
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     await runApplicationAction(page, "list", {}, "#1 [ ] browser task");
     await runApplicationAction(page, "done", { id: "1" }, "Completed #1");
@@ -1035,7 +1150,8 @@ async function main() {
     assert.equal(await page.locator("#app-profile-label").textContent(), "TaskManager Quality Gate CLI");
     await page.locator("#start-button").click();
     await page.waitForFunction(() =>
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     await clickWorkbenchAction(page, "#app-build-button");
     await page.waitForFunction(() =>
@@ -1371,7 +1487,8 @@ async function main() {
     );
     await fallbackPage.locator("#start-button").click();
     await fallbackPage.waitForFunction(() =>
-      document.querySelector("#workspace-state")?.textContent === "工作区已就绪"
+      document.querySelector("#workspace-state")?.textContent === "工作区已就绪" &&
+      !document.querySelector("#workspace-state").hidden
     );
     await fallbackPage.waitForFunction(() =>
       document.querySelector("#editor-engine-status")?.textContent === "基础编辑器（离线）",

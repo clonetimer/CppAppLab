@@ -16,7 +16,20 @@ class Element {
     this.dataset = {};
     this.attributes = {};
     this.listeners = {};
-    this.classList = { add() {}, remove() {}, toggle() {} };
+    const classes = () => new Set((this.className || "").split(/\s+/).filter(Boolean));
+    const writeClasses = (values) => { this.className = [...values].join(" "); };
+    this.classList = {
+      add: (...values) => { const current = classes(); values.forEach((value) => current.add(value)); writeClasses(current); },
+      remove: (...values) => { const current = classes(); values.forEach((value) => current.delete(value)); writeClasses(current); },
+      contains: (value) => classes().has(value),
+      toggle: (value, force) => {
+        const current = classes();
+        const include = force === undefined ? !current.has(value) : Boolean(force);
+        if (include) current.add(value); else current.delete(value);
+        writeClasses(current);
+        return include;
+      }
+    };
     this.textContent = "";
     this.innerHTML = "";
     this.value = "";
@@ -57,7 +70,7 @@ class Element {
     return [];
   }
   querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
-  focus() { this.focusCalls += 1; }
+  focus() { this.focusCalls += 1; if (this.ownerDocument) this.ownerDocument.activeElement = this; }
   showModal() { this.open = true; }
   close() { this.open = false; }
   scrollIntoView() {}
@@ -75,7 +88,11 @@ function task(id, state, prerequisites = []) {
 function application(options = {}) {
   const elements = new Map();
   const byId = (id) => {
-    if (!elements.has(id)) elements.set(id, new Element());
+    if (!elements.has(id)) {
+      const element = new Element();
+      element.ownerDocument = document;
+      elements.set(id, element);
+    }
     return elements.get(id);
   };
   const hints = [1, 2, 3].map((level) => {
@@ -86,6 +103,7 @@ function application(options = {}) {
   const documentListeners = {};
   const document = {
     body: new Element("body"),
+    activeElement: null,
     getElementById: byId, createElement: (tag) => new Element(tag),
     addEventListener(name, handler) { (documentListeners[name] ||= []).push(handler); },
     querySelectorAll(selector) {
@@ -142,6 +160,10 @@ function application(options = {}) {
     followWorkflowAction, refreshServiceStatus, stopNetworkService,
     init, loadFile,
     changeLessonLanguage: typeof changeLessonLanguage === "function" ? changeLessonLanguage : undefined,
+    setConsoleMode: typeof setConsoleMode === "function" ? setConsoleMode : undefined,
+    beginConsoleOperation: typeof beginConsoleOperation === "function" ? beginConsoleOperation : undefined,
+    finishConsoleOperation: typeof finishConsoleOperation === "function" ? finishConsoleOperation : undefined,
+    resetConsole: typeof resetConsole === "function" ? resetConsole : undefined,
     jumpToLessonSection,
     openLearningGuide: typeof openLearningGuide === "function" ? openLearningGuide : undefined,
     closeLearningGuide: typeof closeLearningGuide === "function" ? closeLearningGuide : undefined,
@@ -1185,4 +1207,291 @@ test("Back during a pending course read preserves the previous committed entry",
   assert.equal(app.state.task.id, "w1.hello-world");
   await app.travel(1);
   assert.equal(app.state.task.id, "w1.calculator");
+});
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
+
+test("learning-space: idle console stays compact while saving and browsing another course", async () => {
+  const app = application();
+  assert.equal(typeof app.resetConsole, "function");
+  app.resetConsole();
+  assert.equal(app.ui.consoleDock.dataset.state, "idle");
+  assert.equal(app.ui.consoleDock.dataset.mode, "collapsed");
+  assert.equal(app.ui.consoleToggle.attributes["aria-expanded"], "false");
+  app.setBusy(true, "正在保存代码…", app.ui.saveButton, "保存中…");
+  assert.equal(app.ui.consoleDock.dataset.mode, "collapsed", "an unrelated busy state must not open output");
+  app.setBusy(false);
+  app.state.progressFresh = true;
+  learningApi(app);
+  await app.selectTask("w1.calculator");
+  assert.equal(app.ui.consoleDock.dataset.state, "idle");
+  assert.equal(app.ui.consoleDock.dataset.mode, "collapsed");
+  assert.equal(app.ui.consoleSize.hidden, true);
+});
+
+test("learning-space: new operations open output and a manual collapse retains the completed result", async () => {
+  const app = application();
+  app.state.progressFresh = true;
+  app.bindEvents();
+  const reply = deferred();
+  app.setApi(async (url) => {
+    assert.equal(url, "/api/v1/workspaces/w1.hello-world/build");
+    return reply.promise;
+  });
+  const pending = app.runWorkspaceAction("build");
+  try {
+    await new Promise(setImmediate);
+    assert.equal(app.ui.consoleDock.dataset.state, "running");
+    assert.equal(app.ui.consoleDock.dataset.mode, "normal");
+    assert.equal(app.ui.consoleToggle.attributes["aria-expanded"], "true");
+    app.ui.consoleToggle.fire("click");
+    assert.equal(app.ui.consoleDock.dataset.mode, "collapsed");
+  } finally {
+    reply.resolve({ passed: true, output: "[100%] Built target learner\n", exit_code: 0 });
+    await pending;
+  }
+  assert.equal(app.ui.consoleDock.dataset.state, "success");
+  assert.equal(app.ui.consoleDock.dataset.mode, "collapsed", "completion respects the learner's current presentation choice");
+  assert.match(app.ui.consoleSummary.textContent, /构建成功/);
+  assert.equal(app.ui.console.textContent, "[100%] Built target learner\n", "compaction never discards the log");
+  app.ui.consoleToggle.fire("click");
+  assert.equal(app.ui.consoleDock.dataset.mode, "normal");
+  assert.equal(app.ui.consoleSize.hidden, false);
+  app.ui.consoleSize.fire("click");
+  assert.equal(app.ui.consoleDock.dataset.mode, "large", "manual enlargement remains available for detailed logs");
+});
+
+test("learning-space: collapsed failure exposes the first actionable compiler error and a retry opens fresh output", async () => {
+  const app = application();
+  app.state.progressFresh = true;
+  app.state.task.state = "PASSED";
+  app.bindEvents();
+  const failure = deferred();
+  app.setApi(async () => failure.promise);
+  const pending = app.runWorkspaceAction("build");
+  const output = "[33%] Building CXX object\n/workspace/src/main.cpp:2:4: error: expected semicolon\nmake: *** [all] Error 2\n";
+  try {
+    await new Promise(setImmediate);
+    assert.equal(app.ui.consoleDock.dataset.state, "running");
+    app.ui.consoleToggle.fire("click");
+  } finally {
+    failure.resolve({ passed: false, output, exit_code: 2 });
+    await pending;
+  }
+  assert.equal(app.ui.consoleDock.dataset.state, "error");
+  assert.equal(app.ui.consoleDock.dataset.mode, "collapsed");
+  assert.match(app.ui.consoleSummary.textContent, /expected semicolon/);
+  assert.doesNotMatch(app.ui.consoleSummary.textContent, /\/workspace\//,
+    "a compact error summary must lead with the reason, not a long absolute path");
+  assert.equal(app.ui.console.textContent, output);
+  assert.equal(app.state.task.state, "PASSED", "a build error is not a new formal acceptance record");
+  assert.equal(app.ui.saveState.textContent, "已保存到本地工作区",
+    "finished compiler failure must not leave the editor reporting an ongoing build");
+  const retry = deferred();
+  app.setApi(async () => retry.promise);
+  const second = app.runWorkspaceAction("build");
+  try {
+    await new Promise(setImmediate);
+    assert.equal(app.ui.consoleDock.dataset.state, "running");
+    assert.equal(app.ui.consoleDock.dataset.mode, "normal");
+    assert.doesNotMatch(app.ui.consoleSummary.textContent, /expected semicolon/);
+  } finally {
+    retry.resolve({ passed: true, output: "Build complete\n", exit_code: 0 });
+    await second;
+  }
+});
+
+test("learning-space: the clicked next-action button remains visible through save and build, then offers Run", async () => {
+  const app = application();
+  app.state.progressFresh = true;
+  app.state.activeFile = "src/main.cpp";
+  app.state.dirtyFiles.add("src/main.cpp");
+  app.ui.editor.value = "// pending learner edit";
+  app.setBusy(false);
+  assert.equal(app.ui.workflowAction.dataset.action, "build");
+  const saved = deferred();
+  const built = deferred();
+  app.setApi(async (url, options = {}) => {
+    if (options.method === "PUT") return saved.promise;
+    assert.equal(url, "/api/v1/workspaces/w1.hello-world/build");
+    return built.promise;
+  });
+  const pending = app.followWorkflowAction();
+  try {
+    assert.equal(app.ui.workflowAction.hidden, false, "the control just clicked must not disappear during autosave");
+    assert.equal(app.ui.workflowAction.disabled, true);
+    assert.equal(app.ui.workflowAction.dataset.pending, "true");
+    assert.equal(app.ui.workflowAction.attributes["aria-busy"], "true");
+    assert.match(app.ui.workflowAction.textContent, /准备|保存/);
+    saved.resolve({ saved: true });
+    await new Promise(setImmediate);
+    assert.equal(app.ui.workflowAction.hidden, false);
+    assert.equal(app.ui.workflowAction.dataset.pending, "true");
+    assert.match(app.ui.workflowAction.textContent, /构建中/);
+    assert.equal(app.ui.consoleDock.dataset.state, "running");
+  } finally {
+    saved.resolve({ saved: true });
+    built.resolve({ passed: true, output: "Build complete\n", exit_code: 0 });
+    await pending;
+  }
+  assert.equal(app.state.dirtyFiles.size, 0);
+  assert.equal(app.ui.workflowAction.hidden, false);
+  assert.equal(app.ui.workflowAction.disabled, false);
+  assert.equal(app.ui.workflowAction.dataset.pending, undefined);
+  assert.equal(app.ui.workflowAction.attributes["aria-busy"], "false");
+  assert.equal(app.ui.workflowAction.dataset.action, "run");
+  assert.match(app.ui.workflowHelp.textContent, /构建成功/);
+  assert.equal(app.ui.saveState.textContent, "已保存到本地工作区",
+    "a successful build restores the actual saved-source status");
+});
+
+test("learning-space: a rejected next-action request restores a usable recovery button", async () => {
+  const app = application();
+  app.state.progressFresh = true;
+  app.setBusy(false);
+  const reply = deferred();
+  app.setApi(async () => reply.promise);
+  const pending = app.followWorkflowAction();
+  try {
+    await new Promise(setImmediate);
+    assert.equal(app.ui.workflowAction.hidden, false);
+    assert.equal(app.ui.workflowAction.attributes["aria-busy"], "true");
+    assert.match(app.ui.workflowAction.textContent, /构建中/);
+  } finally {
+    reply.reject(new Error("local build endpoint unavailable"));
+    await pending;
+  }
+  assert.equal(app.state.busy, false);
+  assert.equal(app.ui.workflowAction.hidden, false);
+  assert.equal(app.ui.workflowAction.disabled, false);
+  assert.equal(app.ui.workflowAction.dataset.pending, undefined);
+  assert.equal(app.ui.workflowAction.attributes["aria-busy"], "false");
+  assert.equal(app.ui.workflowAction.dataset.action, "troubleshooting");
+  assert.equal(app.ui.consoleDock.dataset.state, "error");
+  assert.match(app.ui.consoleSummary.textContent, /local build endpoint unavailable/);
+  assert.equal(app.ui.saveState.textContent, "已保存到本地工作区",
+    "a rejected build request cannot leave a stale running label in the editor");
+});
+
+test("learning-space: a failed prerequisite save cancels execution and clears next-action pending state", async () => {
+  const app = application();
+  app.state.progressFresh = true;
+  app.state.activeFile = "src/main.cpp";
+  app.state.dirtyFiles.add("src/main.cpp");
+  app.ui.editor.value = "// keep this unsaved draft";
+  app.setBusy(false);
+  const save = deferred();
+  const requests = [];
+  app.setApi(async (url, options = {}) => {
+    requests.push([url, options.method]);
+    assert.equal(options.method, "PUT", "build must wait for a successful save");
+    return save.promise;
+  });
+  const pending = app.followWorkflowAction();
+  try {
+    assert.equal(app.ui.workflowAction.hidden, false);
+    assert.equal(app.ui.workflowAction.dataset.pending, "true");
+  } finally {
+    save.reject(new Error("workspace write unavailable"));
+    await pending;
+  }
+  assert.equal(requests.length, 1);
+  assert.equal(app.state.busy, false);
+  assert.equal(app.state.dirtyFiles.has("src/main.cpp"), true);
+  assert.equal(app.ui.editor.value, "// keep this unsaved draft");
+  assert.equal(app.ui.workflowAction.hidden, false);
+  assert.equal(app.ui.workflowAction.disabled, false);
+  assert.equal(app.ui.workflowAction.dataset.pending, undefined);
+  assert.equal(app.ui.workflowAction.attributes["aria-busy"], "false");
+  assert.equal(app.ui.workflowAction.dataset.action, "build");
+  assert.match(app.ui.toast.textContent, /保存失败.*取消/);
+  assert.equal(app.ui.saveState.textContent, "保存失败",
+    "execution cancellation must retain the genuine prerequisite-save error");
+});
+
+test("learning-space: an opened workspace remains a status after catalog refresh instead of a second Start action", async () => {
+  const app = application();
+  app.state.progressFresh = true;
+  const requests = learningApi(app);
+  await app.selectTask("w1.calculator");
+  assert.equal(app.state.workspaceReady, true);
+  assert.equal(app.ui.startButton.hidden, true);
+  assert.equal(app.ui.workspaceState.hidden, false);
+  await app.loadTasks();
+  assert.equal(app.ui.startButton.hidden, true, "a normal catalog refresh cannot bring back a redundant Start button");
+  assert.equal(requests.some((url) => url.endsWith("/start")), false);
+});
+
+for (const action of ["start", "workspace"]) {
+  test("learning-space: the next-action " + action + " control stays pending until source is ready", async () => {
+    const app = application();
+    app.state.progressFresh = true;
+    app.state.workspaceReady = false;
+    app.state.workspaceError = action === "workspace" ? "initial source unavailable" : "";
+    app.state.task.state = action === "start" ? "AVAILABLE" : "IN PROGRESS";
+    app.setBusy(false);
+    assert.equal(app.ui.workflowAction.dataset.action, action);
+    const source = deferred();
+    const requests = [];
+    app.setApi(async (url) => {
+      requests.push(url);
+      if (url.endsWith("/start")) return { resumed: false };
+      if (url.endsWith("/files")) return { files: [{ path: "src/main.cpp", read_only: false }] };
+      if (url.endsWith("/files/src/main.cpp")) return source.promise;
+      throw new Error("unexpected request: " + url);
+    });
+    const pending = app.followWorkflowAction();
+    try {
+      await new Promise(setImmediate);
+      assert.equal(app.ui.workflowAction.hidden, false);
+      assert.equal(app.ui.workflowAction.disabled, true);
+      assert.equal(app.ui.workflowAction.dataset.pending, "true");
+      assert.equal(app.ui.workflowAction.attributes["aria-busy"], "true");
+    } finally {
+      source.resolve({ content: "// learner code\n", read_only: false });
+      await pending;
+    }
+    assert.equal(app.state.workspaceReady, true);
+    assert.equal(app.state.activeFile, "src/main.cpp");
+    assert.equal(app.ui.startButton.hidden, true);
+    assert.equal(app.ui.workflowAction.disabled, false);
+    assert.equal(app.ui.workflowAction.dataset.pending, undefined);
+    assert.equal(app.ui.workflowAction.attributes["aria-busy"], "false");
+    assert.equal(app.ui.workflowAction.dataset.action, "build");
+    assert.equal(requests.filter((url) => url.endsWith("/start")).length, action === "start" ? 1 : 0);
+  });
+}
+
+test("learning-space: workspace retry does not announce readiness before the source has loaded", async () => {
+  const app = application();
+  app.state.progressFresh = true;
+  learningApi(app, (url) => {
+    if (url.includes("/files/")) throw new Error("initial source unavailable");
+  });
+  await app.selectTask("w1.calculator");
+  assert.equal(app.state.workspaceReady, false);
+  assert.equal(app.ui.workspaceState.hidden, false, "the failed workspace has a visible status");
+  assert.equal(app.ui.workflowAction.dataset.action, "workspace");
+  const source = deferred();
+  learningApi(app, (url) => url.includes("/files/") ? source.promise : undefined);
+  const pending = app.followWorkflowAction();
+  try {
+    await new Promise(setImmediate);
+    assert.equal(app.state.activeFile, "", "no source has reached the editor yet");
+    assert.equal(app.ui.workflowAction.dataset.pending, "true");
+    assert.ok(app.ui.workspaceState.hidden || !/已就绪/.test(app.ui.workspaceState.textContent),
+      "a visible ready status must not contradict the still-pending source read");
+  } finally {
+    source.resolve({ content: "// recovered learner source\n", read_only: false });
+    await pending;
+  }
+  assert.equal(app.ui.editor.value, "// recovered learner source\n");
+  assert.equal(app.ui.workspaceState.hidden, false);
+  assert.match(app.ui.workspaceState.textContent, /已就绪/);
+  assert.equal(app.ui.workflowAction.dataset.pending, undefined);
 });

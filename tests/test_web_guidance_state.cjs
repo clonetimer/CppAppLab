@@ -1290,6 +1290,8 @@ test("learning-space: collapsed failure exposes the first actionable compiler er
     "a compact error summary must lead with the reason, not a long absolute path");
   assert.equal(app.ui.console.textContent, output);
   assert.equal(app.state.task.state, "PASSED", "a build error is not a new formal acceptance record");
+  assert.equal(app.ui.saveState.textContent, "已保存到本地工作区",
+    "finished compiler failure must not leave the editor reporting an ongoing build");
   const retry = deferred();
   app.setApi(async () => retry.promise);
   const second = app.runWorkspaceAction("build");
@@ -1344,6 +1346,8 @@ test("learning-space: the clicked next-action button remains visible through sav
   assert.equal(app.ui.workflowAction.attributes["aria-busy"], "false");
   assert.equal(app.ui.workflowAction.dataset.action, "run");
   assert.match(app.ui.workflowHelp.textContent, /构建成功/);
+  assert.equal(app.ui.saveState.textContent, "已保存到本地工作区",
+    "a successful build restores the actual saved-source status");
 });
 
 test("learning-space: a rejected next-action request restores a usable recovery button", async () => {
@@ -1370,6 +1374,8 @@ test("learning-space: a rejected next-action request restores a usable recovery 
   assert.equal(app.ui.workflowAction.dataset.action, "troubleshooting");
   assert.equal(app.ui.consoleDock.dataset.state, "error");
   assert.match(app.ui.consoleSummary.textContent, /local build endpoint unavailable/);
+  assert.equal(app.ui.saveState.textContent, "已保存到本地工作区",
+    "a rejected build request cannot leave a stale running label in the editor");
 });
 
 test("learning-space: a failed prerequisite save cancels execution and clears next-action pending state", async () => {
@@ -1404,6 +1410,8 @@ test("learning-space: a failed prerequisite save cancels execution and clears ne
   assert.equal(app.ui.workflowAction.attributes["aria-busy"], "false");
   assert.equal(app.ui.workflowAction.dataset.action, "build");
   assert.match(app.ui.toast.textContent, /保存失败.*取消/);
+  assert.equal(app.ui.saveState.textContent, "保存失败",
+    "execution cancellation must retain the genuine prerequisite-save error");
 });
 
 test("learning-space: an opened workspace remains a status after catalog refresh instead of a second Start action", async () => {

@@ -239,6 +239,7 @@ async function measurements(page) {
         color: buttonStyle.color, background: buttonStyle.backgroundColor,
         backgroundImage: buttonStyle.backgroundImage, opacity: buttonStyle.opacity },
       result: document.querySelector("#check-result").textContent,
+      saveState: document.querySelector("#save-state").textContent,
       summary: document.querySelector("#console-summary")?.textContent || "" };
   });
 }
@@ -372,6 +373,8 @@ async function pendingBuild(page) {
   assert.match(await page.locator("#console-output").textContent(), /Build result: PASS/);
   if (!BASELINE) {
     assert.equal(metrics.dock.state, "success");
+    assert.equal(metrics.saveState, "已保存到本地工作区",
+      "completed build restores the saved-file status rather than leaving a running message");
     assert.equal(metrics.dock.mode, "collapsed", "completion respects a learner's manual collapse while busy");
     assert.match(metrics.summary, /构建成功/);
     assert.equal(await page.locator("#console-summary").isVisible(), true);
@@ -394,6 +397,8 @@ async function compilerFailure(page) {
   let metrics = await evidence(page, "compiler-error");
   if (!BASELINE) {
     assert.equal(metrics.dock.state, "error");
+    assert.equal(metrics.saveState, "已保存到本地工作区",
+      "compiler failure ends the running save-status label while keeping the source saved");
     assert.equal(metrics.dock.mode, "normal", "the next action exposes its output again");
     assert.match(metrics.summary, /CPPAPPLAB_SPACE_ERROR|error:/);
     assert.equal(metrics.nextAction.action, "troubleshooting");

@@ -2451,6 +2451,7 @@
       toast(error.message);
     } finally {
       setBusy(false);
+      updateDirtyState();
     }
   }
 

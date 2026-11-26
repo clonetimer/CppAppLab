@@ -123,3 +123,12 @@ Optional, independent C++17 knowledge experiments. Open **查知识** in the wor
 - **template-specialization** — Observe primary, explicit and pointer partial specializations. The fixed compile-time assertion rejects a missing explicit specialization.
 - **type-traits** — Use is_integral_v and enable_if to remove an unsuitable candidate. The call still fails if there is no viable overload.
 - **memory-order** — Compare deterministic early publication with payload-before-release. Both sides use atomics and an explicit acknowledgment; no race or probabilistic relaxed failure. This is not an exhaustive weak-memory proof.
+
+## Modern C++ generic and concurrency practice
+
+Optional CP4 examples use a distinct GCC 13 profile, not the existing C++17 assignment. Search the knowledge panel by ID. Predict, execute the actual failure/repair pair, explain the observation, then attempt a separate local implementation. A missing toolchain/feature is not an expected failure. The original fixed course acceptance is unchanged.
+
+- **cpp20-concepts (C++20)** — Constrain an integral template and observe rejection of a floating argument.
+- **cpp20-jthread (C++20)** — Request cooperative stop, observe a real token using a handshake, and join.
+- **cpp20-coroutine (C++20)** — Observe initial suspension and one resumed yield; destroy the owned handle.
+- **cpp23-if-consteval (C++23)** — Compare constant and runtime evaluation branches.

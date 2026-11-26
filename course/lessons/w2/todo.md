@@ -177,3 +177,14 @@ Optional, independent C++17 knowledge experiments. Open **查知识** in the wor
 - **string-view** — A string_view borrows storage; it is not a value snapshot. Observe defined mutation while the owner remains alive, then copy to std::string. Never dereference a dangling view.
 - **iterator-invalidation** — Force real vector growth and detect invalidation before any invalid access. Keep a logical index across reserve and reacquire an iterator; insert/erase can change index identity.
 - **lookup-complexity** — Count actual comparisons on 64 sorted values; the local seven-comparison budget illustrates this case, not universal runtime performance. Explain the sorted-range precondition.
+
+## Modern C++ data and library practice
+
+Optional CP4 examples use a distinct GCC 13 profile, not the existing C++17 assignment. Search the knowledge panel by ID. Predict, execute the actual failure/repair pair, explain the observation, then attempt a separate local implementation. A missing toolchain/feature is not an expected failure. The original fixed course acceptance is unchanged.
+
+- **cpp20-ranges (C++20)** — Compose a lazy filter and observe selected values while preserving the source range.
+- **cpp20-span (C++20)** — Compare static extents; keep borrowed storage alive.
+- **cpp23-expected (C++23)** — Handle value/error states and catch bad_expected_access.
+- **cpp23-byteswap (C++23)** — Decode a fixed-width integer under an explicit byte-order contract.
+- **cpp23-contains (C++23)** — Compare position-returning search with Boolean containment.
+- **cpp23-underlying (C++23)** — Convert a scoped enum at an explicit numeric boundary.

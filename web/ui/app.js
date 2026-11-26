@@ -1578,7 +1578,8 @@
       control.className = "knowledge-topic";
       control.dataset.topic = topic.id;
       control.setAttribute("aria-current", String(topic.id === knowledgeState.active));
-      control.textContent = topic.title + (topic.phase ? "" : "（阅读）");
+      control.textContent = (topic.standard > 17 ? "C++" + topic.standard + " · " : "") +
+        topic.title + (topic.phase ? "" : "（阅读）");
       control.addEventListener("click", () => selectKnowledge(topic.id));
       results.append(control);
     }
@@ -1594,12 +1595,20 @@
       (state.lessonLanguage === "en" ? topic.en : topic.zh);
     $("knowledge-lesson").hidden = !topic.course_available;
     $("knowledge-experiment").hidden = !topic.phase;
+    const profile = $("knowledge-profile");
+    profile.hidden = !(topic.standard > 17);
+    if (!profile.hidden) {
+      profile.textContent = "C++" + topic.standard + " · 独立 GCC 13 配置 · " +
+        (topic.toolchain_present ? "已检测编译器文件，运行时核验版本及特性宏"
+          : "缺少 /usr/bin/g++-13；Ubuntu 24.04 可手动安装 g++-13 后刷新网页。原 C++17 课程不受影响。");
+    }
     if (topic.phase) {
       $("knowledge-bad").textContent = topic.bad;
       $("knowledge-good").textContent = topic.good;
     }
-    $("knowledge-failure").disabled = knowledgeState.running || !state.csrfToken;
-    $("knowledge-repair").disabled = knowledgeState.running || !state.csrfToken;
+    const unavailable = topic.standard > 17 && !topic.toolchain_present;
+    $("knowledge-failure").disabled = knowledgeState.running || !state.csrfToken || unavailable;
+    $("knowledge-repair").disabled = knowledgeState.running || !state.csrfToken || unavailable;
   }
 
   function selectKnowledge(id) {
@@ -1654,7 +1663,7 @@
   async function runKnowledge(variant) {
     if (knowledgeState.running || !state.csrfToken) return;
     const topic = (knowledgeState.topics || []).find((item) => item.id === knowledgeState.active);
-    if (!topic?.phase) return;
+    if (!topic?.phase || (topic.standard > 17 && !topic.toolchain_present)) return;
     knowledgeState.running = true;
     const session = knowledgeState.session;
     $("knowledge-status").textContent = "正在本机运行固定实验…";
@@ -1668,8 +1677,14 @@
       $("knowledge-output").textContent = data.steps.map((step) =>
         "$ " + step.command.join(" ") + "\n[" + step.phase + "] exit=" + step.exit_code +
         (step.timed_out ? " · timeout" : "") + "\n" + step.output).join("\n\n");
-      $("knowledge-status").textContent = data.observed
-        ? (variant === "failure" ? "已观察到预期失败。" : "修复程序实际运行成功。") + " 不改变课程验收。"
+      const modernVersion = data.standard > 17 && data.compiler_version
+        ? " · GCC " + data.compiler_version : "";
+      $("knowledge-status").textContent = data.status === "TOOLCHAIN_UNAVAILABLE"
+        ? "现代工具链不可用：必须是 GCC 13.x，不回退 C++17。"
+        : data.status === "FEATURE_UNAVAILABLE"
+        ? "现代特性检查未通过；不计为预期失败。"
+        : data.observed
+        ? (variant === "failure" ? "已观察到预期失败。" : "修复程序实际运行成功。") + " 不改变课程验收。" + modernVersion
         : "未观察到预期结果，请查看真实输出。";
     } catch (error) {
       if ($("knowledge-dialog").open && session === knowledgeState.session && topic.id === knowledgeState.active)

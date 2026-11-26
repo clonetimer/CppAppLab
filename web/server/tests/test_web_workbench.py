@@ -16,6 +16,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from cppapplab_web import CppAppLabWebServer, MAX_LESSON_BYTES, ServiceSession, safe_relative_path
 import knowledge_lab
+import modern_cpp
 
 
 FAKE_ENGINE = """#!/usr/bin/env python3
@@ -1159,7 +1160,7 @@ class WebWorkbenchTests(unittest.TestCase):
 
     def test_knowledge_catalog_and_fixed_routes(self) -> None:
         data = self.request("/api/v1/knowledge")
-        self.assertEqual(len(data["topics"]), 32)
+        self.assertEqual(len(data["topics"]), 42)
         self.assertTrue(all(topic["course_available"] == (topic["task"] == "w1.hello-world")
                             for topic in data["topics"]))
         route = "/api/v1/knowledge/ownership/run"
@@ -1178,6 +1179,22 @@ class WebWorkbenchTests(unittest.TestCase):
         finally:
             self.server.knowledge_lock.release()
         self.assertEqual(list(self.workspace_root.iterdir()), [])
+
+    def test_modern_toolchain_absence_is_not_a_teaching_failure(self) -> None:
+        with patch.object(modern_cpp, "COMPILER", str(self.base / "missing-g++-13")):
+            topics = self.request("/api/v1/knowledge")["topics"]
+            modern = [topic for topic in topics if topic["standard"] > 17]
+            self.assertEqual(len(modern), 10)
+            self.assertTrue(all(not topic["toolchain_present"] for topic in modern))
+            result = self.request("/api/v1/knowledge/cpp20-concepts/run", "POST",
+                                  {"variant": "failure"}, self.token, self.base_url)
+            self.assertEqual(result["status"], "TOOLCHAIN_UNAVAILABLE")
+            self.assertFalse(result["observed"])
+            self.assertFalse(result["course_acceptance"])
+            self.assertEqual([step["phase"] for step in result["steps"]], ["toolchain"])
+            self.assertEqual(self.request_error("/api/v1/knowledge/cpp20-concepts/run", "POST",
+                                                {"variant": "repair", "compiler": "g++"},
+                                                self.token, self.base_url), 400)
 
     def test_knowledge_http_replays_actual_gcc_without_creating_workspace(self) -> None:
         route = "/api/v1/knowledge/linkage/run"
@@ -1200,7 +1217,11 @@ class KnowledgeProbeTests(unittest.TestCase):
         self.assertEqual(len(knowledge_lab.TOPICS), 32)
         self.assertEqual(len(knowledge_lab.BY_ID), 32)
         self.assertEqual(sum(bool(topic["phase"]) for topic in knowledge_lab.TOPICS), 28)
-        for topic in knowledge_lab.TOPICS:
+        self.assertEqual(len(modern_cpp.BY_ID), 10)
+        self.assertEqual(len(knowledge_lab.ALL_BY_ID), 42)
+        self.assertEqual(sum(topic["standard"] == 20 for topic in modern_cpp.TOPICS), 5)
+        self.assertEqual(sum(topic["standard"] == 23 for topic in modern_cpp.TOPICS), 5)
+        for topic in (*knowledge_lab.TOPICS, *modern_cpp.TOPICS):
             with self.subTest(topic=topic["id"]):
                 lesson = root / tasks[topic["task"]]
                 translated = lesson.with_name(lesson.stem + ".zh-CN.md")
@@ -1224,14 +1245,15 @@ class KnowledgeProbeTests(unittest.TestCase):
                          [(row["id"], row["baseline"]) for row in rows])
         self.assertEqual({probe for row in closure for probe in row["probes"].split(";") if probe},
                          set(knowledge_lab.BY_ID))
-        candidates = [row for row in closure if row["status"] == "CANDIDATE_PROBE"]
+        self.assertFalse(any(row["status"] == "CANDIDATE_PROBE" for row in closure))
+        candidates = [row for row in closure if row["evidence"].startswith("PR #77 CI ")]
         self.assertEqual({row["id"] for row in candidates},
                          {"control-flow", "string-view", "template-specialization", "type-traits",
                           "memory-order", "string-map-complexity"})
         self.assertEqual(sum(len(row["probes"].split(";")) for row in candidates), 7)
         for row in closure:
             if row["baseline"] in {"MENTIONED", "GAP"}:
-                self.assertIn(row["status"], {"VERIFIED_PROBE", "CANDIDATE_PROBE"})
+                self.assertEqual(row["status"], "VERIFIED_PROBE")
             if row["status"] == "READING_ONLY":
                 self.assertTrue(all(not knowledge_lab.BY_ID[probe]["phase"]
                                     for probe in row["probes"].split(";")))

@@ -342,6 +342,27 @@ async function knowledgeEvidence(page, baseUrl) {
   await page.waitForFunction(() => document.querySelector("#knowledge-status").textContent.includes("修复程序实际运行成功"), null, { timeout: 45000 });
   assert.match(await page.locator("#knowledge-output").textContent(), /\[run\] exit=0\n42/);
   await page.screenshot({ path: path.join(ARTIFACTS, "knowledge-cp3-publication-repair.png") });
+  await page.locator("#knowledge-search").fill("cpp20-concepts");
+  await page.locator('#knowledge-results [data-topic="cpp20-concepts"]').click();
+  assert.match(await page.locator("#knowledge-profile").textContent(), /C\+\+20.*GCC 13/);
+  await page.locator("#knowledge-failure").click();
+  await page.waitForFunction(() => document.querySelector("#knowledge-status").textContent.includes("已观察到预期失败"), null, { timeout: 45000 });
+  assert.match(await page.locator("#knowledge-output").textContent(), /constraints not satisfied/);
+  assert.match(await page.locator("#knowledge-output").textContent(), /\[feature-check\] exit=0/);
+  await page.locator("#knowledge-repair").click();
+  await page.waitForFunction(() => document.querySelector("#knowledge-status").textContent.includes("修复程序实际运行成功"), null, { timeout: 45000 });
+  assert.match(await page.locator("#knowledge-output").textContent(), /\[run\] exit=0\n42/);
+  await page.screenshot({ path: path.join(ARTIFACTS, "knowledge-cpp20-concepts.png") });
+  await page.locator("#knowledge-search").fill("cpp23-expected");
+  await page.locator('#knowledge-results [data-topic="cpp23-expected"]').click();
+  assert.match(await page.locator("#knowledge-profile").textContent(), /C\+\+23.*GCC 13/);
+  await page.locator("#knowledge-failure").click();
+  await page.waitForFunction(() => document.querySelector("#knowledge-status").textContent.includes("已观察到预期失败"), null, { timeout: 45000 });
+  assert.match(await page.locator("#knowledge-output").textContent(), /caught bad_expected_access: divide by zero/);
+  await page.locator("#knowledge-repair").click();
+  await page.waitForFunction(() => document.querySelector("#knowledge-status").textContent.includes("修复程序实际运行成功"), null, { timeout: 45000 });
+  assert.match(await page.locator("#knowledge-output").textContent(), /\[run\] exit=0\n42/);
+  await page.screenshot({ path: path.join(ARTIFACTS, "knowledge-cpp23-expected.png") });
   await page.locator("#knowledge-search").fill("gdb");
   await page.locator('#knowledge-results [data-topic="gdb"]').click();
   assert.equal(await page.locator("#knowledge-experiment").isVisible(), false);
@@ -372,7 +393,7 @@ async function knowledgeEvidence(page, baseUrl) {
   await clickWorkbenchAction(page, "#save-button");
   await page.waitForFunction(() => document.querySelector("#save-state").textContent === "已保存到本地工作区");
   await page.locator("#console-toggle").click();
-  report.knowledge = { actual_failure: true, actual_repair: true, real_course_error_link: true, course_history_unchanged: true, cp3_narrowing_replay: true, cp3_publication_replay: true, gdb_reading_only: true };
+  report.knowledge = { actual_failure: true, actual_repair: true, real_course_error_link: true, course_history_unchanged: true, cp3_narrowing_replay: true, cp3_publication_replay: true, gdb_reading_only: true, cpp20_concepts_replay: true, cpp23_expected_replay: true };
 }
 
 async function initialLayout(page) {

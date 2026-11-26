@@ -41,12 +41,12 @@ forwarding	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w6/thread-pool/t
 backpressure	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w6/thread-pool/tests/thread_pool_acceptance_test.cpp TEST(ThreadPoolAcceptanceTest, BoundedSubmissionBlocksUntilCapacityIsAvailable)	Observable fixed engineering behavior, not required language implementation or mastery.
 shutdown-race	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w6/thread-pool/tests/thread_pool_acceptance_test.cpp TEST(ThreadPoolAcceptanceTest, SubmitRacingShutdownIsRejectedOrCompleted)	Observable fixed engineering behavior, not required language implementation or mastery.
 first-program	TAUGHT	TAUGHT_ONLY		course/lessons/w1/hello-world.md ## What the platform checks	Existing exact-output exercise; syntax comprehension not assessed.
-control-flow	MENTIONED	CANDIDATE_PROBE	control-flow	web/server/knowledge_lab.py; dual Ubuntu replay pending	Fixed inclusive-loop sample; not full control-flow syntax.
-string-view	MENTIONED	CANDIDATE_PROBE	string-view	web/server/knowledge_lab.py; dual Ubuntu replay pending	Defined alias/snapshot comparison; no execution of a dangling view.
-template-specialization	GAP	CANDIDATE_PROBE	template-specialization	web/server/knowledge_lab.py; dual Ubuntu replay pending	Primary, explicit and partial specialization sample.
-type-traits	GAP	CANDIDATE_PROBE	type-traits	web/server/knowledge_lab.py; dual Ubuntu replay pending	One type predicate and one constrained candidate; not all SFINAE rules.
-memory-order	GAP	CANDIDATE_PROBE	memory-order	web/server/knowledge_lab.py; dual Ubuntu replay pending	Actual two-thread deterministic early-publication fault; not a relaxed-order counterexample or exhaustive weak-memory test.
+control-flow	MENTIONED	VERIFIED_PROBE	control-flow	PR #77 CI 45851638346, dual Ubuntu 56/56 actual replay	Fixed inclusive-loop sample; not full control-flow syntax.
+string-view	MENTIONED	VERIFIED_PROBE	string-view	PR #77 CI 45851638346, dual Ubuntu 56/56 actual replay	Defined alias/snapshot comparison; no execution of a dangling view.
+template-specialization	GAP	VERIFIED_PROBE	template-specialization	PR #77 CI 45851638346, dual Ubuntu 56/56 actual replay	Primary, explicit and partial specialization sample.
+type-traits	GAP	VERIFIED_PROBE	type-traits	PR #77 CI 45851638346, dual Ubuntu 56/56 actual replay	One type predicate and one constrained candidate; not all SFINAE rules.
+memory-order	GAP	VERIFIED_PROBE	memory-order	PR #77 CI 45851638346, dual Ubuntu 56/56 actual replay	Actual two-thread deterministic early-publication fault; not a relaxed-order counterexample or exhaustive weak-memory test.
 gdb	TAUGHT	READING_ONLY	gdb	course/lessons/w4/quality-gate.md ## Debugging with GDB	Existing W4 commands; learner debugger observation remains unmeasured.
 sanitizer	TAUGHT	READING_ONLY	lifetime-sanitizers	course/lessons/w4/quality-gate.md ## Sanitizers and memory diagnostics	Existing sanitizer workflow; no deliberate native UB and no observed learner diagnosis.
 test-design	TAUGHT	READING_ONLY	test-design	course/lessons/w4/quality-gate.md ## Test-driven workflow	Existing W4 real learner tests; independent human test-design quality remains unmeasured.
-string-map-complexity	GAP	CANDIDATE_PROBE	iterator-invalidation;lookup-complexity	web/server/knowledge_lab.py; dual Ubuntu replay pending	Actual capacity growth without invalid access; comparison count for sorted 64-element sample, not a timing benchmark.
+string-map-complexity	GAP	VERIFIED_PROBE	iterator-invalidation;lookup-complexity	PR #77 CI 45851638346, dual Ubuntu 56/56 actual replay	Actual capacity growth without invalid access; comparison count for sorted 64-element sample, not a timing benchmark.

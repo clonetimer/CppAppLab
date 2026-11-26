@@ -768,6 +768,8 @@ jobs:
         run: |
           bash scripts/ci_prepare_ubuntu_apt.sh
           sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake libgtest-dev
+      - name: Install optional CP4 browser compiler profile
+        run: sudo apt-get -o Acquire::Retries=3 install -y g++-13
       - name: Build real CppAppLab learning engine
         run: |
           cmake -S . -B build-browser \
@@ -824,6 +826,30 @@ jobs:
             ${{ runner.temp }}/cppapplab-browser-artifacts/learning-space-*-geometry.json
             ${{ runner.temp }}/cppapplab-browser-artifacts/course-coverage-matrix.csv
             ${{ runner.temp }}/cppapplab-browser-artifacts/lesson-usability-audit.csv
+          if-no-files-found: error
+          retention-days: 14
+
+  modern-cpp:
+    name: CP4 real C++20/23 GCC 13 profile (Ubuntu 24.04)
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Install separately versioned modern compiler
+        run: |
+          bash scripts/ci_prepare_ubuntu_apt.sh
+          sudo apt-get -o Acquire::Retries=3 install -y g++-13
+          /usr/bin/g++-13 --version
+      - name: Replay actual modern feature and failure/repair contracts
+        run: python3 scripts/verify_modern_cpp.py --output modern-cpp-evidence.json
+      - name: Upload actual compiler evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: modern-cpp-gcc13-${{ github.sha }}
+          path: modern-cpp-evidence.json
           if-no-files-found: error
           retention-days: 14
 

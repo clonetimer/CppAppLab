@@ -1159,7 +1159,7 @@ class WebWorkbenchTests(unittest.TestCase):
 
     def test_knowledge_catalog_and_fixed_routes(self) -> None:
         data = self.request("/api/v1/knowledge")
-        self.assertEqual(len(data["topics"]), 23)
+        self.assertEqual(len(data["topics"]), 32)
         self.assertTrue(all(topic["course_available"] == (topic["task"] == "w1.hello-world")
                             for topic in data["topics"]))
         route = "/api/v1/knowledge/ownership/run"
@@ -1197,9 +1197,9 @@ class KnowledgeProbeTests(unittest.TestCase):
             tasks = {row[0]: row[4] for row in csv.reader(
                 (line for line in stream if line.strip() and not line.startswith("#")), delimiter="\t")}
         self.assertEqual(len(tasks), 23)
-        self.assertEqual(len(knowledge_lab.TOPICS), 23)
-        self.assertEqual(len(knowledge_lab.BY_ID), 23)
-        self.assertEqual(sum(bool(topic["phase"]) for topic in knowledge_lab.TOPICS), 21)
+        self.assertEqual(len(knowledge_lab.TOPICS), 32)
+        self.assertEqual(len(knowledge_lab.BY_ID), 32)
+        self.assertEqual(sum(bool(topic["phase"]) for topic in knowledge_lab.TOPICS), 28)
         for topic in knowledge_lab.TOPICS:
             with self.subTest(topic=topic["id"]):
                 lesson = root / tasks[topic["task"]]
@@ -1210,13 +1210,34 @@ class KnowledgeProbeTests(unittest.TestCase):
             rows = list(csv.DictReader(stream, delimiter="\t"))
         self.assertEqual(len(rows), 51)
         self.assertEqual(len({row["id"] for row in rows}), len(rows))
-        self.assertEqual({row["probe"] for row in rows if row["probe"]}, set(knowledge_lab.BY_ID))
+        self.assertTrue({row["probe"] for row in rows if row["probe"]} <= set(knowledge_lab.BY_ID))
         self.assertEqual(sum(row["candidate"] == "NEW_PROBE_PENDING" for row in rows), 14)
         for row in rows:
             with self.subTest(audit=row["id"]):
                 self.assertIn(row["anchor"], (root / row["source"]).read_text(encoding="utf-8"))
                 if row["candidate"] == "NEW_PROBE_PENDING":
                     self.assertTrue(knowledge_lab.BY_ID[row["probe"]]["phase"])
+
+        with (root / "course/CPP17_KNOWLEDGE_CLOSURE.tsv").open(encoding="utf-8") as stream:
+            closure = list(csv.DictReader(stream, delimiter="\t"))
+        self.assertEqual([(row["id"], row["baseline"]) for row in closure],
+                         [(row["id"], row["baseline"]) for row in rows])
+        self.assertEqual({probe for row in closure for probe in row["probes"].split(";") if probe},
+                         set(knowledge_lab.BY_ID))
+        candidates = [row for row in closure if row["status"] == "CANDIDATE_PROBE"]
+        self.assertEqual({row["id"] for row in candidates},
+                         {"control-flow", "string-view", "template-specialization", "type-traits",
+                          "memory-order", "string-map-complexity"})
+        self.assertEqual(sum(len(row["probes"].split(";")) for row in candidates), 7)
+        for row in closure:
+            if row["baseline"] in {"MENTIONED", "GAP"}:
+                self.assertIn(row["status"], {"VERIFIED_PROBE", "CANDIDATE_PROBE"})
+            if row["status"] == "READING_ONLY":
+                self.assertTrue(all(not knowledge_lab.BY_ID[probe]["phase"]
+                                    for probe in row["probes"].split(";")))
+            if row["status"] in {"VERIFIED_PROBE", "CANDIDATE_PROBE"}:
+                self.assertTrue(all(knowledge_lab.BY_ID[probe]["phase"]
+                                    for probe in row["probes"].split(";")))
 
     def test_fixed_probes_use_real_toolchain(self) -> None:
         for topic in knowledge_lab.TOPICS:
@@ -1238,6 +1259,9 @@ class KnowledgeProbeTests(unittest.TestCase):
                         self.assertEqual(last["phase"], topic["phase"])
                         self.assertGreater(last["exit_code"], 0)
                         self.assertIn(topic["marker"].lower(), last["output"].lower())
+                    print("[knowledge replay] " + topic["id"] + "/" + variant +
+                          " phase=" + last["phase"] + " exit=" + str(last["exit_code"]) +
+                          " observed=" + str(result["observed"]), flush=True)
 
 
 class PathValidationTests(unittest.TestCase):

@@ -120,3 +120,6 @@ Optional, independent C++17 knowledge experiments. Open **查知识** in the wor
 
 - **constexpr** — constexpr functions can participate in constant expressions; static_assert checks a compile-time condition, not runtime input. Predict when the failed assertion is diagnosed.
 - **atomic-access** — An atomic object is not copyable; load and fetch_add access its value. This does not prove a multi-variable invariant or memory-order correctness. Predict copying the atomic object and compare explicit atomic operations.
+- **template-specialization** — Observe primary, explicit and pointer partial specializations. The fixed compile-time assertion rejects a missing explicit specialization.
+- **type-traits** — Use is_integral_v and enable_if to remove an unsuitable candidate. The call still fails if there is no viable overload.
+- **memory-order** — Compare deterministic early publication with payload-before-release. Both sides use atomics and an explicit acknowledgment; no race or probabilistic relaxed failure. This is not an exhaustive weak-memory proof.

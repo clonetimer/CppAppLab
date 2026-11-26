@@ -174,3 +174,6 @@ Optional, independent C++17 knowledge experiments. Open **查知识** in the wor
 - **map-lookup** — map::operator[] inserts a value for a missing key. find can inspect without modifying the map. Predict the collection size after a missing-key lookup.
 - **optional** — optional represents absence explicitly; value() throws on empty, value_or gives a chosen fallback. Predict empty value() and then compare value_or.
 - **variant** — variant stores one alternative; get<T> throws for a different active type; get_if can be checked for null. Predict get<int> while string is active.
+- **string-view** — A string_view borrows storage; it is not a value snapshot. Observe defined mutation while the owner remains alive, then copy to std::string. Never dereference a dangling view.
+- **iterator-invalidation** — Force real vector growth and detect invalidation before any invalid access. Keep a logical index across reserve and reacquire an iterator; insert/erase can change index identity.
+- **lookup-complexity** — Count actual comparisons on 64 sorted values; the local seven-comparison budget illustrates this case, not universal runtime performance. Explain the sorted-range precondition.

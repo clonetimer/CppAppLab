@@ -130,3 +130,4 @@ Optional, independent C++17 knowledge experiments. Open **查知识** in the wor
 - **narrowing** — List initialization rejects implicit narrowing such as double to int. Choose the type first; convert explicitly only when appropriate. Predict whether int value{42.5} compiles.
 - **value-reference** — Value parameters are copies; mutable reference parameters alias the caller's object. The negative program safely observes the unchanged original. Predict the original value after bump(int value).
 - **scoped-enum** — Scoped enum values do not implicitly become integers. Use typed comparisons; explicitly convert only at a numeric boundary. Predict whether an enum class value initializes int directly.
+- **control-flow** — Separate a loop into a small function and decide whether its upper bound is inclusive. The negative result is 30; the correct sum of even numbers through 12 is 42.

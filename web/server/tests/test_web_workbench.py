@@ -15,6 +15,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from cppapplab_web import CppAppLabWebServer, MAX_LESSON_BYTES, ServiceSession, safe_relative_path
+import knowledge_lab
 
 
 FAKE_ENGINE = """#!/usr/bin/env python3
@@ -1154,6 +1155,60 @@ class WebWorkbenchTests(unittest.TestCase):
     def test_static_shell_is_served(self) -> None:
         page = self.request("/")
         self.assertIn("CppAppLab", page)
+
+
+    def test_knowledge_catalog_and_fixed_routes(self) -> None:
+        data = self.request("/api/v1/knowledge")
+        self.assertEqual(len(data["topics"]), 9)
+        self.assertTrue(all(not topic["course_available"] for topic in data["topics"]))
+        route = "/api/v1/knowledge/ownership/run"
+        self.assertEqual(self.request_error(route, "POST", {"variant": "failure"}), 403)
+        for value in ({"variant": "arbitrary"}, {"variant": "failure", "command": "other"},
+                      {"variant": "repair", "source": "other"}, {"variant": ["repair"]}):
+            self.assertEqual(self.request_error(route, "POST", value, self.token, self.base_url), 400)
+        self.assertEqual(self.request_error("/api/v1/knowledge/lifetime-sanitizers/run", "POST",
+                                            {"variant": "failure"}, self.token, self.base_url), 404)
+        self.assertEqual(self.request_error("/api/v1/knowledge/unknown/run", "POST",
+                                            {"variant": "repair"}, self.token, self.base_url), 404)
+        self.assertTrue(self.server.knowledge_lock.acquire(blocking=False))
+        try:
+            self.assertEqual(self.request_error(route, "POST", {"variant": "failure"},
+                                                self.token, self.base_url), 409)
+        finally:
+            self.server.knowledge_lock.release()
+        self.assertEqual(list(self.workspace_root.iterdir()), [])
+
+    def test_knowledge_http_replays_actual_gcc_without_creating_workspace(self) -> None:
+        route = "/api/v1/knowledge/linkage/run"
+        for variant in ("failure", "repair"):
+            result = self.request(route, "POST", {"variant": variant}, self.token, self.base_url)
+            self.assertTrue(result["observed"], result)
+            self.assertFalse(result["course_acceptance"])
+            self.assertIn("g++", result["steps"][0]["command"])
+        self.assertEqual(list(self.workspace_root.iterdir()), [])
+
+
+class KnowledgeProbeTests(unittest.TestCase):
+    def test_fixed_probes_use_real_toolchain(self) -> None:
+        for topic in knowledge_lab.TOPICS:
+            if not topic["phase"]:
+                continue
+            for variant in ("failure", "repair"):
+                with self.subTest(topic=topic["id"], variant=variant):
+                    result = knowledge_lab.run(topic["id"], variant)
+                    self.assertTrue(result["observed"], result)
+                    self.assertFalse(result["course_acceptance"])
+                    last = result["steps"][-1]
+                    self.assertFalse(last["timed_out"])
+                    self.assertFalse(last["unavailable"])
+                    if variant == "repair":
+                        self.assertEqual(last["phase"], "run")
+                        self.assertEqual(last["exit_code"], 0)
+                        self.assertEqual(last["output"].strip(), "42")
+                    else:
+                        self.assertEqual(last["phase"], topic["phase"])
+                        self.assertGreater(last["exit_code"], 0)
+                        self.assertIn(topic["marker"].lower(), last["output"].lower())
 
 
 class PathValidationTests(unittest.TestCase):

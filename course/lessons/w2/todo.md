@@ -164,3 +164,13 @@ The learner's own build files and tests are not used as the acceptance authority
 - [ ] The CLI persists changes across separate invocations.
 - [ ] All 18 fixed unit tests and the CLI workflow test pass.
 - [ ] The learner source remains unchanged during the acceptance check.
+
+## Independent STL and value-type practice
+
+Optional, independent C++17 knowledge experiments. Open **查知识** in the workbench, search the identifier or term, predict the result, run the fixed failure and repair, then explain and try a separate transfer. These probes do not change the original project or formal acceptance. Full fixed sources and actual outputs are in the knowledge panel.
+
+- **lambda-capture** — A lambda with an empty capture list cannot use an outer automatic variable. Choose value/reference capture deliberately. Predict why the empty capture fails.
+- **fixed-array** — The size N is part of std::array<T,N>'s type; it cannot accept more initializers than N. Predict the result of two initializers for one element.
+- **map-lookup** — map::operator[] inserts a value for a missing key. find can inspect without modifying the map. Predict the collection size after a missing-key lookup.
+- **optional** — optional represents absence explicitly; value() throws on empty, value_or gives a chosen fallback. Predict empty value() and then compare value_or.
+- **variant** — variant stores one alternative; get<T> throws for a different active type; get_if can be checked for null. Predict get<int> while string is active.

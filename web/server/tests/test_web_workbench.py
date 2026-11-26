@@ -1159,8 +1159,9 @@ class WebWorkbenchTests(unittest.TestCase):
 
     def test_knowledge_catalog_and_fixed_routes(self) -> None:
         data = self.request("/api/v1/knowledge")
-        self.assertEqual(len(data["topics"]), 9)
-        self.assertTrue(all(not topic["course_available"] for topic in data["topics"]))
+        self.assertEqual(len(data["topics"]), 23)
+        self.assertTrue(all(topic["course_available"] == (topic["task"] == "w1.hello-world")
+                            for topic in data["topics"]))
         route = "/api/v1/knowledge/ownership/run"
         self.assertEqual(self.request_error(route, "POST", {"variant": "failure"}), 403)
         for value in ({"variant": "arbitrary"}, {"variant": "failure", "command": "other"},
@@ -1189,6 +1190,34 @@ class WebWorkbenchTests(unittest.TestCase):
 
 
 class KnowledgeProbeTests(unittest.TestCase):
+    def test_audit_anchors_and_bilingual_knowledge_links(self) -> None:
+        import csv
+        root = Path(__file__).resolve().parents[3]
+        with (root / "course/tasks.tsv").open(encoding="utf-8") as stream:
+            tasks = {row[0]: row[4] for row in csv.reader(
+                (line for line in stream if line.strip() and not line.startswith("#")), delimiter="\t")}
+        self.assertEqual(len(tasks), 23)
+        self.assertEqual(len(knowledge_lab.TOPICS), 23)
+        self.assertEqual(len(knowledge_lab.BY_ID), 23)
+        self.assertEqual(sum(bool(topic["phase"]) for topic in knowledge_lab.TOPICS), 21)
+        for topic in knowledge_lab.TOPICS:
+            with self.subTest(topic=topic["id"]):
+                lesson = root / tasks[topic["task"]]
+                translated = lesson.with_name(lesson.stem + ".zh-CN.md")
+                self.assertIn("## " + topic["en"], lesson.read_text(encoding="utf-8").splitlines())
+                self.assertIn("## " + topic["zh"], translated.read_text(encoding="utf-8").splitlines())
+        with (root / "course/CPP17_KNOWLEDGE_COVERAGE.tsv").open(encoding="utf-8") as stream:
+            rows = list(csv.DictReader(stream, delimiter="\t"))
+        self.assertEqual(len(rows), 51)
+        self.assertEqual(len({row["id"] for row in rows}), len(rows))
+        self.assertEqual({row["probe"] for row in rows if row["probe"]}, set(knowledge_lab.BY_ID))
+        self.assertEqual(sum(row["candidate"] == "NEW_PROBE_PENDING" for row in rows), 14)
+        for row in rows:
+            with self.subTest(audit=row["id"]):
+                self.assertIn(row["anchor"], (root / row["source"]).read_text(encoding="utf-8"))
+                if row["candidate"] == "NEW_PROBE_PENDING":
+                    self.assertTrue(knowledge_lab.BY_ID[row["probe"]]["phase"])
+
     def test_fixed_probes_use_real_toolchain(self) -> None:
         for topic in knowledge_lab.TOPICS:
             if not topic["phase"]:

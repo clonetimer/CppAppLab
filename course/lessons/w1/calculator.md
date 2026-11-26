@@ -121,3 +121,12 @@ The learner's own build files and tests are not used as the acceptance authority
 - [ ] All seven platform-owned unit tests pass.
 - [ ] Both command-line smoke cases pass.
 - [ ] The learner source has not changed during the check.
+
+## Independent language fundamentals
+
+Optional, independent C++17 knowledge experiments. Open **查知识** in the workbench, search the identifier or term, predict the result, run the fixed failure and repair, then explain and try a separate transfer. These probes do not change the original project or formal acceptance. Full fixed sources and actual outputs are in the knowledge panel.
+
+- **scope** — A block-local name is not visible outside its declaring block. Place the result in the narrowest enclosing scope that needs it. Predict whether value can be accessed after the block ends.
+- **narrowing** — List initialization rejects implicit narrowing such as double to int. Choose the type first; convert explicitly only when appropriate. Predict whether int value{42.5} compiles.
+- **value-reference** — Value parameters are copies; mutable reference parameters alias the caller's object. The negative program safely observes the unchanged original. Predict the original value after bump(int value).
+- **scoped-enum** — Scoped enum values do not implicitly become integers. Use typed comparisons; explicitly convert only at a numeric boundary. Predict whether an enum class value initializes int directly.

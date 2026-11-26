@@ -323,6 +323,15 @@ async function knowledgeEvidence(page, baseUrl) {
   await page.waitForFunction(() => document.querySelector("#knowledge-status").textContent.includes("修复程序实际运行成功"), null, { timeout: 45000 });
   assert.match(await page.locator("#knowledge-output").textContent(), /\[run\] exit=0\n42/);
   await page.screenshot({ path: path.join(ARTIFACTS, "knowledge-repair-1440x1000.png") });
+  await page.locator("#knowledge-search").fill("narrowing");
+  await page.locator('#knowledge-results [data-topic="narrowing"]').click();
+  await page.locator("#knowledge-failure").click();
+  await page.waitForFunction(() => document.querySelector("#knowledge-status").textContent.includes("已观察到预期失败"), null, { timeout: 45000 });
+  assert.match(await page.locator("#knowledge-output").textContent(), /narrowing conversion/);
+  await page.locator("#knowledge-repair").click();
+  await page.waitForFunction(() => document.querySelector("#knowledge-status").textContent.includes("修复程序实际运行成功"), null, { timeout: 45000 });
+  assert.match(await page.locator("#knowledge-output").textContent(), /\[run\] exit=0\n42/);
+  await page.screenshot({ path: path.join(ARTIFACTS, "knowledge-cp3-narrowing-1440x1000.png") });
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
   await page.screenshot({ path: path.join(ARTIFACTS, "knowledge-mobile-390x844.png") });
@@ -349,7 +358,7 @@ async function knowledgeEvidence(page, baseUrl) {
   await clickWorkbenchAction(page, "#save-button");
   await page.waitForFunction(() => document.querySelector("#save-state").textContent === "已保存到本地工作区");
   await page.locator("#console-toggle").click();
-  report.knowledge = { actual_failure: true, actual_repair: true, real_course_error_link: true, course_history_unchanged: true };
+  report.knowledge = { actual_failure: true, actual_repair: true, real_course_error_link: true, course_history_unchanged: true, cp3_narrowing_replay: true };
 }
 
 async function initialLayout(page) {

@@ -274,6 +274,8 @@ async function themeEvidence(page) {
   // recorded as-is; the candidate must retain readable status and prose.
   for (const colorScheme of ["light", "dark"]) {
     await page.emulateMedia({ colorScheme });
+    // Capture the settled palette, not a finite hover/color transition.
+    await page.waitForTimeout(200);
     await resetReadingPosition(page);
     const actual = await page.evaluate(() => {
       const read = (selector) => {
@@ -303,6 +305,51 @@ async function themeEvidence(page) {
   }
   if (!BASELINE) assert.notEqual(report.theme_checks[0].body.background, report.theme_checks[1].body.background);
   await page.emulateMedia({ colorScheme: "light" });
+}
+
+async function knowledgeEvidence(page, baseUrl) {
+  const editor = page.locator("#source-editor");
+  const source = await editor.inputValue();
+  const priorResult = await page.locator("#check-result").textContent();
+  const history = await (await page.request.get(baseUrl + "/api/v1/tasks/w1.calculator/history")).json();
+  await page.locator("#knowledge-open").click();
+  await page.locator("#knowledge-search").fill("unique_ptr");
+  await page.locator('#knowledge-results [data-topic="ownership"]').click();
+  await page.locator("#knowledge-failure").click();
+  await page.waitForFunction(() => document.querySelector("#knowledge-status").textContent.includes("已观察到预期失败"), null, { timeout: 45000 });
+  assert.match(await page.locator("#knowledge-output").textContent(), /deleted function/);
+  await page.screenshot({ path: path.join(ARTIFACTS, "knowledge-failure-1440x1000.png") });
+  await page.locator("#knowledge-repair").click();
+  await page.waitForFunction(() => document.querySelector("#knowledge-status").textContent.includes("修复程序实际运行成功"), null, { timeout: 45000 });
+  assert.match(await page.locator("#knowledge-output").textContent(), /\[run\] exit=0\n42/);
+  await page.screenshot({ path: path.join(ARTIFACTS, "knowledge-repair-1440x1000.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  await page.screenshot({ path: path.join(ARTIFACTS, "knowledge-mobile-390x844.png") });
+  await page.locator("#knowledge-close").click();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  assert.equal(await editor.inputValue(), source);
+  assert.equal(await page.locator("#check-result").textContent(), priorResult);
+  assert.deepEqual(await (await page.request.get(baseUrl + "/api/v1/tasks/w1.calculator/history")).json(), history);
+  // Real course error, not a fabricated response: the fixed calculator
+  // fixture compiles the learner's actual file with a write through const.
+  const bad = '#include "calculator.hpp"\nnamespace cppapplab::calculator {\nResult calculate(Operation, double, double) noexcept { const int n = 1; n = 2; return {}; }\n}\n';
+  await editor.fill(bad);
+  await clickWorkbenchAction(page, "#build-button");
+  await page.waitForFunction(() => document.querySelector("#console-dock").dataset.state === "error", null, { timeout: 60000 });
+  await page.locator('#diagnostics-list [data-knowledge-topic="const-reference"]').click();
+  await page.waitForFunction(() => document.querySelector("#knowledge-topic-title").textContent.includes("const"));
+  assert.match(await page.locator("#knowledge-explanation").textContent(), /引用/);
+  await page.screenshot({ path: path.join(ARTIFACTS, "knowledge-real-error-1440x1000.png") });
+  // The linked lesson is the current course; do not replace unsaved buffers.
+  await page.locator("#knowledge-lesson").click();
+  await page.waitForFunction(() => !document.querySelector("#knowledge-dialog").open);
+  assert.equal(await editor.inputValue(), bad);
+  await editor.fill(source);
+  await clickWorkbenchAction(page, "#save-button");
+  await page.waitForFunction(() => document.querySelector("#save-state").textContent === "已保存到本地工作区");
+  await page.locator("#console-toggle").click();
+  report.knowledge = { actual_failure: true, actual_repair: true, real_course_error_link: true, course_history_unchanged: true };
 }
 
 async function initialLayout(page) {
@@ -490,6 +537,10 @@ async function main() {
     await themeEvidence(environment.page);
     await pendingBuild(environment.page);
     await compilerFailure(environment.page);
+    if (!BASELINE) {
+      await environment.page.setViewportSize({ width: 1440, height: 1000 });
+      await knowledgeEvidence(environment.page, environment.baseUrl);
+    }
     const calculatorHistory = await (await environment.page.request.get(environment.baseUrl + "/api/v1/tasks/w1.calculator/history")).json();
     assert.equal(calculatorHistory.count, 0, "ordinary build/error interactions must not manufacture formal acceptance");
     assert.deepEqual(environment.pageErrors, [], "learning-space interactions must not throw browser errors");

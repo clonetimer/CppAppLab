@@ -31,6 +31,8 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import unquote, urlsplit
 
+import knowledge_lab
+
 
 MAX_CATALOG_BYTES = 64 * 1024
 MAX_LESSON_BYTES = 64 * 1024
@@ -412,6 +414,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         self.service_sessions: dict[str, ServiceSession] = {}
         self.service_failures: dict[str, dict[str, Any]] = {}
         self.service_lock = threading.RLock()
+        self.knowledge_lock = threading.Lock()
         self.service_janitor_stop = threading.Event()
         super().__init__(address, CppAppLabRequestHandler)
         self.service_janitor = threading.Thread(
@@ -1336,6 +1339,9 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             )
             self._send_json(200, {"markdown": read_bounded(guide, MAX_LESSON_BYTES, "Learning guide")})
             return
+        if parts == ["knowledge"]:
+            self._send_json(200, {"topics": knowledge_lab.catalog(set(self.server.task_by_id))})
+            return
         if parts == ["health"]:
             exit_code, output = self.server.run_cli(["--version"], timeout=5.0)
             self._send_json(200 if exit_code == 0 else 503, {
@@ -1537,6 +1543,20 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             self._validate_mutation()
             parsed = urlsplit(self.path)
             parts = [unquote(part) for part in parsed.path.split("/") if part]
+            if len(parts) == 5 and parts[:3] == ["api", "v1", "knowledge"] and parts[4] == "run":
+                topic = knowledge_lab.BY_ID.get(parts[3])
+                if not topic or not topic["phase"]:
+                    raise ApiError(404, "Unknown runnable knowledge experiment.")
+                value = self._read_json()
+                if set(value) != {"variant"} or value["variant"] not in ("failure", "repair"):
+                    raise ApiError(400, "Only the fixed failure/repair variant is accepted.")
+                if not self.server.knowledge_lock.acquire(blocking=False):
+                    raise ApiError(409, "A knowledge experiment is already running.")
+                try:
+                    self._send_json(200, knowledge_lab.run(parts[3], value["variant"]))
+                finally:
+                    self.server.knowledge_lock.release()
+                return
             if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "tasks" and parts[4] == "start":
                 self._start_task(parts[3])
                 return

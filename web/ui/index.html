@@ -26,7 +26,10 @@
       <aside class="sidebar">
         <div class="sidebar-heading">
           <div><span class="eyebrow">LEARNING PATH</span><h2>课程目录</h2></div>
-          <span id="task-count" class="count-pill">23</span>
+          <div class="sidebar-tools">
+            <span id="task-count" class="count-pill">23</span>
+            <button id="knowledge-open" type="button" class="secondary-button" aria-haspopup="dialog" aria-controls="knowledge-dialog">查知识</button>
+          </div>
         </div>
         <label class="search-box">
           <span aria-hidden="true">⌕</span>
@@ -245,6 +248,36 @@
       <button id="guide-retry" type="button" class="secondary-button" hidden>重新读取指南</button>
     </div>
     <div id="guide-content" class="markdown-content guide-content" tabindex="0" aria-label="中文学习指南正文"></div>
+  </dialog>
+  <dialog id="knowledge-dialog" class="learning-guide knowledge-dialog" aria-labelledby="knowledge-title">
+    <div class="guide-heading">
+      <h2 id="knowledge-title">知识导航 · 失败与修复</h2>
+      <button id="knowledge-close" type="button" class="secondary-button">返回工作台</button>
+    </div>
+    <div class="knowledge-body">
+      <aside class="knowledge-sidebar" aria-label="知识点目录">
+        <label for="knowledge-search">搜索中英文知识点</label>
+        <input id="knowledge-search" type="search" placeholder="unique_ptr、链接、CMake…" autocomplete="off">
+        <p id="knowledge-count" role="status"></p>
+        <nav id="knowledge-results" aria-label="匹配知识点"></nav>
+      </aside>
+      <article id="knowledge-detail" class="knowledge-detail" hidden>
+        <h3 id="knowledge-topic-title"></h3>
+        <p id="knowledge-explanation"></p>
+        <h4>先预测</h4><p id="knowledge-prediction"></p>
+        <button id="knowledge-lesson" class="secondary-button" type="button"></button>
+        <section id="knowledge-experiment" hidden aria-label="固定独立实验">
+          <div class="knowledge-pair">
+            <section><h4>预期失败</h4><pre id="knowledge-bad"></pre><button id="knowledge-failure" type="button" class="secondary-button">运行失败示例</button></section>
+            <section><h4>修复示例</h4><pre id="knowledge-good"></pre><button id="knowledge-repair" type="button" class="primary-button">运行修复示例</button></section>
+          </div>
+          <pre id="knowledge-output" tabindex="0" aria-label="实际命令与输出"></pre>
+          <p class="knowledge-note">独立临时目录、固定源码及命令。不执行你当前的代码，不写入正式课程验收。</p>
+        </section>
+        <h4>迁移练习</h4><p id="knowledge-transfer"></p>
+      </article>
+    </div>
+    <p id="knowledge-status" class="knowledge-status" role="status" aria-live="polite"></p>
   </dialog>
 </body>
 </html>

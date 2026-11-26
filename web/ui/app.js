@@ -1530,6 +1530,172 @@
     ) || null;
   }
 
+  // Only actual diagnostic-shaped lines are matched. Ordinary user output
+  // and unrecognized errors get no invented knowledge association.
+  function diagnosticTopics(output) {
+    const clean = String(output).replace(/\x1b\[[0-9;]*m/g, "");
+    const lines = clean.split(/\r?\n/);
+    const result = new Set();
+    for (const line of lines) {
+      if (/\b(?:undefined reference to|unresolved external symbol)\b/i.test(line) &&
+          /(?:ld:|linker|\.o:|collect2:)/i.test(line)) result.add("linkage");
+      if (/^CMake Error\b/i.test(line)) result.add("cmake-target");
+      if (/^==\d+==ERROR: AddressSanitizer:|:\d+:\d+: runtime error:/i.test(line)) result.add("lifetime-sanitizers");
+      if (!/:\d+(?::\d+)?:\s*(?:fatal )?error:/i.test(line)) continue;
+      if (/read.only|const-qualified|discards qualifiers/i.test(line)) result.add("const-reference");
+      if (/deleted function|deleted constructor/i.test(line)) result.add("ownership");
+      if (/no matching function|conflicting types.*(?:parameter|deduc)/i.test(line)) result.add("template-deduction");
+      if (/no match for.*operator.*\+/i.test(line)) result.add("iterators");
+    }
+    return [...result];
+  }
+
+  const knowledgeState = { topics: null, active: "", running: false, request: null, session: 0, opener: null };
+  function knowledgeMatches(query) {
+    const words = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    return (knowledgeState.topics || []).filter((topic) => {
+      const haystack = [topic.title, topic.terms, topic.id, topic.task].join(" ").toLocaleLowerCase();
+      return words.every((word) => haystack.includes(word));
+    });
+  }
+
+  function renderKnowledge() {
+    const topics = knowledgeMatches($("knowledge-search").value);
+    const results = $("knowledge-results");
+    results.replaceChildren();
+    for (const topic of topics) {
+      const control = document.createElement("button");
+      control.type = "button";
+      control.className = "knowledge-topic";
+      control.dataset.topic = topic.id;
+      control.setAttribute("aria-current", String(topic.id === knowledgeState.active));
+      control.textContent = topic.title + (topic.phase ? "" : "（阅读）");
+      control.addEventListener("click", () => selectKnowledge(topic.id));
+      results.append(control);
+    }
+    $("knowledge-count").textContent = topics.length + " 个知识点";
+    const topic = (knowledgeState.topics || []).find((item) => item.id === knowledgeState.active);
+    $("knowledge-detail").hidden = !topic;
+    if (!topic) return;
+    $("knowledge-topic-title").textContent = topic.title;
+    $("knowledge-explanation").textContent = topic.explanation;
+    $("knowledge-prediction").textContent = topic.prediction;
+    $("knowledge-transfer").textContent = topic.transfer;
+    $("knowledge-lesson").textContent = "打开课程：" + topic.task + " · " +
+      (state.lessonLanguage === "en" ? topic.en : topic.zh);
+    $("knowledge-lesson").hidden = !topic.course_available;
+    $("knowledge-experiment").hidden = !topic.phase;
+    if (topic.phase) {
+      $("knowledge-bad").textContent = topic.bad;
+      $("knowledge-good").textContent = topic.good;
+    }
+    $("knowledge-failure").disabled = knowledgeState.running || !state.csrfToken;
+    $("knowledge-repair").disabled = knowledgeState.running || !state.csrfToken;
+  }
+
+  function selectKnowledge(id) {
+    knowledgeState.active = id;
+    $("knowledge-output").textContent = "";
+    $("knowledge-status").textContent = knowledgeState.running ? "上一实验尚未结束；完成后可再次运行。" : "";
+    renderKnowledge();
+  }
+
+  async function openKnowledge(opener, topicId = "") {
+    const dialog = $("knowledge-dialog");
+    if (!dialog.open) {
+      knowledgeState.opener = opener;
+      knowledgeState.session += 1;
+      dialog.showModal();
+    }
+    $("knowledge-search").value = "";
+    knowledgeState.active = topicId;
+    $("knowledge-output").textContent = "";
+    $("knowledge-status").textContent = "正在读取知识点…";
+    const session = knowledgeState.session;
+    try {
+      if (!knowledgeState.topics) {
+        if (!knowledgeState.request) {
+          knowledgeState.request = api("/api/v1/knowledge").then((data) => {
+            knowledgeState.topics = data.topics;
+          }).finally(() => { knowledgeState.request = null; });
+        }
+        await knowledgeState.request;
+      }
+      if (!dialog.open || session !== knowledgeState.session) return;
+      if (!knowledgeState.active) knowledgeState.active = knowledgeState.topics[0]?.id || "";
+      $("knowledge-status").textContent = knowledgeState.running ? "实验正在运行。" : "";
+      renderKnowledge();
+      $("knowledge-search").focus({ preventScroll: true });
+    } catch (error) {
+      if (dialog.open && session === knowledgeState.session) $("knowledge-status").textContent = "知识点暂未读取：" + error.message;
+    }
+  }
+
+  function closeKnowledge() {
+    const dialog = $("knowledge-dialog");
+    if (!dialog.open) return;
+    knowledgeState.session += 1;
+    dialog.close();
+    const opener = knowledgeState.opener;
+    knowledgeState.opener = null;
+    if (opener?.isConnected && !opener.hidden) opener.focus({ preventScroll: true });
+    else $("knowledge-open").focus({ preventScroll: true });
+  }
+
+  async function runKnowledge(variant) {
+    if (knowledgeState.running || !state.csrfToken) return;
+    const topic = (knowledgeState.topics || []).find((item) => item.id === knowledgeState.active);
+    if (!topic?.phase) return;
+    knowledgeState.running = true;
+    const session = knowledgeState.session;
+    $("knowledge-status").textContent = "正在本机运行固定实验…";
+    $("knowledge-output").textContent = "";
+    renderKnowledge();
+    try {
+      const data = await api("/api/v1/knowledge/" + encodeURIComponent(topic.id) + "/run", {
+        method: "POST", body: { variant }
+      });
+      if (!$("knowledge-dialog").open || session !== knowledgeState.session || topic.id !== knowledgeState.active) return;
+      $("knowledge-output").textContent = data.steps.map((step) =>
+        "$ " + step.command.join(" ") + "\n[" + step.phase + "] exit=" + step.exit_code +
+        (step.timed_out ? " · timeout" : "") + "\n" + step.output).join("\n\n");
+      $("knowledge-status").textContent = data.observed
+        ? (variant === "failure" ? "已观察到预期失败。" : "修复程序实际运行成功。") + " 不改变课程验收。"
+        : "未观察到预期结果，请查看真实输出。";
+    } catch (error) {
+      if ($("knowledge-dialog").open && session === knowledgeState.session && topic.id === knowledgeState.active)
+        $("knowledge-status").textContent = "实验未完成：" + error.message;
+    } finally {
+      knowledgeState.running = false;
+      if ($("knowledge-dialog").open) renderKnowledge();
+    }
+  }
+
+  async function openKnowledgeLesson() {
+    const topic = (knowledgeState.topics || []).find((item) => item.id === knowledgeState.active);
+    if (!topic?.course_available || state.busy) {
+      $("knowledge-status").textContent = "当前课程正在处理或教材暂不可用。";
+      return;
+    }
+    const session = knowledgeState.session;
+    if (state.task?.id !== topic.task && !await selectTask(topic.task, { focusEditor: false })) {
+      if ($("knowledge-dialog").open && session === knowledgeState.session)
+        $("knowledge-status").textContent = "课程未切换；请先检查当前保存状态。";
+      return;
+    }
+    if (!$("knowledge-dialog").open || session !== knowledgeState.session) return;
+    closeKnowledge();
+    closeHint(false);
+    const heading = Array.from(ui.lesson.querySelectorAll("h2,h3"))
+      .find((item) => [topic.zh, topic.en].includes(item.textContent.trim()));
+    if (heading) {
+      const offset = heading.getBoundingClientRect().top - ui.lesson.getBoundingClientRect().top;
+      ui.lesson.scrollTo({ top: ui.lesson.scrollTop + offset - 12, behavior: "auto" });
+      heading.setAttribute("tabindex", "-1");
+      heading.focus({ preventScroll: true });
+    } else ui.taskTitle.focus();
+  }
+
   function renderDiagnostics(output) {
     ui.diagnostics.replaceChildren();
     const byPath = new Map();
@@ -1589,7 +1755,21 @@
       }
       ui.diagnostics.append(button);
     }
-    ui.diagnostics.hidden = diagnostics.length === 0;
+    const related = diagnosticTopics(output);
+    for (const id of related) {
+      const control = document.createElement("button");
+      control.type = "button";
+      control.className = "secondary-button diagnostic-knowledge";
+      control.dataset.knowledgeTopic = id;
+      control.textContent = "查知识与对照实验：" + ({
+        linkage: "声明与链接", "const-reference": "const 与引用", ownership: "所有权与移动",
+        "template-deduction": "模板与重载", iterators: "迭代器", "cmake-target": "CMake",
+        "lifetime-sanitizers": "生命周期与 Sanitizer"
+      }[id] || id);
+      control.addEventListener("click", () => openKnowledge(control, id));
+      ui.diagnostics.append(control);
+    }
+    ui.diagnostics.hidden = diagnostics.length === 0 && related.length === 0;
   }
 
   async function openDiagnostic(path, line, column) {
@@ -2495,6 +2675,13 @@
     ui.lessonLanguage.value = state.lessonLanguage;
     ui.lessonLanguage.addEventListener("change", () => changeLessonLanguage(ui.lessonLanguage.value));
     ui.search.addEventListener("input", renderCourseList);
+    $("knowledge-open")?.addEventListener("click", () => openKnowledge($("knowledge-open")));
+    $("knowledge-close")?.addEventListener("click", closeKnowledge);
+    $("knowledge-dialog")?.addEventListener("cancel", (event) => { event.preventDefault(); closeKnowledge(); });
+    $("knowledge-search")?.addEventListener("input", renderKnowledge);
+    $("knowledge-failure")?.addEventListener("click", () => runKnowledge("failure"));
+    $("knowledge-repair")?.addEventListener("click", () => runKnowledge("repair"));
+    $("knowledge-lesson")?.addEventListener("click", openKnowledgeLesson);
     ui.guideButton.addEventListener("click", () => openLearningGuide(ui.guideButton));
     ui.welcomeGuide.addEventListener("click", () => openLearningGuide(ui.welcomeGuide));
     ui.guideClose.addEventListener("click", () => closeLearningGuide());

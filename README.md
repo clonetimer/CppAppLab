@@ -18,7 +18,7 @@ bash scripts/start-web-workbench.sh
 
 用浏览器打开 [http://127.0.0.1:8765/](http://127.0.0.1:8765/)。第一次学习可以先点 **第一次使用？先看四步说明**，关闭指南后点 **继续学习**，再点 **开始 / 继续学习** 打开第一关的工作区。按课程要求修改 `src/main.cpp`，依次点击 **构建**、**运行程序** 和 **正式验收**。验收通过后，结果显示 **PASS**。之后可从顶栏随时打开 **中文学习指南**。
 
-**知识导航（当前开发候选）：** 课程目录旁「查知识」支持中英文术语搜索，关联现有讲义和固定独立失败/修复实验。真实编译诊断可进入对应知识点；实验不影响正式课程验收或源码。生命周期与并发先阅读已有课程，不执行故意未定义行为。
+**知识导航：** 课程目录旁「查知识」支持中英文术语搜索，关联现有讲义和固定独立失败/修复实验。真实编译诊断可进入对应知识点；实验不影响正式课程验收或源码。生命周期与并发先阅读已有课程，不执行故意未定义行为。
 
 **教程语言：**“课程讲解”标题旁的 **教程语言** 可以选择 **中文 / English**。首次打开默认中文，浏览器会记住选择；课程目录、正文、故障排查、验收要求和三级提示随之切换。全部 23 节课的中英文内容随项目提供，无需在线翻译。切换语言不会重载工作区或改变代码、运行输出与验收进度；代码示例、文件名和命令保留原样。此设置控制课程内容，操作界面仍使用中文。
 
@@ -177,3 +177,6 @@ The Router CLI is a one-request application-layer demonstration. The W8-D5 serve
 ## Scope boundary
 
 CppAppLab is an educational engineering lab, not a production C++ framework or a substitute for official compiler, CMake, Linux, or protocol documentation. Course acceptance focuses on correctness, resource lifetime, error handling, reproducible builds, tests, and explainable design decisions.
+
+
+当前 CP3 候选的基础知识覆盖审计见 [审计报告](docs/CPP17_KNOWLEDGE_COVERAGE.md)（51 项抽样，14 组新增实验待验收；正式任务数不变）。

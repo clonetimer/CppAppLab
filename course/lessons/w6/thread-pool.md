@@ -113,3 +113,10 @@ Coverage includes argument validation, void/value returns, move-only inputs, exc
 - [ ] submit racing shutdown results in accepted-and-completed or rejected work, never silent loss.
 - [ ] Destructor joins all workers.
 - [ ] All 34 fixed checks pass.
+
+## Independent compile-time and concurrency primitives
+
+Optional, independent C++17 knowledge experiments. Open **查知识** in the workbench, search the identifier or term, predict the result, run the fixed failure and repair, then explain and try a separate transfer. These probes do not change the original project or formal acceptance. Full fixed sources and actual outputs are in the knowledge panel.
+
+- **constexpr** — constexpr functions can participate in constant expressions; static_assert checks a compile-time condition, not runtime input. Predict when the failed assertion is diagnosed.
+- **atomic-access** — An atomic object is not copyable; load and fetch_add access its value. This does not prove a multi-variable invariant or memory-order correctness. Predict copying the atomic object and compare explicit atomic operations.

@@ -148,3 +148,11 @@ The platform compiles your implementation against its own copies of both headers
 - [ ] Malformed loads do not partially replace manager state.
 - [ ] The CLI retains add/list/done/remove behavior.
 - [ ] All 30 unit tests and the CLI workflow test pass.
+
+## Independent object-model practice
+
+Optional, independent C++17 knowledge experiments. Open **查知识** in the workbench, search the identifier or term, predict the result, run the fixed failure and repair, then explain and try a separate transfer. These probes do not change the original project or formal acceptance. Full fixed sources and actual outputs are in the knowledge panel.
+
+- **virtual-override** — override enforces the exact virtual signature, including const. Observe dispatch through a base reference. Predict whether a non-const override matches a const virtual method.
+- **abstract-interface** — A class with an unimplemented pure virtual member is abstract. A concrete derived type implements the interface. Predict direct construction of an abstract type.
+- **weak-ownership** — weak_ptr does not extend shared ownership; lock returns an empty shared_ptr after the object expires. Predict the result of lock after the last owner leaves scope.

@@ -1544,7 +1544,7 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             parsed = urlsplit(self.path)
             parts = [unquote(part) for part in parsed.path.split("/") if part]
             if len(parts) == 5 and parts[:3] == ["api", "v1", "knowledge"] and parts[4] == "run":
-                topic = knowledge_lab.BY_ID.get(parts[3])
+                topic = knowledge_lab.ALL_BY_ID.get(parts[3])
                 if not topic or not topic["phase"]:
                     raise ApiError(404, "Unknown runnable knowledge experiment.")
                 value = self._read_json()

@@ -1,12 +1,12 @@
 # CppAppLab
 
-> **Platform direction update (2026-11-19):** The product target is now **native Windows 11 only**. Migration is in progress; the current `main` implementation still requires Ubuntu 22.04/24.04 under WSL2 and is **not yet Windows-native**. `Start-CppAppLab.cmd` currently hands off to WSL, and the existing Windows CI does not build the C++ product natively. See the [Windows-native migration inventory](docs/WINDOWS_NATIVE_MIGRATION_INVENTORY.md) and ADR-0007 in [architecture decisions](docs/DECISIONS.md).
+> **当前主线（2026-11-26）：教学体验与现代化课程。** Windows 原生迁移已暂停，PR #67 保留为 Draft；当前可操作环境仍为 Ubuntu 22.04/24.04（Windows 用户通过 WSL2），`Start-CppAppLab.cmd` 仍启动 WSL 浏览器工作台。不得把 Windows 启动器检查当作原生 C++ 验收。参见[现代化教学计划](docs/MODERN_CPP_LEARNING_PLAN.md)及[历史架构决策](docs/DECISIONS.md)。
 
 **CppAppLab** is a hands-on C++ learning and engineering-practice platform. It takes a learner from the first C++ program to maintainable systems software, concurrent programs, TCP services, and an HTTP/1.1 server.
 
 ## 开始学习：先看课程，再做练习
 
-CppAppLab 当前发布了 **23 个可操作的 W1–W9 学习任务**。
+CppAppLab 当前主干包含 **23 个可操作的 W1–W9 学习任务**。
 
 ### 已构建源码项目：打开网页工作台
 
@@ -28,7 +28,7 @@ bash scripts/start-web-workbench.sh
 
 当前发布范围为 W1–W9 已实现任务；W9-A4/A5 及 W10–W12 尚处于路线图中。环境要求与部署说明保留在后文，供确有需要时查询。
 
-## Current implementation baseline (legacy during Windows-native migration)
+## Current implementation baseline
 
 - **Host:** Windows 11 with WSL2
 - **Linux:** Ubuntu 22.04 LTS or Ubuntu 24.04 LTS
@@ -39,9 +39,9 @@ bash scripts/start-web-workbench.sh
 - **Version control:** Git and GitHub
 - **Tests:** GoogleTest and CTest
 - **Quality:** compiler warnings, clang-format, clang-tidy, ASan and UBSan
-- **CI:** Ubuntu build/test matrices; the Windows runner currently validates only legacy WSL launcher syntax and handoff.
+- **CI:** Ubuntu build/test matrices; the Windows runner currently validates only WSL launcher syntax and handoff.
 
-The values above describe the legacy implementation still present on `main`; they are not the target architecture. The accepted target is a native Windows 11 application with no WSL, Ubuntu, Bash, Linux kernel or POSIX compatibility runtime in the product path. Do not claim native Windows support until the native toolchain, runtime, learner package and all 23 task contracts pass the Windows acceptance gates.
+The values above describe the current supported source-build/CI environment. Native Windows migration is paused; no native Windows C++ build or target-machine qualification is claimed. Do not remove WSL support or lower acceptance requirements to imply native portability.
 
 ## Current learning tasks
 
@@ -98,7 +98,7 @@ Set `CPPAPPLAB_STATE_DIR` to move this state directory. The course catalog is ma
 
 ## Learning path
 
-The current lesson labels below describe the legacy WSL implementation. Migration will retain the same learning outcomes and formal acceptance contracts while replacing Linux-only API exercises with native Windows equivalents.
+The current learning path intentionally teaches Linux/POSIX APIs for the systems and networking exercises. Future independent modern C++ labs must preserve the C++17 baseline and formal acceptance contracts.
 
 | Stage | Focus | Main work product |
 |---|---|---|
@@ -112,7 +112,7 @@ The current lesson labels below describe the legacy WSL implementation. Migratio
 | W8 | HTTP/1.1, parser, response, routing, static files, event loop | Educational HTTP server |
 | W9 | Chunked transfer, framing safety, URL and filesystem security, parser fuzzing | Hardened HTTP protocol stack |
 
-The detailed course map and acceptance boundaries live in [course/CURRICULUM.md](course/CURRICULUM.md). The platform migration will retain all 23 task outcomes while replacing Linux-specific implementation exercises with equivalent Windows-native APIs; tasks and formal acceptance must not be removed or weakened. W2's Todo task exercises STL algorithms and durable file I/O through a cumulative command-line application.
+The detailed course map and acceptance boundaries live in [course/CURRICULUM.md](course/CURRICULUM.md). The current 23-task catalog and its acceptance contracts remain frozen while teaching usability is improved. W2's Todo task exercises STL algorithms and durable file I/O through a cumulative command-line application.
 
 ## Project principles
 
@@ -127,7 +127,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 
 ## Repository status
 
-W1–W7 and W8-D1–D6-D3 are merged into `main`. The HTTP reference server includes sequential Keep-Alive, connection deadlines and quotas, graceful shutdown, structured JSONL logs, runtime metrics, and operational load/soak regression coverage. PR #25 merged as `597a8a0`; final-head CI run `42991542424` passed all three jobs. The six D6 learner tasks were merged via PR #26 (`c8f8e03`). Final PR-head CI run `42998617546` passed GCC, ASan/UBSan and clang-tidy. The 49 task-mode acceptance checks passed in all three configurations, and the root learning-engine suite passed 60/60. Legacy Windows 11 + WSL2 target acceptance, offline dependency packaging, and release qualification were tracked separately; WSL2 acceptance does not satisfy the new native-Windows target. W9-A1 (`w9.http-chunked`) was merged via PR #27 (`bfb3f3f`). Final PR-head CI run `43006252261` passed all three jobs: root 62/62 and W9 fixed fixture 35/35 under GCC, ASan/UBSan and clang-tidy. The real learning-engine workflow also created the W9 workspace, invoked `cppapplab check` and verified current PASS evidence. W9-A2 (`w9.request-target`) was merged via PR #28 (`cca1c80`). Final PR-head CI run `43008862704` passed all three jobs: root 64/64, W9-A1 35/35 and W9-A2 39/39 under GCC, ASan/UBSan and clang-tidy. Both W9 learner workspaces passed the real `cppapplab check` workflow. W9-A3 (`w9.static-root`) merged via PR #29 (`f741e34`). Final PR-head CI run `43013017702` passed all three jobs: root 66/66 and W9-A3 34/34 under GCC, ASan/UBSan and clang-tidy. W9-A1 remained 35/35 and W9-A2 39/39; the real `cppapplab check` workflow verified current PASS evidence for A3. The learner usability improvements are now merged through PRs #30–#32: guided task progression, an interactive home, actionable failure diagnostics, title-keyword task search and granular progress states. Final PR #32 CI run `43024884781` passed root GCC/CTest 75/75, root ASan/UBSan 75/75, clang-format, clang-tidy and the configured W8/W9 fixture gates. PR #33 (986e9ff) adds a Windows double-click launcher for WSL2 Ubuntu 24.04; final CI run 43031051999 passed GCC 75/75, ASan/UBSan 75/75, clang-format/clang-tidy, Windows PowerShell 5.1/7 syntax checks and Bash bootstrap path/checkout-safety tests. That WSL2 launcher work is now legacy and does not count as native Windows acceptance. See:
+W1–W7 and W8-D1–D6-D3 are merged into `main`. The HTTP reference server includes sequential Keep-Alive, connection deadlines and quotas, graceful shutdown, structured JSONL logs, runtime metrics, and operational load/soak regression coverage. PR #25 merged as `597a8a0`; final-head CI run `42991542424` passed all three jobs. The six D6 learner tasks were merged via PR #26 (`c8f8e03`). Final PR-head CI run `42998617546` passed GCC, ASan/UBSan and clang-tidy. The 49 task-mode acceptance checks passed in all three configurations, and the root learning-engine suite passed 60/60. Legacy Windows 11 + WSL2 target acceptance, offline dependency packaging, and release qualification were tracked separately; WSL2 acceptance does not satisfy the new native-Windows target. W9-A1 (`w9.http-chunked`) was merged via PR #27 (`bfb3f3f`). Final PR-head CI run `43006252261` passed all three jobs: root 62/62 and W9 fixed fixture 35/35 under GCC, ASan/UBSan and clang-tidy. The real learning-engine workflow also created the W9 workspace, invoked `cppapplab check` and verified current PASS evidence. W9-A2 (`w9.request-target`) was merged via PR #28 (`cca1c80`). Final PR-head CI run `43008862704` passed all three jobs: root 64/64, W9-A1 35/35 and W9-A2 39/39 under GCC, ASan/UBSan and clang-tidy. Both W9 learner workspaces passed the real `cppapplab check` workflow. W9-A3 (`w9.static-root`) merged via PR #29 (`f741e34`). Final PR-head CI run `43013017702` passed all three jobs: root 66/66 and W9-A3 34/34 under GCC, ASan/UBSan and clang-tidy. W9-A1 remained 35/35 and W9-A2 39/39; the real `cppapplab check` workflow verified current PASS evidence for A3. The learner usability improvements are now merged through PRs #30–#32: guided task progression, an interactive home, actionable failure diagnostics, title-keyword task search and granular progress states. Final PR #32 CI run `43024884781` passed root GCC/CTest 75/75, root ASan/UBSan 75/75, clang-format, clang-tidy and the configured W8/W9 fixture gates. PR #33 (986e9ff) adds a Windows double-click launcher for WSL2 Ubuntu 24.04; final CI run 43031051999 passed GCC 75/75, ASan/UBSan 75/75, clang-format/clang-tidy, Windows PowerShell 5.1/7 syntax checks and Bash bootstrap path/checkout-safety tests. That WSL2 launcher remains the current Windows entry and does not constitute native Windows acceptance. See:
 - [Architecture](docs/ARCHITECTURE.md)
 - [Learning engine design](docs/LEARNING_ENGINE_DESIGN.md)
 - [Roadmap](docs/ROADMAP.md)

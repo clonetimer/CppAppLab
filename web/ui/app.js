@@ -988,6 +988,10 @@
     state.editorInstance = null;
   }
 
+  function editorTheme() {
+    return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "vs-dark" : "vs";
+  }
+
   async function ensureEditorReady() {
     if (state.editorReady) return state.editorReady;
     state.editorReady = new Promise((resolve) => {
@@ -1026,7 +1030,7 @@
               state.editorInstance = state.monaco.editor.create(ui.monacoContainer, {
                 value: "",
                 language: "cpp",
-                theme: "vs-dark",
+                theme: editorTheme(),
                 automaticLayout: true,
                 minimap: { enabled: false },
                 fontSize: 14,
@@ -2484,6 +2488,10 @@
   }
 
   function bindEvents() {
+    // Match Monaco to the system palette without recreating models or buffers.
+    window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change", () => {
+      state.monaco?.editor?.setTheme?.(editorTheme());
+    });
     ui.lessonLanguage.value = state.lessonLanguage;
     ui.lessonLanguage.addEventListener("change", () => changeLessonLanguage(ui.lessonLanguage.value));
     ui.search.addEventListener("input", renderCourseList);

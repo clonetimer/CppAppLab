@@ -179,4 +179,4 @@ The Router CLI is a one-request application-layer demonstration. The W8-D5 serve
 CppAppLab is an educational engineering lab, not a production C++ framework or a substitute for official compiler, CMake, Linux, or protocol documentation. Course acceptance focuses on correctness, resource lifetime, error handling, reproducible builds, tests, and explainable design decisions.
 
 
-当前 CP3 候选的基础知识覆盖审计见 [审计报告](docs/CPP17_KNOWLEDGE_COVERAGE.md)（51 项抽样，14 组新增实验待验收；正式任务数不变）。
+基础知识覆盖审计见 [审计报告](docs/CPP17_KNOWLEDGE_COVERAGE.md)（51 项 W1–W6 抽样；第一轮 21 组已验证，第二轮 7 组待验收；正式任务数不变）。

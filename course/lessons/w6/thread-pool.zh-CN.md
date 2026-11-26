@@ -120,3 +120,6 @@ ctest --test-dir build --output-on-failure
 
 - **constexpr · constexpr 与编译期断言** — constexpr 函数可以用于常量表达式，但并非每次调用都在编译期执行。static_assert 在编译时检查常量条件，而运行期输入需要另行检查。 加法结果不符合 static_assert 时会在哪个阶段失败？ 给固定容量与类型属性增加可解释的编译期约束。
 - **atomic-access · atomic 的显式读写** — std::atomic<T> 本身不可复制；load 读取值，fetch_add 做原子读改写。原子计数不自动保护多个变量的不变量。本实验不证明多线程内存序或无锁算法。 auto copy = atomic_counter 为什么无法复制？ 用 atomic 计数单项指标，同时说明多字段一致性为什么仍可能需要锁。
+- **template-specialization · 类模板特化** — 主模板提供通用实现，显式特化替换某个完整类型的实现，偏特化匹配一类类型。本实验同时检查主模板、指针偏特化和 int 显式特化；缺失特化由真实 static_assert 拒绝。 Answer<int> 与 Answer<int*> 分别匹配哪一个定义？ 为不同输入类型写小型 trait，先用 static_assert 验证匹配，再考虑模板接口扩展。
+- **type-traits · 类型特征与 SFINAE** — std::is_integral_v 是编译期类型谓词，enable_if 在条件为假时使该模板候选不参与重载。替换失败不总是硬错误；没有可用候选时调用仍然报错。 只允许整数的 twice 为什么不能接收 double？ 增加一个适合浮点数的独立重载，并对整数、浮点和不支持类型分别验证。
+- **memory-order · release/acquire 与发布顺序** — release 写入和读取该值的 acquire 建立同步关系，发布前的写入应对获取方可见。负例故意先发布 ready，再等待消费者确认才写 payload；全部共享通信采用原子，确定性观察旧值 0，无数据竞争。修复先写 payload 再 release。此对照证明发布顺序的重要性，不声称 relaxed 必然失败或验证所有硬件内存模型。 如果先置 ready 再写数据，即便 ready 使用 release/acquire，消费者一定能读到新数据吗？ 画出两个线程的 happens-before 链；指出哪些操作受同步保护，何时应优先使用互斥锁。

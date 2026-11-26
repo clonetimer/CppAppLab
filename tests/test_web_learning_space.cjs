@@ -332,6 +332,20 @@ async function knowledgeEvidence(page, baseUrl) {
   await page.waitForFunction(() => document.querySelector("#knowledge-status").textContent.includes("修复程序实际运行成功"), null, { timeout: 45000 });
   assert.match(await page.locator("#knowledge-output").textContent(), /\[run\] exit=0\n42/);
   await page.screenshot({ path: path.join(ARTIFACTS, "knowledge-cp3-narrowing-1440x1000.png") });
+  await page.locator("#knowledge-search").fill("memory order");
+  await page.locator('#knowledge-results [data-topic="memory-order"]').click();
+  await page.locator("#knowledge-failure").click();
+  await page.waitForFunction(() => document.querySelector("#knowledge-status").textContent.includes("已观察到预期失败"), null, { timeout: 45000 });
+  assert.match(await page.locator("#knowledge-output").textContent(), /published before payload: 0/);
+  await page.screenshot({ path: path.join(ARTIFACTS, "knowledge-cp3-publication-failure.png") });
+  await page.locator("#knowledge-repair").click();
+  await page.waitForFunction(() => document.querySelector("#knowledge-status").textContent.includes("修复程序实际运行成功"), null, { timeout: 45000 });
+  assert.match(await page.locator("#knowledge-output").textContent(), /\[run\] exit=0\n42/);
+  await page.screenshot({ path: path.join(ARTIFACTS, "knowledge-cp3-publication-repair.png") });
+  await page.locator("#knowledge-search").fill("gdb");
+  await page.locator('#knowledge-results [data-topic="gdb"]').click();
+  assert.equal(await page.locator("#knowledge-experiment").isVisible(), false);
+  assert.match(await page.locator("#knowledge-lesson").textContent(), /w4.quality-gate/);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
   await page.screenshot({ path: path.join(ARTIFACTS, "knowledge-mobile-390x844.png") });
@@ -358,7 +372,7 @@ async function knowledgeEvidence(page, baseUrl) {
   await clickWorkbenchAction(page, "#save-button");
   await page.waitForFunction(() => document.querySelector("#save-state").textContent === "已保存到本地工作区");
   await page.locator("#console-toggle").click();
-  report.knowledge = { actual_failure: true, actual_repair: true, real_course_error_link: true, course_history_unchanged: true, cp3_narrowing_replay: true };
+  report.knowledge = { actual_failure: true, actual_repair: true, real_course_error_link: true, course_history_unchanged: true, cp3_narrowing_replay: true, cp3_publication_replay: true, gdb_reading_only: true };
 }
 
 async function initialLayout(page) {

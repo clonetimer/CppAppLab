@@ -1,0 +1,52 @@
+id	baseline	status	probes	evidence	limitations
+linkage	PROBE_VERIFIED	VERIFIED_PROBE	linkage	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+const-reference	PROBE_VERIFIED	VERIFIED_PROBE	const-reference	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+ownership	PROBE_VERIFIED	VERIFIED_PROBE	ownership	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+template-deduction	PROBE_VERIFIED	VERIFIED_PROBE	template-deduction	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+iterators	PROBE_VERIFIED	VERIFIED_PROBE	iterators	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+bounds	PROBE_VERIFIED	VERIFIED_PROBE	bounds	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+cmake-target	PROBE_VERIFIED	VERIFIED_PROBE	cmake-target	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+lifetime-sanitizers	TAUGHT	READING_ONLY	lifetime-sanitizers	course/lessons/w4/quality-gate.md ## Sanitizers and memory diagnostics	Existing teaching and/or fixed engineering behavior; no independent probe claimed.
+concurrency	TAUGHT	READING_ONLY	concurrency	course/lessons/w5/system-lab.md ## Concurrency model	Existing teaching and/or fixed engineering behavior; no independent probe claimed.
+scope	GAP	VERIFIED_PROBE	scope	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+narrowing	GAP	VERIFIED_PROBE	narrowing	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+value-reference	MENTIONED	VERIFIED_PROBE	value-reference	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+scoped-enum	TAUGHT	VERIFIED_PROBE	scoped-enum	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+lambda-capture	MENTIONED	VERIFIED_PROBE	lambda-capture	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+fixed-array	MENTIONED	VERIFIED_PROBE	fixed-array	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+map-lookup	MENTIONED	VERIFIED_PROBE	map-lookup	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+optional	MENTIONED	VERIFIED_PROBE	optional	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+variant	GAP	VERIFIED_PROBE	variant	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+virtual-override	GAP	VERIFIED_PROBE	virtual-override	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+abstract-interface	GAP	VERIFIED_PROBE	abstract-interface	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+weak-ownership	MENTIONED	VERIFIED_PROBE	weak-ownership	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+constexpr	GAP	VERIFIED_PROBE	constexpr	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+atomic-access	MENTIONED	VERIFIED_PROBE	atomic-access	PR #76 CI 45840941341, dual Ubuntu real replay	Fixed independent probe, not human comprehension.
+arithmetic	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w1/calculator/tests/calculator_acceptance_test.cpp TEST(CalculatorAcceptanceTest, AddsPositiveOperands)	Observable fixed engineering behavior, not required language implementation or mastery.
+error-result	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w1/calculator/tests/calculator_acceptance_test.cpp TEST(CalculatorAcceptanceTest, ReportsDivisionByZero)	Observable fixed engineering behavior, not required language implementation or mastery.
+ordered-data	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w2/todo/tests/todo_acceptance_test.cpp TEST(TodoAcceptanceTest, NextIdUsesTheLargestExistingId)	Observable fixed engineering behavior, not required language implementation or mastery.
+duplicate-id	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w2/todo/tests/todo_acceptance_test.cpp TEST(TodoAcceptanceTest, AddRejectsDuplicateIds)	Observable fixed engineering behavior, not required language implementation or mastery.
+persistence	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w2/todo/tests/todo_acceptance_test.cpp TEST(TodoAcceptanceTest, SaveAndLoadRoundTripEscapedText)	Observable fixed engineering behavior, not required language implementation or mastery.
+transactional-load	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w2/todo/tests/todo_acceptance_test.cpp TEST(TodoAcceptanceTest, MalformedFileDoesNotReplaceExistingItems)	Observable fixed engineering behavior, not required language implementation or mastery.
+constructor-invariant	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w3/task-manager/tests/task_manager_acceptance_test.cpp TEST(TaskAcceptanceTest, TaskRejectsZeroId)	Observable fixed engineering behavior, not required language implementation or mastery.
+operator-overload	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w3/task-manager/tests/task_manager_acceptance_test.cpp TEST(TaskAcceptanceTest, TaskEqualityUsesStableIdentity)	Observable fixed engineering behavior, not required language implementation or mastery.
+deep-copy	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w3/task-manager/tests/task_manager_acceptance_test.cpp TEST(TaskAcceptanceTest, CopyConstructorDeepCopiesOwnedTasks)	Observable fixed engineering behavior, not required language implementation or mastery.
+move-manager	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w3/task-manager/tests/task_manager_acceptance_test.cpp TEST(TaskAcceptanceTest, MoveConstructorTransfersOwnershipAndEmptiesSource)	Observable fixed engineering behavior, not required language implementation or mastery.
+value-snapshot	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w3/task-manager/tests/task_manager_acceptance_test.cpp TEST(TaskAcceptanceTest, SnapshotReturnsValueCopiesOrderedById)	Observable fixed engineering behavior, not required language implementation or mastery.
+queue-fifo	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w5/system-lab/tests/system_lab_acceptance_test.cpp TEST(SystemLabAcceptanceTest, QueuePushPopPreservesFifoOrder)	Observable fixed engineering behavior, not required language implementation or mastery.
+queue-wakeup	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w5/system-lab/tests/system_lab_acceptance_test.cpp TEST(SystemLabAcceptanceTest, QueueWakesBlockedConsumerOnClose)	Observable fixed engineering behavior, not required language implementation or mastery.
+process-timeout	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w5/system-lab/tests/system_lab_acceptance_test.cpp TEST(SystemLabAcceptanceTest, ProcessKillsTimedOutChild)	Observable fixed engineering behavior, not required language implementation or mastery.
+future-exception	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w6/thread-pool/tests/thread_pool_acceptance_test.cpp TEST(ThreadPoolAcceptanceTest, PropagatesTaskExceptionThroughFuture)	Observable fixed engineering behavior, not required language implementation or mastery.
+forwarding	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w6/thread-pool/tests/thread_pool_acceptance_test.cpp TEST(ThreadPoolAcceptanceTest, SupportsMoveOnlyArguments)	Observable fixed engineering behavior, not required language implementation or mastery.
+backpressure	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w6/thread-pool/tests/thread_pool_acceptance_test.cpp TEST(ThreadPoolAcceptanceTest, BoundedSubmissionBlocksUntilCapacityIsAvailable)	Observable fixed engineering behavior, not required language implementation or mastery.
+shutdown-race	VERIFIED_BEHAVIOR	VERIFIED_BEHAVIOR		course/fixtures/w6/thread-pool/tests/thread_pool_acceptance_test.cpp TEST(ThreadPoolAcceptanceTest, SubmitRacingShutdownIsRejectedOrCompleted)	Observable fixed engineering behavior, not required language implementation or mastery.
+first-program	TAUGHT	TAUGHT_ONLY		course/lessons/w1/hello-world.md ## What the platform checks	Existing exact-output exercise; syntax comprehension not assessed.
+control-flow	MENTIONED	CANDIDATE_PROBE	control-flow	web/server/knowledge_lab.py; dual Ubuntu replay pending	Fixed inclusive-loop sample; not full control-flow syntax.
+string-view	MENTIONED	CANDIDATE_PROBE	string-view	web/server/knowledge_lab.py; dual Ubuntu replay pending	Defined alias/snapshot comparison; no execution of a dangling view.
+template-specialization	GAP	CANDIDATE_PROBE	template-specialization	web/server/knowledge_lab.py; dual Ubuntu replay pending	Primary, explicit and partial specialization sample.
+type-traits	GAP	CANDIDATE_PROBE	type-traits	web/server/knowledge_lab.py; dual Ubuntu replay pending	One type predicate and one constrained candidate; not all SFINAE rules.
+memory-order	GAP	CANDIDATE_PROBE	memory-order	web/server/knowledge_lab.py; dual Ubuntu replay pending	Actual two-thread deterministic early-publication fault; not a relaxed-order counterexample or exhaustive weak-memory test.
+gdb	TAUGHT	READING_ONLY	gdb	course/lessons/w4/quality-gate.md ## Debugging with GDB	Existing W4 commands; learner debugger observation remains unmeasured.
+sanitizer	TAUGHT	READING_ONLY	lifetime-sanitizers	course/lessons/w4/quality-gate.md ## Sanitizers and memory diagnostics	Existing sanitizer workflow; no deliberate native UB and no observed learner diagnosis.
+test-design	TAUGHT	READING_ONLY	test-design	course/lessons/w4/quality-gate.md ## Test-driven workflow	Existing W4 real learner tests; independent human test-design quality remains unmeasured.
+string-map-complexity	GAP	CANDIDATE_PROBE	iterator-invalidation;lookup-complexity	web/server/knowledge_lab.py; dual Ubuntu replay pending	Actual capacity growth without invalid access; comparison count for sorted 64-element sample, not a timing benchmark.

@@ -1545,13 +1545,16 @@
       if (/read.only|const-qualified|discards qualifiers/i.test(line)) result.add("const-reference");
       if (/deleted function|deleted constructor/i.test(line)) result.add("ownership");
       if (/no matching function|conflicting types.*(?:parameter|deduc)/i.test(line)) result.add("template-deduction");
+      if (/no type named.*enable_if|substitution failure/i.test(line)) result.add("type-traits");
       if (/no match for.*operator.*\+/i.test(line)) result.add("iterators");
       if (/narrowing conversion/i.test(line)) result.add("narrowing");
       if (/does not override/i.test(line)) result.add("virtual-override");
       if (/abstract type/i.test(line)) result.add("abstract-interface");
       if (/not captured/i.test(line)) result.add("lambda-capture");
       if (/not declared in this scope/i.test(line)) result.add("scope");
-      if (/static assertion failed/i.test(line)) result.add("constexpr");
+      if (/static assertion failed/i.test(line)) {
+        result.add(/missing explicit specialization/i.test(line) ? "template-specialization" : "constexpr");
+      }
     }
     return [...result];
   }
@@ -1772,7 +1775,8 @@
         "template-deduction": "模板与重载", iterators: "迭代器", "cmake-target": "CMake",
         "lifetime-sanitizers": "生命周期与 Sanitizer", narrowing: "列表初始化与窄化",
         "virtual-override": "虚函数与 override", "abstract-interface": "抽象类",
-        "lambda-capture": "Lambda 捕获", scope: "作用域", constexpr: "编译期断言"
+        "lambda-capture": "Lambda 捕获", scope: "作用域", constexpr: "编译期断言",
+        "template-specialization": "类模板特化", "type-traits": "类型特征与 SFINAE"
       }[id] || id);
       control.addEventListener("click", () => openKnowledge(control, id));
       ui.diagnostics.append(control);

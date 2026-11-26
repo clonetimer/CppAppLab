@@ -43,7 +43,7 @@
 
 ## ADR-0007 — Windows 11 native is the sole supported runtime target
 
-**Status:** Accepted; migration work is in progress.
+**Status:** Historical accepted direction; implementation paused by the user. See ADR-0008 for the active delivery boundary.
 
 **Decision:** The product target is Windows 11 running CppAppLab directly as a native Windows application. WSL, Ubuntu, a Linux kernel, Bash, apt/dpkg and a POSIX compatibility runtime are not product prerequisites. This decision supersedes the runtime-environment choices in ADR-0001 and ADR-0006; those records remain unchanged as historical decisions.
 
@@ -57,3 +57,13 @@
 **Migration policy:** Keep WSL/Ubuntu scripts and packages only as temporary legacy assets while the native path is being implemented. They must not be required by the Windows path. Remove or archive them only after the native Windows build, toolchain bootstrap, learner package and all 23 task acceptance contracts pass on a clean Windows 11 machine and in Windows CI.
 
 **Reason:** The product should install, build, run, teach and formally accept learner code on Windows without a hidden Linux environment. Portability must be demonstrated by native executables and platform-owned tests, not by a shell compatibility layer.
+
+## ADR-0008 — Freeze the current learning baseline; prioritize teaching usability
+
+**Status:** Active (2026-11-26).
+
+**Decision:** Preserve the 23 C++17 W1–W9 tasks, prerequisite graph, declared editable files and fixed platform-owned acceptance contracts. The active implementation is Ubuntu 22.04/24.04, including WSL2 startup on Windows. Suspend ADR-0007 implementation; keep the inventory, branch and Draft PR #67 intact. Do not claim a native Windows product or target-machine acceptance.
+
+**Reason:** The user's active priority is understandable browser teaching, using the lessons learned from RustAppLab, not an operating-system migration. UI changes may improve presentation but cannot change compiler, source fingerprint, workspace isolation or tests. Modern C++20/23 work, when started, must use separately verified compiler feature/toolchain profiles and not raise the C++17 baseline.
+
+**Execution:** See MODERN_CPP_LEARNING_PLAN.md. Freeze scope by phase, use actual browser/engine results and the same-state before/after captures, merge only after applicable CI. A passing program is not evidence of independent learner comprehension.

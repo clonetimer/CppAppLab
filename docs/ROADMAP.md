@@ -350,3 +350,7 @@ The goal is to move the learner-facing workflow into one browser tab while prese
 - Static frontend assets included in source/learner packages.
 - Target-machine acceptance on Windows 11 + WSL2 with Ubuntu 22.04 and 24.04.
 - Release qualification only after the existing CLI and all course acceptance gates remain green.
+
+## Active teaching modernization (2026-11-26)
+
+[Modern C++ learning and minimal workbench plan](MODERN_CPP_LEARNING_PLAN.md) is the active implementation sequence. P0 reconciles delivery direction and freezes the 23-task C++17 baseline. P1 refines the existing workbench; P2 builds concept navigation and compiler-error learning; P3–P6 are gated in the linked plan. Windows-native migration remains paused (ADR-0008); W9–W12 roadmap targets remain unimplemented until their real fixed contracts pass. Historical stage numbers above are unchanged.

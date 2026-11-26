@@ -154,7 +154,7 @@ async function startCalculator(page) {
 }
 
 const INVALID_SOURCE = '#include "calculator.hpp"\nnamespace cppapplab::calculator {\nResult calculate(Operation, double, double) noexcept { return CPPAPPLAB_SPACE_ERROR; }\n}\n';
-const report = { baseline: BASELINE, root: ROOT, scenarios: [] };
+const report = { baseline: BASELINE, root: ROOT, scenarios: [], theme_checks: [] };
 
 async function checkHistoryViewport(page) {
   await page.setViewportSize({ width: 1366, height: 768 });
@@ -267,6 +267,42 @@ function assertReadingSpace(metrics) {
     assert.ok(editor.visibleHeight >= minimum && editor.visibleWidth >= 300,
       "the source editor must expose useful code space alongside the lesson without scrolling: " + JSON.stringify(metrics));
   }
+}
+
+async function themeEvidence(page) {
+  // Real DOM/browser checks for both system themes. The historical page is
+  // recorded as-is; the candidate must retain readable status and prose.
+  for (const colorScheme of ["light", "dark"]) {
+    await page.emulateMedia({ colorScheme });
+    await resetReadingPosition(page);
+    const actual = await page.evaluate(() => {
+      const read = (selector) => {
+        const style = getComputedStyle(document.querySelector(selector));
+        return { color: style.color, background: style.backgroundColor, image: style.backgroundImage };
+      };
+      return {
+        body: read("body"), panel: read(".lesson-panel"), prose: read("#lesson-content"),
+        editor: read("#source-editor"), next: read("#workflow-action"),
+        theme: getComputedStyle(document.documentElement).colorScheme,
+        visibleWidth: document.documentElement.scrollWidth,
+        decorativeMark: getComputedStyle(document.querySelector(".brand-mark")).display,
+      };
+    });
+    report.theme_checks.push({ colorScheme, ...actual });
+    await evidence(page, "theme-" + colorScheme, { width: 1440, height: 1000 });
+    if (!BASELINE) {
+      assert.equal(actual.body.image, "none");
+      assert.equal(actual.next.image, "none");
+      assert.equal(actual.decorativeMark, "none");
+      assert.ok(contrastRatio(actual.body.color, actual.body.background) >= 4.5);
+      assert.ok(contrastRatio(actual.prose.color, actual.panel.background) >= 4.5);
+      assert.ok(contrastRatio(actual.editor.color, actual.editor.background) >= 4.5);
+      assert.ok(contrastRatio(actual.next.color, actual.next.background) >= 4.5);
+      assertReadingSpace(await measurements(page));
+    }
+  }
+  if (!BASELINE) assert.notEqual(report.theme_checks[0].body.background, report.theme_checks[1].body.background);
+  await page.emulateMedia({ colorScheme: "light" });
 }
 
 async function initialLayout(page) {
@@ -451,6 +487,7 @@ async function main() {
     assert.equal(history.count, 1, "Calculator must be unlocked by exactly one actual Hello acceptance");
     assert.equal(history.records[0].result, "PASS");
     await initialLayout(environment.page);
+    await themeEvidence(environment.page);
     await pendingBuild(environment.page);
     await compilerFailure(environment.page);
     const calculatorHistory = await (await environment.page.request.get(environment.baseUrl + "/api/v1/tasks/w1.calculator/history")).json();

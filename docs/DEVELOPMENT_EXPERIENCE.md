@@ -627,3 +627,25 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - **Why:** An isolated process runner proves the operating-system primitive, not the learning product. The real command line must create a learner workspace, load a lesson, compile the learner's actual source, run the fixed check, persist evidence and unlock the next task on Windows.
 - **Pitfalls:** Windows command lines arrive as UTF-16; narrow `main(char**)` can corrupt Chinese paths. Convert in `wmain` to UTF-8, then use `u8path` and UTF-8 process arguments. MinGW text-mode stdout may translate LF to CRLF when redirected; normalize only that platform conversion, never arbitrary output. Keep the Linux `gmtime_r`, `isatty`, `setenv` and process backend behind platform guards.
 - **Validation boundary:** Candidate PR #88. Existing Ubuntu source matrix and the new Windows root build/tests are pending. No Windows package, browser supervisor, MSVC, or W5–W9 native support is claimed.
+
+
+## 77. CP7-B2c — Separate Unicode learner state from native toolchain build cache
+
+- Verified prior #92 Windows run 45969984755: 25/25 native foundation,
+  Calculator 9/9 independent fixture, root executable built, 4/5 native
+  learning tests. W1 Chinese workspace actual acceptance succeeded.
+  W1–W4 chain failed at Calculator GoogleTest discovery; no W2–W4 PASS claimed.
+- Changed: native CMake builds use an owned per-workspace ASCII cache;
+  learner files, progress and evidence remain at their original Unicode
+  locations. Copy actual declared sources and platform-owned fixture/script,
+  preserve Ninja/GCC/CTest and exact test counts. Keep Linux fixture paths.
+  Added native-only execution boundary for W5–W9 and six real integration tests.
+- Why: CreateProcessW handles Unicode executable launch, but the toolchain's
+  internal discovery and subprocess paths are distinct. Do not move learner
+  workspaces to English paths merely to make a test pass.
+- Pitfalls: recent CTest emits "100% tests passed out of N" while older
+  versions include ", 0 tests failed"; validate exact line and count, not
+  a loose substring. Do not permit a wrong-output test to pass because
+  compilation itself failed. Use the CLI to start each successive task.
+- Evidence: fresh candidate CI required; no Windows package or real target
+  machine qualification.

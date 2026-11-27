@@ -49,6 +49,10 @@ def verify_extract(archive: Path, destination: Path) -> dict:
 
 
 def verify(archive: Path) -> None:
+    # Keep the test harness itself capable of printing the captured UTF-8 output.
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None:
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
     if os.name != "nt":
         raise RuntimeError("Native Windows host required.")
     expected_sha, expected_file = (archive.parent / "SHA256SUMS").read_text(
@@ -89,6 +93,7 @@ def verify(archive: Path) -> None:
         versions = batch("Start-CppAppLab.cmd", "--verify-tools")
         assert versions.returncode == 0, versions.stdout
         assert "x86_64-w64-mingw32" in versions.stdout and "gdb.exe:" in versions.stdout
+        assert "CppAppLab Windows 原生候选包" in versions.stdout, versions.stdout
         print(versions.stdout)
         cli = batch("cppapplab.cmd", "--version")
         assert cli.returncode == 0 and manifest["version"] in cli.stdout, cli.stdout

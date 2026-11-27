@@ -92,7 +92,7 @@ for deb in "${selected_debs[@]}"; do
     package_names["$identity"]=1
 done
 
-for required in build-essential cmake git gdb libgtest-dev python3; do
+for required in build-essential cmake git gdb libgtest-dev libssl-dev openssl python3; do
     found=0
     for deb in "${base_debs[@]}"; do
         [[ "$(dpkg-deb -f "$deb" Package)" == "$required" ]] && found=1
@@ -145,9 +145,9 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
     )
     apt-get "${APT_OPTIONS[@]}" update
     if [[ "$WITH_QUALITY" -eq 1 ]]; then
-        roots=(build-essential cmake git gdb libgtest-dev clang-format clang-tidy)
+        roots=(build-essential cmake git gdb libgtest-dev libssl-dev openssl clang-format clang-tidy)
     else
-        roots=(build-essential cmake git gdb libgtest-dev)
+        roots=(build-essential cmake git gdb libgtest-dev libssl-dev openssl)
     fi
     apt-get "${APT_OPTIONS[@]}" --simulate --no-install-recommends install "${roots[@]}"
     echo "[PASS] Clean-target local-repository APT simulation completed; no packages were installed."
@@ -161,7 +161,7 @@ else
     sudo apt-get --no-download --no-install-recommends install -y "${selected_debs[@]}"
 fi
 
-for tool in g++ cmake git gdb; do
+for tool in g++ cmake git gdb openssl; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "[FAIL] Installed bundle did not provide $tool." >&2
         exit 4
@@ -177,6 +177,10 @@ if [[ "$WITH_QUALITY" -eq 1 ]]; then
 fi
 if ! dpkg-query -W -f='${Status}' libgtest-dev 2>/dev/null | grep -q 'install ok installed'; then
     echo "[FAIL] libgtest-dev is not installed." >&2
+    exit 4
+fi
+if ! dpkg-query -W -f='${Status}' libssl-dev 2>/dev/null | grep -q 'install ok installed'; then
+    echo "[FAIL] libssl-dev is not installed." >&2
     exit 4
 fi
 echo "[PASS] CppAppLab offline dependencies installed."

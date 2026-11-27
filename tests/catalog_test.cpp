@@ -293,3 +293,16 @@ TEST(TaskCatalogTest, ExposesParserInvariantAndFuzzingExercise) {
     ASSERT_EQ(task->prerequisites.size(), 1U);
     EXPECT_EQ(task->prerequisites.front(), "w9.http-hardening");
 }
+
+TEST(TaskCatalogTest, ExposesTlsContextExercise) {
+    const cppapplab::Task* task = cppapplab::find_task("w10.tls-context");
+    ASSERT_NE(task, nullptr);
+    EXPECT_EQ(task->week, 10U);
+    EXPECT_EQ(task->order, 1U);
+    EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
+    ASSERT_EQ(task->source_files.size(), 1U);
+    EXPECT_EQ(task->source_files.front(), "src/tls_context.cpp");
+    EXPECT_EQ(task->expected_test_count, 17U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w9.http-fuzzing");
+}

@@ -43,7 +43,7 @@ if [[ -z "$VERSION" ]] || ! grep -Fq "Version: $VERSION" "$PACKAGE_ROOT/BUILD-IN
 fi
 
 LIST_OUTPUT="$("$PACKAGE_ROOT/cppapplab" list)"
-for task_id in w1.hello-world w8.http-operational-load w9.static-root w9.http-hardening w9.http-fuzzing; do
+for task_id in w1.hello-world w8.http-operational-load w9.static-root w9.http-hardening w9.http-fuzzing w10.tls-context; do
     if ! grep -Fq "$task_id" <<< "$LIST_OUTPUT"; then
         echo "[FAIL] Packaged catalog is missing $task_id." >&2
         exit 1

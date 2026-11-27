@@ -144,6 +144,7 @@ Your source files, progress and check history are kept between sessions. A chang
 
 - Missing packages: rerun bash scripts/quickstart.sh and approve the package installation prompt in the terminal. The prompt reads from the controlling terminal even if stdin was redirected; if no terminal is attached, setup stops without installing anything.
 - GoogleTest not found: install Ubuntu's libgtest-dev package; the quick-start script configures CMake to use the system package.
+- W10 OpenSSL dependency missing: install Ubuntu's libssl-dev and openssl packages. Earlier C++17 tasks keep their original contracts; the new TLS fixture uses the system OpenSSL 3.x implementation.
 - A task is locked: run ./build/cppapplab progress, then complete the named prerequisite and obtain a current PASS.
 - A workspace already exists: the guided command resumes a valid workspace. If the default path belongs to another task or is not a valid workspace, it chooses a numbered sibling path instead of overwriting it.
 - WSL2 or Ubuntu version mismatch: follow Environment setup and verify the distribution version in PowerShell with wsl -l -v.

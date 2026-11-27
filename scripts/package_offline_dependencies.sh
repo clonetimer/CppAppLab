@@ -198,7 +198,7 @@ for group in ("base", "quality"):
 identities = [(item["group"], item["name"], item["version"]) for item in packages]
 if len(identities) != len(set(identities)):
     raise SystemExit("Duplicate package identity found in the offline bundle.")
-for required in ("build-essential", "cmake", "git", "gdb", "libgtest-dev", "python3"):
+for required in ("build-essential", "cmake", "git", "gdb", "libgtest-dev", "libssl-dev", "openssl", "python3"):
     if not any(item["name"] == required and item["group"] == "base" for item in packages):
         raise SystemExit(f"Required package {required} is missing.")
 for optional in ("clang-format", "clang-tidy"):
@@ -219,7 +219,7 @@ manifest = {
 )
 (root / "PACKAGES.txt").write_text(
     "Required learner/build packages:\n"
-    + "\n".join(f"  - {name}" for name in ("build-essential", "cmake", "git", "gdb", "libgtest-dev"))
+    + "\n".join(f"  - {name}" for name in ("build-essential", "cmake", "git", "gdb", "libgtest-dev", "libssl-dev", "openssl"))
     + "\n\nOptional quality tools:\n"
     + "\n".join(f"  - {name}" for name in ("clang-format", "clang-tidy"))
     + "\n\nExact package names, versions, architectures, dependencies and hashes are in packages.lock.json.\n",

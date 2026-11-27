@@ -43,7 +43,7 @@ jobs:
       - name: Install C++ development toolchain
         run: |
           sudo apt-get -o Acquire::Retries=3 update
-          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake git gdb libgtest-dev
+          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake git gdb libgtest-dev libssl-dev openssl
       - name: Verify Ubuntu support matrix and toolchain
         run: |
           bash tests/test_ubuntu_support.sh
@@ -79,7 +79,7 @@ jobs:
       - name: Install build dependencies
         run: |
           bash scripts/ci_prepare_ubuntu_apt.sh
-          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake gdb libgtest-dev
+          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake gdb libgtest-dev libssl-dev openssl
       - name: Configure
         run: |
           cmake -S . -B build \
@@ -266,6 +266,14 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug
           cmake --build build-w9-oracle --parallel 2
           ctest --test-dir build-w9-oracle --output-on-failure --timeout 10
+      - name: W10 A1 real TLS context and certificate trust acceptance
+        run: |
+          openssl version
+          cmake -S course/fixtures/w10/tls-context -B build-w10-tls-context \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w10/tls-context/reference" \
+            -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-w10-tls-context --parallel 2
+          ctest --test-dir build-w10-tls-context --output-on-failure --timeout 10
       - name: Environment acceptance smoke test
         run: bash scripts/check_environment.sh
 
@@ -283,7 +291,7 @@ jobs:
       - name: Install build dependencies
         run: |
           bash scripts/ci_prepare_ubuntu_apt.sh
-          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake libgtest-dev
+          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake libgtest-dev libssl-dev openssl
       - name: Configure
         run: |
           cmake -S . -B build-sanitize \
@@ -522,6 +530,19 @@ jobs:
           cmake --build build-w9-oracle-sanitize --parallel 2
           ctest --test-dir build-w9-oracle-sanitize --output-on-failure --timeout 15
 
+      - name: W10 A1 TLS context sanitizer coverage
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1
+        run: |
+          cmake -S course/fixtures/w10/tls-context -B build-w10-tls-context-sanitize \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w10/tls-context/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-w10-tls-context-sanitize --parallel 2
+          ctest --test-dir build-w10-tls-context-sanitize --output-on-failure --timeout 15
+
   code-quality:
     name: Formatting and clang-tidy (${{ matrix.ubuntu }})
     if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation) }}
@@ -536,7 +557,7 @@ jobs:
       - name: Install quality tools
         run: |
           bash scripts/ci_prepare_ubuntu_apt.sh
-          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake libgtest-dev clang-format clang-tidy
+          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake libgtest-dev libssl-dev openssl clang-format clang-tidy
       - name: Check repository-wide formatting (manual full validation)
         if: github.event_name == 'workflow_dispatch'
         run: |
@@ -714,6 +735,15 @@ jobs:
           cmake --build build-w9-oracle-quality --parallel 2
           ctest --test-dir build-w9-oracle-quality --output-on-failure --timeout 10
 
+      - name: W10 A1 TLS context clang-tidy coverage
+        run: |
+          cmake -S course/fixtures/w10/tls-context -B build-w10-tls-context-quality \
+            -DCPPAPPLAB_LEARNER_SOURCE_DIR="$GITHUB_WORKSPACE/labs/w10/tls-context/reference" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_CLANG_TIDY=clang-tidy
+          cmake --build build-w10-tls-context-quality --parallel 2
+          ctest --test-dir build-w10-tls-context-quality --output-on-failure --timeout 10
+
   windows-launcher-syntax:
     name: Windows launcher syntax
     runs-on: windows-latest
@@ -825,7 +855,7 @@ jobs:
       - name: Install C++ development toolchain
         run: |
           bash scripts/ci_prepare_ubuntu_apt.sh
-          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake libgtest-dev
+          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake libgtest-dev libssl-dev openssl
       - name: Install optional CP4 browser compiler profile
         run: sudo apt-get -o Acquire::Retries=3 install -y g++-13
       - name: Build real CppAppLab learning engine
@@ -1009,7 +1039,7 @@ jobs:
           command -v dpkg-deb
           command -v python3
           command -v sha256sum
-          apt-cache policy build-essential cmake git gdb libgtest-dev clang-format clang-tidy
+          apt-cache policy build-essential cmake git gdb libgtest-dev libssl-dev openssl clang-format clang-tidy
           if [ -r /etc/apt/apt-mirrors.txt ]; then cat /etc/apt/apt-mirrors.txt; fi
           python3 tests/test_apt_uri_parser.py
           python3 -m py_compile packaging/resolve_apt_uris.py packaging/download_apt_uris.py scripts/build_local_apt_index.py

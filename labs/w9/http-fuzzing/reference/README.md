@@ -1,0 +1,1 @@
+Reference invariant oracle for the accepted A4 admission policy. The fixed driver is shared by the replay fixture and optional sanitizer-backed libFuzzer campaign. Passing is scoped to checked invariants and bounded inputs, not a security certification.

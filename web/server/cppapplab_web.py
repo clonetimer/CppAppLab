@@ -2019,7 +2019,7 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         })
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Start the local CppAppLab browser workbench.")
     default_root = Path(__file__).resolve().parents[2]
     parser.add_argument("--root", type=Path, default=default_root, help="CppAppLab repository/package root")
@@ -2027,7 +2027,8 @@ def main() -> int:
     parser.add_argument("--host", default="127.0.0.1", help="Loopback address only")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--workspace-root", type=Path, default=None)
-    args = parser.parse_args()
+    parser.add_argument("--open-browser", action="store_true", help="Open the local URL after successful bind")
+    args = parser.parse_args(argv)
 
     try:
         _validate_native_path_chain(args.root)
@@ -2085,6 +2086,13 @@ def main() -> int:
 
     signal.signal(signal.SIGTERM, request_shutdown)
     try:
+        if args.open_browser:
+            import webbrowser
+            try:
+                if not webbrowser.open(f"http://127.0.0.1:{server.server_port}/"):
+                    print("Open the local URL above in your browser.", flush=True)
+            except OSError:
+                print("Open the local URL above in your browser.", flush=True)
         server.serve_forever(poll_interval=0.25)
     except KeyboardInterrupt:
         print("\nStopping CppAppLab Web Workbench.", flush=True)

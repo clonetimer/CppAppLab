@@ -19,6 +19,8 @@
 #include <filesystem>
 #include <fstream>
 #include <future>
+#include <iterator>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <stdexcept>

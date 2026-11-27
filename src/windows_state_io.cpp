@@ -633,13 +633,27 @@ bool entry_exists(const Path& input) {
     fail("Inspect native workspace destination", error);
 }
 
+[[nodiscard]] bool path_is_within(const Path& child, const Path& parent) {
+    auto child_part = child.begin();
+    for (auto parent_part = parent.begin(); parent_part != parent.end();
+         ++parent_part, ++child_part) {
+        if (child_part == child.end() ||
+            CompareStringOrdinal(parent_part->c_str(), -1, child_part->c_str(), -1, TRUE) !=
+                CSTR_EQUAL) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void copy_tree(const Path& source, const Path& destination) {
     require_directory(source);
     require_directory(destination);
     const Path absolute_source = checked_absolute(source);
     const Path absolute_destination = checked_absolute(destination);
-    if (absolute_source == absolute_destination) {
-        throw std::runtime_error("Workspace template and destination must differ.");
+    if (path_is_within(absolute_destination, absolute_source) ||
+        path_is_within(absolute_source, absolute_destination)) {
+        throw std::runtime_error("Workspace template and destination must not contain one another.");
     }
     copy_tree_contents(absolute_source, absolute_destination);
 }

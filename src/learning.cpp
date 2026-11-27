@@ -104,6 +104,14 @@ bool packaged_launcher_configured() {
 }
 
 std::string suggested_cli_command() {
+#ifdef _WIN32
+    const auto launcher = windows_state_io::environment_path(L"CPPAPPLAB_LAUNCH_COMMAND");
+    if (launcher.has_value() && launcher->is_absolute() &&
+        windows_state_io::regular_exists(*launcher)) {
+        return "\"" + launcher->u8string() + "\"";
+    }
+    return "cppapplab.exe";
+#else
     const char* launcher = std::getenv("CPPAPPLAB_LAUNCH_COMMAND");
     if (launcher != nullptr && launcher[0] != '\0') {
         const std::filesystem::path path(launcher);
@@ -123,9 +131,13 @@ std::string suggested_cli_command() {
         }
     }
     return "./build/cppapplab";
+#endif
 }
 
 std::string read_lesson_file(const std::filesystem::path& path, std::size_t max_bytes) {
+#ifdef _WIN32
+    return windows_state_io::read(path, max_bytes);
+#else
     const auto status = std::filesystem::symlink_status(path);
     if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
         throw std::runtime_error("Course material must be a regular file: " + path.string());
@@ -146,6 +158,7 @@ std::string read_lesson_file(const std::filesystem::path& path, std::size_t max_
         throw std::runtime_error("Failed while reading course material.");
     }
     return content;
+#endif
 }
 
 std::string extract_hint(const std::string& content, unsigned level) {
@@ -185,6 +198,9 @@ void print_task_catalog() {
 }
 
 void ensure_real_directory(const std::filesystem::path& path) {
+#ifdef _WIN32
+    windows_state_io::ensure_directory(path);
+#else
     if (std::filesystem::exists(path) || std::filesystem::is_symlink(path)) {
         const auto status = std::filesystem::symlink_status(path);
         if (!std::filesystem::is_directory(status) || std::filesystem::is_symlink(status)) {
@@ -194,6 +210,7 @@ void ensure_real_directory(const std::filesystem::path& path) {
     } else {
         std::filesystem::create_directory(path);
     }
+#endif
 }
 
 std::vector<std::string> diagnostic_excerpt(const std::string& output) {

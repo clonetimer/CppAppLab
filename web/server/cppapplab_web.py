@@ -603,11 +603,12 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         match = re.fullmatch(r"CPPAPPLAB_NATIVE_PROBE_V1 (-?\d+) ([01]) ([01])", header)
         if code != 0 or not separator or match is None:
             return {"command": command, "exit_code": None, "output": output,
-                    "timed_out": code == 124, "unavailable": True}
+                    "timed_out": code == 124, "unavailable": True, "truncated": False}
         exit_code, timed, truncated = map(int, match.groups())
         return {"command": command, "exit_code": exit_code,
                 "output": payload + ("\n[output truncated]" if truncated else ""),
-                "timed_out": bool(timed), "unavailable": bool(truncated or exit_code in (126, 127))}
+                "timed_out": bool(timed), "truncated": bool(truncated),
+                "unavailable": bool(truncated or exit_code in (126, 127))}
 
     def workspace_for_task(self, task_id: str) -> tuple[Path, str]:
         task = self.task_by_id.get(task_id)
@@ -1526,8 +1527,10 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         if parts == ["modern-projects"]:
             projects = modern_projects.catalog()
             if NATIVE_WINDOWS:
-                projects = [dict(project, toolchain_present=False, execution_available=False,
-                                 environment_reason="Windows 原生现代 C++ 工程尚待 CP7-E 验证。")
+                available = modern_projects.toolchain_present()
+                projects = [dict(project, execution_available=available,
+                                 compiler_profile="Windows 随包 GCC 16.2.0",
+                                 environment_reason="需要已验证的 Windows 免安装包工具链。")
                             for project in projects]
             self._send_json(200, {"projects": projects})
             return
@@ -1849,8 +1852,8 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             self._send_error_json(ApiError(500, "The local service encountered an internal error."))
 
     def _modern_project_action(self, project_id: str, action: str) -> None:
-        if NATIVE_WINDOWS:
-            raise ApiError(409, "Windows 原生现代 C++ 工程尚待 CP7-E 验证。")
+        if NATIVE_WINDOWS and not modern_projects.toolchain_present():
+            raise ApiError(409, "需要已验证的 Windows 免安装包工具链。")
         if project_id not in modern_projects.PROJECTS or action not in {"start", "save", "check"}:
             raise ApiError(404, "Unknown modern project or action.")
         value = self._read_json()
@@ -1866,7 +1869,8 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             elif action == "save":
                 result = modern_projects.save(root, workspace, project_id, value["source"], value["revision"])
             else:
-                result = modern_projects.check(root, workspace, project_id, value["revision"])
+                result = modern_projects.check(root, workspace, project_id, value["revision"],
+                    native_step=self.server.run_native_modern_step if NATIVE_WINDOWS else None)
             self._send_json(200, result)
         except modern_projects.ProjectError as exc:
             raise ApiError(exc.status, str(exc)) from exc

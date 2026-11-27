@@ -45,7 +45,7 @@ if [[ -z "$VERSION_OUTPUT" ]] || ! grep -Fq "Version: $VERSION_OUTPUT" "$PACKAGE
     cat "$PACKAGE_ROOT/BUILD-INFO.txt" >&2
     exit 1
 fi
-for task_id in w1.hello-world w8.http-operational-load w9.static-root; do
+for task_id in w1.hello-world w8.http-operational-load w9.static-root w9.http-hardening; do
     if ! grep -Fq "$task_id" <<< "$LIST_OUTPUT"; then
         echo "[FAIL] Relocated package catalog is missing $task_id." >&2
         printf '%s\n' "$LIST_OUTPUT" >&2
@@ -57,7 +57,7 @@ if ! "$PACKAGE_ROOT/cppapplab" guide > "$TEMP_ROOT/guide.log"; then
     echo "[FAIL] Packaged Chinese learning guide did not open." >&2
     exit 1
 fi
-for task_id in w1.hello-world w8.http-operational-load w9.static-root; do
+for task_id in w1.hello-world w8.http-operational-load w9.static-root w9.http-hardening; do
     if ! grep -Fq "$task_id" "$TEMP_ROOT/guide.log"; then
         echo "[FAIL] Packaged Chinese guide is missing $task_id." >&2
         exit 1
@@ -114,5 +114,5 @@ echo "  CLI version: $VERSION_OUTPUT"
 echo "  Catalog: W1, W8 and W9 tasks discovered."
 echo "  Workspace: created from the packaged learner template."
 echo "  Acceptance: W1 Hello World passed using the packaged runtime."
-echo "  Guide: Chinese 23-task route is accessible from the extracted package."
+echo "  Guide: Chinese 24-task route is accessible from the extracted package."
 echo "  Commands: generated hints/check/continue commands use the packaged launcher."

@@ -96,7 +96,7 @@ try {
     $health = Invoke-RestMethod -Uri $healthUrl -Method Get -TimeoutSec 8
     Assert-Condition ($health.status -eq "ok") "Workbench health status is not ok."
     Assert-Condition ($health.service -eq "CppAppLab") "The reported port is not serving the CppAppLab service."
-    Assert-Condition ([int]$health.task_count -eq 23) "Expected 23 registered learning tasks; received $($health.task_count)."
+    Assert-Condition ([int]$health.task_count -eq 24) "Expected 24 registered learning tasks; received $($health.task_count)."
 
     $page = Invoke-WebRequest -Uri $serviceUrl -UseBasicParsing -TimeoutSec 8
     Assert-Condition ([int]$page.StatusCode -eq 200) "The browser workbench page did not return HTTP 200."
@@ -134,7 +134,7 @@ try {
     }
     $evidence | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $evidencePath -Encoding UTF8
     Write-Host "[PASS] Windows 11 + WSL2 target-machine browser startup accepted."
-    Write-Host ("[PASS] 23-task catalog health and HTTP page verified: {0}" -f $evidencePath)
+    Write-Host ("[PASS] 24-task catalog health and HTTP page verified: {0}" -f $evidencePath)
     Write-Host "[INFO] The workbench remains running to preserve the learner session."
 } catch {
     if ($transcriptStarted) {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit structural usability signals across the authoritative 23-task lesson catalog.
+"""Audit structural usability signals across the authoritative 24-task lesson catalog.
 
 This is a diagnostic inventory, not a comprehension score. Presence of a heading
 or phrase is never treated as proof that a learner understands the material.
@@ -59,8 +59,8 @@ def main() -> int:
                 "comprehension_result": "NOT_TESTED",
                 "review_notes": "",
             })
-    if len(rows) != 23:
-        raise SystemExit(f"Expected 23 registered lessons, found {len(rows)}")
+    if len(rows) != 24:
+        raise SystemExit(f"Expected 24 registered lessons, found {len(rows)}")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8", newline="") as target:
         writer = csv.DictWriter(target, fieldnames=list(rows[0]))

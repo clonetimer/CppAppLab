@@ -46,8 +46,8 @@ def main() -> int:
                 "result": "NOT_RATED_BY_CATALOG_GENERATOR",
                 "evidence": "course/tasks.tsv; tests/test_web_workbench_browser.cjs",
             })
-    if len(rows) != 23:
-        raise SystemExit(f"Expected 23 catalog tasks, found {len(rows)}")
+    if len(rows) != 24:
+        raise SystemExit(f"Expected 24 catalog tasks, found {len(rows)}")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8", newline="") as target:
         writer = csv.DictWriter(target, fieldnames=list(rows[0]))

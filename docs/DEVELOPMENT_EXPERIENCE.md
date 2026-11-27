@@ -590,7 +590,7 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
   Calculator 9/9, existing 14 applicable CI jobs PASS.
 - Changed: keep shared progress serialization and prerequisite logic; native
   Win32 backend uses wide paths, explicit local native state root, checked
-  handles, exclusive temporaries, handle rename, FlushFileBuffers and bounded
+  handles, exclusive temporaries, same-volume MoveFileExW replace after closing the flushed temporary, and bounded
   LockFileEx history access. Workspace marker/evidence read/write and native
   source fingerprint now use the same adapter.
 - Why: progress must retain exact source identity and recoverable state, rather
@@ -602,14 +602,12 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
   required. Do not silently skip a security test or conflate synthetic unit-test
   evidence with actual compiler acceptance. Use four child processes for the
   history lock test, not only threads.
-- Candidate evidence: 7 new native state tests, previous 13 and 9 original
-  Calculator tests, existing Ubuntu matrix. Fresh CI pending; root native build,
-  browser and install-free package remain unqualified.
+- Evidence: 7 new native state tests, previous 13 and 9 original Calculator tests. Final Windows run 45957192856 passed 20/20 + 9/9; Linux run 45957192865 passed all 14 applicable jobs, with one push-only check skipped. Root native build, browser and install-free package remain unqualified.
 
 
 ## 74. CP7-B2a — Diagnose native atomic rename instead of weakening the contract
 
 - First current Windows CI: Linux regression all 14 applicable PASS; native process/W1 13/13; native state 4 failures because absolute SetFileInformationByHandle rename did not publish the expected destination.
 - Second attempt: a relative filename plus non-null RootDirectory returned Windows ERROR_INVALID_PARAMETER on the hosted runner. Do not assume the documented field description is implemented identically by every Win32 file path.
-- Corrective candidate: retain pinned, checked directory handles; use MoveFileExW with same-volume absolute sibling paths, REPLACE_EXISTING and WRITE_THROUGH, no COPY_ALLOWED. Keep the temporary handle open with FILE_SHARE_DELETE and flush before rename. Preserve the tests for replace, Unicode, junctions, hardlinks, history and actual progress.
-- Current state: final corrected CI pending. No native progress claim until 7/7 storage tests and all prior Linux/native contracts pass.
+- Corrective implementation: retain pinned, checked directory handles; write and flush an exclusive CREATE_NEW temporary, close it before documented MoveFileExW, and use same-volume absolute sibling paths with REPLACE_EXISTING and WRITE_THROUGH, no COPY_ALLOWED. Preserve tests for replace, Unicode, junctions, hardlinks, history and actual progress.
+- Final evidence: Windows run 45957192856 passed 20/20 process/W1/state tests and Calculator 9/9. Linux run 45957192865 passed all 14 applicable jobs; one push-only compatibility check was skipped as configured. PR #86 is ready for merge. The root native learning engine, browser and Windows package remain unqualified.

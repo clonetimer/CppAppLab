@@ -119,11 +119,13 @@ struct DirectoryChain {
 // Pin each opened directory without FILE_SHARE_DELETE. Open reparse points
 // themselves, never their targets. Reject any nonordinary ancestor before
 // proceeding. This is local state protection, not a same-user execution sandbox.
-[[nodiscard]] DirectoryChain pin_directory(const Path& path, bool create) {
+[[nodiscard]] DirectoryChain pin_directory(
+    const Path& path, bool create,
+    DWORD final_access = FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY) {
     DirectoryChain result;
     Path current = path.root_path();
-    auto open_directory = [&](const Path& directory, bool allow_create) {
-        Handle initial(CreateFileW(directory.c_str(), FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY,
+    auto open_directory = [&](const Path& directory, bool allow_create, DWORD access) {
+        Handle initial(CreateFileW(directory.c_str(), access,
                                    FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
                                    FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr));
         if (initial) {
@@ -144,7 +146,7 @@ struct DirectoryChain {
                 fail("CreateDirectoryW", create_error);
             }
         }
-        Handle opened(CreateFileW(directory.c_str(), FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY,
+        Handle opened(CreateFileW(directory.c_str(), access,
                                   FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
                                   FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr));
         if (!opened) {
@@ -154,12 +156,19 @@ struct DirectoryChain {
         result.handles.push_back(std::move(opened));
         return true;
     };
-    if (!open_directory(current, false)) {
+    if (!open_directory(current, false, FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY)) {
         throw std::runtime_error("State volume root is unavailable.");
     }
-    for (const auto& component : path.relative_path()) {
+    const auto components = path.relative_path();
+    std::size_t index = 0U;
+    for (const auto& component : components) {
         current /= component;
-        if (!open_directory(current, create)) {
+        ++index;
+        const DWORD access = index == static_cast<std::size_t>(
+                                         std::distance(components.begin(), components.end()))
+                                 ? final_access
+                                 : FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY;
+        if (!open_directory(current, create, access)) {
             result.exists = false;
             break;
         }
@@ -244,8 +253,13 @@ void flush(HANDLE handle) {
 
 // Rename the file represented by the still-open handle. Unlike closing a named
 // temporary and then renaming its path, this does not reopen the source.
-void publish(HANDLE handle, const Path& destination) {
-    const auto& name = destination.native();
+void publish(HANDLE handle, HANDLE parent_directory, const Path& destination) {
+    // RootDirectory is the already validated and pinned parent directory.
+    // A single leaf name avoids ambiguous DOS-vs-NT absolute rename semantics.
+    const auto& name = destination.filename().native();
+    if (name.empty() || name == L"." || name == L"..") {
+        throw std::runtime_error("Invalid state destination leaf name.");
+    }
     const std::size_t name_bytes = name.size() * sizeof(wchar_t);
     const std::size_t bytes = offsetof(FILE_RENAME_INFO, FileName) + name_bytes;
     if (bytes > std::numeric_limits<DWORD>::max()) {
@@ -254,7 +268,7 @@ void publish(HANDLE handle, const Path& destination) {
     std::vector<unsigned char> storage(bytes, 0U);
     auto* info = reinterpret_cast<FILE_RENAME_INFO*>(storage.data());
     info->ReplaceIfExists = TRUE;
-    info->RootDirectory = nullptr;
+    info->RootDirectory = parent_directory;
     info->FileNameLength = static_cast<DWORD>(name_bytes);
     std::memcpy(info->FileName, name.data(), name_bytes);
     const auto deadline = Clock::now() + kLockTimeout;
@@ -343,8 +357,10 @@ std::string read(const Path& input, std::uintmax_t maximum_bytes) {
 
 void atomic_write(const Path& input, std::string_view content) {
     const Path path = checked_absolute(input);
-    const auto chain = pin_directory(path.parent_path(), false);
-    if (!chain.exists) {
+    const auto chain = pin_directory(
+        path.parent_path(), false,
+        FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY | FILE_ADD_FILE);
+    if (!chain.exists || chain.handles.empty()) {
         throw std::runtime_error("State directory is missing.");
     }
     (void)existing_regular(path);  // Missing is allowed; unsafe existing targets are not.
@@ -361,7 +377,7 @@ void atomic_write(const Path& input, std::string_view content) {
         write_all(file.get(), content);
         flush(file.get());
         (void)existing_regular(path);
-        publish(file.get(), path);
+        publish(file.get(), chain.handles.back().get(), path);
     } catch (...) {
         discard(file.get());
         throw;
@@ -370,7 +386,9 @@ void atomic_write(const Path& input, std::string_view content) {
 
 void append(const Path& input, std::string_view line, std::uintmax_t maximum_bytes) {
     const Path path = checked_absolute(input);
-    const auto chain = pin_directory(path.parent_path(), false);
+    const auto chain = pin_directory(
+        path.parent_path(), false,
+        FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY | FILE_ADD_FILE);
     if (!chain.exists) {
         throw std::runtime_error("State history directory is missing.");
     }

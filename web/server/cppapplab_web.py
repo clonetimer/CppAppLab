@@ -1579,6 +1579,20 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         if len(parts) == 2 and parts[0] == "tasks":
             self._get_task(parts[1])
             return
+        if len(parts) == 3 and parts[0] == "tasks" and parts[2] == "prerequisite-plan":
+            if NATIVE_WINDOWS:
+                raise ApiError(409, "Prerequisite revalidation must use the Linux execution environment.")
+            try:
+                plan = wsl_handoff.prerequisite_plan(
+                    self.server.task_by_id, self.server.progress_states(), parts[1])
+            except wsl_handoff.HandoffError as exc:
+                raise ApiError(exc.status, str(exc)) from exc
+            self._send_json(200, dict(plan, execution_environment="linux",
+                instance_id=self.server.instance_id,
+                catalog_sha256=hashlib.sha256(
+                    (self.server.root / "course/tasks.tsv").read_bytes().replace(b"\r\n", b"\n")
+                ).hexdigest()))
+            return
         if len(parts) == 3 and parts[0] == "tasks" and parts[2] == "history":
             self._get_task_history(parts[1])
             return

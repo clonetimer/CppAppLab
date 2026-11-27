@@ -92,8 +92,25 @@ async function main() {
     await page.waitForFunction(() =>
       document.querySelector("#task-breadcrumb")?.textContent === "w5.system-lab" &&
       document.querySelector("#task-state")?.textContent.includes("WSL2"));
-    assert.equal(await page.locator("#start-button").isDisabled(), true);
+    // F2 enables only the explicit handoff, never native Linux-course execution.
+    await page.waitForFunction(() => !document.querySelector("#start-button").disabled);
+    assert.match(await page.locator("#start-button").innerText(), /进入 WSL2/);
     assert.equal(await page.locator("#build-button").isDisabled(), true);
+    assert.equal(await page.locator("#run-button").isDisabled(), true);
+    assert.equal(await page.locator("#check-button").isDisabled(), true);
+    const rejected = await page.evaluate(async () => {
+      const { csrf_token } = await (await fetch("/api/v1/session")).json();
+      const headers = { "Content-Type": "application/json", "X-CppAppLab-Token": csrf_token };
+      const attempt = async (path, body) => (await fetch(path, {
+        method: "POST", headers, body: JSON.stringify(body)
+      })).status;
+      return [
+        await attempt("/api/v1/tasks/w5.system-lab/start", {}),
+        await attempt("/api/v1/tasks/w5.system-lab/handoff", { command: "anything" }),
+        await attempt("/api/v1/tasks/w1.hello-world/handoff", {})
+      ];
+    });
+    assert.deepEqual(rejected, [409, 400, 409]);
     await page.screenshot({ path: path.join(ARTIFACTS, "windows-linux-required.png") });
 
     await page.locator('.task-link[data-task-id="w1.hello-world"]').click();

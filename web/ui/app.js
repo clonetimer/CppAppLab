@@ -1521,10 +1521,16 @@
       const result = await api("/api/v1/tasks/" + encodeURIComponent(taskId) + "/handoff",
         { method: "POST", body: {} });
       const target = new URL(result.url);
+      const params = new URLSearchParams(target.hash.slice(1));
+      const next = result.next_task_id;
+      const pending = result.pending_prerequisites;
       if (target.protocol !== "http:" || target.hostname !== "127.0.0.1" ||
           !["8766", "8767"].includes(target.port) || target.pathname !== "/" ||
           target.search || target.username || target.password ||
-          new URLSearchParams(target.hash.slice(1)).get("task") !== taskId ||
+          result.task_id !== taskId || !state.tasks.some(task => task.id === next) ||
+          !Array.isArray(pending) || next !== (pending.length ? pending[0]?.task_id : taskId) ||
+          params.get("task") !== next ||
+          (next !== taskId ? params.get("goal") !== taskId : params.has("goal")) ||
           result.execution_environment !== "linux" || result.progress_transferred !== false) {
         throw new Error("未获得有效的 Linux 工作台地址。");
       }
@@ -3008,7 +3014,16 @@
       if (environment) environment.textContent = native ? "本地运行 · Windows 原生" : "本地运行 · Linux / WSL2";
       ui.engine.classList.add("online");
       ui.engine.innerHTML = '<span class="pulse"></span>本地引擎已连接';
-      if (await loadTasks()) await followLearningLocation();
+      if (await loadTasks()) {
+        const link = new URLSearchParams(window.location.hash.slice(1));
+        const goal = link.get("goal");
+        const first = link.get("task");
+        const selected = await followLearningLocation();
+        if (!native && selected && goal && first !== goal &&
+            state.tasks.some(task => task.id === goal && task.week >= 5)) {
+          toast("请先在 Linux 真实验收前置课程，再继续 " + goal + "；Windows PASS 不会自动迁移。");
+        }
+      }
     } catch (error) {
       ui.engine.textContent = "本地引擎未连接";
       ui.engine.classList.remove("online");

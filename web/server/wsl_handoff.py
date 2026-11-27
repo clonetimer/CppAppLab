@@ -14,6 +14,8 @@ import urllib.request
 from urllib.parse import quote
 
 TASK = re.compile(r"w[5-9]\.[a-z0-9][a-z0-9._-]{0,92}")
+ANY_TASK = re.compile(r"w[1-9]\.[a-z0-9][a-z0-9._-]{0,92}")
+LIVE_STATES = {"AVAILABLE", "NOT STARTED", "IN PROGRESS", "PASSED", "NEEDS WORK", "STALE", "LOCKED"}
 DISTRO = re.compile(r"^\s*(\*)?\s*(Ubuntu(?:[- ](?:22\.04|24\.04))?)\s+.+?\s+([12])\s*$", re.I)
 TOKEN = re.compile(r"[a-f0-9]{32}")
 DIGEST = re.compile(r"[a-f0-9]{64}")
@@ -57,12 +59,14 @@ if (health.get("service") != "CppAppLab" or health.get("status") != "ok" or
         health.get("execution_environment") != "linux" or
         health.get("catalog_sha256") != catalog or not health.get("instance_id")):
     raise SystemExit("The prepared Linux workbench must be updated to the handoff-compatible version.")
-detail = read("/api/v1/tasks/" + task)
-if detail.get("id") != task or detail.get("execution_available") is False:
-    raise SystemExit("The requested course is unavailable in the prepared Linux workbench.")
+plan = read("/api/v1/tasks/" + task + "/prerequisite-plan")
+if (plan.get("target_task") != task or plan.get("execution_environment") != "linux" or
+        plan.get("instance_id") != health["instance_id"] or plan.get("catalog_sha256") != catalog):
+    raise SystemExit("The Linux prerequisite plan does not match the verified workbench.")
 print("CPPAPPLAB_HANDOFF_V1 " + json.dumps({
     "instance_id": health["instance_id"], "catalog_sha256": catalog,
-    "task": task, "task_state": detail.get("state"),
+    "task": task, "task_state": plan.get("target_state"),
+    "next_task": plan.get("next_task"), "pending_prerequisites": plan.get("pending_prerequisites"),
     "execution_environment": "linux"
 }, ensure_ascii=True))
 PY
@@ -73,6 +77,40 @@ class HandoffError(Exception):
     def __init__(self, status: int, message: str):
         super().__init__(message)
         self.status = status
+
+
+def prerequisite_plan(task_by_id: dict, states: dict, target: str) -> dict:
+    """Order actual Linux prerequisites by dependency, never import Windows PASS."""
+    if not TASK.fullmatch(target) or target not in task_by_id:
+        raise HandoffError(404, "Unknown Linux-specialized target course.")
+    ordered = []
+    visited = set()
+    visiting = set()
+
+    def visit(task_id):
+        if task_id in visited:
+            return
+        if task_id in visiting or task_id not in task_by_id:
+            raise HandoffError(409, "Course prerequisite catalog is inconsistent.")
+        visiting.add(task_id)
+        for parent in task_by_id[task_id]["prerequisites"]:
+            visit(parent)
+        visiting.remove(task_id)
+        visited.add(task_id)
+        ordered.append(task_id)
+
+    visit(target)
+    if any(states.get(task_id) not in LIVE_STATES for task_id in ordered):
+        raise HandoffError(409, "Linux course progress is not available; refresh the Linux workbench.")
+    pending = [{"task_id": task_id, "state": states[task_id]}
+               for task_id in ordered[:-1] if states[task_id] != "PASSED"]
+    next_task = pending[0]["task_id"] if pending else target
+    # A locked first unmet prerequisite means the engine and graph disagree;
+    # do not bypass the lock or manufacture availability.
+    if states[next_task] == "LOCKED":
+        raise HandoffError(409, "Linux prerequisite state is inconsistent; refresh the Linux workbench.")
+    return {"target_task": target, "target_state": states[target],
+            "next_task": next_task, "pending_prerequisites": pending}
 
 
 def decode_output(data: bytes) -> str:
@@ -154,10 +192,21 @@ def handoff(task: str, native_port: int, catalog_sha256: str, *,
         if (receipt.get("task") != task or receipt.get("execution_environment") != "linux" or
                 receipt.get("catalog_sha256") != catalog_sha256 or
                 not TOKEN.fullmatch(str(receipt.get("instance_id", ""))) or
-                receipt.get("task_state") not in {"AVAILABLE", "NOT STARTED", "IN PROGRESS",
-                                                  "PASSED", "NEEDS WORK", "STALE", "LOCKED"}):
+                receipt.get("task_state") not in LIVE_STATES):
             raise ValueError("invalid Linux receipt")
-    except (ValueError, TypeError, AttributeError) as exc:
+        pending = receipt["pending_prerequisites"]
+        next_task = receipt["next_task"]
+        if (not isinstance(pending, list) or len(pending) > 24 or
+                any(not isinstance(row, dict) or set(row) != {"task_id", "state"} or
+                    not isinstance(row["task_id"], str) or not ANY_TASK.fullmatch(row["task_id"]) or
+                    row["task_id"] == task or row["state"] not in LIVE_STATES - {"PASSED"}
+                    for row in pending) or
+                len({row["task_id"] for row in pending}) != len(pending) or
+                next_task != (pending[0]["task_id"] if pending else task) or
+                (pending and pending[0]["state"] == "LOCKED") or
+                (not pending and receipt["task_state"] == "LOCKED")):
+            raise ValueError("invalid Linux prerequisite plan")
+    except (ValueError, TypeError, AttributeError, KeyError) as exc:
         raise HandoffError(409, "WSL 工作台课程目录或实例身份不匹配；请更新已准备的 Ubuntu 工程。") from exc
     target = health(port)
     if (target.get("status") != "ok" or target.get("service") != "CppAppLab" or
@@ -165,6 +214,10 @@ def handoff(task: str, native_port: int, catalog_sha256: str, *,
             target.get("instance_id") != receipt["instance_id"] or
             target.get("catalog_sha256") != catalog_sha256):
         raise HandoffError(409, "Windows 回环端口上的服务不是刚核验的 WSL 工作台；不自动跳转。")
-    return {"url": f"http://127.0.0.1:{port}/#task={quote(task, safe='')}",
-            "distribution": distro, "task_id": task, "task_state": receipt["task_state"],
+    url = f"http://127.0.0.1:{port}/#task={quote(next_task, safe='')}"
+    if next_task != task:
+        url += "&goal=" + quote(task, safe="")
+    return {"url": url, "distribution": distro, "task_id": task,
+            "task_state": receipt["task_state"], "next_task_id": next_task,
+            "pending_prerequisites": pending,
             "execution_environment": "linux", "progress_transferred": False}

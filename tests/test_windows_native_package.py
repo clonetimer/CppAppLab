@@ -188,6 +188,7 @@ def verify(archive: Path) -> None:
                 request("/api/v1/tasks/w1.hello-world/handoff", "POST", {}, status=409)
                 request("/api/v1/tasks/w5.system-lab/handoff", "POST", {"command": "anything"}, status=400)
                 request("/api/v1/tasks/w9.unknown/handoff", "POST", {}, status=404)
+                request("/api/v1/tasks/w5.system-lab/prerequisite-plan", status=409)
                 assert states()["w1.hello-world"] == "AVAILABLE"
                 catalog = request("/api/v1/tasks")["tasks"]
                 expected = dict(zip(manifest["formal_task_ids"], (1, 9, 19, 31, 41), strict=True))

@@ -6,7 +6,7 @@
 
 ## 开始学习：先看课程，再做练习
 
-CppAppLab 课程目录包含 **25 个 W1–W9 学习任务**（A1–A4 已验收，A5 为本轮候选）。
+CppAppLab 课程目录包含 **25 个 W1–W9 学习任务**（W9-A1–A5 均已合并；A5 已完成有界 fuzz 验证）。
 
 ### 已构建源码项目：打开网页工作台
 
@@ -28,7 +28,7 @@ bash scripts/start-web-workbench.sh
 
 在解压目录运行 `./cppapplab`，选择 **1. Continue learning**（继续学习）。源码构建也可用 `./build/cppapplab` 打开命令行首页。在首页选 **5** 或在终端给启动命令加上 `guide`，即可阅读[中文学习导航](course/LEARNING_GUIDE_ZH.md)。
 
-当前发布范围为 W1–W9 已实现任务；W9-A4 已验收，W9-A5 为当前验收候选，W10–W12 尚处于路线图中。环境要求与部署说明保留在后文，供确有需要时查询。
+当前发布范围为 W1–W9 已实现任务；W9-A4/A5 已合并并通过各自验收；W10–W12 仍为路线图内容，不属于当前交付主线。环境要求与部署说明保留在后文，供确有需要时查询。
 
 ## Current implementation baseline
 

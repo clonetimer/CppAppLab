@@ -665,3 +665,12 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - Changed: native HTTP service uses USERPROFILE, native PE, tracked bounded CLI supervision, exclusive loopback bind and serialized native API operations. Reparse/hardlink inspection occurs before path resolution. Existing Linux service and UI retained. Separate environment-required status from prerequisites; unverified native experiments/projects remain explicitly read-only or disabled. Added source PowerShell launcher, real HTTP and Chromium smoke, screenshot upload.
 - Why: no second learning engine and no artificial browser PASS. UI must distinguish real executable course scope and operating-system limitations.
 - Boundaries: source launcher still needs native GCC/CMake/Ninja/GTest/Python already available; Windows file-symlink permission remains a clean-target gate. No native modern compiler claim, install-free package, target-machine/human or abrupt Python termination qualification. Fresh F1 CI required.
+
+
+## 80. CP7-D1 — Move toolchain acquisition into the Windows delivery build
+
+- Verified #94: all 14 applicable CI jobs and independent native foundation passed. Native HTTP, real Chromium offline editor, learner descendant shutdown and screenshots verified; merged at 95a7e716.
+- Changed: native Windows Release package builder copies only installed UCRT64 package-owned files and exact package metadata, preserves toolchain layout/licenses, uses SHA-256-pinned official embedded Python 3.14.10, includes existing course/fixture/web assets, and emits per-file plus archive checksums. Added portable batch/CLI launchers and child-only toolchain environment, real no-host-PATH relocated package smoke and dedicated CI.
+- Why: testing a preinstalled runner is insufficient for the learner's install-free delivery. Check the actual ZIP and the compiler/GTest paths selected by CMake, not merely executable presence.
+- Pitfalls: keep MSYS2 acquisition confined to build CI, preserve original fixed tests, separate Unicode learning files from MinGW toolchain/cache paths, probe real symlink creation capability without enabling Developer Mode. Do not claim a new upstream version lock from observed versions or claim redistribution approval from collecting license files.
+- Boundary: CI package candidate pending; public release requires exact dependency acquisition lock and corresponding-source/license review, actual nonadmin and offline target feedback. Modern C++ and environment switching still open.

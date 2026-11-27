@@ -702,3 +702,15 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 
 - D2a portable run 46000267714 passed, report artifact 15197867836 independently downloaded and validated. Verified 63 archive records, outer SHA-256, inner JSON SHA-256 and exact baseline identity; frozen lock Git blob SHA matched local calculation byte-for-byte. No synthetic hashes.
 - D2b prepares only MSYS2 base/keyring and fetches exact locked bytes and detached signatures; pacman local transaction has trusted-required signature policy and no repository sections. Package and extracted smoke bind the frozen lock and replay receipt to their manifest. Preserve all 101 formal course contracts. Fresh Windows/Ubuntu CI mandatory. Upstream archive availability, bootstrap environment and corresponding-source/redistribution review remain explicit limits.
+
+
+## 85. CP7-D2b verified; CP7-D3a source/notice collection (candidate)
+
+- Actual D2b run 46001429435 passed clean runner replay of all 63 signed exact archives, 40,617 packaged file hashes, relocated 101/101. Full 14 jobs and foundation green on #97. #96 prior Ubuntu offline mirror 502/503 retry remains separate.
+- D3a distinguishes package name from source BASE; derive exact version-specific source archive, group splits, record trusted signature, archive hash, recipe listing and actual owned notices; record unavailable evidence instead of substituting latest. Check official Python source archive against published SHA-256. No upstream recipe execution and no claim of corresponding-source completeness or public-release approval. New fixture tests plus actual Windows report CI.
+- Repository root has no explicit license file; owner decision is required. Avoid turning a technical evidence inventory into legal approval. Source collection leaves durable source distribution and component review unresolved.
+
+
+### CP7-D3a notice detection correction
+
+Run 46009769033 at c770c511 passed signed replay, all 101 relocated fixed course tests and uploaded the internal candidate. The audit fixture correctly rejected the original overbroad notice predicate: `license_parser.h` was incorrectly inventoried as a license text. Tighten the predicate outside the dedicated license directory and keep all files inside the latter. Retain the failing fixture and add header, binary and conventional text cases. Do not count the earlier green run that omitted the audit step or this failed audit as source collection evidence. Fresh CI required.

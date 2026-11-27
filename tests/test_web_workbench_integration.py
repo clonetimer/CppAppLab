@@ -155,6 +155,29 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
                 timeout=10, check=False,
             )
 
+    def test_linux_prerequisite_plan_follows_real_acceptance_and_stale_source(self) -> None:
+        route = "/api/v1/tasks/w5.system-lab/prerequisite-plan"
+        initial = self.request(route)
+        self.assertEqual(initial["execution_environment"], "linux")
+        self.assertEqual(initial["instance_id"], self.request("/api/v1/health")["instance_id"])
+        self.assertEqual(initial["target_state"], "LOCKED")
+        self.assertEqual(initial["next_task"], "w1.hello-world")
+        self.assertEqual(len(initial["pending_prerequisites"]), 5)
+        self.request("/api/v1/tasks/w1.hello-world/start", method="POST", body={})
+        source = "/api/v1/workspaces/w1.hello-world/files/src/main.cpp"
+        self.request(source, method="PUT", body={"content": '#include <iostream>\nint main(){std::cout<<"Hello, CppAppLab!\\n";}\n'})
+        # Only the real existing Linux engine check advances the route.
+        self.assertEqual(self.request(route)["next_task"], "w1.hello-world")
+        checked = self.request("/api/v1/workspaces/w1.hello-world/check", method="POST", body={})
+        self.assertTrue(checked["passed"], checked)
+        after = self.request(route)
+        self.assertEqual(after["next_task"], "w1.calculator")
+        self.assertEqual(len(after["pending_prerequisites"]), 4)
+        self.request(source, method="PUT", body={"content": "int main(){return 0;}\n"})
+        stale = self.request(route)
+        self.assertEqual(stale["next_task"], "w1.hello-world")
+        self.assertEqual(stale["pending_prerequisites"][0]["state"], "STALE")
+
     def test_w1_calculator_build_run_and_acceptance_are_separate(self) -> None:
         self.request("/api/v1/tasks/w1.hello-world/start", method="POST", body={})
         self.request(

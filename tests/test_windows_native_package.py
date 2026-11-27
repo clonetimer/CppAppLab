@@ -183,6 +183,13 @@ def verify(archive: Path) -> None:
                 assert states()["w1.hello-world"] == "AVAILABLE"
                 assert sum(s == "LINUX/WSL2 REQUIRED" for s in states().values()) == 20
                 request("/api/v1/tasks/w5.system-lab/start", "POST", {}, status=409)
+                # Guarded rejection paths must not invoke WSL on CI or on
+                # native-course startup. Real WSL2 handoff is a separate gate.
+                request("/api/v1/tasks/w1.hello-world/handoff", "POST", {}, status=409)
+                request("/api/v1/tasks/w5.system-lab/handoff", "POST", {"command": "anything"}, status=400)
+                request("/api/v1/tasks/w9.unknown/handoff", "POST", {}, status=404)
+                request("/api/v1/tasks/w5.system-lab/prerequisite-plan", status=409)
+                assert states()["w1.hello-world"] == "AVAILABLE"
                 catalog = request("/api/v1/tasks")["tasks"]
                 expected = dict(zip(manifest["formal_task_ids"], (1, 9, 19, 31, 41), strict=True))
                 total = 0

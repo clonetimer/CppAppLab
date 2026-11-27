@@ -730,3 +730,14 @@ At baff74a6, [46010049974](https://github.com/clonetimer/CppAppLab/actions/runs/
 ## 87. CP7-E2 — Native editable modern projects without new curricula
 
 - Reuse existing sample-window and frame-header learner sources, 7+8 fixed GoogleTest contracts and browser editor; extend only native compiler guard and execution/storage adapters. Classic 101 and modern fixed 20 remain unchanged. Windows staged builds use actual bundled GCC16/CMake/Ninja/CTest and verify CMake cache identities. Preserve Linux GCC13 profile, explicit revision checks and independent evidence. Real red/green, stale/resume and classic evidence isolation added to relocated ZIP test. Current candidate pending CI; no human or public-release claim.
+
+
+## 88. CP7-F2 — Separate environment handoff from evidence transfer
+
+- On-demand fixed WSL2 launch from selected Linux-only task; no WSL probe during Windows startup or W1–W4, no automatic setup or arbitrary browser command. Prepared Ubuntu checkout and fixed loopback port only; verify the same live Linux instance and normalized catalog fingerprint on both sides before task deep link. Keep Windows and Linux progress separate, no synthetic PASS. Unit tests are explicitly fixture-based; packaged rejection paths are real HTTP. Actual WSL2 target machine and F3 prerequisite evidence revalidation remain open. Fresh CI required.
+
+
+## 89. CP7-F2 regression correction and F3a Linux prerequisite route
+
+- Initial Windows package and Ubuntu unit CI failed before handoff because the fixture stub accidentally overrode unittest.TestCase.run. Native Chromium also enforced the obsolete disabled-start contract. Rename stub and change browser expectations only for the new handoff; still require disabled native build/run/check and real rejection routes. No weakening of formal acceptance.
+- F3a uses actual Linux engine progress and dependency graph, not Windows PASS, selects first unmet prerequisite, detects stale/unknown/contradictory state and tests the real Linux W1 acceptance then stale progression. No automatic source transfer, no fake PASS; explicit safe source reuse and physical WSL2 verification remain pending.

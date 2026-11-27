@@ -68,14 +68,14 @@ jobs:
           $build = Join-Path $env:RUNNER_TEMP 'cppapplab windows native process'
           & (Join-Path $toolBin 'cmake.exe') --build $build --parallel
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          foreach ($exe in @('cppapplab_process_tests.exe', 'cppapplab_process_test_child.exe', 'cppapplab_native_w1_tests.exe')) {
+          foreach ($exe in @('cppapplab_process_tests.exe', 'cppapplab_process_test_child.exe', 'cppapplab_native_w1_tests.exe', 'cppapplab_native_state_tests.exe', 'cppapplab_native_state_child.exe')) {
             $path = Join-Path $build $exe
             $format = (& (Join-Path $toolBin 'objdump.exe') -f $path | Out-String)
             if ($LASTEXITCODE -ne 0 -or $format -notmatch 'pei-x86-64') { throw "Not a native PE: $path" }
             $imports = (& (Join-Path $toolBin 'objdump.exe') -p $path | Out-String)
             if ($LASTEXITCODE -ne 0 -or $imports -match 'msys-2\.0\.dll|cygwin1\.dll') { throw "POSIX compatibility runtime imported: $path" }
           }
-      - name: Run shared process contracts and native W1 compiler smoke
+      - name: Run shared process, W1 and native state storage contracts
         shell: pwsh
         env:
           MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
@@ -83,6 +83,10 @@ jobs:
           $toolBin = Join-Path $env:MSYS2_LOCATION 'ucrt64\bin'
           $env:PATH = "$toolBin;$env:PATH"
           $build = Join-Path $env:RUNNER_TEMP 'cppapplab windows native process'
+          $listed = & (Join-Path $toolBin 'ctest.exe') --test-dir $build --show-only=json-v1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $tests = ($listed | Out-String | ConvertFrom-Json).tests
+          if ($tests.Count -ne 20) { throw "Expected 13 foundation and 7 native state tests; found $($tests.Count)" }
           & (Join-Path $toolBin 'ctest.exe') --test-dir $build --output-on-failure --no-tests=error
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build and run the original Calculator acceptance fixture

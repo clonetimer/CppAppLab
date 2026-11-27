@@ -75,6 +75,32 @@ class ScopedState {
 
 // A real NTFS junction does not need Windows symlink privilege. If the runner
 // cannot create it, the security test fails rather than silently skipping.
+class ScopedDataRoot {
+   public:
+    explicit ScopedDataRoot(const fs::path& path)
+        : previous_(io::environment_path(L"CPPAPPLAB_DATA_DIR")) {
+        if (!SetEnvironmentVariableW(L"CPPAPPLAB_DATA_DIR", path.c_str())) {
+            throw std::runtime_error("Cannot set isolated data root.");
+        }
+    }
+    ~ScopedDataRoot() {
+        (void)SetEnvironmentVariableW(L"CPPAPPLAB_DATA_DIR",
+                                     previous_ ? previous_->c_str() : nullptr);
+    }
+    ScopedDataRoot(const ScopedDataRoot&) = delete;
+    ScopedDataRoot& operator=(const ScopedDataRoot&) = delete;
+
+   private:
+    std::optional<fs::path> previous_;
+};
+
+void copy_hello_template(const fs::path& data_root, const cppapplab::Task& task) {
+    const auto source = cppapplab::data_root() / task.learner_template;
+    const auto destination = data_root / task.learner_template;
+    fs::create_directories(destination.parent_path());
+    fs::copy(source, destination, fs::copy_options::recursive);
+}
+
 class Junction {
    public:
     Junction(const fs::path& link, fs::path target) : link_(link) {
@@ -315,6 +341,90 @@ TEST(NativeProgress, RejectsReparseStateAndEvidenceDirectories) {
         Junction source(original_source, target);
         EXPECT_THROW(static_cast<void>(cppapplab::source_fingerprint(*hello, workspace.root)),
                      std::runtime_error);
+    }
+}
+
+TEST(NativeWorkspace, CreatesAndReopensWorkspaceInUnicodePath) {
+    Scratch scratch;
+    const auto* hello = cppapplab::find_task("w1.hello-world");
+    ASSERT_NE(hello, nullptr);
+    const auto data_root = scratch.root() / L"\u6559\u5b66\u8d44\u6599";
+    ScopedDataRoot data(data_root);
+    copy_hello_template(data_root, *hello);
+
+    const auto destination = scratch.root() / L"\u5b66\u5458 workspace";
+    const auto workspace = cppapplab::create_workspace(*hello, destination);
+    EXPECT_EQ(workspace.task->id, hello->id);
+    EXPECT_TRUE(fs::is_regular_file(destination / "src" / "main.cpp"));
+    EXPECT_TRUE(fs::is_regular_file(destination / ".cppapplab-workspace"));
+    EXPECT_FALSE(fs::exists(destination / "reference" / "main.cpp"));
+    EXPECT_THROW(cppapplab::create_workspace(*hello, destination), std::runtime_error);
+    EXPECT_EQ(cppapplab::open_workspace(destination).root, workspace.root);
+}
+
+TEST(NativeWorkspace, RejectsTemplateJunctionAndCleansPartialWorkspace) {
+    Scratch scratch;
+    const auto* hello = cppapplab::find_task("w1.hello-world");
+    ASSERT_NE(hello, nullptr);
+    const auto data_root = scratch.root() / "data";
+    ScopedDataRoot data(data_root);
+    copy_hello_template(data_root, *hello);
+
+    const auto template_source = data_root / hello->learner_template / "src";
+    const auto outside = scratch.root() / "outside";
+    io::ensure_directory(outside);
+    Junction junction(template_source, outside);
+    const auto destination = scratch.root() / "learner";
+    EXPECT_THROW(cppapplab::create_workspace(*hello, destination), std::runtime_error);
+    EXPECT_FALSE(io::entry_exists(destination));
+    EXPECT_TRUE(fs::is_empty(outside));
+}
+
+TEST(NativeWorkspace, RejectsHardLinkedTemplateFileAndCleansPartialWorkspace) {
+    Scratch scratch;
+    const auto* hello = cppapplab::find_task("w1.hello-world");
+    ASSERT_NE(hello, nullptr);
+    const auto data_root = scratch.root() / "data";
+    ScopedDataRoot data(data_root);
+    copy_hello_template(data_root, *hello);
+
+    const auto source = data_root / hello->learner_template / "src" / "main.cpp";
+    const auto external = scratch.root() / "external.cpp";
+    io::atomic_write(external, "outside must not be copied as a learner template\n");
+    ASSERT_TRUE(DeleteFileW(source.c_str()));
+    ASSERT_TRUE(CreateHardLinkW(source.c_str(), external.c_str(), nullptr)) << GetLastError();
+
+    const auto destination = scratch.root() / "learner";
+    EXPECT_THROW(cppapplab::create_workspace(*hello, destination), std::runtime_error);
+    EXPECT_FALSE(io::entry_exists(destination));
+    EXPECT_EQ(io::read(external, 128U),
+              "outside must not be copied as a learner template\n");
+}
+
+TEST(NativeWorkspace, RejectsDestinationParentJunctionWithoutTouchingTarget) {
+    Scratch scratch;
+    const auto* hello = cppapplab::find_task("w1.hello-world");
+    ASSERT_NE(hello, nullptr);
+    const auto target = scratch.root() / "outside";
+    io::ensure_directory(target);
+    const auto link = scratch.root() / "redirect";
+    Junction junction(link, target);
+
+    EXPECT_THROW(cppapplab::create_workspace(*hello, link / "learner"), std::runtime_error);
+    EXPECT_TRUE(fs::is_empty(target));
+}
+
+TEST(NativeWorkspace, RemovesJunctionWithoutTraversingItsTarget) {
+    Scratch scratch;
+    const auto target = scratch.root() / "outside";
+    io::ensure_directory(target);
+    io::atomic_write(target / "keep.txt", "keep\n");
+    const auto link = scratch.root() / "redirect";
+    {
+        Junction junction(link, target);
+        io::remove_tree(link);
+        EXPECT_FALSE(io::entry_exists(link));
+        EXPECT_EQ(io::read(target / "keep.txt", 32U), "keep\n");
     }
 }
 

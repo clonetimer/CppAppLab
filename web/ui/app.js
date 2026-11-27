@@ -1753,7 +1753,8 @@
     $("modern-start").disabled = modernState.busy || !meta || !!record || !state.csrfToken || meta.execution_available === false;
     $("modern-close").disabled = modernState.busy;
     $("modern-start").textContent = meta?.execution_available === false ? "原生执行尚待验证" : record ? "项目已打开" : "打开学习项目";
-    $("modern-profile").textContent = meta?.execution_available === false ? meta.environment_reason : meta ? "C++" + meta.standard + " · 独立 GCC 13 · " +
+    $("modern-profile").textContent = meta?.execution_available === false ? meta.environment_reason : meta ? "C++" + meta.standard + " · " +
+      (meta.compiler_profile === "linux-gcc13" || !meta.compiler_profile ? "独立 GCC 13" : meta.compiler_profile) + " · " +
       meta.count + " 项固定 GoogleTest · " + (meta.toolchain_present ?
         "运行时核验工具链" : "缺少 g++-13；Ubuntu 24.04 可安装 g++-13、cmake 和 libgtest-dev 后刷新网页") : "";
     $("modern-task").textContent = meta ? (state.lessonLanguage === "en" ? meta.en : meta.zh) : "";

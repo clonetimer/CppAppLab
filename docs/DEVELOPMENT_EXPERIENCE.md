@@ -725,3 +725,8 @@ Run 46009769033 at c770c511 passed signed replay, all 101 relocated fixed course
 ### CP7-E1 actual packaged experiment evidence
 
 At baff74a6, [46010049974](https://github.com/clonetimer/CppAppLab/actions/runs/46010049974) replayed 63 locked signed archives, verified 40,617 files, passed all 101 classic contracts and all 20 existing modern variants through the actual relocated HTTP workbench; classic state/history unchanged. The job then failed at the inherited D3a notice fixture. The separate Windows foundation passed. Integrate the tested notice predicate correction without changing any experiment source, and rerun complete CI.
+
+
+## 87. CP7-E2 — Native editable modern projects without new curricula
+
+- Reuse existing sample-window and frame-header learner sources, 7+8 fixed GoogleTest contracts and browser editor; extend only native compiler guard and execution/storage adapters. Classic 101 and modern fixed 20 remain unchanged. Windows staged builds use actual bundled GCC16/CMake/Ninja/CTest and verify CMake cache identities. Preserve Linux GCC13 profile, explicit revision checks and independent evidence. Real red/green, stale/resume and classic evidence isolation added to relocated ZIP test. Current candidate pending CI; no human or public-release claim.

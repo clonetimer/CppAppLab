@@ -72,6 +72,55 @@ int run_native_modern_step(const std::vector<std::string>& args) {
                 }
                 command.insert(command.end(), {source, "-o", "probe.exe"});
             }
+        } else if (phase == "project-configure" || phase == "project-build" ||
+                   phase == "project-test") {
+            if (root.filename().wstring().rfind(L"cppapplab-modern-check-", 0) != 0 ||
+                args[5] != "0") {
+                throw std::invalid_argument("Fixed modern project staging directory required.");
+            }
+            for (const auto* filename : {"CMakeLists.txt", "contract.hpp", "tests.cpp",
+                                         "implementation.cpp"}) {
+                if (!state::regular_exists(root / filename)) {
+                    throw std::runtime_error("Missing fixed modern project input.");
+                }
+            }
+            const auto cmake = *sysroot / "bin/cmake.exe";
+            const auto ninja = *sysroot / "bin/ninja.exe";
+            const auto ctest = *sysroot / "bin/ctest.exe";
+            if (!state::regular_exists(cmake) || !state::regular_exists(ninja) ||
+                !state::regular_exists(ctest)) {
+                throw std::runtime_error("Incomplete bundled CMake tools.");
+            }
+            if (phase == "project-configure") {
+                if (state::entry_exists(root / "build")) {
+                    throw std::runtime_error("Modern project requires a fresh build directory.");
+                }
+                command = {cmake.u8string(), "-S", ".", "-B", "build", "-G", "Ninja",
+                           "-DCMAKE_CXX_COMPILER:FILEPATH=" + compiler.generic_u8string(),
+                           "-DCMAKE_MAKE_PROGRAM:FILEPATH=" + ninja.generic_u8string(),
+                           "-DCMAKE_SYSROOT:PATH=" + sysroot->generic_u8string(),
+                           "-DCMAKE_PREFIX_PATH:PATH=" + sysroot->generic_u8string(),
+                           "-DCMAKE_FIND_USE_PACKAGE_REGISTRY=FALSE",
+                           "-DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=FALSE",
+                           "-DCPPAPPLAB_NATIVE_MODERN_PROFILE=ucrt64-gcc16"};
+                timeout = 30s;
+            } else {
+                state::require_directory(root / "build");
+                if (!state::regular_exists(root / "build/CMakeCache.txt")) {
+                    throw std::runtime_error("Missing configured modern project cache.");
+                }
+                if (phase == "project-build") {
+                    command = {cmake.u8string(), "--build", "build", "--parallel", "2"};
+                    timeout = 90s;
+                } else {
+                    if (!state::regular_exists(root / "build/project_tests.exe")) {
+                        throw std::runtime_error("Missing built modern project test executable.");
+                    }
+                    command = {ctest.u8string(), "--test-dir", "build", "--no-tests=error",
+                               "--output-on-failure"};
+                    timeout = 45s;
+                }
+            }
         } else if (phase == "run") {
             if (!state::regular_exists(root / "probe.exe")) {
                 throw std::runtime_error("Missing compiled experiment executable.");

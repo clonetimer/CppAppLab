@@ -265,6 +265,50 @@ def verify(archive: Path) -> None:
                         for path in history_root.rglob("*") if path.is_file()} == history_before
                 print("[PASS] Native modern fixed experiments: 20/20; classic evidence unchanged.")
 
+                # Existing CP4 editable projects, fixed starters and fixtures;
+                # reference is supplied only by this explicit test harness.
+                projects = request("/api/v1/modern-projects")["projects"]
+                expected_projects = {"sample-window": 7, "frame-header": 8}
+                assert {project["id"]: project["count"] for project in projects} == expected_projects
+                for project in projects:
+                    assert project["execution_available"] and project["toolchain_present"], project
+                    project_id = project["id"]
+                    count = expected_projects[project_id]
+                    route = "/api/v1/modern-projects/" + project_id
+                    fixture = package / "course/modern_projects" / project_id
+                    opened = request(route + "/start", "POST", {})
+                    assert opened["source"] == (fixture / "starter.cpp").read_text(encoding="utf-8"), opened
+                    assert opened["state"] == "UNTESTED", opened
+                    request(route + "/check", "POST", {"revision": opened["revision"], "compiler": "g++"}, status=400)
+                    red = request(route + "/check", "POST", {"revision": opened["revision"]})
+                    assert not red["passed"] and red["status"] == "FAIL", red
+                    assert red["observed_tests"] == count and red["steps"][-1]["phase"] == "project-test", red
+                    assert red["steps"][-1]["exit_code"] != 0 and not red["steps"][-1]["timed_out"], red
+                    reference = (fixture / "reference.cpp").read_text(encoding="utf-8")
+                    saved = request(route + "/save", "POST", {"source": reference, "revision": opened["revision"]})
+                    assert saved["state"] == "STALE" and saved["revision"] != opened["revision"], saved
+                    request(route + "/save", "POST", {"source": "", "revision": opened["revision"]}, status=409)
+                    request(route + "/check", "POST", {"revision": opened["revision"]}, status=409)
+                    good = request(route + "/check", "POST", {"revision": saved["revision"]})
+                    assert good["passed"] and good["status"] == "PASS" and good["observed_tests"] == count, good
+                    assert not good["classic_course_acceptance"] and good["compiler_version"] == "16.2.0", good
+                    assert good["compiler_profile"] == "native-windows-bundled-gcc16", good
+                    actual = good["cmake_toolchain"]
+                    prefix = package / "toolchain"
+                    assert os.path.samefile(actual["CMAKE_CXX_COMPILER"], prefix / "bin/g++.exe")
+                    assert os.path.samefile(actual["CMAKE_SYSROOT"], prefix)
+                    assert os.path.samefile(actual["CMAKE_MAKE_PROGRAM"], prefix / "bin/ninja.exe")
+                    assert Path(actual["GTest_DIR"]).resolve().is_relative_to(prefix.resolve())
+                    resumed = request(route + "/start", "POST", {})
+                    assert resumed["source"] == reference and resumed["state"] == "PASS", resumed
+                    changed = request(route + "/save", "POST", {"source": reference + "\n// new revision\n", "revision": saved["revision"]})
+                    assert changed["state"] == "STALE", changed
+                    print(f"[PASS] Packaged native editable modern {project_id}: starter FAIL, reference {count}/{count}, resume/stale/conflict.")
+                assert states() == state_before
+                assert {str(path.relative_to(history_root)): path.read_bytes()
+                        for path in history_root.rglob("*") if path.is_file()} == history_before
+                print("[PASS] Native editable modern projects: 15/15; classic evidence unchanged.")
+
                 # At least four genuine CMake configurations must have used the
                 # relocated compiler and relocated GTest config, not the host.
                 caches = list((base / "cache").rglob("CMakeCache.txt"))

@@ -605,3 +605,11 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - Candidate evidence: 7 new native state tests, previous 13 and 9 original
   Calculator tests, existing Ubuntu matrix. Fresh CI pending; root native build,
   browser and install-free package remain unqualified.
+
+
+## 74. CP7-B2a — Diagnose native atomic rename instead of weakening the contract
+
+- First current Windows CI: Linux regression all 14 applicable PASS; native process/W1 13/13; native state 4 failures because absolute SetFileInformationByHandle rename did not publish the expected destination.
+- Second attempt: a relative filename plus non-null RootDirectory returned Windows ERROR_INVALID_PARAMETER on the hosted runner. Do not assume the documented field description is implemented identically by every Win32 file path.
+- Corrective candidate: retain pinned, checked directory handles; use MoveFileExW with same-volume absolute sibling paths, REPLACE_EXISTING and WRITE_THROUGH, no COPY_ALLOWED. Keep the temporary handle open with FILE_SHARE_DELETE and flush before rename. Preserve the tests for replace, Unicode, junctions, hardlinks, history and actual progress.
+- Current state: final corrected CI pending. No native progress claim until 7/7 storage tests and all prior Linux/native contracts pass.

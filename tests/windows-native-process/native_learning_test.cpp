@@ -261,7 +261,7 @@ TEST(NativeLearningWorkflow, RealCalculatorCMakeGoogleTestAcceptanceUsesSharedEn
             result = invoke({"cppapplab", "check", workspace.root.u8string()});
             output = capture.str();
         }
-        ASSERT_EQ(result, 0) << task_id << "\\n" << output;
+        ASSERT_EQ(result, 0) << task_id << "\n" << output;
         EXPECT_NE(output.find("Result: PASS"), std::string::npos) << task_id;
         EXPECT_NE(output.find("Acceptance: " + std::to_string(task->expected_test_count) +
                               "/" + std::to_string(task->expected_test_count)),

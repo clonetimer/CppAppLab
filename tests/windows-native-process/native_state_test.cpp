@@ -362,7 +362,7 @@ TEST(NativeWorkspace, CreatesAndReopensWorkspaceInUnicodePath) {
     EXPECT_TRUE(fs::is_regular_file(destination / "src" / "main.cpp"));
     EXPECT_TRUE(fs::is_regular_file(destination / ".cppapplab-workspace"));
     EXPECT_FALSE(fs::exists(destination / "reference" / "main.cpp"));
-    EXPECT_THROW(cppapplab::create_workspace(*hello, destination), std::runtime_error);
+    EXPECT_THROW((void)cppapplab::create_workspace(*hello, destination), std::runtime_error);
     EXPECT_EQ(cppapplab::open_workspace(destination).root, workspace.root);
 }
 
@@ -380,7 +380,7 @@ TEST(NativeWorkspace, RejectsTemplateJunctionAndCleansPartialWorkspace) {
     fs::remove_all(template_source);
     Junction junction(template_source, outside);
     const auto destination = scratch.root() / "learner";
-    EXPECT_THROW(cppapplab::create_workspace(*hello, destination), std::runtime_error);
+    EXPECT_THROW((void)cppapplab::create_workspace(*hello, destination), std::runtime_error);
     EXPECT_FALSE(io::entry_exists(destination));
     EXPECT_TRUE(fs::is_empty(outside));
 }
@@ -400,7 +400,7 @@ TEST(NativeWorkspace, RejectsHardLinkedTemplateFileAndCleansPartialWorkspace) {
     ASSERT_TRUE(CreateHardLinkW(source.c_str(), external.c_str(), nullptr)) << GetLastError();
 
     const auto destination = scratch.root() / "learner";
-    EXPECT_THROW(cppapplab::create_workspace(*hello, destination), std::runtime_error);
+    EXPECT_THROW((void)cppapplab::create_workspace(*hello, destination), std::runtime_error);
     EXPECT_FALSE(io::entry_exists(destination));
     std::ifstream external_input(external, std::ios::binary);
     ASSERT_TRUE(external_input.is_open());
@@ -418,7 +418,7 @@ TEST(NativeWorkspace, RejectsDestinationParentJunctionWithoutTouchingTarget) {
     const auto link = scratch.root() / "redirect";
     Junction junction(link, target);
 
-    EXPECT_THROW(cppapplab::create_workspace(*hello, link / "learner"), std::runtime_error);
+    EXPECT_THROW((void)cppapplab::create_workspace(*hello, link / "learner"), std::runtime_error);
     EXPECT_TRUE(fs::is_empty(target));
 }
 

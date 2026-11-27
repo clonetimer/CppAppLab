@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -17,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from cppapplab_web import CppAppLabWebServer, MAX_LESSON_BYTES, ServiceSession, safe_relative_path
 import knowledge_lab
 import modern_cpp
+import modern_projects
 
 
 FAKE_ENGINE = """#!/usr/bin/env python3
@@ -1196,6 +1198,56 @@ class WebWorkbenchTests(unittest.TestCase):
                                                 {"variant": "repair", "compiler": "g++"},
                                                 self.token, self.base_url), 400)
 
+    def test_modern_project_workspace_and_mutation_guards(self) -> None:
+        source_root = Path(__file__).resolve().parents[3]
+        shutil.copytree(source_root / "course/modern_projects", self.root / "course/modern_projects")
+        projects = self.request("/api/v1/modern-projects")["projects"]
+        self.assertEqual({item["id"] for item in projects}, {"sample-window", "frame-header"})
+        self.assertEqual(sum(item["count"] for item in projects), 15)
+        self.assertFalse((self.workspace_root / ".modern").exists())
+        route = "/api/v1/modern-projects/sample-window/"
+        self.assertEqual(self.request_error(route + "start", "POST", {}), 403)
+        self.assertEqual(self.request_error(route + "start", "POST", {"path": "other"},
+                                            self.token, self.base_url), 400)
+        self.assertEqual(self.request_error(route + "save", "POST", {"source": "x", "revision": "x"},
+                                            self.token, self.base_url), 404)
+        initial = self.request(route + "start", "POST", {}, self.token, self.base_url)
+        self.assertEqual(initial["state"], "UNTESTED")
+        self.assertEqual(initial["source"], (source_root / "course/modern_projects/sample-window/starter.cpp").read_text())
+        path = Path(initial["path"])
+        self.assertEqual(path, self.workspace_root / ".modern/sample-window/implementation.cpp")
+        edited = initial["source"] + "\n// own draft\n"
+        saved = self.request(route + "save", "POST", {"source": edited, "revision": initial["revision"]},
+                             self.token, self.base_url)
+        self.assertNotEqual(saved["revision"], initial["revision"])
+        self.assertEqual(path.read_text(), edited)
+        self.assertEqual(self.request_error(route + "save", "POST",
+                                            {"source": "stale", "revision": initial["revision"]},
+                                            self.token, self.base_url), 409)
+        self.assertEqual(self.request_error(route + "check", "POST", {"revision": initial["revision"]},
+                                            self.token, self.base_url), 409)
+        self.assertEqual(self.request_error(route + "check", "POST", {"revision": saved["revision"], "command": "other"},
+                                            self.token, self.base_url), 400)
+        self.assertEqual(self.request_error(route + "save", "POST",
+                                            {"source": "a" * (modern_projects.MAX_SOURCE + 1),
+                                             "revision": saved["revision"]}, self.token, self.base_url), 413)
+        resumed = self.request(route + "start", "POST", {}, self.token, self.base_url)
+        self.assertEqual(resumed["source"], edited)
+        with patch.object(modern_cpp, "COMPILER", str(self.base / "missing-g++-13")):
+            result = self.request(route + "check", "POST", {"revision": saved["revision"]},
+                                  self.token, self.base_url)
+            self.assertEqual(result["status"], "TOOLCHAIN_UNAVAILABLE")
+            self.assertFalse(result["passed"])
+            self.assertFalse(result["classic_course_acceptance"])
+            self.assertFalse((path.parent / "last-check.json").exists())
+        outside = self.base / "outside.cpp"
+        outside.write_text("untouched", encoding="utf-8")
+        path.unlink()
+        path.symlink_to(outside)
+        self.assertEqual(self.request_error(route + "start", "POST", {}, self.token, self.base_url), 400)
+        self.assertEqual(outside.read_text(), "untouched")
+        self.assertFalse((self.workspace_root / "w1.hello-world").exists())
+
     def test_knowledge_http_replays_actual_gcc_without_creating_workspace(self) -> None:
         route = "/api/v1/knowledge/linkage/run"
         for variant in ("failure", "repair"):
@@ -1204,6 +1256,21 @@ class WebWorkbenchTests(unittest.TestCase):
             self.assertFalse(result["course_acceptance"])
             self.assertIn("g++", result["steps"][0]["command"])
         self.assertEqual(list(self.workspace_root.iterdir()), [])
+
+
+class ModernProjectRunnerTests(unittest.TestCase):
+    def test_bounded_log_and_deadline(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            result = modern_projects.execute(
+                [sys.executable, "-c", "import sys;sys.stdout.write('a'*100000)"], root, 3)
+            self.assertEqual(result["exit_code"], 0, result)
+            self.assertTrue(result["truncated"])
+            self.assertLessEqual(len(result["output"].encode()), modern_projects.MAX_LOG + 40)
+            result = modern_projects.execute(
+                [sys.executable, "-c", "import time;time.sleep(10)"], root, 0.2)
+            self.assertTrue(result["timed_out"])
+            self.assertNotEqual(result["exit_code"], 0)
 
 
 class KnowledgeProbeTests(unittest.TestCase):

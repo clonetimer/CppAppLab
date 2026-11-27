@@ -102,3 +102,8 @@ and the unchanged original Ubuntu workflow. This B2a revision is a candidate
 until current CI completes. The next gate is native safe workspace creation,
 fixed native toolchain/profile and full root learning engine; no Windows ZIP or
 native browser product claimed yet.
+
+
+### CP7-B2a regression findings and correction (2026-11-27)
+
+The first native state run failed four cases because the initial absolute-path rename returned success without the expected destination becoming visible. The second attempt used a non-null RootDirectory with a relative leaf and was rejected by Windows with ERROR_INVALID_PARAMETER. The final implementation uses the documented Win32 same-volume MoveFileExW path form, while holding checked parent-directory handles (without FILE_SHARE_DELETE), keeping the exclusive temporary file open with FILE_SHARE_DELETE, flushing it, and invoking MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH. MOVEFILE_COPY_ALLOWED is deliberately absent: source and destination are siblings on the same fixed volume; any cross-volume fallback would violate atomic replacement. This is the current candidate implementation, not yet verified by a fresh CI run. The previous failures remain recorded and are not counted as passes.

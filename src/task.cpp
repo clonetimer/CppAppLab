@@ -1,5 +1,9 @@
 #include "cppapplab/task.hpp"
 
+#ifdef _WIN32
+#include "windows_state_io.hpp"
+#endif
+
 #include <algorithm>
 #include <cstdlib>
 #include <fstream>
@@ -185,6 +189,10 @@ Task parse_task(const std::vector<std::string>& fields) {
 
 std::vector<Task> load_catalog() {
     const auto path = data_root() / "course" / "tasks.tsv";
+#ifdef _WIN32
+    const std::string catalog_content = windows_state_io::read(path, kMaxCatalogBytes);
+    std::istringstream input(catalog_content);
+#else
     std::error_code error;
     const auto status = std::filesystem::symlink_status(path, error);
     if (error || !std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
@@ -200,6 +208,7 @@ std::vector<Task> load_catalog() {
     if (!input) {
         throw std::runtime_error("Cannot open task catalog: " + path.string());
     }
+#endif
 
     std::vector<Task> tasks;
     std::set<std::string> task_ids;
@@ -254,12 +263,19 @@ std::vector<Task> load_catalog() {
 }  // namespace
 
 std::filesystem::path data_root() {
+#ifdef _WIN32
+    if (const auto override_path = windows_state_io::environment_path(L"CPPAPPLAB_DATA_DIR")) {
+        return std::filesystem::absolute(*override_path).lexically_normal();
+    }
+    return std::filesystem::u8path(CPPAPPLAB_DATA_DIR).lexically_normal();
+#else
     if (const char* override_path = std::getenv("CPPAPPLAB_DATA_DIR");
         override_path != nullptr && override_path[0] != '\0') {
         return std::filesystem::absolute(override_path).lexically_normal();
     }
 
     return std::filesystem::path(CPPAPPLAB_DATA_DIR).lexically_normal();
+#endif
 }
 
 const std::vector<Task>& task_catalog() {

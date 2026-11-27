@@ -86,7 +86,7 @@ jobs:
           $listed = & (Join-Path $toolBin 'ctest.exe') --test-dir $build --show-only=json-v1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $tests = ($listed | Out-String | ConvertFrom-Json).tests
-          if ($tests.Count -ne 20) { throw "Expected 13 foundation and 7 native state tests; found $($tests.Count)" }
+          if ($tests.Count -ne 25) { throw "Expected 13 process/W1, 7 state and 5 workspace tests; found $($tests.Count)" }
           & (Join-Path $toolBin 'ctest.exe') --test-dir $build --output-on-failure --no-tests=error
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build and run the original Calculator acceptance fixture

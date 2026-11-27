@@ -399,4 +399,271 @@ void append(const Path& input, std::string_view line, std::uintmax_t maximum_byt
     flush(file.get());
 }
 
+
+namespace {
+
+class FindHandle {
+   public:
+    explicit FindHandle(HANDLE value) noexcept : value_(value) {}
+    ~FindHandle() {
+        if (value_ != INVALID_HANDLE_VALUE) {
+            (void)FindClose(value_);
+        }
+    }
+    FindHandle(const FindHandle&) = delete;
+    FindHandle& operator=(const FindHandle&) = delete;
+    [[nodiscard]] HANDLE get() const noexcept { return value_; }
+
+   private:
+    HANDLE value_;
+};
+
+void copy_regular_file(const Path& source, const Path& destination) {
+    const auto source_chain = pin_directory(source.parent_path(), false);
+    if (!source_chain.exists) {
+        throw std::runtime_error("Workspace template parent directory is missing.");
+    }
+    Handle input = open_file(source, GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING);
+    if (!input) {
+        fail("Open workspace template file");
+    }
+    validate_handle(input.get(), false);
+
+    const auto destination_chain = pin_directory(
+        destination.parent_path(), false,
+        FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY | FILE_ADD_FILE);
+    if (!destination_chain.exists) {
+        throw std::runtime_error("Workspace destination parent directory is missing.");
+    }
+    Handle output = open_file(destination, GENERIC_WRITE | DELETE, 0U, CREATE_NEW);
+    if (!output) {
+        fail("Create exclusive learner workspace file");
+    }
+    try {
+        validate_handle(output.get(), false);
+        char buffer[kChunkBytes];
+        while (true) {
+            DWORD received = 0U;
+            if (!ReadFile(input.get(), buffer, sizeof(buffer), &received, nullptr)) {
+                fail("Read workspace template file");
+            }
+            if (received == 0U) {
+                break;
+            }
+            write_all(output.get(), std::string_view(buffer, received));
+        }
+        flush(output.get());
+    } catch (...) {
+        discard(output.get());
+        throw;
+    }
+}
+
+void copy_tree_contents(const Path& source, const Path& destination) {
+    const auto source_chain = pin_directory(source, false);
+    if (!source_chain.exists) {
+        throw std::runtime_error("Workspace template directory is missing.");
+    }
+    const auto destination_chain = pin_directory(
+        destination, false, FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY | FILE_ADD_FILE);
+    if (!destination_chain.exists) {
+        throw std::runtime_error("Workspace destination directory is missing.");
+    }
+
+    Path pattern = source;
+    pattern /= L"*";
+    WIN32_FIND_DATAW data{};
+    const HANDLE raw_find = FindFirstFileW(pattern.c_str(), &data);
+    if (raw_find == INVALID_HANDLE_VALUE) {
+        const DWORD error = GetLastError();
+        if (error == ERROR_FILE_NOT_FOUND) {
+            return;
+        }
+        fail("Enumerate workspace template directory", error);
+    }
+    FindHandle find(raw_find);
+    do {
+        const std::wstring name(data.cFileName);
+        if (name == L"." || name == L"..") {
+            continue;
+        }
+        validate_component(name);
+        if ((data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0U ||
+            (data.dwFileAttributes & FILE_ATTRIBUTE_DEVICE) != 0U) {
+            throw std::runtime_error("Workspace template contains a reparse point or device entry.");
+        }
+
+        const Path source_child = source / name;
+        const Path destination_child = destination / name;
+        if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0U) {
+            create_directory_exclusive(destination_child);
+            copy_tree_contents(source_child, destination_child);
+        } else {
+            copy_regular_file(source_child, destination_child);
+        }
+    } while (FindNextFileW(find.get(), &data));
+
+    const DWORD error = GetLastError();
+    if (error != ERROR_NO_MORE_FILES) {
+        fail("Continue enumerating workspace template directory", error);
+    }
+}
+
+void remove_tree_impl(const Path& input) {
+    const Path path = checked_absolute(input);
+    if (path == path.root_path()) {
+        throw std::runtime_error("Refusing to remove a volume root as a workspace.");
+    }
+    const auto parent_chain = pin_directory(
+        path.parent_path(), false,
+        FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY | FILE_DELETE_CHILD);
+    if (!parent_chain.exists) {
+        return;
+    }
+    const DWORD attributes = GetFileAttributesW(path.c_str());
+    if (attributes == INVALID_FILE_ATTRIBUTES) {
+        const DWORD error = GetLastError();
+        if (missing(error)) {
+            return;
+        }
+        fail("Inspect workspace cleanup entry", error);
+    }
+
+    if ((attributes & FILE_ATTRIBUTE_DIRECTORY) != 0U &&
+        (attributes & FILE_ATTRIBUTE_REPARSE_POINT) == 0U) {
+        auto directory_chain = pin_directory(path, false);
+        if (!directory_chain.exists) {
+            throw std::runtime_error("Workspace cleanup directory disappeared.");
+        }
+        Path pattern = path;
+        pattern /= L"*";
+        WIN32_FIND_DATAW data{};
+        const HANDLE raw_find = FindFirstFileW(pattern.c_str(), &data);
+        if (raw_find != INVALID_HANDLE_VALUE) {
+            FindHandle find(raw_find);
+            do {
+                const std::wstring name(data.cFileName);
+                if (name == L"." || name == L"..") {
+                    continue;
+                }
+                remove_tree_impl(path / name);
+            } while (FindNextFileW(find.get(), &data));
+            const DWORD error = GetLastError();
+            if (error != ERROR_NO_MORE_FILES) {
+                fail("Continue enumerating workspace cleanup directory", error);
+            }
+        } else {
+            const DWORD error = GetLastError();
+            if (error != ERROR_FILE_NOT_FOUND) {
+                fail("Enumerate workspace cleanup directory", error);
+            }
+        }
+        // Windows will not remove a directory while our no-follow handle
+        // to that directory remains open without FILE_SHARE_DELETE.
+        directory_chain.handles.clear();
+        if (!RemoveDirectoryW(path.c_str())) {
+            fail("Remove learner workspace directory");
+        }
+        return;
+    }
+
+    if ((attributes & FILE_ATTRIBUTE_DIRECTORY) != 0U) {
+        if (!RemoveDirectoryW(path.c_str())) {
+            fail("Remove learner workspace reparse directory");
+        }
+    } else if (!DeleteFileW(path.c_str())) {
+        fail("Remove learner workspace file");
+    }
+}
+
+}  // namespace
+
+void require_directory(const Path& input) {
+    const Path path = checked_absolute(input);
+    const auto chain = pin_directory(path, false);
+    if (!chain.exists) {
+        throw std::runtime_error("Required native directory does not exist.");
+    }
+}
+
+void create_directory_exclusive(const Path& input) {
+    const Path path = checked_absolute(input);
+    const auto parent_chain = pin_directory(
+        path.parent_path(), false,
+        FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY | FILE_ADD_FILE);
+    if (!parent_chain.exists) {
+        throw std::runtime_error("Cannot create directory under a missing parent.");
+    }
+    if (!CreateDirectoryW(path.c_str(), nullptr)) {
+        const DWORD error = GetLastError();
+        if (error == ERROR_ALREADY_EXISTS) {
+            throw std::runtime_error("Workspace destination already exists.");
+        }
+        fail("CreateDirectoryW(exclusive workspace)");
+    }
+
+    Handle directory(CreateFileW(path.c_str(), FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY,
+                                  FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
+                                  FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+                                  nullptr));
+    if (!directory) {
+        const DWORD error = GetLastError();
+        (void)RemoveDirectoryW(path.c_str());
+        fail("Open newly created workspace directory", error);
+    }
+    try {
+        validate_handle(directory.get(), true);
+    } catch (...) {
+        directory.reset();
+        (void)RemoveDirectoryW(path.c_str());
+        throw;
+    }
+}
+
+bool entry_exists(const Path& input) {
+    const Path path = checked_absolute(input);
+    const auto parent_chain = pin_directory(path.parent_path(), false);
+    if (!parent_chain.exists) {
+        return false;
+    }
+    const DWORD attributes = GetFileAttributesW(path.c_str());
+    if (attributes != INVALID_FILE_ATTRIBUTES) {
+        return true;
+    }
+    const DWORD error = GetLastError();
+    if (missing(error)) {
+        return false;
+    }
+    fail("Inspect native workspace destination", error);
+}
+
+[[nodiscard]] bool path_is_within(const Path& child, const Path& parent) {
+    auto child_part = child.begin();
+    for (auto parent_part = parent.begin(); parent_part != parent.end();
+         ++parent_part, ++child_part) {
+        if (child_part == child.end() ||
+            CompareStringOrdinal(parent_part->c_str(), -1, child_part->c_str(), -1, TRUE) !=
+                CSTR_EQUAL) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void copy_tree(const Path& source, const Path& destination) {
+    require_directory(source);
+    require_directory(destination);
+    const Path absolute_source = checked_absolute(source);
+    const Path absolute_destination = checked_absolute(destination);
+    if (path_is_within(absolute_destination, absolute_source) ||
+        path_is_within(absolute_source, absolute_destination)) {
+        throw std::runtime_error("Workspace template and destination must not contain one another.");
+    }
+    copy_tree_contents(absolute_source, absolute_destination);
+}
+
+void remove_tree(const Path& path) {
+    remove_tree_impl(path);
+}
+
 }  // namespace cppapplab::windows_state_io

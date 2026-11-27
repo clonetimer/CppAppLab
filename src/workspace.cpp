@@ -1,5 +1,9 @@
 #include "cppapplab/workspace.hpp"
 
+#ifdef _WIN32
+#include "windows_state_io.hpp"
+#endif
+
 #include <cstdint>
 #include <fstream>
 #include <iomanip>
@@ -19,6 +23,9 @@ constexpr std::size_t kMaxLogBytes = 256U * 1024U;
 constexpr const char* kWorkspaceMarker = "CppAppLab Workspace v1";
 
 std::string read_regular_file(const std::filesystem::path& path, std::uintmax_t max_bytes) {
+#ifdef _WIN32
+    return windows_state_io::read(path, max_bytes);
+#else
     std::error_code error;
     const auto status = std::filesystem::symlink_status(path, error);
     if (error) {
@@ -43,9 +50,13 @@ std::string read_regular_file(const std::filesystem::path& path, std::uintmax_t 
         throw std::runtime_error("Failed while reading file: " + path.string());
     }
     return content;
+#endif
 }
 
 void atomic_write(const std::filesystem::path& path, const std::string& content) {
+#ifdef _WIN32
+    windows_state_io::atomic_write(path, content);
+#else
     if (std::filesystem::is_symlink(path)) {
         throw std::runtime_error("Refusing to replace a symlink: " + path.string());
     }
@@ -74,6 +85,7 @@ void atomic_write(const std::filesystem::path& path, const std::string& content)
         std::filesystem::remove(temporary);
         throw std::runtime_error("Cannot publish file " + path.string() + ": " + error.message());
     }
+#endif
 }
 
 void copy_tree_without_symlinks(const std::filesystem::path& source,
@@ -255,6 +267,14 @@ std::string source_fingerprint(const Task& task, const std::filesystem::path& wo
     for (const auto& relative_path : task.source_files) {
         validate_relative_source_path(relative_path, workspace_root);
         const auto path = workspace_root / relative_path;
+#ifdef _WIN32
+        const auto content = windows_state_io::read(path, kMaxSourceBytes);
+        const std::string relative_name = relative_path.generic_string();
+        fnv_update(hash, relative_name.data(), relative_name.size());
+        const char separator = '\0';
+        fnv_update(hash, &separator, 1);
+        fnv_update(hash, content.data(), content.size());
+#else
         const auto status = std::filesystem::symlink_status(path);
 
         if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
@@ -287,6 +307,7 @@ std::string source_fingerprint(const Task& task, const std::filesystem::path& wo
         if (!input.eof()) {
             throw std::runtime_error("Failed while reading learner source: " + path.string());
         }
+#endif
     }
 
     return "fnv1a64:" + fnv_hex(hash);
@@ -294,6 +315,12 @@ std::string source_fingerprint(const Task& task, const std::filesystem::path& wo
 
 std::optional<Evidence> read_evidence(const std::filesystem::path& workspace_root) {
     const auto state_directory = workspace_root / ".cppapplab";
+#ifdef _WIN32
+    const auto evidence_path = state_directory / "evidence.txt";
+    if (!windows_state_io::regular_exists(evidence_path)) {
+        return std::nullopt;
+    }
+#else
     if (!std::filesystem::exists(state_directory) &&
         !std::filesystem::is_symlink(state_directory)) {
         return std::nullopt;
@@ -309,6 +336,7 @@ std::optional<Evidence> read_evidence(const std::filesystem::path& workspace_roo
     if (!std::filesystem::exists(evidence_path) && !std::filesystem::is_symlink(evidence_path)) {
         return std::nullopt;
     }
+#endif
 
     const auto values = parse_key_values(read_regular_file(evidence_path, kMaxEvidenceBytes));
     const auto task = values.find("task_id");
@@ -337,6 +365,9 @@ std::optional<Evidence> read_evidence(const std::filesystem::path& workspace_roo
 void write_evidence(const std::filesystem::path& workspace_root, const Evidence& evidence,
                     const std::string& log) {
     const auto state_directory = workspace_root / ".cppapplab";
+#ifdef _WIN32
+    windows_state_io::ensure_directory(state_directory);
+#else
     if (std::filesystem::exists(state_directory) || std::filesystem::is_symlink(state_directory)) {
         const auto status = std::filesystem::symlink_status(state_directory);
         if (!std::filesystem::is_directory(status) || std::filesystem::is_symlink(status)) {
@@ -346,6 +377,7 @@ void write_evidence(const std::filesystem::path& workspace_root, const Evidence&
     } else {
         std::filesystem::create_directory(state_directory);
     }
+#endif
 
     std::ostringstream content;
     content << "format=1\n"

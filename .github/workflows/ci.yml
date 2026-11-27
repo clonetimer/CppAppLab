@@ -456,6 +456,10 @@ jobs:
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
           cmake --build build-task-d6d3-sanitize --parallel
           ctest --test-dir build-task-d6d3-sanitize --output-on-failure --timeout 25
+          # Repeat the resource observation without accepting a failed iteration.
+          ctest --test-dir build-task-d6d3-sanitize --output-on-failure --timeout 25 \
+            -R '^HttpLoadProbeAcceptanceTest.RunsConcurrentKeepAliveClientsAndAccountsForResources$' \
+            --repeat until-fail:20
 
       - name: W9 HTTP chunked transfer sanitizer coverage
         env:

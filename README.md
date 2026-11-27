@@ -24,6 +24,16 @@ bash scripts/start-web-workbench.sh
 
 如果源码目录还没有 `build/cppapplab`，先按[快速入门的构建步骤](docs/QUICKSTART.md#2-run-the-one-command-setup)完成构建，再启动工作台。
 
+### 使用学习者压缩包：直接打开网页工作台
+
+在对应 Ubuntu 22.04 或 24.04（包括 WSL2）中解压学习者包，从解压目录执行：
+
+```bash
+./start-web-workbench
+```
+
+打开终端显示的本地 URL，保持终端运行；Ctrl+C 停止。学习者包内置预编译引擎、网页服务和静态页面，无需重新构建平台；练习本身仍需 GCC/CMake/GoogleTest，浏览器服务需要 Python 3。断网时保留基础编辑器，现代 GCC 13 工程仍受原工具链要求约束。上述能力须以本轮双 Ubuntu 打包回归验收为准。
+
 ### 使用学习者压缩包：打开命令行首页
 
 在解压目录运行 `./cppapplab`，选择 **1. Continue learning**（继续学习）。源码构建也可用 `./build/cppapplab` 打开命令行首页。在首页选 **5** 或在终端给启动命令加上 `guide`，即可阅读[中文学习导航](course/LEARNING_GUIDE_ZH.md)。

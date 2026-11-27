@@ -77,3 +77,15 @@ powershell -ExecutionPolicy Bypass -File .\tests\windows-target-machine-acceptan
 - 跳过的 job 必须单独标记，不能折算为 PASS。
 - 课程目录覆盖不等于学员掌握；固定夹具通过不等于迁移能力通过。
 - 对 fuzz 结果只报告实际次数、工具链、语料和是否发现问题，不把有限无发现扩大为安全结论。
+
+## CP6-B packaged browser candidate
+
+#83 was merged as `ffea39d984934c3b9d624a62eedce2266f5a3418` after run 45945570547 passed all 14 applicable jobs (one push-only job skipped). Its prebuilt learner packages provided CLI only. This candidate ships the existing web service and static UI beside the prebuilt CLI, with a single foreground loopback entry point. Both Ubuntu package jobs must now run real HTTP W1 starter FAIL, build/run, formal PASS, source staleness and restart persistence from a relocated package, without building the platform again. The existing source Chromium gate remains separate; the package API test is not a new human or browser-DOM qualification. No new course or acceptance contract, no new Node runtime, no native Windows claim. Target-machine and human learning remain NOT RUN.
+
+## CP6-B first candidate run and regression correction (2026-11-27)
+
+PR #84 first head `cd3a1234c8916cdeb65b9a551c69799128c36608`, run [45947077614](https://github.com/clonetimer/CppAppLab/actions/runs/45947077614): both Ubuntu package jobs passed the real relocated packaged-web smoke, including CLI smoke, checksums and 25/25 course audit. Candidate artifact IDs 15174808119 (22.04) and 15174464247 (24.04). These artifacts belong to the first candidate, not a final release.
+
+The Ubuntu 24.04 sanitizer job failed the existing W8 D6-D3 load probe fixture: expected closed connections 6, observed 5; expected active connections 0, observed 1. All 48 requests succeeded. Source inspection confirms the fixture waited only on responses_completed, which the Reactor increments in record_response before flush_write returns false and close_connection updates the resource counters. The snapshot reads independent atomics, so the intermediate state can be observed before normal cleanup. This explains the reported failure; it is not an ASan memory-error report.
+
+Correct only the fixture synchronization: within its existing two-second observation bound, wait for response and resource settlement while the server stays running; retain all original expected values and assertions, all five test cases, and the unchanged learner/reference/server code. Default idle timeout is 30 seconds; the wait does not extend to the timeout or force shutdown. Add 20 consecutive executions (CTest until-fail, not retry-until-pass) of the existing concurrent case to both sanitizer jobs. The corrected revision must pass every original applicable job and all added repeat iterations; first-run failure remains part of the record. No course task rows, learner algorithms, acceptance outcomes or requirements are weakened. Final candidate evidence is pending.

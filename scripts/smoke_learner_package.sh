@@ -109,6 +109,9 @@ if ! grep -Fq "Next step: '$PACKAGE_ROOT/cppapplab' learn" "$TEMP_ROOT/check.log
     exit 1
 fi
 
+# Separate isolated HOME: the web path must start from an untouched learner state.
+python3 "$(dirname "$0")/../tests/test_packaged_workbench.py" "$PACKAGE_ROOT"
+
 echo "[PASS] Relocated learner package smoke test."
 echo "  CLI version: $VERSION_OUTPUT"
 echo "  Catalog: W1, W8 and W9 tasks discovered."

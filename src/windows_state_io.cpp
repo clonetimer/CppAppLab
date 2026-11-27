@@ -81,7 +81,8 @@ void validate_component(const std::wstring& name) {
         (input.has_root_name() && !input.is_absolute())) {
         throw std::runtime_error("Invalid Windows state path.");
     }
-    const Path path = std::filesystem::absolute(input).lexically_normal();
+    Path path = std::filesystem::absolute(input).lexically_normal();
+    path.make_preferred();
     const auto drive = path.root_name().native();
     if (drive.size() != 2U || drive[1] != L':' ||
         !((drive[0] >= L'A' && drive[0] <= L'Z') ||

@@ -1,6 +1,6 @@
 # CppAppLab
 
-> **当前主线（2026-11-26）：教学体验与现代化课程。** Windows 原生迁移已暂停，PR #67 保留为 Draft；当前可操作环境仍为 Ubuntu 22.04/24.04（Windows 用户通过 WSL2），`Start-CppAppLab.cmd` 仍启动 WSL 浏览器工作台。不得把 Windows 启动器检查当作原生 C++ 验收。参见[现代化教学计划](docs/MODERN_CPP_LEARNING_PLAN.md)及[历史架构决策](docs/DECISIONS.md)。
+> **当前主线（2026-11-27）：CP7 Windows 原生教学与双环境统一。** 目标为 Windows 11 x64 原生 W1–W4、现有现代 C++ 教学和保留完整 Ubuntu/WSL2 Linux 专项。当前正式可用产品仍为 Ubuntu 22.04/24.04（Windows 通过 WSL2），原生组件处于候选开发，尚无 Windows 原生学习者包。参见[CP7 计划](docs/CP7_WINDOWS_DUAL_ENVIRONMENT_PLAN.md)及[ADR](docs/DECISIONS.md)。
 
 **CppAppLab** is a hands-on C++ learning and engineering-practice platform. It takes a learner from the first C++ program to maintainable systems software, concurrent programs, TCP services, and an HTTP/1.1 server.
 
@@ -53,7 +53,7 @@ bash scripts/start-web-workbench.sh
 - **Quality:** compiler warnings, clang-format, clang-tidy, ASan and UBSan
 - **CI:** Ubuntu build/test matrices; the Windows runner currently validates only WSL launcher syntax and handoff.
 
-The values above describe the current supported source-build/CI environment. Native Windows migration is paused; no native Windows C++ build or target-machine qualification is claimed. Do not remove WSL support or lower acceptance requirements to imply native portability.
+The values above describe the current supported source-build/CI environment. CP7 introduces a limited native-Windows teaching path; isolated native acceptance does not yet qualify the learning engine, browser package or a target machine. Preserve WSL/Ubuntu and all Linux-specific contracts.
 
 ## Current learning tasks
 
@@ -133,7 +133,7 @@ The detailed course map and acceptance boundaries live in [course/CURRICULUM.md]
 3. **Fixed acceptance contracts.** Platform-owned tests validate behavior; learner tests and build files are not the authority for acceptance.
 4. **Hints do not replace implementation.** Learners can request progressive hints, implement the task, and rerun checks.
 5. **Evidence is reproducible.** A check records compiler output, toolchain metadata, source fingerprint, and exit status.
-6. **No fake portability.** The legacy implementation uses real Linux APIs; the Windows-native target must use real Win32, Winsock, IOCP, timer and reparse-point-safe filesystem APIs, not Bash/WSL compatibility layers or mocks.
+6. **No fake portability.** Linux-specific lessons use real Linux APIs. Native Windows basics must use real Win32 process and filesystem semantics and native GCC, not Bash/WSL compatibility layers or mocks; W5–W9 remain Linux lessons in CP7.
 7. **CI is not human learning validation.** Green automation proves build/test behavior, not that a learner understands the code.
 8. **Progress survives sessions.** Workspace locations and check history are stored outside the source checkout; current PASS state is revalidated against the workspace source fingerprint.
 

@@ -611,3 +611,11 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - Second attempt: a relative filename plus non-null RootDirectory returned Windows ERROR_INVALID_PARAMETER on the hosted runner. Do not assume the documented field description is implemented identically by every Win32 file path.
 - Corrective implementation: retain pinned, checked directory handles; write and flush an exclusive CREATE_NEW temporary, close it before documented MoveFileExW, and use same-volume absolute sibling paths with REPLACE_EXISTING and WRITE_THROUGH, no COPY_ALLOWED. Preserve tests for replace, Unicode, junctions, hardlinks, history and actual progress.
 - Final evidence: Windows run 45957192856 passed 20/20 process/W1/state tests and Calculator 9/9. Linux run 45957192865 passed all 14 applicable jobs; one push-only compatibility check was skipped as configured. PR #86 is ready for merge. The root native learning engine, browser and Windows package remain unqualified.
+
+
+## 75. CP7-B2b — Safe native workspace copy, catalog path and cleanup
+
+- Changed: added native directory existence/creation, no-follow tree copy, regular-file copy, and no-follow recursive cleanup. Routed actual `create_workspace`, `open_workspace`, source fingerprint and catalog reads through wide-path native APIs. Added five Windows workspace tests and raised the expected native test count to 25.
+- Why: a native process runner and progress store are insufficient if the platform can follow a junction while copying a learner template or writing a workspace. The native path must own creation, marker publication and failure cleanup too.
+- Pitfalls: testing only `is_symlink` does not prove junction safety. Use a real NTFS mount-point junction and a hard-linked template file; neither is silently skipped. Test the external target remains unchanged and partial destination is removed. Use the compiled source root to seed the temporary data root before changing `CPPAPPLAB_DATA_DIR`.
+- Evidence: code and test fixtures committed to CP7-B2b candidate; current Windows/Ubuntu CI pending. No root learning-engine or browser native claim until subsequent gates pass.

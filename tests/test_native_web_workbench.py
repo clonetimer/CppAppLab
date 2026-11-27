@@ -1,6 +1,7 @@
 """Native Windows source-build web acceptance; actual HTTP and learning engine."""
 from __future__ import annotations
 
+import ctypes
 import json
 import os
 from pathlib import Path
@@ -8,6 +9,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -90,6 +92,74 @@ def verify(root: Path, binary: Path) -> None:
             assert request(f"/api/v1/workspaces/{task_id}/files/{relative}", "PUT",
                            {"content": content})["saved"]
 
+        def verify_supervisor_shutdown() -> None:
+            # A real learner process must be alive when we close the native
+            # Python supervisor; terminating only a dummy CLI is insufficient.
+            sys.path.insert(0, str(root / "web/server"))
+            from cppapplab_web import NativeCliSupervisor, ApiError
+            isolated = base / "shutdown-probe"
+            isolated.mkdir()
+            profile = isolated / "home"
+            profile.mkdir()
+            workspace = isolated / "workspace"
+            child_env = dict(env, USERPROFILE=str(profile),
+                             CPPAPPLAB_STATE_DIR=str(isolated / "state"),
+                             CPPAPPLAB_DATA_DIR=str(root))
+            subprocess.run([str(binary), "start", "w1.hello-world", str(workspace)],
+                           env=child_env, cwd=root, check=True, capture_output=True, timeout=20)
+            (workspace / "src/main.cpp").write_text(
+                '#include <windows.h>\n#include <fstream>\n'
+                'int main(){std::ofstream out("child.pid");out<<GetCurrentProcessId();'
+                'out.close();Sleep(30000);return 0;}\n', encoding="utf-8")
+            supervisor = NativeCliSupervisor()
+            result = []
+
+            def invoke():
+                try:
+                    result.append(supervisor.run([str(binary), "check", str(workspace)],
+                                                 root, child_env, 45.0, None))
+                except BaseException as error:
+                    result.append(error)
+
+            thread = threading.Thread(target=invoke)
+            thread.start()
+            handle = None
+            kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+            kernel.OpenProcess.argtypes = [ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32]
+            kernel.OpenProcess.restype = ctypes.c_void_p
+            kernel.WaitForSingleObject.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
+            kernel.WaitForSingleObject.restype = ctypes.c_uint32
+            kernel.CloseHandle.argtypes = [ctypes.c_void_p]
+            try:
+                pid_path = workspace / "child.pid"
+                deadline = time.monotonic() + 20
+                while time.monotonic() < deadline and thread.is_alive():
+                    if pid_path.is_file():
+                        pid_text = pid_path.read_text(encoding="ascii").strip()
+                        if pid_text.isdigit():
+                            handle = kernel.OpenProcess(0x00100000, False, int(pid_text))
+                            if handle:
+                                break
+                    time.sleep(0.02)
+                assert handle and kernel.WaitForSingleObject(handle, 0) == 258, result
+                supervisor.close()
+                assert kernel.WaitForSingleObject(handle, 10000) == 0, "Orphan learner process"
+                thread.join(timeout=15)
+                assert not thread.is_alive() and result, result
+                assert isinstance(result[0], tuple) and result[0][0] != 0, result
+                try:
+                    supervisor.run([str(binary), "--version"], root, child_env, 5.0, None)
+                except ApiError as error:
+                    assert error.status == 503
+                else:
+                    raise AssertionError("Supervisor accepted work after close")
+                print("[PASS] Native shutdown closes real learner descendant Job Object.")
+            finally:
+                supervisor.close()
+                thread.join(timeout=15)
+                if handle:
+                    kernel.CloseHandle(handle)
+
         log_path = base / "server.log"
         with log_path.open("w+", encoding="utf-8") as log:
             try:
@@ -159,6 +229,11 @@ def verify(root: Path, binary: Path) -> None:
                 conflict = subprocess.run(command(port), cwd=root, env=env,
                                           capture_output=True, timeout=10)
                 assert conflict.returncode != 0
+                launcher = subprocess.run(
+                    ["pwsh", "-NoProfile", "-File", str(root / "scripts/start-native-web-workbench.ps1"),
+                     "-Binary", str(binary), "-Python", sys.executable, "-Port", str(port)],
+                    cwd=root, env=env, capture_output=True, timeout=20)
+                assert launcher.returncode != 0, "Launcher must reject an occupied port"
                 assert request("/api/v1/health")["status"] == "ok"
 
                 stop(proc)
@@ -170,6 +245,7 @@ def verify(root: Path, binary: Path) -> None:
                 save("w1.hello-world", "src/main.cpp", "int main(){return 0;}\n")
                 assert states()["w1.hello-world"] == "STALE"
                 assert states()["w5.system-lab"] == "LINUX/WSL2 REQUIRED"
+                verify_supervisor_shutdown()
                 print("[PASS] Native Windows HTTP: five enabled tasks, W1 fail/build/run/PASS, "
                       "Calculator 9/9, restart/resume/stale, hard-link refusal, port conflict, "
                       "token and unavailable-execution guards.")

@@ -47,7 +47,7 @@ The values above describe the current supported source-build/CI environment. Nat
 
 ## Current learning tasks
 
-The course catalog contains 25 tasks across W1–W9, including the CP5 A5 candidate. W1–W7 cover C++ fundamentals, Linux systems, concurrency and TCP; W8 builds the HTTP server and its six D6 engineering tasks; W9 adds chunked transfer decoding, strict request-target/query parsing and descriptor-confined static-file access. `course/tasks.tsv` is the authoritative task catalog.
+The course catalog contains 25 tasks across W1–W9, including the merged W9-A5 parser-invariant task. W1–W7 cover C++ fundamentals, Linux systems, concurrency and TCP; W8 builds the HTTP server and its six D6 engineering tasks; W9 adds chunked transfer decoding, strict request-target/query parsing and descriptor-confined static-file access. `course/tasks.tsv` is the authoritative task catalog.
 
 **推荐先读：** [中文学习导航（25 个任务）](course/LEARNING_GUIDE_ZH.md)。零基础学习者先看其中的「第一次使用」四步说明和常用词解释；也可以在终端运行 `./build/cppapplab guide`。重点是先完成第一关，再逐步理解工具和原理，不必预先读完整套安装与工程文档。
 
@@ -191,6 +191,6 @@ CppAppLab is an educational engineering lab, not a production C++ framework or a
 
 追加 `w9.http-hardening`，不改变原 23 个任务及其验收契约。复用已验证 A1 解析器，学习首条消息边界、明确资源预算和确定性拒绝策略；24 项固定 GoogleTest、双语教材与三级提示。此关为本地内存输入策略，不是已经部署的加固服务器；已通过 #80 的 13 项适用 CI，双 Ubuntu 的六种配置均 24/24。
 
-### CP5 · W9-A5 解析器不变量与有界模糊测试（候选）
+### CP5 · W9-A5 解析器不变量与有界模糊测试（已合并）
 
-第 25 个任务 `w9.http-fuzzing`：学员实现检查器，固定 A1/A4 解析链、21 项 GoogleTest、八个种子与独立真实 Clang/libFuzzer + ASan/UBSan 专项。普通课程仍用 GCC；额外专项在源码 checkout 上可选执行，实际 CI 待验收。只处理本地内存输入，不是网络测试工具，也不是安全认证。W10–W12 待推进。
+第 25 个任务 `w9.http-fuzzing`：学员实现检查器，固定 A1/A4 解析链、21 项 GoogleTest、八个种子与独立真实 Clang/libFuzzer + ASan/UBSan 专项。PR #81 已合并；14 项适用 CI jobs PASS，双 Ubuntu 六种配置固定测试 21/21，实际有界 fuzz 运行 10,000 次且未发现问题。只处理本地内存输入，不是网络测试工具，也不是安全认证；W10–W12 不属于当前交付主线。

@@ -808,6 +808,136 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "Bash syntax check failed: $script" }
           }
 
+      - name: Install native MinGW-w64 UCRT GCC toolchain
+        id: msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-gtest
+            git
+      - name: Verify the compiler targets native Windows
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $toolBin = Join-Path $env:MSYS2_LOCATION 'ucrt64\bin'
+          $gcc = Join-Path $toolBin 'gcc.exe'
+          if (-not (Test-Path $gcc)) { throw "UCRT64 GCC was not installed at $gcc" }
+          $target = (& $gcc -dumpmachine).Trim()
+          if ($target -ne 'x86_64-w64-mingw32') { throw "Expected native Windows GCC target; received $target" }
+          & $gcc --version
+          & (Join-Path $toolBin 'g++.exe') --version
+      - name: Configure and build native process, W1, state and workspace fixtures
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $toolBin = Join-Path $env:MSYS2_LOCATION 'ucrt64\bin'
+          $env:PATH = "$toolBin;$env:PATH"
+          $build = Join-Path $env:RUNNER_TEMP 'cppapplab windows native process'
+          & (Join-Path $toolBin 'cmake.exe') -S tests/windows-native-process -B $build -G Ninja -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_CXX_COMPILER=$toolBin/g++.exe" "-DCMAKE_MAKE_PROGRAM=$toolBin/ninja.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $toolBin 'cmake.exe') --build $build --parallel
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($exe in @('cppapplab_process_tests.exe', 'cppapplab_process_test_child.exe', 'cppapplab_native_w1_tests.exe', 'cppapplab_native_state_tests.exe', 'cppapplab_native_state_child.exe')) {
+            $path = Join-Path $build $exe
+            $format = (& (Join-Path $toolBin 'objdump.exe') -f $path | Out-String)
+            if ($LASTEXITCODE -ne 0 -or $format -notmatch 'pei-x86-64') { throw "Not a native PE: $path" }
+            $imports = (& (Join-Path $toolBin 'objdump.exe') -p $path | Out-String)
+            if ($LASTEXITCODE -ne 0 -or $imports -match 'msys-2\.0\.dll|cygwin1\.dll') { throw "POSIX runtime imported: $path" }
+          }
+          $listed = & (Join-Path $toolBin 'ctest.exe') --test-dir $build --show-only=json-v1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $tests = ($listed | Out-String | ConvertFrom-Json).tests
+          if ($tests.Count -ne 25) { throw "Expected 25 native process/state/workspace tests; found $($tests.Count)" }
+          & (Join-Path $toolBin 'ctest.exe') --test-dir $build --output-on-failure --no-tests=error
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build and run the original native Calculator acceptance fixture
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $prefix = Join-Path $env:MSYS2_LOCATION 'ucrt64'
+          $toolBin = Join-Path $prefix 'bin'
+          $env:PATH = "$toolBin;$env:PATH"
+          $build = Join-Path $env:RUNNER_TEMP 'cppapplab native calculator'
+          $source = Join-Path $env:GITHUB_WORKSPACE 'labs/w1/calculator/reference'
+          & (Join-Path $toolBin 'cmake.exe') -S course/fixtures/w1/calculator -B $build -G Ninja -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_CXX_COMPILER=$toolBin/g++.exe" "-DCMAKE_MAKE_PROGRAM=$toolBin/ninja.exe" "-DCMAKE_PREFIX_PATH=$prefix" "-DCPPAPPLAB_LEARNER_SOURCE_DIR=$source"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $toolBin 'cmake.exe') --build $build --parallel
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $listed = & (Join-Path $toolBin 'ctest.exe') --test-dir $build --show-only=json-v1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $tests = ($listed | Out-String | ConvertFrom-Json).tests
+          if ($tests.Count -ne 9) { throw "Expected 9 Calculator tests; found $($tests.Count)" }
+          & (Join-Path $toolBin 'ctest.exe') --test-dir $build --output-on-failure --timeout 10
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Configure and build the root Windows-native learning engine
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $prefix = Join-Path $env:MSYS2_LOCATION 'ucrt64'
+          $toolBin = Join-Path $prefix 'bin'
+          $env:PATH = "$toolBin;$env:PATH"
+          $env:CMAKE_PREFIX_PATH = $prefix
+          $build = Join-Path $env:RUNNER_TEMP 'cppapplab native learning root'
+          & (Join-Path $toolBin 'cmake.exe') -S . -B $build -G Ninja -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_CXX_COMPILER=$toolBin/g++.exe" "-DCMAKE_MAKE_PROGRAM=$toolBin/ninja.exe" -DCPPAPPLAB_FETCH_GTEST=OFF
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $toolBin 'cmake.exe') --build $build --parallel
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($exe in @('cppapplab.exe', 'cppapplab_native_learning_tests.exe')) {
+            $path = Join-Path $build $exe
+            $format = (& (Join-Path $toolBin 'objdump.exe') -f $path | Out-String)
+            if ($LASTEXITCODE -ne 0 -or $format -notmatch 'pei-x86-64') { throw "Not a native PE: $path" }
+            $imports = (& (Join-Path $toolBin 'objdump.exe') -p $path | Out-String)
+            if ($LASTEXITCODE -ne 0 -or $imports -match 'msys-2\.0\.dll|cygwin1\.dll') { throw "POSIX runtime imported: $path" }
+          }
+      - name: Run end-to-end native learning tests and Unicode W1 CLI
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $prefix = Join-Path $env:MSYS2_LOCATION 'ucrt64'
+          $toolBin = Join-Path $prefix 'bin'
+          $env:PATH = "$toolBin;$env:PATH"
+          $env:CMAKE_PREFIX_PATH = $prefix
+          $build = Join-Path $env:RUNNER_TEMP 'cppapplab native learning root'
+          $listed = & (Join-Path $toolBin 'ctest.exe') --test-dir $build --show-only=json-v1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $tests = ($listed | Out-String | ConvertFrom-Json).tests
+          if ($tests.Count -ne 4) { throw "Expected four native learning tests; found $($tests.Count)" }
+          & (Join-Path $toolBin 'ctest.exe') --test-dir $build --output-on-failure --no-tests=error --timeout 180
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP 'CppAppLab 用户配置'
+          $env:CPPAPPLAB_STATE_DIR = Join-Path $env:RUNNER_TEMP 'CppAppLab 学习状态'
+          $workspace = Join-Path $env:USERPROFILE 'W1 原生 workspace with spaces'
+          $exe = Join-Path $build 'cppapplab.exe'
+          & $exe --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $exe start w1.hello-world $workspace
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $source = Join-Path $workspace 'src\main.cpp'
+          $program = @'
+#include <iostream>
+int main() { std::cout << "Hello, CppAppLab!\n"; return 0; }
+'@
+          [System.IO.File]::WriteAllText($source, $program, [System.Text.UTF8Encoding]::new($false))
+          & $exe lesson $workspace | Out-Null
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $exe check $workspace
+          if ($LASTEXITCODE -ne 0) { throw 'Native CLI W1 fixed acceptance did not PASS.' }
+          $history = & $exe history w1.hello-world | Out-String
+          if ($LASTEXITCODE -ne 0 -or $history -notmatch 'PASS') { throw 'Native CLI history did not persist PASS.' }
+          $next = & $exe learn | Out-String
+          if ($LASTEXITCODE -ne 0 -or $next -notmatch 'w1\.calculator') { throw 'A current W1 PASS did not unlock Calculator.' }
+
   browser-workbench:
     name: Chromium browser acceptance (Ubuntu 24.04)
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation) }}

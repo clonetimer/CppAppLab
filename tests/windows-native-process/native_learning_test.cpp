@@ -236,6 +236,38 @@ TEST(NativeLearningWorkflow, RealCalculatorCMakeGoogleTestAcceptanceUsesSharedEn
                                 "/" + std::to_string(calculator->expected_test_count)),
               std::string::npos);
     EXPECT_TRUE(cppapplab::has_current_pass("w1.calculator"));
+
+    // Continue through the real W2-W4 platform-owned CMake/GoogleTest fixtures.
+    // Each task receives only its declared reference sources; the shared learning
+    // engine still stages them, invokes CMake/CTest, and writes the formal evidence.
+    for (const std::string task_id : {"w2.todo-cli", "w3.task-manager", "w4.quality-gate"}) {
+        const auto* task = cppapplab::find_task(task_id);
+        ASSERT_NE(task, nullptr) << task_id;
+        const auto workspace = cppapplab::create_workspace(
+            *task, profile.home / "cppapplab-work" / task->id);
+        const auto reference = cppapplab::data_root() /
+                               task->learner_template.parent_path() / "reference";
+        for (const auto& relative : task->source_files) {
+            const auto source = reference / relative;
+            const auto destination = workspace.root / relative;
+            fs::create_directories(destination.parent_path());
+            fs::copy_file(source, destination, fs::copy_options::overwrite_existing);
+        }
+
+        std::string output;
+        int result = -1;
+        {
+            StdoutCapture capture;
+            result = invoke({"cppapplab", "check", workspace.root.u8string()});
+            output = capture.str();
+        }
+        ASSERT_EQ(result, 0) << task_id << "\\n" << output;
+        EXPECT_NE(output.find("Result: PASS"), std::string::npos) << task_id;
+        EXPECT_NE(output.find("Acceptance: " + std::to_string(task->expected_test_count) +
+                              "/" + std::to_string(task->expected_test_count)),
+                  std::string::npos) << task_id;
+        EXPECT_TRUE(cppapplab::has_current_pass(task_id)) << task_id;
+    }
 }
 
 TEST(NativeLearningWorkflow, WrongOutputCannotUnlockCalculator) {

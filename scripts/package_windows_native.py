@@ -124,12 +124,19 @@ def package(root: Path, binary: Path, msys: Path, python_zip: Path, out: Path,
         raise RuntimeError("Official embedded Python ZIP SHA-256 mismatch.")
     lock = root / "packaging/windows/ucrt64-versions.json"
     baseline = json.loads(lock.read_text(encoding="utf-8"))
+    frozen_path = root / "packaging/windows/ucrt64-archives.json"
+    from replay_windows_toolchain_lock import load_frozen_lock
+    frozen = load_frozen_lock(lock, frozen_path)
     report = json.loads(acquisition_report.read_text(encoding="utf-8"))
     if (report["schema_version"] != 1 or
-            report["status"] != "ARCHIVE_HASH_CAPTURE_CANDIDATE" or
+            report["status"] != "FROZEN_ARCHIVE_REPLAY_VERIFIED" or
             report["version_baseline_sha256"] != digest(lock) or
-            report["baseline"] != baseline["baseline"]):
-        raise RuntimeError("Acquisition report does not match the frozen version baseline.")
+            report["frozen_lock_sha256"] != digest(frozen_path) or
+            report["baseline"] != baseline["baseline"] or
+            report["review"] != frozen["review"] or
+            report["packages"] != frozen["packages"] or
+            report["signature_policy"] != "Required TrustedOnly; no configured repositories"):
+        raise RuntimeError("Acquisition receipt does not match the frozen archive lock.")
     records = report["packages"]
     if ({name: value["version"] for name, value in records.items()} != baseline["packages"]
             or any(not re.fullmatch(r"[0-9a-f]{64}", value["sha256"])
@@ -171,7 +178,8 @@ def package(root: Path, binary: Path, msys: Path, python_zip: Path, out: Path,
         "python": {"version": PYTHON_VERSION, "url": PYTHON_URL,
                    "archive_sha256": PYTHON_SHA256,
                    "release_page": "https://www.python.org/downloads/release/python-31410/"},
-        "toolchain_acquisition": "MSYS2 UCRT64 frozen version set; actual archive hash capture candidate",
+        "toolchain_acquisition": "MSYS2 UCRT64 exact signed frozen archive replay",
+        "frozen_archive_lock_sha256": digest(frozen_path),
         "acquisition_report_sha256": digest(acquisition_report),
         "toolchain_target": target,
         "toolchain_packages": [],
@@ -186,7 +194,8 @@ def package(root: Path, binary: Path, msys: Path, python_zip: Path, out: Path,
     archive = Archive(archive_path)
     try:
         archive.file("bin/cppapplab.exe", binary, binary.parent)
-        archive.bytes("provenance/acquisition-lock-candidate.json", acquisition_report.read_bytes())
+        archive.bytes("provenance/acquisition-replay.json", acquisition_report.read_bytes())
+        archive.bytes("provenance/ucrt64-archives.json", frozen_path.read_bytes())
         archive.bytes("provenance/ucrt64-versions.json", lock.read_bytes())
         tracked = git(root, "ls-files", "-z", "--",
                       "course", "labs", "cmake", "web/server", "web/ui").decode("utf-8")
@@ -261,7 +270,7 @@ def package(root: Path, binary: Path, msys: Path, python_zip: Path, out: Path,
         actual_versions = {meta["name"][0]: meta["version"][0]
                            for meta in manifest["toolchain_packages"]}
         if actual_versions != baseline["packages"]:
-            raise RuntimeError("Installed package inventory drifted after acquisition capture.")
+            raise RuntimeError("Installed package inventory drifted after frozen archive replay.")
         if REQUIRED_PACKAGES - seen_packages:
             raise RuntimeError(f"Missing package provenance: {REQUIRED_PACKAGES - seen_packages}")
         if not any(name.startswith("toolchain/share/licenses/") for name in archive.files):

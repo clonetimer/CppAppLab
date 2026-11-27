@@ -696,3 +696,9 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - D1 #95 merged at d9ee945c. Portable 45996403950 passed actual relocated 101/101, 40,614 file hashes and bundled compiler/GTest/sysroot; primary 14/14 and foundation green. Artifact 15196891172 is internal only.
 - D2a freezes all 63 observed UCRT64 versions from the passing log, rejects any set/version drift, obtains pacman sync metadata, explicitly downloads matching archives without install or refresh, verifies each SHA-256, and binds the report to the packaged and independently extracted candidate. Test negative cases separately. No guessed hashes.
 - Lesson: an installed version snapshot is not immutable acquisition. Capture actual archive bytes first; only then freeze the reviewed hashes and replay without silent upgrade. Third-party corresponding source and legal review remain separate gates; no public release or physical-target claim.
+
+
+## 84. CP7-D2b — Freeze actual archive identities and activate strict local replay (candidate)
+
+- D2a portable run 46000267714 passed, report artifact 15197867836 independently downloaded and validated. Verified 63 archive records, outer SHA-256, inner JSON SHA-256 and exact baseline identity; frozen lock Git blob SHA matched local calculation byte-for-byte. No synthetic hashes.
+- D2b prepares only MSYS2 base/keyring and fetches exact locked bytes and detached signatures; pacman local transaction has trusted-required signature policy and no repository sections. Package and extracted smoke bind the frozen lock and replay receipt to their manifest. Preserve all 101 formal course contracts. Fresh Windows/Ubuntu CI mandatory. Upstream archive availability, bootstrap environment and corresponding-source/redistribution review remain explicit limits.

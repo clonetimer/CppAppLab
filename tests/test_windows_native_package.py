@@ -67,16 +67,23 @@ def verify(archive: Path) -> None:
         # Chinese learner and progress locations remain independent of it.
         package = base / "Relocated learner package"
         manifest = verify_extract(archive, package)
-        acquisition = package / "provenance/acquisition-lock-candidate.json"
+        acquisition = package / "provenance/acquisition-replay.json"
         baseline = package / "provenance/ucrt64-versions.json"
+        frozen = package / "provenance/ucrt64-archives.json"
         report = json.loads(acquisition.read_text(encoding="utf-8"))
         lock = json.loads(baseline.read_text(encoding="utf-8"))
+        frozen_lock = json.loads(frozen.read_text(encoding="utf-8"))
         assert hashlib.sha256(acquisition.read_bytes()).hexdigest() == manifest["acquisition_report_sha256"]
         assert hashlib.sha256(baseline.read_bytes()).hexdigest() == report["version_baseline_sha256"]
-        assert report["status"] == "ARCHIVE_HASH_CAPTURE_CANDIDATE"
+        assert hashlib.sha256(frozen.read_bytes()).hexdigest() == manifest["frozen_archive_lock_sha256"] == report["frozen_lock_sha256"]
+        assert report["status"] == "FROZEN_ARCHIVE_REPLAY_VERIFIED"
+        assert frozen_lock["status"] == "FROZEN_ARCHIVE_LOCK"
+        assert report["review"] == frozen_lock["review"]
+        assert report["packages"] == frozen_lock["packages"]
+        assert report["signature_policy"] == "Required TrustedOnly; no configured repositories"
         assert {name: value["version"] for name, value in report["packages"].items()} == lock["packages"]
         assert {meta["name"][0]: meta["version"][0] for meta in manifest["toolchain_packages"]} == lock["packages"]
-        print(f"[PASS] Packaged acquisition provenance: {len(lock['packages'])} exact versions and archive hashes.")
+        print(f"[PASS] Packaged acquisition provenance: {len(lock['packages'])} exact signed archive identities and replay receipt.")
         home = base / "学员 配置"
         home.mkdir()
         system = Path(os.environ["SystemRoot"])

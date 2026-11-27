@@ -301,10 +301,12 @@ int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
         std::filesystem::remove(executable);
     }
 
-    const auto source = workspace.root / task.source_files.front();
+    const auto source = task.source_files.front();
+    const std::string executable_argument =
+        executable.lexically_relative(workspace.root).generic_string();
     const std::vector<std::string> compile_arguments{
-        tool_command("g++"),     "-std=c++17", "-Wall",         "-Wextra", "-Wpedantic",
-        "-Werror", "-g",         source.u8string(), "-o",      executable.u8string()};
+        tool_command("g++"), "-std=c++17", "-Wall", "-Wextra", "-Wpedantic",
+        "-Werror", "-g", source.generic_string(), "-o", executable_argument};
 
     std::ostringstream log;
     log << "$ g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -g "
@@ -323,7 +325,7 @@ int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
         log << "\n[CppAppLab] Compilation failed with exit code " << compilation.exit_code << ".\n";
     } else {
         log << "\n$ .cppapplab/build/learner_app\n";
-        const ProcessResult execution = run_process({executable.u8string()}, workspace.root,
+        const ProcessResult execution = run_process({executable_argument}, workspace.root,
                                                     std::chrono::seconds(5), kMaxProgramOutput);
         log << execution.output;
 
@@ -532,10 +534,12 @@ int build_exact_stdout_workspace(const Workspace& workspace) {
         std::filesystem::remove(executable);
     }
 
-    const auto source = workspace.root / task.source_files.front();
+    const auto source = task.source_files.front();
+    const std::string executable_argument =
+        executable.lexically_relative(workspace.root).generic_string();
     const std::vector<std::string> arguments{
         tool_command("g++"), "-std=c++17", "-Wall", "-Wextra", "-Wpedantic",
-        "-Werror", "-g", source.u8string(), "-o", executable.u8string()};
+        "-Werror", "-g", source.generic_string(), "-o", executable_argument};
     std::cout << "$ g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -g "
               << task.source_files.front().generic_string()
               << " -o .cppapplab/build/learner_app\n";

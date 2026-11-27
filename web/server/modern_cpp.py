@@ -11,6 +11,20 @@ from pathlib import Path
 from typing import Any, Callable
 
 COMPILER = "/usr/bin/g++-13"
+NATIVE_VERSION = "16.2.0"
+
+
+def native_compiler() -> Path | None:
+    # Enabled only for the verified portable profile, not an arbitrary PATH compiler.
+    value = os.environ.get("CPPAPPLAB_NATIVE_SYSROOT")
+    if os.name != "nt" or not value:
+        return None
+    prefix = Path(value)
+    compiler = prefix / "bin/g++.exe"
+    if (not prefix.is_absolute() or not compiler.is_file() or
+            not (prefix / "include/wchar.h").is_file()):
+        return None
+    return compiler
 TOPICS = (
     {
         "id": "cpp20-concepts",
@@ -218,7 +232,9 @@ def feature_source(topic: dict[str, Any]) -> str:
 
 
 def run(topic_id: str, variant: str,
-        execute: Callable[[list[str], Path, float], dict[str, Any]]) -> dict[str, Any]:
+        execute: Callable[[list[str], Path, float], dict[str, Any]], *,
+        native_step: Callable[[str, list[str], Path, float, int, bool], dict[str, Any]] | None = None
+        ) -> dict[str, Any]:
     topic = BY_ID[topic_id]
     if variant not in {"failure", "repair"}:
         raise ValueError("Unknown variant.")
@@ -227,11 +243,20 @@ def run(topic_id: str, variant: str,
         "topic": topic_id, "variant": variant, "standard": topic["standard"],
         "observed": False, "course_acceptance": False, "steps": steps,
     }
+    native = native_step is not None
+    selected = native_compiler() if native else None
+    if native and selected is None:
+        return dict(result, status="TOOLCHAIN_UNAVAILABLE",
+                    expected="Verified bundled Windows GCC 16.2.0 required; no fallback")
+    compiler = str(selected) if native else COMPILER
+    profile = "native-windows-bundled-gcc16" if native else "linux-gcc13"
+    result["compiler_profile"] = profile
     with tempfile.TemporaryDirectory(prefix="cppapplab-modern-") as directory:
         root = Path(directory)
 
         def step(phase: str, command: list[str], timeout: float) -> dict[str, Any]:
-            current = execute(command, root, timeout)
+            current = (native_step(phase, command, root, timeout, topic["standard"], topic["pthread"])
+                       if native_step is not None else execute(command, root, timeout))
             current["phase"] = phase
             steps.append(current)
             return current
@@ -240,25 +265,34 @@ def run(topic_id: str, variant: str,
             return (current["exit_code"] == 0 and not current["timed_out"]
                     and not current["unavailable"])
 
-        version = step("toolchain", [COMPILER, "-dumpfullversion", "-dumpversion"], 5)
+        version = step("toolchain", [compiler, "-dumpfullversion", "-dumpversion"], 5)
         compiler_version = version["output"].strip()
         result["compiler_version"] = compiler_version
-        if not successful(version) or not compiler_version.startswith("13."):
+        version_ok = compiler_version == NATIVE_VERSION if native else compiler_version.startswith("13.")
+        if not successful(version) or not version_ok:
             return dict(result, status="TOOLCHAIN_UNAVAILABLE",
-                        expected="GCC 13.x required; no fallback to C++17")
-        dialect = "-std=c++20" if topic["standard"] == 20 else "-std=c++2b"
+                        expected=("Bundled native GCC 16.2.0 required" if native else
+                                  "GCC 13.x required; no fallback to C++17"))
+        if native:
+            target = step("target", [compiler, "-dumpmachine"], 5)
+            if not successful(target) or target["output"].strip() != "x86_64-w64-mingw32":
+                return dict(result, status="TOOLCHAIN_UNAVAILABLE",
+                            expected="Native x86_64-w64-mingw32 compiler target required")
+        dialect = "-std=c++20" if topic["standard"] == 20 else ("-std=c++23" if native else "-std=c++2b")
+        sysroot_flags = ["--sysroot=" + selected.parent.parent.as_posix()] if selected is not None else []
         (root / "feature.cpp").write_text(feature_source(topic), encoding="utf-8")
-        feature = step("feature-check", [COMPILER, dialect, "-fsyntax-only", "feature.cpp"], 15)
+        feature = step("feature-check", [compiler, *sysroot_flags, dialect, "-fsyntax-only", "feature.cpp"], 15)
         if not successful(feature):
             return dict(result, status="FEATURE_UNAVAILABLE",
                         expected="The required dialect and feature macros must pass first")
         source = topic["bad"] if variant == "failure" else topic["good"]
         (root / "main.cpp").write_text(source, encoding="utf-8")
         flags = ["-pthread"] if topic["pthread"] else []
-        last = step("compile", [COMPILER, dialect, "-Wall", "-Wextra", "-pedantic-errors",
-                                "-fdiagnostics-color=never", *flags, "main.cpp", "-o", "probe"], 15)
+        executable = "probe.exe" if native else "probe"
+        last = step("compile", [compiler, *sysroot_flags, dialect, "-Wall", "-Wextra", "-pedantic-errors",
+                                "-fdiagnostics-color=never", *flags, "main.cpp", "-o", executable], 15)
         if successful(last):
-            last = step("run", ["./probe"], 3)
+            last = step("run", [str(root / executable) if native else "./probe"], 3)
     usable = not last["timed_out"] and not last["unavailable"]
     if variant == "failure":
         expected = "expected diagnostic in " + topic["phase"] + ": " + topic["marker"]

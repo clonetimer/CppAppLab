@@ -5,9 +5,94 @@
 #define NOMINMAX
 #include <windows.h>
 
+#include "cppapplab/process.hpp"
+#include "windows_state_io.hpp"
+
+#include <chrono>
+#include <filesystem>
+#include <iostream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
+
+namespace {
+
+int run_native_modern_step(const std::vector<std::string>& args) {
+    namespace fs = std::filesystem;
+    namespace state = cppapplab::windows_state_io;
+    using namespace std::chrono_literals;
+    try {
+        if (args.size() != 6U || (args[4] != "20" && args[4] != "23") ||
+            (args[5] != "0" && args[5] != "1")) {
+            throw std::invalid_argument("Invalid fixed native experiment step.");
+        }
+        const auto cache = state::environment_path(L"CPPAPPLAB_NATIVE_BUILD_ROOT");
+        const auto sysroot = state::environment_path(L"CPPAPPLAB_NATIVE_SYSROOT");
+        const auto root = fs::u8path(args[2]);
+        if (!cache || !sysroot || !root.is_absolute() || !cache->is_absolute() ||
+            !sysroot->is_absolute() ||
+            root.filename().wstring().rfind(L"cppapplab-modern-", 0) != 0) {
+            throw std::invalid_argument("The verified native package and a private probe directory are required.");
+        }
+        state::require_directory(root);
+        state::require_directory(*cache / "tmp");
+        state::require_directory(*sysroot);
+        if (!fs::equivalent(root.parent_path(), *cache / "tmp")) {
+            throw std::invalid_argument("Experiment must run in the package's private temporary cache.");
+        }
+        const auto compiler = *sysroot / "bin/g++.exe";
+        if (!state::regular_exists(compiler) || !state::regular_exists(*sysroot / "include/wchar.h") ||
+            !state::regular_exists(*sysroot / "include/windows.h")) {
+            throw std::runtime_error("Incomplete bundled native compiler.");
+        }
+        const auto& phase = args[3];
+        std::vector<std::string> command{compiler.u8string()};
+        auto timeout = 15s;
+        if (phase == "toolchain") {
+            command.insert(command.end(), {"-dumpfullversion", "-dumpversion"});
+            timeout = 5s;
+        } else if (phase == "target") {
+            command.push_back("-dumpmachine");
+            timeout = 5s;
+        } else if (phase == "feature-check" || phase == "compile") {
+            const std::string source = phase == "feature-check" ? "feature.cpp" : "main.cpp";
+            if (!state::regular_exists(root / source)) {
+                throw std::runtime_error("Missing fixed experiment source.");
+            }
+            command.push_back("--sysroot=" + sysroot->generic_u8string());
+            command.push_back(args[4] == "20" ? "-std=c++20" : "-std=c++23");
+            if (phase == "feature-check") {
+                command.insert(command.end(), {"-fsyntax-only", source});
+            } else {
+                command.insert(command.end(), {"-Wall", "-Wextra", "-pedantic-errors",
+                                               "-fdiagnostics-color=never"});
+                if (args[5] == "1") {
+                    command.push_back("-pthread");
+                }
+                command.insert(command.end(), {source, "-o", "probe.exe"});
+            }
+        } else if (phase == "run") {
+            if (!state::regular_exists(root / "probe.exe")) {
+                throw std::runtime_error("Missing compiled experiment executable.");
+            }
+            command = {(root / "probe.exe").u8string()};
+            timeout = 3s;
+        } else {
+            throw std::invalid_argument("Unknown fixed experiment phase.");
+        }
+        const auto result = cppapplab::run_process(command, root, timeout, 64U * 1024U);
+        std::cout << "CPPAPPLAB_NATIVE_PROBE_V1 " << result.exit_code << ' '
+                  << (result.timed_out ? 1 : 0) << ' ' << (result.output_truncated ? 1 : 0)
+                  << '\n' << result.output;
+        return 0;
+    } catch (const std::exception& error) {
+        std::cerr << "Native experiment unavailable: " << error.what() << '\n';
+        return 2;
+    }
+}
+
+}  // namespace
 
 int wmain(int argc, wchar_t* argv[]) {
     (void)SetConsoleCP(CP_UTF8);
@@ -28,6 +113,10 @@ int wmain(int argc, wchar_t* argv[]) {
         }
         converted.resize(static_cast<std::size_t>(required - 1));
         arguments.push_back(std::move(converted));
+    }
+
+    if (arguments.size() > 1U && arguments[1] == "--native-modern-step") {
+        return run_native_modern_step(arguments);
     }
 
     std::vector<char*> raw_arguments;

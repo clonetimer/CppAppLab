@@ -33,6 +33,7 @@ from typing import Any
 from urllib.parse import unquote, urlsplit
 
 import knowledge_lab
+import modern_cpp
 import modern_projects
 
 
@@ -590,6 +591,23 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         except OSError as exc:
             raise ApiError(503, f"Cannot execute the CppAppLab learning engine: {exc}") from exc
         return result.returncode, bounded_output(result.stdout or "")
+
+    def run_native_modern_step(self, phase: str, command: list[str], root: Path,
+                               timeout: float, standard: int, pthread: bool) -> dict[str, Any]:
+        _validate_native_path_chain(root)
+        code, output = self.run_cli(
+            ["--native-modern-step", str(root), phase, str(standard), "1" if pthread else "0"],
+            timeout=timeout + 10.0,
+        )
+        header, separator, payload = output.partition("\n")
+        match = re.fullmatch(r"CPPAPPLAB_NATIVE_PROBE_V1 (-?\d+) ([01]) ([01])", header)
+        if code != 0 or not separator or match is None:
+            return {"command": command, "exit_code": None, "output": output,
+                    "timed_out": code == 124, "unavailable": True}
+        exit_code, timed, truncated = map(int, match.groups())
+        return {"command": command, "exit_code": exit_code,
+                "output": payload + ("\n[output truncated]" if truncated else ""),
+                "timed_out": bool(timed), "unavailable": bool(truncated or exit_code in (126, 127))}
 
     def workspace_for_task(self, task_id: str) -> tuple[Path, str]:
         task = self.task_by_id.get(task_id)
@@ -1493,9 +1511,16 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         if parts == ["knowledge"]:
             topics = knowledge_lab.catalog(set(self.server.task_by_id))
             if NATIVE_WINDOWS:
-                topics = [dict(topic, execution_available=False,
-                               environment_reason="Windows 原生知识实验尚待验证；可阅读知识说明。")
-                          for topic in topics]
+                available = modern_cpp.native_compiler() is not None
+                topics = [
+                    dict(topic, toolchain_present=available, execution_available=available,
+                         compiler_profile="Windows 随包 GCC 16.2.0",
+                         environment_reason="需要已验证的 Windows 免安装包工具链。")
+                    if topic["id"] in modern_cpp.BY_ID else
+                    dict(topic, execution_available=False,
+                         environment_reason="Windows 原生经典知识实验尚待验证；可阅读知识说明。")
+                    for topic in topics
+                ]
             self._send_json(200, {"topics": topics})
             return
         if parts == ["modern-projects"]:
@@ -1723,8 +1748,9 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
                     self._modern_project_action(parts[3], parts[4])
                     return
                 if len(parts) == 5 and parts[:3] == ["api", "v1", "knowledge"] and parts[4] == "run":
-                    if NATIVE_WINDOWS:
-                        raise ApiError(409, "Windows 原生知识实验尚待验证。")
+                    if NATIVE_WINDOWS and (parts[3] not in modern_cpp.BY_ID or
+                                           modern_cpp.native_compiler() is None):
+                        raise ApiError(409, "当前 Windows 环境未开放此固定知识实验。")
                     topic = knowledge_lab.ALL_BY_ID.get(parts[3])
                     if not topic or not topic["phase"]:
                         raise ApiError(404, "Unknown runnable knowledge experiment.")
@@ -1734,7 +1760,10 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
                     if not self.server.knowledge_lock.acquire(blocking=False):
                         raise ApiError(409, "A knowledge experiment is already running.")
                     try:
-                        self._send_json(200, knowledge_lab.run(parts[3], value["variant"]))
+                        result = (modern_cpp.run(parts[3], value["variant"], knowledge_lab.execute,
+                                                 native_step=self.server.run_native_modern_step)
+                                  if NATIVE_WINDOWS else knowledge_lab.run(parts[3], value["variant"]))
+                        self._send_json(200, result)
                     finally:
                         self.server.knowledge_lock.release()
                     return

@@ -231,6 +231,40 @@ def verify(archive: Path) -> None:
                     print(f"[PASS] Relocated packaged native {task_id}: {count}/{count}.")
                 assert total == 101
 
+                # Exercise the frozen 10 modern topic pairs in the actual
+                # relocated workbench using the bundled GCC, never host tools.
+                state_before = states()
+                history_root = base / "学习记录"
+                history_before = {str(path.relative_to(history_root)): path.read_bytes()
+                                  for path in history_root.rglob("*") if path.is_file()}
+                topics = request("/api/v1/knowledge")["topics"]
+                modern = [topic for topic in topics if topic["standard"] in (20, 23)]
+                assert len(modern) == 10, modern
+                assert all(topic["execution_available"] and topic["toolchain_present"]
+                           for topic in modern), modern
+                assert all(not topic["execution_available"] for topic in topics
+                           if topic["standard"] == 17)
+                for topic in modern:
+                    route = "/api/v1/knowledge/" + topic["id"] + "/run"
+                    request(route, "POST", {"variant": "repair", "compiler": "g++"}, status=400)
+                    for variant in ("failure", "repair"):
+                        result = request(route, "POST", {"variant": variant})
+                        assert result["observed"] and not result["course_acceptance"], result
+                        assert result["compiler_version"] == "16.2.0", result
+                        assert result["compiler_profile"] == "native-windows-bundled-gcc16", result
+                        steps = result["steps"]
+                        assert [step["phase"] for step in steps[:3]] == ["toolchain", "target", "feature-check"], result
+                        assert steps[1]["output"].strip() == "x86_64-w64-mingw32"
+                        assert steps[2]["exit_code"] == 0 and not steps[2]["unavailable"]
+                        assert os.path.samefile(steps[0]["command"][0], package / "toolchain/bin/g++.exe")
+                        assert steps[-1]["phase"] == (topic["phase"] if variant == "failure" else "run")
+                        assert steps[-1]["exit_code"] != 0 if variant == "failure" else steps[-1]["output"].strip() == "42"
+                        print(f"[PASS] Packaged native modern {topic['id']} {variant}.")
+                assert states() == state_before
+                assert {str(path.relative_to(history_root)): path.read_bytes()
+                        for path in history_root.rglob("*") if path.is_file()} == history_before
+                print("[PASS] Native modern fixed experiments: 20/20; classic evidence unchanged.")
+
                 # At least four genuine CMake configurations must have used the
                 # relocated compiler and relocated GTest config, not the host.
                 caches = list((base / "cache").rglob("CMakeCache.txt"))

@@ -67,6 +67,11 @@ mkdir -p "$LEARNER_ROOT/bin" "$LEARNER_ROOT/scripts" "$LEARNER_ROOT/docs"
 install -m 0755 "$BINARY" "$LEARNER_ROOT/bin/cppapplab.bin"
 cp -a "$ROOT/course" "$LEARNER_ROOT/course"
 cp -a "$ROOT/labs" "$LEARNER_ROOT/labs"
+# Ship only runtime web assets and the existing loopback service, not tests/caches.
+mkdir -p "$LEARNER_ROOT/web/server" "$LEARNER_ROOT/web/ui"
+install -m 0644 "$ROOT"/web/server/*.py "$LEARNER_ROOT/web/server/"
+install -m 0644 "$ROOT"/web/ui/* "$LEARNER_ROOT/web/ui/"
+install -m 0755 "$ROOT/packaging/start-web-workbench.sh" "$LEARNER_ROOT/start-web-workbench"
 install -m 0644 "$ROOT/README.md" "$LEARNER_ROOT/README-REPOSITORY.md"
 install -m 0644 "$ROOT/docs/QUICKSTART.md" "$LEARNER_ROOT/docs/QUICKSTART.md"
 install -m 0644 "$ROOT/docs/ENVIRONMENT_WSL2_UBUNTU.md" "$LEARNER_ROOT/docs/ENVIRONMENT_WSL2_UBUNTU.md"
@@ -92,7 +97,7 @@ Version: $PROJECT_VERSION
 Source commit: $COMMIT
 Build target: $TARGET_UBUNTU_LABEL
 Build configuration: Release, BUILD_TESTING=OFF
-Package type: relocatable learner package
+Package type: relocatable learner package (CLI and local browser workbench)
 Reference baselines: included for platform-owned multi-stage acceptance fixtures
 EOF
 
@@ -124,6 +129,7 @@ cat > "$OUTPUT/package-manifest.json" <<EOF
       "file": "$(basename "$LEARNER_ARCHIVE")",
       "sha256": "$LEARNER_SHA256",
       "prebuilt_cli": true,
+      "includes_web_workbench": true,
       "includes_course_fixtures": true,
       "includes_reference_baselines": true
     }

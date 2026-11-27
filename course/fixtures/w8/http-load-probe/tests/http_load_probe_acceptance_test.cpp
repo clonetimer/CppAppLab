@@ -93,6 +93,26 @@ void wait_for_responses(const TestServer& server, std::uint64_t expected) {
     }
 }
 
+[[nodiscard]] HttpServerMetrics wait_for_probe_resources(const TestServer& server,
+                                                        std::uint64_t requests,
+                                                        std::uint64_t clients) {
+    // Response completion is recorded before the Reactor closes the connection.
+    // Wait for the original resource contract, not just the response count.
+    // Do not stop the server or extend the existing two-second observation bound.
+    const auto deadline = std::chrono::steady_clock::now() + 2s;
+    HttpServerMetrics metrics = server.metrics();
+    while (metrics.responses_completed < requests || metrics.closed_connections < clients ||
+           metrics.active_connections != 0U || metrics.persistent_connections != 0U ||
+           metrics.active_jobs != 0U) {
+        if (std::chrono::steady_clock::now() >= deadline) {
+            break;
+        }
+        std::this_thread::yield();
+        metrics = server.metrics();
+    }
+    return metrics;
+}
+
 }  // namespace
 
 TEST(HttpLoadProbeAcceptanceTest, RejectsInvalidConfiguration) {
@@ -150,9 +170,7 @@ TEST(HttpLoadProbeAcceptanceTest, RunsConcurrentKeepAliveClientsAndAccountsForRe
     EXPECT_EQ(result.requests_attempted, kRequests);
     EXPECT_EQ(result.requests_succeeded, kRequests);
     EXPECT_EQ(result.requests_failed, 0U);
-    wait_for_responses(server, kRequests);
-
-    const HttpServerMetrics metrics = server.metrics();
+    const HttpServerMetrics metrics = wait_for_probe_resources(server, kRequests, kClients);
     EXPECT_EQ(metrics.accepted_connections, kClients);
     EXPECT_EQ(metrics.closed_connections, kClients);
     EXPECT_EQ(metrics.requests_received, kRequests);

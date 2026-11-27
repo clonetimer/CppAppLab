@@ -401,8 +401,11 @@ TEST(NativeWorkspace, RejectsHardLinkedTemplateFileAndCleansPartialWorkspace) {
     const auto destination = scratch.root() / "learner";
     EXPECT_THROW(cppapplab::create_workspace(*hello, destination), std::runtime_error);
     EXPECT_FALSE(io::entry_exists(destination));
-    EXPECT_EQ(io::read(external, 128U),
-              "outside must not be copied as a learner template\n");
+    std::ifstream external_input(external, std::ios::binary);
+    const std::string external_content{std::istreambuf_iterator<char>(external_input),
+                                       std::istreambuf_iterator<char>()};
+    ASSERT_TRUE(external_input.eof());
+    EXPECT_EQ(external_content, "outside must not be copied as a learner template\n");
 }
 
 TEST(NativeWorkspace, RejectsDestinationParentJunctionWithoutTouchingTarget) {

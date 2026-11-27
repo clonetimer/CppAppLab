@@ -530,7 +530,7 @@ void remove_tree_impl(const Path& input) {
 
     if ((attributes & FILE_ATTRIBUTE_DIRECTORY) != 0U &&
         (attributes & FILE_ATTRIBUTE_REPARSE_POINT) == 0U) {
-        const auto directory_chain = pin_directory(path, false);
+        auto directory_chain = pin_directory(path, false);
         if (!directory_chain.exists) {
             throw std::runtime_error("Workspace cleanup directory disappeared.");
         }
@@ -557,6 +557,9 @@ void remove_tree_impl(const Path& input) {
                 fail("Enumerate workspace cleanup directory", error);
             }
         }
+        // Windows will not remove a directory while our no-follow handle
+        // to that directory remains open without FILE_SHARE_DELETE.
+        directory_chain.handles.clear();
         if (!RemoveDirectoryW(path.c_str())) {
             fail("Remove learner workspace directory");
         }

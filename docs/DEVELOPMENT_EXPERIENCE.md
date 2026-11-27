@@ -748,3 +748,8 @@ At baff74a6, [46010049974](https://github.com/clonetimer/CppAppLab/actions/runs/
 - #101 merged at 3fef8843, all three workflows green; actual Linux prerequisite and Windows DOM guards verified, 136 previous contracts retained. Actual WSL2 machine remains unverified.
 - One explicit Windows JSON export, per-course import on Linux with exact catalog, declared paths, SHA-256 and bounded UTF-8 bytes. Reject existing workspaces and locked courses; source import itself never records PASS or executes code. Serialize foundation web operations, stage all bytes before fresh starter replacement; no automatic overwrite or same-user sandbox claim.
 - Actual native export/DOM download and real Linux 101-contract recheck added; Linux test uses export-shaped reference fixtures, not real WSL transport. No new course or UI redesign, no license approval. Candidate until fresh CI.
+
+
+### CP7-F3b read-only saved-workspace identity review
+
+The engine's aggregate current PASS can refer to a different historical workspace. Export must not use guided learn (which can create/resume a different workspace or enforce a changed prerequisite). Resolve through read-only `resume`, require actual saved workspace PASS, exact acceptance count and current fingerprint, then recheck the workspace identity/fingerprint after reading source bytes. Fail closed on mismatch instead of exporting unqualified bytes. Stale course exclusion is verified against actual remaining engine states. No learner history mutation by export.

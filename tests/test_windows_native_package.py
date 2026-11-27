@@ -371,8 +371,13 @@ def verify(archive: Path) -> None:
                 request("/api/v1/workspaces/w1.hello-world/files/src/main.cpp", "PUT",
                         {"content": "int main(){return 0;}\n"})
                 assert states()["w1.hello-world"] == "STALE"
-                after_stale = request("/api/v1/source-export", "POST", {})
-                assert "w1.hello-world" not in {row["task_id"] for row in after_stale["tasks"]}
+                remaining = [task for task in expected if states()[task] == "PASSED"]
+                if remaining:
+                    after_stale = request("/api/v1/source-export", "POST", {})
+                    assert [row["task_id"] for row in after_stale["tasks"]] == remaining
+                    assert "w1.hello-world" not in remaining
+                else:
+                    request("/api/v1/source-export", "POST", {}, status=409)
                 print("[PASS] Portable ZIP native HTTP: 101/101 formal contracts, bundled "
                       "compiler and GTest paths, batch launch, restart/resume/stale, port conflict.")
             except BaseException:

@@ -635,13 +635,28 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         if not selected:
             raise ApiError(409, "没有当前已通过正式验收的 Windows 基础课程可导出。")
         records = []
+        def current_pass_workspace(task: dict) -> tuple[Path, str]:
+            # Aggregate progress can refer to a different historical workspace.
+            # Read-only resume reports the actual saved workspace's fingerprint.
+            code, output = self.run_cli(["resume", task["id"]], timeout=20.0)
+            count = task["expected_test_count"] or 1
+            fingerprint = re.search(r"^Source fingerprint: ([0-9a-f]{16})$", output, re.MULTILINE)
+            if (code != 0 or re.search(r"^Last recorded result: PASS$", output, re.MULTILINE) is None
+                    or re.search(rf"^Acceptance: {count}/{count}$", output, re.MULTILINE) is None
+                    or fingerprint is None):
+                raise ApiError(409, "当前保存工作区并非已通过验收的源码；请在 Windows 重新验收后导出。")
+            return self.workspace_from_output(output), fingerprint.group(1)
+
         for task in selected:
-            work, _ = self.workspace_for_task(task["id"])
+            work, fingerprint = current_pass_workspace(task)
             files = {}
             for name in task["source_files"]:
                 path = safe_repo_file(work, name, source_transfer.MAX_TASK_BYTES, "Learner source")
                 _validate_native_path_chain(path)
                 files[name] = source_transfer.source_bytes(path)
+            after, after_fingerprint = current_pass_workspace(task)
+            if after != work or after_fingerprint != fingerprint:
+                raise ApiError(409, "导出期间保存工作区或源码已改变；请重试。")
             records.append(source_transfer.record(task["id"], files))
         current = self.progress_states()
         if any(current.get(task["id"]) != "PASSED" for task in selected):
@@ -683,6 +698,9 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         exit_code, output = self.run_cli(["learn", task_id], timeout=20.0)
         if exit_code != 0:
             raise ApiError(409, output.strip() or "The task cannot be started yet.")
+        return self.workspace_from_output(output), output
+
+    def workspace_from_output(self, output: str) -> Path:
         match = re.search(r"^Workspace:\s*(.+)$", output, re.MULTILINE)
         if not match:
             raise ApiError(502, "The learning engine did not return a workspace path.")
@@ -716,7 +734,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 raise ApiError(400, "Workspace paths cannot contain symlinks or reparse points.")
         if not current.is_dir():
             raise ApiError(400, "The learning engine returned an invalid workspace directory.")
-        return current, output
+        return current
 
     def resolve_workspace_file(self, task_id: str, relative: str) -> tuple[Path, dict[str, Any]]:
         task = self.task_by_id.get(task_id)

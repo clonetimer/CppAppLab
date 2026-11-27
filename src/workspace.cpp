@@ -88,15 +88,10 @@ void atomic_write(const std::filesystem::path& path, const std::string& content)
 #endif
 }
 
+#ifndef _WIN32
 void copy_tree_without_symlinks(const std::filesystem::path& source,
                                 const std::filesystem::path& destination,
                                 bool create_destination = true) {
-#ifdef _WIN32
-    if (create_destination) {
-        windows_state_io::create_directory_exclusive(destination);
-    }
-    windows_state_io::copy_tree(source, destination);
-#else
     std::error_code error;
     const auto source_status = std::filesystem::symlink_status(source, error);
     if (error || !std::filesystem::is_directory(source_status) ||
@@ -124,8 +119,9 @@ void copy_tree_without_symlinks(const std::filesystem::path& source,
                                      source_path.string());
         }
     }
-#endif
 }
+
+#endif
 
 std::string fnv_hex(std::uint64_t value) {
     std::ostringstream output;
@@ -162,16 +158,17 @@ void validate_relative_source_path(const std::filesystem::path& relative_path,
         throw std::runtime_error("Task source path must be relative to the workspace.");
     }
 
+#ifndef _WIN32
     std::filesystem::path current = workspace_root;
     std::size_t component_index = 0;
     const std::size_t component_count =
         static_cast<std::size_t>(std::distance(relative_path.begin(), relative_path.end()));
+#endif
 
     for (const auto& component : relative_path) {
         if (component == "." || component == "..") {
             throw std::runtime_error("Task source path contains an unsafe component.");
         }
-
 #ifndef _WIN32
         current /= component;
         const auto status = std::filesystem::symlink_status(current);
@@ -184,8 +181,6 @@ void validate_relative_source_path(const std::filesystem::path& relative_path,
             throw std::runtime_error("Learner source parent is not a directory: " +
                                      current.string());
         }
-#else
-        ++component_index;
 #endif
     }
 }

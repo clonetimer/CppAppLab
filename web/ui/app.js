@@ -1720,6 +1720,138 @@
     } else ui.taskTitle.focus();
   }
 
+  const modernState = { projects: [], active: "", record: null, busy: false };
+  function modernDirty() {
+    return !!modernState.record && $("modern-source").value !== modernState.record.source;
+  }
+  function modernStatus(text, status = "") {
+    $("modern-status").textContent = text;
+    $("modern-status").dataset.status = status;
+  }
+  function renderModern() {
+    const meta = modernState.projects.find(item => item.id === modernState.active);
+    const record = modernState.record;
+    $("modern-choice").disabled = modernState.busy || !meta;
+    $("modern-start").disabled = modernState.busy || !meta || !!record || !state.csrfToken;
+    $("modern-close").disabled = modernState.busy;
+    $("modern-start").textContent = record ? "项目已打开" : "打开学习项目";
+    $("modern-profile").textContent = meta ? "C++" + meta.standard + " · 独立 GCC 13 · " +
+      meta.count + " 项固定 GoogleTest · " + (meta.toolchain_present ?
+        "运行时核验工具链" : "缺少 g++-13；Ubuntu 24.04 可安装 g++-13、cmake 和 libgtest-dev 后刷新网页") : "";
+    $("modern-task").textContent = meta ? (state.lessonLanguage === "en" ? meta.en : meta.zh) : "";
+    $("modern-workspace").hidden = !record;
+    $("modern-source").readOnly = modernState.busy;
+    $("modern-save").disabled = modernState.busy || !record || !modernDirty() || !state.csrfToken;
+    $("modern-check").disabled = modernState.busy || !record || modernDirty() || !meta?.toolchain_present || !state.csrfToken;
+    if (record) {
+      $("modern-current").textContent = modernDirty() ? "未保存修改，旧结果不适用" :
+        ({ PASS: "当前源码与合同检查通过", FAIL: "当前源码检查未通过",
+          STALE: "源码或合同已变化，需重检", UNTESTED: "尚未检查" }[record.state] || "需重新检查");
+      $("modern-current").dataset.state = modernDirty() ? "DIRTY" : record.state;
+    }
+  }
+  function installModern(record) {
+    modernState.record = record;
+    $("modern-source").value = record.source;
+    $("modern-contract").textContent = record.contract;
+    $("modern-path").textContent = record.path;
+    renderModern();
+  }
+  function allowModernLeave() {
+    return !modernDirty() || window.confirm("现代项目有未保存修改。确定放弃当前草稿？");
+  }
+  async function openModern() {
+    if (modernState.busy) return;
+    closeKnowledge();
+    const dialog = $("modern-dialog");
+    if (!dialog.open) dialog.showModal();
+    modernState.busy = true;
+    modernState.record = null;
+    modernState.projects = [];
+    modernState.active = "";
+    $("modern-choice").replaceChildren();
+    $("modern-output").textContent = "";
+    modernStatus("正在读取独立项目…", "RUNNING");
+    renderModern();
+    try {
+      const data = await api("/api/v1/modern-projects");
+      modernState.projects = data.projects;
+      for (const item of data.projects) {
+        const option = document.createElement("option");
+        option.value = item.id;
+        option.textContent = item.title;
+        $("modern-choice").append(option);
+      }
+      modernState.active = data.projects[0]?.id || "";
+      $("modern-choice").value = modernState.active;
+      modernStatus("选择项目，再打开自己的学员源码。", "READY");
+    } catch (error) {
+      modernStatus("项目目录暂不可用：" + error.message, "ERROR");
+    } finally {
+      modernState.busy = false;
+      renderModern();
+    }
+  }
+  function closeModern() {
+    if (modernState.busy || !allowModernLeave()) return;
+    modernState.record = null;
+    $("modern-dialog").close();
+    $("knowledge-open").focus({ preventScroll: true });
+  }
+  function changeModern() {
+    if (modernState.busy || !allowModernLeave()) {
+      $("modern-choice").value = modernState.active;
+      return;
+    }
+    modernState.active = $("modern-choice").value;
+    modernState.record = null;
+    $("modern-output").textContent = "";
+    modernStatus("打开项目以继续编辑。", "READY");
+    renderModern();
+  }
+  async function modernAction(action) {
+    if (modernState.busy || !modernState.active || !state.csrfToken) return;
+    const record = modernState.record;
+    if (action === "start" ? !!record : !record) return;
+    if (action === "save" && !modernDirty()) return;
+    if (action === "check" && (modernDirty() ||
+        !modernState.projects.find(item => item.id === modernState.active)?.toolchain_present)) return;
+    modernState.busy = true;
+    renderModern();
+    modernStatus(action === "check" ? "正在编译并运行固定测试…" :
+      action === "save" ? "正在保存…" : "正在打开独立工作区…", "RUNNING");
+    if (action !== "save") $("modern-output").textContent = "";
+    try {
+      const body = action === "start" ? {} : action === "save"
+        ? { source: $("modern-source").value, revision: record.revision }
+        : { revision: record.revision };
+      const data = await api("/api/v1/modern-projects/" + encodeURIComponent(modernState.active) + "/" + action,
+        { method: "POST", body });
+      if (action !== "check") {
+        installModern(data);
+        modernStatus(action === "save" ? "源码已保存。" : "已打开；不会覆盖已有代码。", "READY");
+      } else {
+        if (["PASS", "FAIL", "STALE"].includes(data.status)) record.state = data.status;
+        $("modern-output").textContent = data.steps.map(step =>
+          "$ " + step.command.join(" ") + "\n[" + step.phase + "] exit=" + step.exit_code +
+          (step.timed_out ? " · timeout" : "") + "\n" + step.output).join("\n\n");
+        const message = ({
+          PASS: "独立项目 PASS · " + data.observed_tests + "/" + data.expected_tests + " 项测试通过",
+          FAIL: "检查未通过；阅读真实构建或测试输出。",
+          STALE: "检查期间源码或合同变化；本次结果不适用。",
+          TOOLCHAIN_UNAVAILABLE: "现代工具链不可用；未完成检查。",
+          FEATURE_UNAVAILABLE: "特性宏检查未通过；未完成检查。"
+        })[data.status] || "未获得有效检查结果。";
+        modernStatus(message, data.status);
+      }
+    } catch (error) {
+      modernStatus("操作未完成：" + error.message + "；当前草稿保留。", "ERROR");
+    } finally {
+      modernState.busy = false;
+      renderModern();
+    }
+  }
+
   function renderDiagnostics(output) {
     ui.diagnostics.replaceChildren();
     const byPath = new Map();
@@ -2709,6 +2841,17 @@
     $("knowledge-failure")?.addEventListener("click", () => runKnowledge("failure"));
     $("knowledge-repair")?.addEventListener("click", () => runKnowledge("repair"));
     $("knowledge-lesson")?.addEventListener("click", openKnowledgeLesson);
+    $("modern-open")?.addEventListener("click", openModern);
+    $("modern-close")?.addEventListener("click", closeModern);
+    $("modern-dialog")?.addEventListener("cancel", event => { event.preventDefault(); closeModern(); });
+    $("modern-choice")?.addEventListener("change", changeModern);
+    $("modern-start")?.addEventListener("click", () => modernAction("start"));
+    $("modern-save")?.addEventListener("click", () => modernAction("save"));
+    $("modern-check")?.addEventListener("click", () => modernAction("check"));
+    $("modern-source")?.addEventListener("input", renderModern);
+    window.addEventListener("beforeunload", event => {
+      if (modernDirty()) { event.preventDefault(); event.returnValue = ""; }
+    });
     ui.guideButton.addEventListener("click", () => openLearningGuide(ui.guideButton));
     ui.welcomeGuide.addEventListener("click", () => openLearningGuide(ui.welcomeGuide));
     ui.guideClose.addEventListener("click", () => closeLearningGuide());

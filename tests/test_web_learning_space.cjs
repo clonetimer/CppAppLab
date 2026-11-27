@@ -565,6 +565,76 @@ async function compilerFailure(page) {
   }
 }
 
+async function modernProjectEvidence(page, baseUrl, root) {
+  const classicSource = await page.locator("#source-editor").inputValue();
+  const priorResult = await page.locator("#check-result").textContent();
+  const history = await (await page.request.get(baseUrl + "/api/v1/tasks/w1.calculator/history")).json();
+  const open = async () => {
+    await page.locator("#knowledge-open").click();
+    await page.locator("#modern-open").click();
+    await page.waitForFunction(() => document.querySelector("#modern-status").dataset.status === "READY" &&
+      !document.querySelector("#modern-choice").disabled);
+  };
+  const start = async id => {
+    await page.locator("#modern-choice").selectOption(id);
+    await page.locator("#modern-start").click();
+    await page.waitForFunction(() => !document.querySelector("#modern-workspace").hidden &&
+      !document.querySelector("#modern-check").disabled);
+  };
+  const check = async status => {
+    await page.locator("#modern-check").click();
+    await page.waitForFunction(s => document.querySelector("#modern-status").dataset.status === s &&
+      !document.querySelector("#modern-check").disabled, status, { timeout: 120000 });
+  };
+  await open();
+  for (const [id, count] of [["sample-window", 7], ["frame-header", 8]]) {
+    await start(id);
+    const source = page.locator("#modern-source");
+    const starter = fs.readFileSync(path.join(root, "course", "modern_projects", id, "starter.cpp"), "utf8");
+    assert.equal(await source.inputValue(), starter, "opening a new learner project must copy only the starter");
+    assert.equal(await page.locator("#modern-current").getAttribute("data-state"), "UNTESTED");
+    await check("FAIL");
+    assert.match(await page.locator("#modern-output").textContent(), new RegExp("tests failed out of " + count));
+    await page.screenshot({ path: path.join(ARTIFACTS, "modern-project-" + id + "-failure.png") });
+    // CI plays the learner role using a known solution. This is not user mastery evidence.
+    const reference = fs.readFileSync(path.join(root, "course", "modern_projects", id, "reference.cpp"), "utf8");
+    await source.fill(reference);
+    assert.equal(await page.locator("#modern-check").isDisabled(), true);
+    assert.equal(await page.locator("#modern-current").getAttribute("data-state"), "DIRTY");
+    await page.locator("#modern-save").click();
+    await page.waitForFunction(() => document.querySelector("#modern-status").dataset.status === "READY" &&
+      !document.querySelector("#modern-check").disabled);
+    await check("PASS");
+    assert.equal(await page.locator("#modern-current").getAttribute("data-state"), "PASS");
+    assert.match(await page.locator("#modern-status").textContent(), new RegExp(count + "/" + count));
+    assert.match(await page.locator("#modern-output").textContent(), /100% tests passed/);
+    await page.screenshot({ path: path.join(ARTIFACTS, "modern-project-" + id + "-pass.png") });
+  }
+  const edit = await page.locator("#modern-source").inputValue() + "\n// learner edit after check\n";
+  await page.locator("#modern-source").fill(edit);
+  assert.equal(await page.locator("#modern-check").isDisabled(), true);
+  await page.locator("#modern-save").click();
+  await page.waitForFunction(() => document.querySelector("#modern-current").dataset.state === "STALE" &&
+    !document.querySelector("#modern-check").disabled);
+  await page.locator("#modern-close").click();
+  await open();
+  await start("frame-header");
+  assert.equal(await page.locator("#modern-source").inputValue(), edit);
+  assert.equal(await page.locator("#modern-current").getAttribute("data-state"), "STALE");
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  await page.locator("#modern-source").scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(ARTIFACTS, "modern-project-mobile.png") });
+  await page.locator("#modern-close").click();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  assert.equal(await page.locator("#source-editor").inputValue(), classicSource);
+  assert.equal(await page.locator("#check-result").textContent(), priorResult);
+  assert.deepEqual(await (await page.request.get(baseUrl + "/api/v1/tasks/w1.calculator/history")).json(), history);
+  report.modern_projects = { sample_window: "7/7", frame_header: "8/8", starter_failure: true,
+    stale_after_edit: true, resume: true, classic_history_unchanged: true };
+  console.log("PASS: two actual independent modern learner projects and source-bound checks");
+}
+
 async function main() {
   assert.ok(BINARY && fs.existsSync(BINARY), "CPPAPPLAB_TEST_BINARY must identify the real CLI");
   fs.mkdirSync(ARTIFACTS, { recursive: true });
@@ -584,6 +654,7 @@ async function main() {
     if (!BASELINE) {
       await environment.page.setViewportSize({ width: 1440, height: 1000 });
       await knowledgeEvidence(environment.page, environment.baseUrl);
+      await modernProjectEvidence(environment.page, environment.baseUrl, environment.root);
     }
     const calculatorHistory = await (await environment.page.request.get(environment.baseUrl + "/api/v1/tasks/w1.calculator/history")).json();
     assert.equal(calculatorHistory.count, 0, "ordinary build/error interactions must not manufacture formal acceptance");

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import subprocess
 import socket
@@ -154,6 +155,98 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
                 command + ["stop"], env=env, capture_output=True, text=True,
                 timeout=10, check=False,
             )
+
+    def test_source_only_reuse_rechecks_all_foundations_on_linux(self) -> None:
+        # Standalone regression uses export-shaped frozen reference fixtures.
+        # The cross-OS job uses the actual Windows HTTP export from the same
+        # workflow artifact, not a reconstructed or fallback fixture.
+        expected = {"w1.hello-world": 1, "w1.calculator": 9, "w2.todo-cli": 19,
+                    "w3.task-manager": 31, "w4.quality-gate": 41}
+        catalog = self.request("/api/v1/health")["catalog_sha256"]
+        exchange_path = os.environ.get("CPPAPPLAB_CI_EXCHANGE_FILE")
+        actual = None
+        if exchange_path:
+            raw = Path(exchange_path).read_bytes()
+            actual = json.loads(raw)
+            self.assertEqual(set(actual), {"schema_version", "kind", "catalog_sha256", "origin", "tasks"})
+            self.assertEqual(actual["catalog_sha256"], catalog)
+            self.assertEqual([row["task_id"] for row in actual["tasks"]], list(expected))
+            print("[INFO] Actual Windows source-export artifact SHA-256: " + hashlib.sha256(raw).hexdigest())
+        elif os.environ.get("CPPAPPLAB_REQUIRE_WINDOWS_EXCHANGE") == "1":
+            self.fail("Actual native source exchange artifact is required; no fallback.")
+
+        def exchange(task_id):
+            if actual is not None:
+                # Deep copy for the negative tests, never modify the source artifact.
+                return json.loads(json.dumps(dict(actual, tasks=[
+                    row for row in actual["tasks"] if row["task_id"] == task_id])))
+            task = self.server.task_by_id[task_id]
+            reference = (ROOT / task["learner_template"]).parent / "reference"
+            files = []
+            for relative in task["source_files"]:
+                if task_id == "w1.hello-world":
+                    data = b'#include <iostream>\nint main(){std::cout<<"Hello, CppAppLab!\\n";}\n'
+                else:
+                    path = (reference / "src/task_manager_test.cpp"
+                            if task_id == "w4.quality-gate" and relative == "tests/task_manager_test.cpp"
+                            else reference / relative)
+                    data = path.read_bytes()
+                files.append({"path": relative, "content": data.decode("utf-8"),
+                              "sha256": hashlib.sha256(data).hexdigest()})
+            return {"schema_version": 1, "kind": "cppapplab-source-reuse",
+                    "catalog_sha256": catalog, "origin": "native-windows",
+                    "tasks": [{"task_id": task_id, "files": files}]}
+
+        with self.assertRaises(urllib.error.HTTPError) as locked:
+            self.request("/api/v1/tasks/w1.calculator/source-import", "POST", exchange("w1.calculator"))
+        self.assertEqual(locked.exception.code, 409)
+        self.assertFalse((self.workspace_root / "w1.calculator").exists())
+        for mutation in ("hash", "path", "pass"):
+            bad = exchange("w1.hello-world")
+            if mutation == "hash":
+                bad["tasks"][0]["files"][0]["sha256"] = "0" * 64
+            elif mutation == "path":
+                bad["tasks"][0]["files"][0]["path"] = "../outside.cpp"
+            else:
+                bad["passed"] = True
+            with self.assertRaises(urllib.error.HTTPError) as rejected:
+                self.request("/api/v1/tasks/w1.hello-world/source-import", "POST", bad)
+            self.assertEqual(rejected.exception.code, 400)
+            self.assertFalse((self.workspace_root / "w1.hello-world").exists())
+        total = 0
+        for task_id, count in expected.items():
+            body = exchange(task_id)
+            route = "/api/v1/tasks/" + task_id + "/source-import"
+            plan = self.request("/api/v1/tasks/w5.system-lab/prerequisite-plan")
+            self.assertEqual(plan["next_task"], task_id)
+            result = self.request(route, "POST", body)
+            self.assertTrue(result["requires_acceptance"])
+            self.assertFalse(result["progress_transferred"])
+            self.assertNotEqual(self.request("/api/v1/tasks/" + task_id)["state"], "PASSED")
+            work = self.workspace_root / task_id
+            self.assertFalse((work / ".cppapplab/evidence.txt").exists())
+            for item in body["tasks"][0]["files"]:
+                self.assertEqual((work / item["path"]).read_bytes(), item["content"].encode("utf-8"))
+            before = {item["path"]: (work / item["path"]).read_bytes()
+                      for item in body["tasks"][0]["files"]}
+            with self.assertRaises(urllib.error.HTTPError) as occupied:
+                self.request(route, "POST", body)
+            self.assertEqual(occupied.exception.code, 409)
+            self.assertEqual(before, {name: (work / name).read_bytes() for name in before})
+            checked = self.request("/api/v1/workspaces/" + task_id + "/check", "POST", {})
+            self.assertTrue(checked["passed"], checked)
+            self.assertIn(f"Acceptance: {count}/{count}", checked["summary"])
+            self.assertTrue((work / ".cppapplab/evidence.txt").is_file())
+            self.assertEqual(self.request("/api/v1/tasks/" + task_id)["state"], "PASSED")
+            total += count
+        self.assertEqual(total, 101)
+        final = self.request("/api/v1/tasks/w5.system-lab/prerequisite-plan")
+        self.assertEqual(final["next_task"], "w5.system-lab")
+        self.assertEqual(final["target_state"], "AVAILABLE")
+        if actual is not None:
+            print("[PASS] Actual Windows exported learner bytes -> Linux 101/101; W5 unlocks only after Linux checks.")
+        else:
+            print("[PASS] Linux source reuse: 101 real fixed acceptance contracts; W5 unlocks only after Linux checks.")
 
     def test_linux_prerequisite_plan_follows_real_acceptance_and_stale_source(self) -> None:
         route = "/api/v1/tasks/w5.system-lab/prerequisite-plan"

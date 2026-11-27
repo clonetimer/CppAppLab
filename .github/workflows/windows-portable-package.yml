@@ -12,6 +12,7 @@ on:
       - 'tests/test_windows_toolchain_replay.py'
       - 'tests/test_windows_toolchain_lock.py'
       - 'tests/test_windows_native_package.py'
+      - 'tests/test_web_workbench_integration.py'
       - 'src/**'
       - 'include/**'
       - 'CMakeLists.txt'
@@ -53,6 +54,8 @@ jobs:
           MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
         run: |
           python -m unittest discover -s web/server/tests -p 'test_wsl_handoff.py'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s web/server/tests -p 'test_source_transfer_status.py'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m unittest discover -s tests -p 'test_windows_toolchain_lock.py'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -100,12 +103,21 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Extract and exercise all five packaged native courses using bundled tools
         shell: pwsh
+        env:
+          CPPAPPLAB_CI_EXCHANGE_OUTPUT: ${{ runner.temp }}/cppapplab-ci-source-exchange
         run: |
           $out = Join-Path $env:RUNNER_TEMP 'cppapplab-native-package'
           $archives = @(Get-ChildItem -LiteralPath $out -Filter '*.zip' -File)
           if ($archives.Count -ne 1) { throw 'Expected one learner candidate ZIP.' }
           python tests/test_windows_native_package.py $archives[0].FullName
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload actual native HTTP source exchange (synthetic CI learner only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppapplab-native-source-exchange-${{ github.sha }}
+          path: ${{ runner.temp }}/cppapplab-ci-source-exchange/*
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload verified internal CI candidate (not a release)
         uses: actions/upload-artifact@v4
         with:
@@ -144,3 +156,36 @@ jobs:
           path: ${{ runner.temp }}/cppapplab-native-package/redistribution-evidence.json
           if-no-files-found: error
           retention-days: 30
+
+  cross-os-source-replay:
+    name: Actual Windows exported source to Linux (${{ matrix.ubuntu }})
+    needs: windows-portable
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.ubuntu }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
+        with:
+          name: cppapplab-native-source-exchange-${{ github.sha }}
+          path: ${{ runner.temp }}/cppapplab-ci-source-exchange
+      - name: Check identity of actual native export artifact
+        working-directory: ${{ runner.temp }}/cppapplab-ci-source-exchange
+        run: sha256sum -c SHA256SUMS
+      - name: Install real Linux teaching toolchain
+        run: |
+          bash scripts/ci_prepare_ubuntu_apt.sh
+          sudo apt-get -o Acquire::Retries=3 install -y build-essential cmake libgtest-dev
+      - name: Build real Linux engine
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCPPAPPLAB_FETCH_GTEST=OFF
+          cmake --build build --parallel 2
+      - name: Import exact native exported sources and run all 101 Linux contracts
+        env:
+          CPPAPPLAB_TEST_BINARY: ${{ github.workspace }}/build/cppapplab
+          CPPAPPLAB_CI_EXCHANGE_FILE: ${{ runner.temp }}/cppapplab-ci-source-exchange/windows-source-exchange.json
+          CPPAPPLAB_REQUIRE_WINDOWS_EXCHANGE: '1'
+        run: python3 tests/test_web_workbench_integration.py RealEngineBrowserAcceptance.test_source_only_reuse_rechecks_all_foundations_on_linux

@@ -132,6 +132,16 @@ async function main() {
     await page.waitForFunction(() =>
       document.querySelector('.task-link[data-task-id="w1.calculator"]')?.dataset.state === "AVAILABLE");
     await page.screenshot({ path: path.join(ARTIFACTS, "windows-native-w1-pass.png") });
+    await page.locator("#task-details summary").click();
+    const downloadPromise = page.waitForEvent("download");
+    await page.locator("#source-export").click();
+    const downloaded = await downloadPromise;
+    assert.equal(downloaded.suggestedFilename(), "CppAppLab-Windows-sources.json");
+    const exchange = JSON.parse(fs.readFileSync(await downloaded.path(), "utf8"));
+    assert.deepEqual(exchange.tasks.map(task => task.task_id), ["w1.hello-world"]);
+    assert.equal(exchange.tasks[0].files[0].content, HELLO);
+    assert.deepEqual(Object.keys(exchange.tasks[0]).sort(), ["files", "task_id"]);
+    await page.screenshot({ path: path.join(ARTIFACTS, "windows-source-export.png") });
     assert.deepEqual(errors, []);
     console.log("PASS: native Windows browser, environment distinction, offline editor, real W1 build/run/check and calculator unlock.");
   } catch (error) {

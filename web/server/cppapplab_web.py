@@ -11,6 +11,7 @@ import argparse
 import http.client
 import json
 from collections import deque
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 import mimetypes
 import os
@@ -50,6 +51,109 @@ TASK_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,95}$")
 PROGRESS_RE = re.compile(r"^\[(?P<state>[^\]]+)\]\s+(?P<task>[a-z0-9][a-z0-9._-]*)\s+·")
 HINT_RE = re.compile(r"^## (?:Hint|提示) ([1-3])(?:\s|$)", re.MULTILINE)
 ALLOWED_HOSTS = {"127.0.0.1", "localhost", "::1"}
+NATIVE_WINDOWS = os.name == "nt"
+LINUX_REQUIRED_STATE = "LINUX/WSL2 REQUIRED"
+
+
+def _is_link(info: os.stat_result) -> bool:
+    return stat.S_ISLNK(info.st_mode) or (
+        NATIVE_WINDOWS and bool(getattr(info, "st_file_attributes", 0)
+                                & stat.FILE_ATTRIBUTE_REPARSE_POINT)
+    )
+
+
+def _unsafe_regular(info: os.stat_result) -> bool:
+    return _is_link(info) or not stat.S_ISREG(info.st_mode) or (
+        NATIVE_WINDOWS and info.st_nlink != 1
+    )
+
+
+def _validate_native_path_chain(path: Path, *, allow_missing: bool = False) -> None:
+    # Do this before resolving aliases. Junctions must not disappear from
+    # validation by being resolved first. This is an ordinary local-app guard,
+    # not protection against an adversary concurrently modifying the filesystem.
+    if not NATIVE_WINDOWS:
+        return
+    path = path.absolute()
+    if not re.fullmatch(r"[A-Za-z]:", path.drive) or not path.is_absolute():
+        raise ApiError(400, "Native Windows workspaces need local drive paths.")
+    current = Path(path.anchor)
+    for part in path.parts[1:]:
+        if (part in {".", ".."} or ":" in part or part.endswith((".", " "))
+                or re.fullmatch(r"(?i)(CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|COM[0-9¹²³]|LPT[0-9¹²³])",
+                                part.split(".")[0].rstrip())):
+            raise ApiError(400, "Unsafe native Windows path component.")
+        current /= part
+        try:
+            info = current.lstat()
+        except FileNotFoundError as exc:
+            if allow_missing:
+                return
+            raise ApiError(404, "Native Windows path was not found.") from exc
+        except OSError as exc:
+            raise ApiError(400, "Native Windows path could not be inspected.") from exc
+        if _is_link(info):
+            raise ApiError(400, "Native Windows paths cannot contain reparse points.")
+        if current != path and not stat.S_ISDIR(info.st_mode):
+            raise ApiError(400, "Native Windows path contains a non-directory parent.")
+        if current == path and stat.S_ISREG(info.st_mode) and info.st_nlink != 1:
+            raise ApiError(400, "Native Windows regular files cannot be multiply linked.")
+
+
+class NativeCliSupervisor:
+    """Track the real native engine; its Win32 runner owns descendant Job Objects.
+
+    Closing/killing the CLI closes those non-inherited job handles. This is
+    deliberately limited to the existing engine, never arbitrary browser commands.
+    """
+    def __init__(self) -> None:
+        self.lock = threading.Lock()
+        self.active: set[subprocess.Popen[str]] = set()
+        self.closing = False
+
+    def run(self, command: list[str], cwd: Path, env: dict[str, str],
+            timeout: float, input_data: str | None) -> tuple[int, str]:
+        with self.lock:
+            if self.closing:
+                raise ApiError(503, "The native learning service is stopping.")
+            process = subprocess.Popen(
+                command, cwd=cwd, env=env,
+                stdin=subprocess.DEVNULL if input_data is None else subprocess.PIPE,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, encoding="utf-8", errors="replace", close_fds=True,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+            self.active.add(process)
+        try:
+            try:
+                output, _ = process.communicate(input=input_data, timeout=timeout)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                output, _ = process.communicate(timeout=10)
+                return 124, (output or "") + "\n[CppAppLab Web] Operation timed out.\n"
+            return process.returncode, output or ""
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=10)
+            with self.lock:
+                self.active.discard(process)
+
+    def close(self) -> None:
+        with self.lock:
+            self.closing = True
+            processes = tuple(self.active)
+        for process in processes:
+            if process.poll() is None:
+                try:
+                    process.kill()
+                except OSError:
+                    pass
+        for process in processes:
+            try:
+                process.wait(timeout=10)
+            except (OSError, subprocess.TimeoutExpired):
+                sys.stderr.write("[CppAppLab Web] Native CLI did not exit on shutdown.\n")
 
 RUNTIME_PROFILES: dict[str, dict[str, Any]] = {
     "w1.calculator": {
@@ -194,7 +298,7 @@ def safe_relative_path(value: str) -> str:
     path = PurePosixPath(value)
     if not path.parts or any(part in {"", ".", ".."} for part in path.parts):
         raise ValueError("Path traversal and dot components are not allowed.")
-    if ":" in path.parts[0]:
+    if ":" in path.parts[0] or (NATIVE_WINDOWS and any(":" in part for part in path.parts)):
         raise ValueError("Drive-qualified paths are not allowed.")
     normalized = path.as_posix()
     if normalized != value:
@@ -207,7 +311,7 @@ def _lstat_regular_file(path: Path, label: str) -> os.stat_result:
         info = path.lstat()
     except OSError as exc:
         raise ApiError(404, f"{label} was not found.") from exc
-    if path.is_symlink() or not path.is_file():
+    if _unsafe_regular(info):
         raise ApiError(400, f"{label} must be a regular non-symlink file.")
     return info
 
@@ -226,7 +330,7 @@ def _safe_repo_path(root: Path, relative: str, label: str) -> tuple[Path, os.sta
             info = current.lstat()
         except OSError as exc:
             raise ApiError(404, f"{label} was not found.") from exc
-        if stat.S_ISLNK(info.st_mode):
+        if _is_link(info):
             raise ApiError(400, f"{label} cannot contain symlinks.")
         if current != target and not stat.S_ISDIR(info.st_mode):
             raise ApiError(400, f"{label} contains a non-directory parent.")
@@ -235,7 +339,7 @@ def _safe_repo_path(root: Path, relative: str, label: str) -> tuple[Path, os.sta
 
 def safe_repo_file(root: Path, relative: str, max_bytes: int, label: str) -> Path:
     target, info = _safe_repo_path(root, relative, label)
-    if not stat.S_ISREG(info.st_mode):
+    if _unsafe_regular(info):
         raise ApiError(400, f"{label} must be a regular file.")
     if info.st_size > max_bytes:
         raise ApiError(413, f"{label} exceeds its size limit.")
@@ -383,7 +487,7 @@ def ensure_workspace_directory(root: Path, *parts: str) -> Path:
                 raise ApiError(500, f"Cannot create workspace runtime directory: {exc}") from exc
         except OSError as exc:
             raise ApiError(500, f"Cannot inspect workspace runtime directory: {exc}") from exc
-        if current.is_symlink() or not current.is_dir():
+        if _is_link(status) or not stat.S_ISDIR(status.st_mode):
             raise ApiError(400, "Workspace runtime directories must be real directories.")
     return current
 
@@ -402,6 +506,10 @@ class CppAppLabWebServer(ThreadingHTTPServer):
     ):
         if address[0] not in ALLOWED_HOSTS:
             raise ValueError("CppAppLab Web Workbench may bind only to loopback addresses.")
+        _validate_native_path_chain(root)
+        _validate_native_path_chain(binary)
+        _validate_native_path_chain(workspace_root)
+        _validate_native_path_chain(ui_root)
         self.root = root.resolve()
         self.binary = binary.resolve()
         self.workspace_root = workspace_root
@@ -409,7 +517,10 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         self.csrf_token = secrets.token_urlsafe(32)
         self.child_env = os.environ.copy()
         self.child_env["CPPAPPLAB_DATA_DIR"] = str(self.root)
-        self.child_env["HOME"] = str(Path(self.child_env.get("HOME", str(Path.home()))).expanduser())
+        home_key = "USERPROFILE" if NATIVE_WINDOWS else "HOME"
+        self.child_env[home_key] = str(Path(self.child_env.get(home_key, str(Path.home()))).expanduser())
+        self.native_cli = NativeCliSupervisor() if NATIVE_WINDOWS else None
+        self.native_api_lock = threading.RLock()
         self.tasks = load_catalog(self.root)
         self.task_by_id = {task["id"]: task for task in self.tasks}
         self.service_sessions: dict[str, ServiceSession] = {}
@@ -425,10 +536,23 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         )
         self.service_janitor.start()
 
+    def task_executable(self, task: dict[str, Any]) -> bool:
+        return not NATIVE_WINDOWS or task["week"] <= 4
+
+    def require_task_environment(self, task_id: str) -> None:
+        task = self.task_by_id.get(task_id)
+        if task is not None and not self.task_executable(task):
+            raise ApiError(409, "本课程需要 Linux/WSL2；请在 Ubuntu 中打开 CppAppLab。")
+
     def run_cli(
         self, arguments: list[str], timeout: float = 20.0, input_data: str | None = None
     ) -> tuple[int, str]:
         try:
+            if self.native_cli is not None:
+                code, output = self.native_cli.run(
+                    [str(self.binary), *arguments], self.root, self.child_env, timeout, input_data
+                )
+                return code, bounded_output(output)
             result = subprocess.run(
                 [str(self.binary), *arguments],
                 cwd=self.root,
@@ -458,6 +582,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         task = self.task_by_id.get(task_id)
         if task is None:
             raise ApiError(404, "Unknown task ID.")
+        self.require_task_environment(task_id)
         exit_code, output = self.run_cli(["learn", task_id], timeout=20.0)
         if exit_code != 0:
             raise ApiError(409, output.strip() or "The task cannot be started yet.")
@@ -467,6 +592,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         raw_workspace = Path(match.group(1).strip()).expanduser()
         if not raw_workspace.is_absolute():
             raw_workspace = self.root / raw_workspace
+        _validate_native_path_chain(raw_workspace)
         allowed_root = self.workspace_root.resolve()
         try:
             workspace = raw_workspace.resolve(strict=True)
@@ -489,8 +615,8 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 current_info = current.lstat()
             except OSError as exc:
                 raise ApiError(404, "The learner workspace is missing.") from exc
-            if current.is_symlink():
-                raise ApiError(400, "Workspace paths cannot contain symlinks.")
+            if _is_link(current_info):
+                raise ApiError(400, "Workspace paths cannot contain symlinks or reparse points.")
         if not current.is_dir():
             raise ApiError(400, "The learning engine returned an invalid workspace directory.")
         return current, output
@@ -514,7 +640,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 info = current.lstat()
             except OSError as exc:
                 raise ApiError(404, "The declared source directory is missing.") from exc
-            if current.is_symlink() or not current.is_dir():
+            if _is_link(info) or not stat.S_ISDIR(info.st_mode):
                 raise ApiError(400, "Source parent directories must be real directories.")
         target = current / parts[-1]
         info = _lstat_regular_file(target, "Learner source file")
@@ -562,7 +688,11 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         exit_code, output = self.run_cli(["progress"], timeout=15.0)
         if exit_code != 0:
             return {task["id"]: "UNKNOWN" for task in self.tasks}
-        return parse_progress(output, self.tasks)
+        states = parse_progress(output, self.tasks)
+        for task in self.tasks:
+            if not self.task_executable(task):
+                states[task["id"]] = LINUX_REQUIRED_STATE
+        return states
 
     @staticmethod
     def _append_service_log(session: ServiceSession, value: str) -> None:
@@ -677,6 +807,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             return self._service_snapshot(session, task_id)
 
     def start_service(self, task_id: str) -> dict[str, Any]:
+        self.require_task_environment(task_id)
         profile = SERVICE_PROFILES.get(task_id)
         if profile is None:
             raise ApiError(409, "This task has no registered network-service profile.")
@@ -1188,6 +1319,8 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                     sys.stderr.write(f"[CppAppLab Web] Could not expire {task_id}: {exc.message}\n")
 
     def server_close(self) -> None:
+        if self.native_cli is not None:
+            self.native_cli.close()
         self.service_janitor_stop.set()
         self.stop_all_services()
         if hasattr(self, "service_janitor"):
@@ -1321,7 +1454,8 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             parsed = urlsplit(self.path)
             segments = [unquote(part) for part in parsed.path.split("/") if part]
             if segments[:2] == ["api", "v1"]:
-                self._handle_api_get(segments[2:])
+                with self.server.native_api_lock if NATIVE_WINDOWS else nullcontext():
+                    self._handle_api_get(segments[2:])
             else:
                 self._serve_static(parsed.path)
         except ApiError as exc:
@@ -1341,10 +1475,20 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             self._send_json(200, {"markdown": read_bounded(guide, MAX_LESSON_BYTES, "Learning guide")})
             return
         if parts == ["knowledge"]:
-            self._send_json(200, {"topics": knowledge_lab.catalog(set(self.server.task_by_id))})
+            topics = knowledge_lab.catalog(set(self.server.task_by_id))
+            if NATIVE_WINDOWS:
+                topics = [dict(topic, execution_available=False,
+                               environment_reason="Windows 原生知识实验尚待验证；可阅读知识说明。")
+                          for topic in topics]
+            self._send_json(200, {"topics": topics})
             return
         if parts == ["modern-projects"]:
-            self._send_json(200, {"projects": modern_projects.catalog()})
+            projects = modern_projects.catalog()
+            if NATIVE_WINDOWS:
+                projects = [dict(project, toolchain_present=False, execution_available=False,
+                                 environment_reason="Windows 原生现代 C++ 工程尚待 CP7-E 验证。")
+                            for project in projects]
+            self._send_json(200, {"projects": projects})
             return
         if parts == ["health"]:
             exit_code, output = self.server.run_cli(["--version"], timeout=5.0)
@@ -1353,6 +1497,8 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
                 "service": "CppAppLab",
                 "engine": output.strip(),
                 "task_count": len(self.server.tasks),
+                "execution_environment": "native-windows" if NATIVE_WINDOWS else "linux",
+                "native_course_count": sum(self.server.task_executable(task) for task in self.server.tasks),
             })
             return
         if parts == ["tasks"]:
@@ -1375,6 +1521,7 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
                     "order": task["order"],
                     "prerequisites": task["prerequisites"],
                     "state": states.get(task["id"], "UNKNOWN"),
+                    "execution_available": self.server.task_executable(task),
                 })
             self._send_json(200, {"tasks": values, "count": len(values)})
             return
@@ -1412,7 +1559,10 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         states = self.server.progress_states()
         current_state = states.get(task_id, "UNKNOWN")
         state_reason = ""
-        if current_state == "STALE":
+        if not self.server.task_executable(task):
+            current_state = LINUX_REQUIRED_STATE
+            state_reason = "本课程需要 Linux/WSL2。当前可以阅读教材与提示，请在 Ubuntu 中完成编译和验收。"
+        elif current_state == "STALE":
             state_reason = "此前通过的源码指纹与当前工作区不再一致，或原工作区已不可用；请重新检查当前源码。"
         elif current_state == "NEEDS WORK":
             state_reason = "最近一次正式验收未通过；查看验收历史和诊断日志后修复并重新验收。"
@@ -1429,8 +1579,9 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             "source_files": task["source_files"],
             "acceptance_kind": task["acceptance_kind"],
             "expected_test_count": task["expected_test_count"],
-            "runtime_profile": RUNTIME_PROFILES.get(task_id),
-            "service_profile": SERVICE_PROFILES.get(task_id),
+            "runtime_profile": RUNTIME_PROFILES.get(task_id) if self.server.task_executable(task) else None,
+            "service_profile": SERVICE_PROFILES.get(task_id) if self.server.task_executable(task) else None,
+            "execution_available": self.server.task_executable(task),
             "state": current_state,
             "state_reason": state_reason,
             "lesson_markdown": translations["en"],
@@ -1509,11 +1660,11 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
                     info = current.lstat()
                 except OSError:
                     break
-                if current.is_symlink():
-                    raise ApiError(400, "Workspace source paths cannot contain symlinks.")
+                if _is_link(info):
+                    raise ApiError(400, "Workspace source paths cannot contain symlinks or reparse points.")
             else:
-                if not current.is_file():
-                    raise ApiError(400, "Workspace source entries must be regular files.")
+                if _unsafe_regular(info):
+                    raise ApiError(400, "Workspace source entries must be safe regular files.")
                 files.append({
                     "path": relative,
                     "size": info.st_size,
@@ -1545,80 +1696,83 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         try:
             self._validate_mutation()
-            parsed = urlsplit(self.path)
-            parts = [unquote(part) for part in parsed.path.split("/") if part]
-            if len(parts) == 5 and parts[:3] == ["api", "v1", "modern-projects"]:
-                self._modern_project_action(parts[3], parts[4])
-                return
-            if len(parts) == 5 and parts[:3] == ["api", "v1", "knowledge"] and parts[4] == "run":
-                topic = knowledge_lab.ALL_BY_ID.get(parts[3])
-                if not topic or not topic["phase"]:
-                    raise ApiError(404, "Unknown runnable knowledge experiment.")
-                value = self._read_json()
-                if set(value) != {"variant"} or value["variant"] not in ("failure", "repair"):
-                    raise ApiError(400, "Only the fixed failure/repair variant is accepted.")
-                if not self.server.knowledge_lock.acquire(blocking=False):
-                    raise ApiError(409, "A knowledge experiment is already running.")
-                try:
-                    self._send_json(200, knowledge_lab.run(parts[3], value["variant"]))
-                finally:
-                    self.server.knowledge_lock.release()
-                return
-            if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "tasks" and parts[4] == "start":
-                self._start_task(parts[3])
-                return
-            if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] in {"build", "run"}:
-                self._run_workspace_action(parts[3], parts[4])
-                return
-            if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "app-build":
-                self._build_application(parts[3])
-                return
-            if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "app-run":
-                self._run_application(parts[3])
-                return
-            if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "start"]:
-                self._read_json()
-                self._send_json(200, self.server.start_service(parts[3]))
-                return
-            if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "stop"]:
-                self._read_json()
-                self._send_json(200, self.server.stop_service(parts[3]))
-                return
-            if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "echo"]:
-                value = self._read_json()
-                self._send_json(200, self.server.send_tcp_echo(parts[3], value.get("message")))
-                return
-            if len(parts) == 7 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:6] == ["service", "chat"]:
-                value = self._read_json()
-                action = parts[6]
-                if action == "connect":
-                    result = self.server.connect_chat_client(parts[3], value.get("nickname"))
-                elif action == "send":
-                    result = self.server.send_chat_message(
-                        parts[3], value.get("client_id"), value.get("message")
+            with self.server.native_api_lock if NATIVE_WINDOWS else nullcontext():
+                parsed = urlsplit(self.path)
+                parts = [unquote(part) for part in parsed.path.split("/") if part]
+                if len(parts) == 5 and parts[:3] == ["api", "v1", "modern-projects"]:
+                    self._modern_project_action(parts[3], parts[4])
+                    return
+                if len(parts) == 5 and parts[:3] == ["api", "v1", "knowledge"] and parts[4] == "run":
+                    if NATIVE_WINDOWS:
+                        raise ApiError(409, "Windows 原生知识实验尚待验证。")
+                    topic = knowledge_lab.ALL_BY_ID.get(parts[3])
+                    if not topic or not topic["phase"]:
+                        raise ApiError(404, "Unknown runnable knowledge experiment.")
+                    value = self._read_json()
+                    if set(value) != {"variant"} or value["variant"] not in ("failure", "repair"):
+                        raise ApiError(400, "Only the fixed failure/repair variant is accepted.")
+                    if not self.server.knowledge_lock.acquire(blocking=False):
+                        raise ApiError(409, "A knowledge experiment is already running.")
+                    try:
+                        self._send_json(200, knowledge_lab.run(parts[3], value["variant"]))
+                    finally:
+                        self.server.knowledge_lock.release()
+                    return
+                if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "tasks" and parts[4] == "start":
+                    self._start_task(parts[3])
+                    return
+                if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] in {"build", "run"}:
+                    self._run_workspace_action(parts[3], parts[4])
+                    return
+                if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "app-build":
+                    self._build_application(parts[3])
+                    return
+                if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "app-run":
+                    self._run_application(parts[3])
+                    return
+                if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "start"]:
+                    self._read_json()
+                    self._send_json(200, self.server.start_service(parts[3]))
+                    return
+                if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "stop"]:
+                    self._read_json()
+                    self._send_json(200, self.server.stop_service(parts[3]))
+                    return
+                if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "echo"]:
+                    value = self._read_json()
+                    self._send_json(200, self.server.send_tcp_echo(parts[3], value.get("message")))
+                    return
+                if len(parts) == 7 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:6] == ["service", "chat"]:
+                    value = self._read_json()
+                    action = parts[6]
+                    if action == "connect":
+                        result = self.server.connect_chat_client(parts[3], value.get("nickname"))
+                    elif action == "send":
+                        result = self.server.send_chat_message(
+                            parts[3], value.get("client_id"), value.get("message")
+                        )
+                    elif action == "poll":
+                        result = self.server.poll_chat_messages(parts[3], value.get("client_id"))
+                    elif action == "disconnect":
+                        result = self.server.disconnect_chat_client(parts[3], value.get("client_id"))
+                    else:
+                        raise ApiError(404, "Chat service action not found.")
+                    self._send_json(200, result)
+                    return
+                if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "http"]:
+                    value = self._read_json()
+                    result = self.server.proxy_http_request(
+                        parts[3],
+                        value.get("method"),
+                        value.get("target"),
+                        value.get("body", ""),
                     )
-                elif action == "poll":
-                    result = self.server.poll_chat_messages(parts[3], value.get("client_id"))
-                elif action == "disconnect":
-                    result = self.server.disconnect_chat_client(parts[3], value.get("client_id"))
-                else:
-                    raise ApiError(404, "Chat service action not found.")
-                self._send_json(200, result)
-                return
-            if len(parts) == 6 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4:] == ["service", "http"]:
-                value = self._read_json()
-                result = self.server.proxy_http_request(
-                    parts[3],
-                    value.get("method"),
-                    value.get("target"),
-                    value.get("body", ""),
-                )
-                self._send_json(200, result)
-                return
-            if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "check":
-                self._check_workspace(parts[3])
-                return
-            raise ApiError(404, "API route not found.")
+                    self._send_json(200, result)
+                    return
+                if len(parts) == 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "check":
+                    self._check_workspace(parts[3])
+                    return
+                raise ApiError(404, "API route not found.")
         except ApiError as exc:
             self._send_error_json(exc)
         except Exception as exc:
@@ -1628,14 +1782,15 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
     def do_PUT(self) -> None:
         try:
             self._validate_mutation()
-            parsed = urlsplit(self.path)
-            parts = [unquote(part) for part in parsed.path.split("/") if part]
-            if len(parts) >= 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "files":
-                task_id = parts[3]
-                relative = "/".join(parts[5:])
-                self._save_workspace_file(task_id, relative)
-                return
-            raise ApiError(404, "API route not found.")
+            with self.server.native_api_lock if NATIVE_WINDOWS else nullcontext():
+                parsed = urlsplit(self.path)
+                parts = [unquote(part) for part in parsed.path.split("/") if part]
+                if len(parts) >= 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "files":
+                    task_id = parts[3]
+                    relative = "/".join(parts[5:])
+                    self._save_workspace_file(task_id, relative)
+                    return
+                raise ApiError(404, "API route not found.")
         except ApiError as exc:
             self._send_error_json(exc)
         except Exception as exc:
@@ -1643,6 +1798,8 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             self._send_error_json(ApiError(500, "The local service encountered an internal error."))
 
     def _modern_project_action(self, project_id: str, action: str) -> None:
+        if NATIVE_WINDOWS:
+            raise ApiError(409, "Windows 原生现代 C++ 工程尚待 CP7-E 验证。")
         if project_id not in modern_projects.PROJECTS or action not in {"start", "save", "check"}:
             raise ApiError(404, "Unknown modern project or action.")
         value = self._read_json()
@@ -1669,6 +1826,7 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         if task_id not in self.server.task_by_id:
             raise ApiError(404, "Unknown task ID.")
         self._read_json()
+        self.server.require_task_environment(task_id)
         exit_code, output = self.server.run_cli(["learn", task_id], timeout=20.0)
         if exit_code != 0:
             raise ApiError(409, output.strip() or "The task cannot be started yet.")
@@ -1698,7 +1856,8 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             target_info = target.lstat()
         except OSError as exc:
             raise ApiError(404, "Learner source file was not found.") from exc
-        if parent.is_symlink() or not parent.is_dir() or target.is_symlink() or not target.is_file():
+        _validate_native_path_chain(parent)
+        if _is_link(parent.lstat()) or not parent.is_dir() or _unsafe_regular(target_info):
             raise ApiError(400, "Only regular learner files in real directories can be saved.")
         temporary: Path | None = None
         try:
@@ -1708,7 +1867,9 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
                 stream.write(content)
                 stream.flush()
                 os.fsync(stream.fileno())
-            os.chmod(temporary, target_info.st_mode & 0o777)
+            if not NATIVE_WINDOWS:
+                os.chmod(temporary, target_info.st_mode & 0o777)
+            _validate_native_path_chain(target)
             os.replace(temporary, target)
         except OSError as exc:
             raise ApiError(500, f"Could not save learner source file: {exc}") from exc
@@ -1821,7 +1982,7 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         output = summary
         state_directory = workspace / ".cppapplab"
         if state_directory.exists() or state_directory.is_symlink():
-            if state_directory.is_symlink() or not state_directory.is_dir():
+            if _is_link(state_directory.lstat()) or not state_directory.is_dir():
                 raise ApiError(400, "Workspace check state must be a real directory.")
             log_path = state_directory / "last-check.log"
             if log_path.exists() or log_path.is_symlink():
@@ -1846,8 +2007,13 @@ def main() -> int:
     parser.add_argument("--workspace-root", type=Path, default=None)
     args = parser.parse_args()
 
+    try:
+        _validate_native_path_chain(args.root)
+        binary = args.cppapplab or args.root / "build" / ("cppapplab.exe" if NATIVE_WINDOWS else "cppapplab")
+        _validate_native_path_chain(binary)
+    except ApiError as exc:
+        parser.error(exc.message)
     root = args.root.resolve()
-    binary = args.cppapplab or root / "build" / "cppapplab"
     binary = binary.resolve()
     if args.host not in ALLOWED_HOSTS:
         parser.error("--host must be 127.0.0.1, localhost, or ::1")
@@ -1858,12 +2024,24 @@ def main() -> int:
     if binary.is_symlink() or not binary.is_file() or not os.access(binary, os.X_OK):
         parser.error(f"CppAppLab executable is missing or not executable: {binary}")
 
-    home = Path(os.environ.get("HOME", str(Path.home()))).expanduser().resolve()
-    workspace_root = args.workspace_root or home / "cppapplab-work"
-    workspace_root = workspace_root.expanduser()
+    home_key = "USERPROFILE" if NATIVE_WINDOWS else "HOME"
+    home = Path(os.environ.get(home_key, str(Path.home()))).expanduser()
+    workspace_root = (args.workspace_root or home / "cppapplab-work").expanduser()
+    if NATIVE_WINDOWS:
+        try:
+            _validate_native_path_chain(home, allow_missing=True)
+            _validate_native_path_chain(workspace_root, allow_missing=True)
+        except ApiError as exc:
+            parser.error(exc.message)
+        if workspace_root.absolute() != (home / "cppapplab-work").absolute():
+            parser.error("Native Windows --workspace-root must match USERPROFILE/cppapplab-work.")
     if workspace_root.exists() and workspace_root.is_symlink():
         parser.error("The browser workspace root cannot be a symlink.")
     workspace_root.mkdir(parents=True, exist_ok=True)
+    try:
+        _validate_native_path_chain(workspace_root)
+    except ApiError as exc:
+        parser.error(exc.message)
     workspace_root = workspace_root.resolve()
 
     ui_root = root / "web" / "ui"

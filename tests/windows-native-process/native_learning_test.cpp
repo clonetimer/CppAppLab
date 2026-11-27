@@ -263,7 +263,9 @@ TEST(NativeLearningWorkflow, RealW1ThroughW4CMakeGoogleTestAcceptanceUsesSharedE
             result = invoke({"cppapplab", "check", workspace.root.u8string()});
             output = capture.str();
         }
-        ASSERT_EQ(result, 0) << task_id << "\n" << output;
+        const std::string full_log = cppapplab::windows_state_io::read(
+            workspace.root / ".cppapplab" / "last-check.log", 128U * 1024U);
+        ASSERT_EQ(result, 0) << task_id << "\n" << output << "\nFull CMake/CTest log:\n" << full_log;
         EXPECT_NE(output.find("Result: PASS"), std::string::npos) << task_id;
         EXPECT_NE(output.find("Acceptance: " + std::to_string(task->expected_test_count) +
                               "/" + std::to_string(task->expected_test_count)),

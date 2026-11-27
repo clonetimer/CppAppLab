@@ -6,6 +6,7 @@
 #include <windows.h>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 int wmain(int argc, wchar_t* argv[]) {
@@ -20,7 +21,7 @@ int wmain(int argc, wchar_t* argv[]) {
         if (required <= 0) {
             return 2;
         }
-        std::string converted(static_cast<std::size_t>(required), '\\0');
+        std::string converted(static_cast<std::size_t>(required), '\0');
         if (WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, argv[index], -1,
                                 converted.data(), required, nullptr, nullptr) != required) {
             return 2;

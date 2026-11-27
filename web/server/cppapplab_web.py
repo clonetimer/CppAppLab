@@ -32,6 +32,7 @@ from typing import Any
 from urllib.parse import unquote, urlsplit
 
 import knowledge_lab
+import modern_projects
 
 
 MAX_CATALOG_BYTES = 64 * 1024
@@ -1342,6 +1343,9 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         if parts == ["knowledge"]:
             self._send_json(200, {"topics": knowledge_lab.catalog(set(self.server.task_by_id))})
             return
+        if parts == ["modern-projects"]:
+            self._send_json(200, {"projects": modern_projects.catalog()})
+            return
         if parts == ["health"]:
             exit_code, output = self.server.run_cli(["--version"], timeout=5.0)
             self._send_json(200 if exit_code == 0 else 503, {
@@ -1543,6 +1547,9 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             self._validate_mutation()
             parsed = urlsplit(self.path)
             parts = [unquote(part) for part in parsed.path.split("/") if part]
+            if len(parts) == 5 and parts[:3] == ["api", "v1", "modern-projects"]:
+                self._modern_project_action(parts[3], parts[4])
+                return
             if len(parts) == 5 and parts[:3] == ["api", "v1", "knowledge"] and parts[4] == "run":
                 topic = knowledge_lab.ALL_BY_ID.get(parts[3])
                 if not topic or not topic["phase"]:
@@ -1634,6 +1641,29 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         except Exception as exc:
             sys.stderr.write(f"[CppAppLab Web] Internal PUT error: {exc!r}\n")
             self._send_error_json(ApiError(500, "The local service encountered an internal error."))
+
+    def _modern_project_action(self, project_id: str, action: str) -> None:
+        if project_id not in modern_projects.PROJECTS or action not in {"start", "save", "check"}:
+            raise ApiError(404, "Unknown modern project or action.")
+        value = self._read_json()
+        expected = {"start": set(), "save": {"source", "revision"}, "check": {"revision"}}[action]
+        if set(value) != expected:
+            raise ApiError(400, "Only the fixed modern project action fields are accepted.")
+        if not self.server.knowledge_lock.acquire(blocking=False):
+            raise ApiError(409, "Another independent experiment or modern project action is running.")
+        try:
+            root, workspace = self.server.root, self.server.workspace_root
+            if action == "start":
+                result = modern_projects.start(root, workspace, project_id)
+            elif action == "save":
+                result = modern_projects.save(root, workspace, project_id, value["source"], value["revision"])
+            else:
+                result = modern_projects.check(root, workspace, project_id, value["revision"])
+            self._send_json(200, result)
+        except modern_projects.ProjectError as exc:
+            raise ApiError(exc.status, str(exc)) from exc
+        finally:
+            self.server.knowledge_lock.release()
 
     def _start_task(self, task_id: str) -> None:
         if task_id not in self.server.task_by_id:

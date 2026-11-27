@@ -256,6 +256,7 @@
     </div>
     <div class="knowledge-body">
       <aside class="knowledge-sidebar" aria-label="知识点目录">
+        <button id="modern-open" type="button" class="secondary-button" aria-haspopup="dialog" aria-controls="modern-dialog">现代工程实践 ↗</button>
         <label for="knowledge-search">搜索中英文知识点</label>
         <input id="knowledge-search" type="search" placeholder="unique_ptr、链接、CMake…" autocomplete="off">
         <p id="knowledge-count" role="status"></p>
@@ -279,6 +280,38 @@
       </article>
     </div>
     <p id="knowledge-status" class="knowledge-status" role="status" aria-live="polite"></p>
+  </dialog>
+  <dialog id="modern-dialog" class="learning-guide modern-dialog" aria-labelledby="modern-title">
+    <div class="guide-heading">
+      <h2 id="modern-title">现代 C++ 工程实践</h2>
+      <button id="modern-close" class="secondary-button" type="button">返回工作台</button>
+    </div>
+    <div class="modern-body">
+      <div class="modern-toolbar">
+        <label for="modern-choice">独立项目</label>
+        <select id="modern-choice" disabled></select>
+        <button id="modern-start" class="primary-button" type="button" disabled>打开学习项目</button>
+      </div>
+      <p id="modern-profile" class="knowledge-note"></p>
+      <p id="modern-task"></p>
+      <p class="knowledge-note">仅运行你信任、自己编写的本地 C++ 源码；按本机用户权限执行，并非安全沙箱。不修改原有课程与验收历史。</p>
+      <section id="modern-workspace" hidden>
+        <p id="modern-path" class="knowledge-note modern-path"></p>
+        <details id="modern-contract-details">
+          <summary>只读接口 contract.hpp</summary>
+          <pre id="modern-contract"></pre>
+        </details>
+        <label for="modern-source">implementation.cpp</label>
+        <textarea id="modern-source" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="现代项目源码"></textarea>
+        <div class="modern-toolbar">
+          <button id="modern-save" class="secondary-button" type="button" disabled>保存源码</button>
+          <button id="modern-check" class="primary-button" type="button" disabled>正式检查（独立）</button>
+          <span id="modern-current" role="status"></span>
+        </div>
+        <pre id="modern-output" tabindex="0" aria-label="实际构建与测试输出"></pre>
+      </section>
+    </div>
+    <p id="modern-status" class="knowledge-status" role="status" aria-live="polite"></p>
   </dialog>
 </body>
 </html>

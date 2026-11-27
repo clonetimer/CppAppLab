@@ -666,4 +666,30 @@ void remove_tree(const Path& path) {
     remove_tree_impl(path);
 }
 
+void copy_file(const Path& source, const Path& destination) {
+    const Path absolute_source = checked_absolute(source);
+    const Path absolute_destination = checked_absolute(destination);
+    if (absolute_source == absolute_destination) {
+        throw std::runtime_error("Source and destination file paths must differ.");
+    }
+    copy_regular_file(absolute_source, absolute_destination);
+}
+
+void remove_file(const Path& input) {
+    const Path path = checked_absolute(input);
+    const auto parent_chain = pin_directory(path.parent_path(), false);
+    if (!parent_chain.exists) {
+        return;
+    }
+    if (!existing_regular(path)) {
+        if (entry_exists(path)) {
+            throw std::runtime_error("Refusing to remove a non-regular or unsafe native file.");
+        }
+        return;
+    }
+    if (!DeleteFileW(path.c_str())) {
+        fail("DeleteFileW(native state file)");
+    }
+}
+
 }  // namespace cppapplab::windows_state_io

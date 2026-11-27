@@ -674,3 +674,11 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - Why: testing a preinstalled runner is insufficient for the learner's install-free delivery. Check the actual ZIP and the compiler/GTest paths selected by CMake, not merely executable presence.
 - Pitfalls: keep MSYS2 acquisition confined to build CI, preserve original fixed tests, separate Unicode learning files from MinGW toolchain/cache paths, probe real symlink creation capability without enabling Developer Mode. Do not claim a new upstream version lock from observed versions or claim redistribution approval from collecting license files.
 - Boundary: CI package candidate pending; public release requires exact dependency acquisition lock and corresponding-source/license review, actual nonadmin and offline target feedback. Modern C++ and environment switching still open.
+
+
+## 81. CP7-D1 — Strict Release and relocated ZIP startup diagnostics
+
+- Actual failures: first build stopped on NOMINMAX and missing aggregate vector initializers under -Werror; Ubuntu 24.04 dependency setup failed on an unused Microsoft APT URI (403). Guarded macros, initialized optional vectors, isolated only dedicated unused Microsoft source files on hosted CI while preserving signatures and fail-on-error checks.
+- Second attempt built Release and verified Python, then stopped on the dependency-only GCC cc-libs package. Allow only this named metadata-only aggregate with its declared dependencies; require real libgcc/libstdc++/libwinpthread packages and DLLs. No general empty-payload exception.
+- Run 45990927948 created and independently extracted/verified 40,614 manifest files on Windows, SHA-256 4ad4225c73dbdfdc59a77770ae6300bcdbc270ea3f0b7bfc3d03a1d31df9cac0. Batch launch failed printing Chinese to redirected CP1252 stdout. Configure only the embedded launcher's stdout/stderr as UTF-8 and assert the exact Chinese startup message in the actual batch test. Also configure the test harness output so reporting cannot fail on the same text.
+- Full primary CI 45990927981 passed all 14 applicable jobs, including restored Ubuntu sanitizer. Foundation 45990927940 passed. No extracted learner course checks or artifact upload from the failed portable run. Keep #95 open; rerun the complete gate.

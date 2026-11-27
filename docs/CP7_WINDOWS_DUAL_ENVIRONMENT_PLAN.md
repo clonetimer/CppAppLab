@@ -128,3 +128,22 @@ Implemented on top of CP7-B2a main `a6f1aab087a7da902d73ed794398203dcb04e01a`:
 - Five new tests cover workspace creation/reopen in Unicode paths, template junction rejection, hard-linked template rejection, destination-parent junction rejection, and safe junction cleanup. The Windows workflow count is raised from 20 to 25 tests (13 process/W1 + 7 state + 5 workspace); original Calculator remains 9/9. No course row or fixture contract changed.
 
 Current status: implementation candidate; fresh Windows and Ubuntu CI pending. Root CMake still rejects Windows, the complete `learning.cpp` CLI and Python browser supervisor are not yet native, and there is no Windows package. The next B2c gate is to qualify the native workspace/security tests and then port toolchain/process/environment/CRLF behavior in the learning engine without exposing Linux-only W5–W9 on Windows.
+
+
+## CP7-B2c — Root Windows-native learning engine (candidate, PR #88)
+
+**Goal:** build the existing shared C++ learning engine as a real `cppapplab.exe` on Windows, rather than treating the isolated process/state fixtures as product completion.
+
+### Implementation in candidate
+- Root CMake now selects the existing Win32 `CreateProcessW` process backend and no-follow Windows state adapter on Windows; Linux retains its original POSIX process backend.
+- Native Windows CMake is explicitly qualified only for MinGW-w64 UCRT GCC. MSVC is not claimed.
+- The Windows entry point is `wmain`; arguments are converted from UTF-16 to UTF-8. The shared CLI converts filesystem arguments from UTF-8 back to native Windows paths.
+- The shared CLI now uses `USERPROFILE`, `GetEnvironmentVariableW` / `SetEnvironmentVariableW` for native path environment, Windows console detection, `gmtime_s`, `.exe` learner outputs, and `g++.exe` / `cmake.exe` / `ctest.exe`.
+- Course material reads and declared C++ source staging use native no-follow file operations. The fixed stdout contract remains byte-exact except for normalizing only the Windows CRT's valid LF-to-CRLF text-mode conversion; all other bytes and exit/timeout/output constraints remain strict.
+- Four new native integration tests cover Unicode USERPROFILE workspace creation/resume, actual W1 compile/check/evidence/history/unlock, wrong-output rejection and prerequisite lock, and Unicode lesson/hint reads.
+- The primary `CppAppLab CI` Windows job now installs UCRT64 and runs the 25 process/state/workspace tests, original Calculator 9/9, root CMake build, four learning integration tests, native PE import checks and a real Unicode `cppapplab.exe start → lesson → check → history → learn` journey.
+
+### Acceptance boundary
+PR #88 is still a candidate. Do not claim native learner completion until the Windows job has actually built and run the root project and all four integration tests, and the existing Ubuntu 22.04/24.04 matrix is green. A source-only or isolated process test is insufficient.
+
+**Still not delivered:** Windows learner package/installer, Windows browser/Python supervisor, MSVC support, W5–W9 native execution, and real target-machine acceptance. W5–W9 remain on Linux/WSL2; all 25 tasks and fixed acceptance contracts remain unchanged.

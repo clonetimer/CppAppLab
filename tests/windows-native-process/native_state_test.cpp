@@ -10,6 +10,10 @@
 #include "cppapplab_windows_state_config.hpp"
 #include "windows_state_io.hpp"
 
+#ifndef CPPAPPLAB_DATA_DIR
+#define CPPAPPLAB_DATA_DIR "."
+#endif
+
 #include <gtest/gtest.h>
 
 #include <array>
@@ -95,7 +99,7 @@ class ScopedDataRoot {
 };
 
 void copy_hello_template(const fs::path& data_root, const cppapplab::Task& task) {
-    const auto source = cppapplab::data_root() / task.learner_template;
+    const auto source = fs::u8path(CPPAPPLAB_DATA_DIR) / task.learner_template;
     const auto destination = data_root / task.learner_template;
     fs::create_directories(destination.parent_path());
     fs::copy(source, destination, fs::copy_options::recursive);

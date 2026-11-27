@@ -7,7 +7,6 @@
 #include <ctime>
 #include <cstdint>
 #include <cstdlib>
-#include <fcntl.h>
 #include <fstream>
 #include <limits>
 #include <map>
@@ -17,9 +16,14 @@
 #include <system_error>
 #include <vector>
 
+#ifdef _WIN32
+#include "windows_state_io.hpp"
+#else
+#include <fcntl.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#endif
 
 namespace cppapplab {
 namespace {
@@ -42,14 +46,21 @@ bool valid_task_id(std::string_view task_id) {
 }
 
 void ensure_real_directory(const std::filesystem::path& directory) {
+#ifdef _WIN32
+    windows_state_io::ensure_directory(directory);
+#else
     std::filesystem::create_directories(directory);
     const auto status = std::filesystem::symlink_status(directory);
     if (std::filesystem::is_symlink(status) || !std::filesystem::is_directory(status)) {
         throw std::runtime_error("Progress path must be a real directory: " + directory.string());
     }
+#endif
 }
 
 std::string read_regular_file(const std::filesystem::path& path, std::uintmax_t maximum_bytes) {
+#ifdef _WIN32
+    return windows_state_io::read(path, maximum_bytes);
+#else
     std::error_code error;
     const auto status = std::filesystem::symlink_status(path, error);
     if (error) {
@@ -74,6 +85,7 @@ std::string read_regular_file(const std::filesystem::path& path, std::uintmax_t 
         throw std::runtime_error("Failed while reading progress file.");
     }
     return content;
+#endif
 }
 
 std::map<std::string, std::string> parse_fields(const std::string& content) {
@@ -159,6 +171,7 @@ std::string decode_field(std::string_view value) {
     return decoded;
 }
 
+#ifndef _WIN32
 void write_all(int descriptor, std::string_view content) {
     std::size_t written = 0;
     while (written < content.size()) {
@@ -174,7 +187,12 @@ void write_all(int descriptor, std::string_view content) {
     }
 }
 
+#endif
+
 void atomic_write(const std::filesystem::path& path, std::string_view content) {
+#ifdef _WIN32
+    windows_state_io::atomic_write(path, content);
+#else
     if (std::filesystem::is_symlink(path)) {
         throw std::runtime_error("Refusing to replace a symlinked progress record.");
     }
@@ -211,6 +229,7 @@ void atomic_write(const std::filesystem::path& path, std::string_view content) {
         std::filesystem::remove(temporary, ignored);
         throw std::runtime_error("Cannot publish progress record: " + error.message());
     }
+#endif
 }
 
 std::vector<std::string> split_tabs(const std::string& line) {
@@ -244,7 +263,7 @@ ProgressRecord parse_history_record(const std::vector<std::string>& fields,
     record.evidence.tests_passed = static_cast<unsigned>(std::stoul(fields[2]));
     record.evidence.tests_total = static_cast<unsigned>(std::stoul(fields[3]));
     record.evidence.fingerprint = decode_field(fields[4]);
-    record.workspace_root = decode_field(fields[5]);
+    record.workspace_root = std::filesystem::u8path(decode_field(fields[5]));
     return record;
 }
 
@@ -254,7 +273,7 @@ std::string serialize_progress(const ProgressRecord& record) {
            << "task_id=" << record.evidence.task_id << '\n'
            << "workspace_root="
            << encode_field(
-                  std::filesystem::absolute(record.workspace_root).lexically_normal().string())
+                  std::filesystem::absolute(record.workspace_root).lexically_normal().u8string())
            << '\n'
            << "fingerprint=" << encode_field(record.evidence.fingerprint) << '\n'
            << "result="
@@ -272,12 +291,15 @@ std::string serialize_history(const ProgressRecord& record) {
            << '\t' << record.evidence.tests_total << '\t'
            << encode_field(record.evidence.fingerprint) << '\t'
            << encode_field(
-                  std::filesystem::absolute(record.workspace_root).lexically_normal().string())
+                  std::filesystem::absolute(record.workspace_root).lexically_normal().u8string())
            << '\n';
     return output.str();
 }
 
 void append_history(const std::filesystem::path& path, std::string_view line) {
+#ifdef _WIN32
+    windows_state_io::append(path, line, kMaxHistoryBytes);
+#else
     if (std::filesystem::is_symlink(path)) {
         throw std::runtime_error("Refusing to append to a symlinked progress history.");
     }
@@ -314,11 +336,22 @@ void append_history(const std::filesystem::path& path, std::string_view line) {
 
     ::flock(descriptor, LOCK_UN);
     ::close(descriptor);
+#endif
 }
 
 }  // namespace
 
 std::filesystem::path progress_directory() {
+#ifdef _WIN32
+    if (const auto override_path = windows_state_io::environment_path(L"CPPAPPLAB_STATE_DIR")) {
+        return std::filesystem::absolute(*override_path).lexically_normal() / "progress";
+    }
+    const auto local = windows_state_io::environment_path(L"LOCALAPPDATA");
+    if (!local.has_value()) {
+        throw std::runtime_error("LOCALAPPDATA is not set; choose a native CPPAPPLAB_STATE_DIR.");
+    }
+    return *local / "CppAppLab" / "native-windows" / "progress";
+#else
     if (const char* override_path = std::getenv("CPPAPPLAB_STATE_DIR");
         override_path != nullptr && override_path[0] != '\0') {
         return std::filesystem::absolute(override_path).lexically_normal() / "progress";
@@ -331,6 +364,7 @@ std::filesystem::path progress_directory() {
     }
 
     return std::filesystem::path(home) / ".local" / "share" / "cppapplab" / "progress";
+#endif
 }
 
 std::optional<ProgressRecord> read_progress(std::string_view task_id) {
@@ -339,6 +373,7 @@ std::optional<ProgressRecord> read_progress(std::string_view task_id) {
     }
 
     const auto directory = progress_directory();
+#ifndef _WIN32
     std::error_code error;
     const auto directory_status = std::filesystem::symlink_status(directory, error);
     if (error == std::errc::no_such_file_or_directory) {
@@ -351,9 +386,14 @@ std::optional<ProgressRecord> read_progress(std::string_view task_id) {
         !std::filesystem::is_directory(directory_status)) {
         throw std::runtime_error("Progress directory must be a real directory.");
     }
+#endif
 
     const auto path = directory / (std::string(task_id) + ".progress");
+#ifdef _WIN32
+    if (!windows_state_io::regular_exists(path)) {
+#else
     if (!std::filesystem::exists(path) && !std::filesystem::is_symlink(path)) {
+#endif
         return std::nullopt;
     }
 
@@ -375,7 +415,7 @@ std::optional<ProgressRecord> read_progress(std::string_view task_id) {
     record.evidence.tests_passed = parse_unsigned(fields, "tests_passed");
     record.evidence.tests_total = parse_unsigned(fields, "tests_total");
     record.evidence.timestamp = decode_field(required_field(fields, "timestamp"));
-    record.workspace_root = decode_field(required_field(fields, "workspace_root"));
+    record.workspace_root = std::filesystem::u8path(decode_field(required_field(fields, "workspace_root")));
 
     if (record.evidence.task_id != std::string(task_id) || record.workspace_root.empty()) {
         throw std::runtime_error("Progress record task ID or workspace path is invalid.");
@@ -389,7 +429,11 @@ std::vector<ProgressRecord> read_progress_history(std::string_view task_id) {
     }
 
     const auto path = progress_directory() / "history" / (std::string(task_id) + ".history");
+#ifdef _WIN32
+    if (!windows_state_io::regular_exists(path)) {
+#else
     if (!std::filesystem::exists(path) && !std::filesystem::is_symlink(path)) {
+#endif
         return {};
     }
 
@@ -414,7 +458,12 @@ void register_workspace(const std::filesystem::path& workspace_root) {
     std::tm utc{};
     char formatted[32]{};
     std::string timestamp_text = "unknown";
-    if (::gmtime_r(&timestamp, &utc) != nullptr &&
+#ifdef _WIN32
+    const bool converted = ::gmtime_s(&utc, &timestamp) == 0;
+#else
+    const bool converted = ::gmtime_r(&timestamp, &utc) != nullptr;
+#endif
+    if (converted &&
         std::strftime(formatted, sizeof(formatted), "%Y-%m-%dT%H:%M:%SZ", &utc) != 0) {
         timestamp_text = formatted;
     }
@@ -474,12 +523,12 @@ bool has_current_pass(std::string_view task_id) {
     try {
         std::map<std::string, ProgressRecord> latest_by_workspace;
         for (const ProgressRecord& attempt : read_progress_history(task_id)) {
-            latest_by_workspace[attempt.workspace_root.string()] = attempt;
+            latest_by_workspace[attempt.workspace_root.u8string()] = attempt;
         }
 
         const auto latest = read_progress(task_id);
         if (latest.has_value() && latest->checked) {
-            latest_by_workspace[latest->workspace_root.string()] = *latest;
+            latest_by_workspace[latest->workspace_root.u8string()] = *latest;
         }
 
         for (const auto& item : latest_by_workspace) {

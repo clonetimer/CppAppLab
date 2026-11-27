@@ -753,3 +753,9 @@ At baff74a6, [46010049974](https://github.com/clonetimer/CppAppLab/actions/runs/
 ### CP7-F3b read-only saved-workspace identity review
 
 The engine's aggregate current PASS can refer to a different historical workspace. Export must not use guided learn (which can create/resume a different workspace or enforce a changed prerequisite). Resolve through read-only `resume`, require actual saved workspace PASS, exact acceptance count and current fingerprint, then recheck the workspace identity/fingerprint after reading source bytes. Fail closed on mismatch instead of exporting unqualified bytes. Stale course exclusion is verified against actual remaining engine states. No learner history mutation by export.
+
+
+## 91. CP7-F3b — Actual exported artifact replay instead of only source-shaped fixtures
+
+- Run 46036629470 verified Linux import and 101/101 reacceptance on both Ubuntu versions; Windows package 46036629266 passed 101 classic but export failed with 409. Browser download also timed out. Root cause: real CLI emits `Source fingerprint: fnv1a64:<16 hex>`, not a bare hex string. Freeze actual spelling, exact PASS/count and raw snapshot FNV identity; retain SHA-256 per file. Add tests for stale, wrong count, bare hex and duplicates.
+- Upgrade cross-OS evidence: export synthetic CI learner bytes from the actual relocated Windows HTTP service, hash/upload the small JSON, then use that same artifact on Ubuntu 22.04/24.04 in dependent jobs, real engine checks 101/101 and W5 unlock, no fallback. No personal learner data or acceptance records transferred. Actual WSL2/ordinary-user/human acceptance remains separate. Fresh CI required.

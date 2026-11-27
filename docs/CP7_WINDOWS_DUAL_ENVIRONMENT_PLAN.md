@@ -386,3 +386,8 @@ Actual native ZIP export and Chromium download checks plus Linux integration wit
 
 
 F3b export uses the read-only engine resume/status of the current saved workspace, requires that workspace's own PASS, exact acceptance count and current source fingerprint before and after the snapshot, rather than assuming a task-level historical PASS applies to another workspace. Fail closed on mismatch. This protects ordinary local-app evidence identity, not adversarial concurrent mutation.
+
+
+### CP7-F3b first real Linux results and cross-OS artifact gate
+
+At c82e8bed, both Ubuntu 22.04/24.04 real engine jobs (140633707607/140633707560, run 46036629470) passed source import from export-shaped fixtures, all 101 fixed checks and W5 unlock. Native foundation and all five classic packaged tasks passed; Windows source export returned 409 and browser download timed out because the new status parser omitted the real engine's `fnv1a64:` prefix (`workspace.cpp`). Correct the parser without weakening saved-workspace PASS/count checks, compare snapshot's raw FNV fingerprint with engine status and preserve per-file SHA-256. Add exact status and stale/count/duplicate regression tests. Windows package gate writes the actual HTTP export of synthetic test learner sources as a small SHA-256-checked workflow artifact after all package smoke checks; two dependent Ubuntu jobs import this same artifact and rerun the real 101 contracts, no fallback. The new same-run cross-OS gate remains pending until fresh CI. This does not qualify WSL2 localhost forwarding, a physical target, human learning or public redistribution.

@@ -378,6 +378,18 @@ def verify(archive: Path) -> None:
                     assert "w1.hello-world" not in remaining
                 else:
                     request("/api/v1/source-export", "POST", {}, status=409)
+                # Export only the synthetic CI learner payload actually returned
+                # by the packaged Windows endpoint, never a reference reconstruction.
+                exchange_dir = os.environ.get("CPPAPPLAB_CI_EXCHANGE_OUTPUT")
+                if exchange_dir:
+                    target = Path(exchange_dir)
+                    target.mkdir(parents=True, exist_ok=True)
+                    data = (json.dumps(exported, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
+                    with (target / "windows-source-exchange.json").open("xb") as stream:
+                        stream.write(data)
+                    with (target / "SHA256SUMS").open("x", encoding="ascii", newline="\n") as stream:
+                        stream.write(hashlib.sha256(data).hexdigest() + "  windows-source-exchange.json\n")
+                    print("[PASS] Actual native HTTP source export fixture SHA-256: " + hashlib.sha256(data).hexdigest())
                 print("[PASS] Portable ZIP native HTTP: 101/101 formal contracts, bundled "
                       "compiler and GTest paths, batch launch, restart/resume/stale, port conflict.")
             except BaseException:

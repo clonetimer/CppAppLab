@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import stat
 import tempfile
 
@@ -28,6 +29,32 @@ class TransferError(Exception):
 
 def sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def current_pass_fingerprint(output: str, count: int) -> str:
+    """Consume the actual CLI status format, not a bare hex assumption."""
+    # Windows text-mode lines can be CRLF. Do not normalize the source bytes.
+    lines = output.splitlines()
+    fingerprints = [line.removeprefix("Source fingerprint: ") for line in lines
+                    if line.startswith("Source fingerprint: ")]
+    statuses = [line for line in lines if line.startswith("Last recorded result: ")]
+    counts = [line for line in lines if line.startswith("Acceptance: ")]
+    if (statuses != ["Last recorded result: PASS"] or
+            counts != [f"Acceptance: {count}/{count}"] or len(fingerprints) != 1 or
+            not re.fullmatch(r"fnv1a64:[0-9a-f]{16}", fingerprints[0])):
+        raise TransferError(409, "当前保存工作区并非已通过验收的源码；请在 Windows 重新验收后导出。")
+    return fingerprints[0]
+
+
+def snapshot_fingerprint(sources: dict[str, bytes]) -> str:
+    # Exact existing C++ workspace.cpp FNV-1a contract: declared path order,
+    # NUL separator, raw file bytes. This binds the exported snapshot to the
+    # engine status, not a cryptographic signature or portable PASS record.
+    value = 14695981039346656037
+    for name, data in sources.items():
+        for byte in name.encode("utf-8") + b"\0" + data:
+            value = ((value ^ byte) * 1099511628211) & 0xffffffffffffffff
+    return f"fnv1a64:{value:016x}"
 
 
 def encoded_size(value: dict) -> int:

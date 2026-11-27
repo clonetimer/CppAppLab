@@ -640,12 +640,10 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             # Read-only resume reports the actual saved workspace's fingerprint.
             code, output = self.run_cli(["resume", task["id"]], timeout=20.0)
             count = task["expected_test_count"] or 1
-            fingerprint = re.search(r"^Source fingerprint: ([0-9a-f]{16})$", output, re.MULTILINE)
-            if (code != 0 or re.search(r"^Last recorded result: PASS$", output, re.MULTILINE) is None
-                    or re.search(rf"^Acceptance: {count}/{count}$", output, re.MULTILINE) is None
-                    or fingerprint is None):
-                raise ApiError(409, "当前保存工作区并非已通过验收的源码；请在 Windows 重新验收后导出。")
-            return self.workspace_from_output(output), fingerprint.group(1)
+            if code != 0:
+                raise ApiError(409, "当前保存工作区无法读取；请在 Windows 重新验收后导出。")
+            fingerprint = source_transfer.current_pass_fingerprint(output, count)
+            return self.workspace_from_output(output), fingerprint
 
         for task in selected:
             work, fingerprint = current_pass_workspace(task)
@@ -655,7 +653,8 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 _validate_native_path_chain(path)
                 files[name] = source_transfer.source_bytes(path)
             after, after_fingerprint = current_pass_workspace(task)
-            if after != work or after_fingerprint != fingerprint:
+            if (after != work or after_fingerprint != fingerprint or
+                    source_transfer.snapshot_fingerprint(files) != fingerprint):
                 raise ApiError(409, "导出期间保存工作区或源码已改变；请重试。")
             records.append(source_transfer.record(task["id"], files))
         current = self.progress_states()

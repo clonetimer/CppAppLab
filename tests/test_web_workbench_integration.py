@@ -157,12 +157,29 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
             )
 
     def test_source_only_reuse_rechecks_all_foundations_on_linux(self) -> None:
-        # Export-shaped test inputs from the existing frozen references, not
-        # actual Windows transport. The destination engine and tests are real.
+        # Standalone regression uses export-shaped frozen reference fixtures.
+        # The cross-OS job uses the actual Windows HTTP export from the same
+        # workflow artifact, not a reconstructed or fallback fixture.
         expected = {"w1.hello-world": 1, "w1.calculator": 9, "w2.todo-cli": 19,
                     "w3.task-manager": 31, "w4.quality-gate": 41}
         catalog = self.request("/api/v1/health")["catalog_sha256"]
+        exchange_path = os.environ.get("CPPAPPLAB_CI_EXCHANGE_FILE")
+        actual = None
+        if exchange_path:
+            raw = Path(exchange_path).read_bytes()
+            actual = json.loads(raw)
+            self.assertEqual(set(actual), {"schema_version", "kind", "catalog_sha256", "origin", "tasks"})
+            self.assertEqual(actual["catalog_sha256"], catalog)
+            self.assertEqual([row["task_id"] for row in actual["tasks"]], list(expected))
+            print("[INFO] Actual Windows source-export artifact SHA-256: " + hashlib.sha256(raw).hexdigest())
+        elif os.environ.get("CPPAPPLAB_REQUIRE_WINDOWS_EXCHANGE") == "1":
+            self.fail("Actual native source exchange artifact is required; no fallback.")
+
         def exchange(task_id):
+            if actual is not None:
+                # Deep copy for the negative tests, never modify the source artifact.
+                return json.loads(json.dumps(dict(actual, tasks=[
+                    row for row in actual["tasks"] if row["task_id"] == task_id])))
             task = self.server.task_by_id[task_id]
             reference = (ROOT / task["learner_template"]).parent / "reference"
             files = []
@@ -226,7 +243,10 @@ class RealEngineBrowserAcceptance(unittest.TestCase):
         final = self.request("/api/v1/tasks/w5.system-lab/prerequisite-plan")
         self.assertEqual(final["next_task"], "w5.system-lab")
         self.assertEqual(final["target_state"], "AVAILABLE")
-        print("[PASS] Linux source reuse: 101 real fixed acceptance contracts; W5 unlocks only after Linux checks.")
+        if actual is not None:
+            print("[PASS] Actual Windows exported learner bytes -> Linux 101/101; W5 unlocks only after Linux checks.")
+        else:
+            print("[PASS] Linux source reuse: 101 real fixed acceptance contracts; W5 unlocks only after Linux checks.")
 
     def test_linux_prerequisite_plan_follows_real_acceptance_and_stale_source(self) -> None:
         route = "/api/v1/tasks/w5.system-lab/prerequisite-plan"

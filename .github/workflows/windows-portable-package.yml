@@ -1,0 +1,105 @@
+name: CP7 Windows portable candidate
+
+on:
+  pull_request:
+    paths:
+      - 'packaging/windows/**'
+      - 'scripts/package_windows_native.py'
+      - 'tests/test_windows_native_package.py'
+      - 'src/**'
+      - 'include/**'
+      - 'CMakeLists.txt'
+      - 'course/**'
+      - 'labs/**'
+      - 'cmake/**'
+      - 'web/**'
+      - '.github/workflows/windows-portable-package.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cppapplab-portable-windows-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-portable:
+    name: Relocated Windows native learner ZIP (CI candidate)
+    runs-on: windows-2025
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install native toolchain on the build runner only
+        id: msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-gtest
+            mingw-w64-ucrt-x86_64-gdb
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build the actual release learner engine
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $prefix = Join-Path $env:MSYS2_LOCATION 'ucrt64'
+          $toolBin = Join-Path $prefix 'bin'
+          $env:PATH = "$toolBin;$env:PATH"
+          $build = Join-Path $env:RUNNER_TEMP 'cppapplab native release build'
+          & (Join-Path $toolBin 'cmake.exe') -S . -B $build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCPPAPPLAB_FETCH_GTEST=OFF -DCPPAPPLAB_WARNINGS_AS_ERRORS=ON "-DCMAKE_CXX_COMPILER=$toolBin/g++.exe" "-DCMAKE_MAKE_PROGRAM=$toolBin/ninja.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $toolBin 'cmake.exe') --build $build --parallel
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $build 'cppapplab.exe') --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Acquire checksum-pinned official embedded Python
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'python-3.14.10-embed-amd64.zip'
+          Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.14.10/python-3.14.10-embed-amd64.zip' -OutFile $archive
+          $sha = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($sha -ne '90905e64a840557d8c1bc4f5b74db3d7ee85e3ffb217611cac1c7813acea4159') {
+            throw "Official embedded Python archive SHA-256 mismatch: $sha"
+          }
+      - name: Create native learner ZIP with exact installed versions and file hashes
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $build = Join-Path $env:RUNNER_TEMP 'cppapplab native release build'
+          $binary = Join-Path $build 'cppapplab.exe'
+          $pythonZip = Join-Path $env:RUNNER_TEMP 'python-3.14.10-embed-amd64.zip'
+          $out = Join-Path $env:RUNNER_TEMP 'cppapplab-native-package'
+          python -m py_compile scripts/package_windows_native.py packaging/windows/start-native.py tests/test_windows_native_package.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/package_windows_native.py --root . --binary $binary --msys2-root $env:MSYS2_LOCATION --python-zip $pythonZip --output $out
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Extract and exercise all five packaged native courses using bundled tools
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP 'cppapplab-native-package'
+          $archives = @(Get-ChildItem -LiteralPath $out -Filter '*.zip' -File)
+          if ($archives.Count -ne 1) { throw 'Expected one learner candidate ZIP.' }
+          python tests/test_windows_native_package.py $archives[0].FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload verified internal CI candidate (not a release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppapplab-windows-x64-portable-candidate-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/cppapplab-native-package/*.zip
+            ${{ runner.temp }}/cppapplab-native-package/SHA256SUMS
+            ${{ runner.temp }}/cppapplab-native-package/package-summary.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14

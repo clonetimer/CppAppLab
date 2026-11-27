@@ -1615,7 +1615,8 @@
     if (topic.execution_available === false) {
       profile.textContent = topic.environment_reason || "本环境仅支持阅读，实验执行尚待验证。";
     } else if (!profile.hidden) {
-      profile.textContent = "C++" + topic.standard + " · 独立 GCC 13 配置 · " +
+      profile.textContent = "C++" + topic.standard + " · " +
+        (topic.compiler_profile || "独立 GCC 13 配置") + " · " +
         (topic.toolchain_present ? "已检测编译器文件，运行时核验版本及特性宏"
           : "缺少 /usr/bin/g++-13；Ubuntu 24.04 可手动安装 g++-13 后刷新网页。原 C++17 课程不受影响。");
     }
@@ -1697,7 +1698,7 @@
       const modernVersion = data.standard > 17 && data.compiler_version
         ? " · GCC " + data.compiler_version : "";
       $("knowledge-status").textContent = data.status === "TOOLCHAIN_UNAVAILABLE"
-        ? "现代工具链不可用：必须是 GCC 13.x，不回退 C++17。"
+        ? "现代工具链不可用：" + (topic.compiler_profile || "必须是 GCC 13.x") + "，不回退 C++17。"
         : data.status === "FEATURE_UNAVAILABLE"
         ? "现代特性检查未通过；不计为预期失败。"
         : data.observed

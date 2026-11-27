@@ -68,6 +68,14 @@ def _unsafe_regular(info: os.stat_result) -> bool:
     )
 
 
+def _unsafe_native_component(part: str) -> bool:
+    return (part in {".", ".."} or part.endswith((".", " "))
+            or any(ord(char) < 32 or char in '<>:"|?*' for char in part)
+            or bool(re.fullmatch(
+                r"(?i)(CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|COM[0-9¹²³]|LPT[0-9¹²³])",
+                part.split(".")[0].rstrip())))
+
+
 def _validate_native_path_chain(path: Path, *, allow_missing: bool = False) -> None:
     # Do this before resolving aliases. Junctions must not disappear from
     # validation by being resolved first. This is an ordinary local-app guard,
@@ -79,9 +87,7 @@ def _validate_native_path_chain(path: Path, *, allow_missing: bool = False) -> N
         raise ApiError(400, "Native Windows workspaces need local drive paths.")
     current = Path(path.anchor)
     for part in path.parts[1:]:
-        if (part in {".", ".."} or ":" in part or part.endswith((".", " "))
-                or re.fullmatch(r"(?i)(CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|COM[0-9¹²³]|LPT[0-9¹²³])",
-                                part.split(".")[0].rstrip())):
+        if _unsafe_native_component(part):
             raise ApiError(400, "Unsafe native Windows path component.")
         current /= part
         try:
@@ -298,8 +304,10 @@ def safe_relative_path(value: str) -> str:
     path = PurePosixPath(value)
     if not path.parts or any(part in {"", ".", ".."} for part in path.parts):
         raise ValueError("Path traversal and dot components are not allowed.")
-    if ":" in path.parts[0] or (NATIVE_WINDOWS and any(":" in part for part in path.parts)):
+    if ":" in path.parts[0]:
         raise ValueError("Drive-qualified paths are not allowed.")
+    if NATIVE_WINDOWS and any(_unsafe_native_component(part) for part in path.parts):
+        raise ValueError("Unsafe Windows path component.")
     normalized = path.as_posix()
     if normalized != value:
         raise ValueError("Path must use its normalized POSIX representation.")
@@ -494,7 +502,12 @@ def ensure_workspace_directory(root: Path, *parts: str) -> Path:
 
 class CppAppLabWebServer(ThreadingHTTPServer):
     daemon_threads = True
-    allow_reuse_address = True
+    allow_reuse_address = not NATIVE_WINDOWS
+
+    def server_bind(self) -> None:
+        if NATIVE_WINDOWS:
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
     def __init__(
         self,
@@ -673,7 +686,9 @@ class CppAppLabWebServer(ThreadingHTTPServer):
             return {}
 
         headers = {}
-        for directory, _, filenames in os.walk(include, followlinks=False):
+        for directory, subdirs, filenames in os.walk(include, followlinks=False):
+            if NATIVE_WINDOWS:
+                subdirs[:] = [name for name in subdirs if not _is_link((Path(directory) / name).lstat())]
             for filename in filenames:
                 relative = (Path(directory) / filename).relative_to(template).as_posix()
                 target = self.reference_header_file(task, relative)
@@ -798,6 +813,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         }
 
     def service_status(self, task_id: str) -> dict[str, Any]:
+        self.require_task_environment(task_id)
         if task_id not in SERVICE_PROFILES:
             raise ApiError(409, "This task has no registered network-service profile.")
         with self.service_lock:
@@ -1534,6 +1550,8 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
         if len(parts) == 4 and parts[0] == "tasks" and parts[2] == "hints":
             self._get_hint(parts[1], parts[3])
             return
+        if len(parts) >= 2 and parts[0] == "workspaces":
+            self.server.require_task_environment(parts[1])
         if len(parts) == 3 and parts[0] == "workspaces" and parts[2] == "files":
             self._get_workspace_files(parts[1])
             return
@@ -1699,6 +1717,8 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             with self.server.native_api_lock if NATIVE_WINDOWS else nullcontext():
                 parsed = urlsplit(self.path)
                 parts = [unquote(part) for part in parsed.path.split("/") if part]
+                if len(parts) >= 4 and parts[:3] == ["api", "v1", "workspaces"]:
+                    self.server.require_task_environment(parts[3])
                 if len(parts) == 5 and parts[:3] == ["api", "v1", "modern-projects"]:
                     self._modern_project_action(parts[3], parts[4])
                     return
@@ -1785,6 +1805,8 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             with self.server.native_api_lock if NATIVE_WINDOWS else nullcontext():
                 parsed = urlsplit(self.path)
                 parts = [unquote(part) for part in parsed.path.split("/") if part]
+                if len(parts) >= 4 and parts[:3] == ["api", "v1", "workspaces"]:
+                    self.server.require_task_environment(parts[3])
                 if len(parts) >= 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "files":
                     task_id = parts[3]
                     relative = "/".join(parts[5:])

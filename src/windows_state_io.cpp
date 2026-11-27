@@ -257,7 +257,7 @@ void flush(HANDLE handle) {
 void publish(HANDLE handle, HANDLE parent_directory, const Path& destination) {
     // RootDirectory is the already validated and pinned parent directory.
     // A single leaf name avoids ambiguous DOS-vs-NT absolute rename semantics.
-    const auto& name = destination.filename().native();
+    const auto name = destination.filename().native();
     if (name.empty() || name == L"." || name == L"..") {
         throw std::runtime_error("Invalid state destination leaf name.");
     }

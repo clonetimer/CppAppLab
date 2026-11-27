@@ -119,7 +119,7 @@ std::string suggested_cli_command() {
         if (path.is_absolute() && std::filesystem::is_regular_file(path, ignored) &&
             !std::filesystem::is_symlink(path, ignored)) {
             std::string result{"'"};
-            for (const char character : path.string()) {
+            for (const char character : path.u8string()) {
                 if (character == '\'') {
                     result += "'\\''";
                 } else {
@@ -140,7 +140,7 @@ std::string read_lesson_file(const std::filesystem::path& path, std::size_t max_
 #else
     const auto status = std::filesystem::symlink_status(path);
     if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
-        throw std::runtime_error("Course material must be a regular file: " + path.string());
+        throw std::runtime_error("Course material must be a regular file: " + path.u8string());
     }
 
     const auto size = std::filesystem::file_size(path);
@@ -150,7 +150,7 @@ std::string read_lesson_file(const std::filesystem::path& path, std::size_t max_
 
     std::ifstream input(path, std::ios::binary);
     if (!input) {
-        throw std::runtime_error("Cannot open course material: " + path.string());
+        throw std::runtime_error("Cannot open course material: " + path.u8string());
     }
 
     std::string content{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
@@ -205,7 +205,7 @@ void ensure_real_directory(const std::filesystem::path& path) {
         const auto status = std::filesystem::symlink_status(path);
         if (!std::filesystem::is_directory(status) || std::filesystem::is_symlink(status)) {
             throw std::runtime_error("Refusing to use a non-directory or symlink: " +
-                                     path.string());
+                                     path.u8string());
         }
     } else {
         std::filesystem::create_directory(path);
@@ -269,11 +269,11 @@ void print_check_guidance(const Workspace& workspace, bool passed, const std::st
 
     const auto log_path = workspace.root / ".cppapplab/last-check.log";
     std::cout << "\nSuggested next steps:\n"
-              << "  1. Read the full log: cat \"" << log_path.string() << "\"\n"
-              << "  2. Request a hint: " << cli << " hint \"" << workspace.root.string()
+              << "  1. Read the full log: cat \"" << log_path.u8string() << "\"\n"
+              << "  2. Request a hint: " << cli << " hint \"" << workspace.root.u8string()
               << "\" 1\n"
               << "  3. Fix the listed source files and rerun: " << cli << " check \""
-              << workspace.root.string() << "\"\n";
+              << workspace.root.u8string() << "\"\n";
 }
 
 int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
@@ -292,7 +292,7 @@ int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
     const auto build_directory = state_directory / "build";
     ensure_real_directory(build_directory);
 
-    const auto executable = build_directory / "learner_app";
+    const auto executable = learner_executable(build_directory);
     if (std::filesystem::exists(executable) || std::filesystem::is_symlink(executable)) {
         const auto status = std::filesystem::symlink_status(executable);
         if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
@@ -303,8 +303,8 @@ int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
 
     const auto source = workspace.root / task.source_files.front();
     const std::vector<std::string> compile_arguments{
-        "g++",     "-std=c++17", "-Wall",         "-Wextra", "-Wpedantic",
-        "-Werror", "-g",         source.string(), "-o",      executable.string()};
+        tool_command("g++"),     "-std=c++17", "-Wall",         "-Wextra", "-Wpedantic",
+        "-Werror", "-g",         source.u8string(), "-o",      executable.u8string()};
 
     std::ostringstream log;
     log << "$ g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -g "
@@ -323,7 +323,7 @@ int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
         log << "\n[CppAppLab] Compilation failed with exit code " << compilation.exit_code << ".\n";
     } else {
         log << "\n$ .cppapplab/build/learner_app\n";
-        const ProcessResult execution = run_process({executable.string()}, workspace.root,
+        const ProcessResult execution = run_process({executable.u8string()}, workspace.root,
                                                     std::chrono::seconds(5), kMaxProgramOutput);
         log << execution.output;
 
@@ -333,7 +333,7 @@ int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
             log << "\n[CppAppLab] Program output exceeded the capture limit.\n";
         } else if (execution.exit_code != 0) {
             log << "\n[CppAppLab] Program exited with code " << execution.exit_code << ".\n";
-        } else if (execution.output != task.expected_stdout) {
+        } else if (!matches_expected_stdout(execution.output, task.expected_stdout)) {
             log << "\n[CppAppLab] Output did not match the task contract.\n"
                 << "Expected bytes: " << task.expected_stdout.size() << '\n'
                 << "Actual bytes: " << execution.output.size() << '\n';
@@ -359,7 +359,12 @@ int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
     const auto now = std::chrono::system_clock::now();
     const std::time_t timestamp = std::chrono::system_clock::to_time_t(now);
     std::tm utc{};
-    if (::gmtime_r(&timestamp, &utc) != nullptr) {
+#ifdef _WIN32
+    const bool converted = ::gmtime_s(&utc, &timestamp) == 0;
+#else
+    const bool converted = ::gmtime_r(&timestamp, &utc) != nullptr;
+#endif
+    if (converted)
         char formatted[32]{};
         if (std::strftime(formatted, sizeof(formatted), "%Y-%m-%dT%H:%M:%SZ", &utc) != 0) {
             evidence.timestamp = formatted;
@@ -376,8 +381,8 @@ int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
               << "Result: " << (passed ? "PASS" : "FAIL") << '\n'
               << "Acceptance: " << evidence.tests_passed << '/' << evidence.tests_total << '\n'
               << "Source fingerprint: " << evidence.fingerprint << '\n'
-              << "Evidence: " << (workspace.root / ".cppapplab/evidence.txt").string() << '\n'
-              << "Log: " << (workspace.root / ".cppapplab/last-check.log").string() << '\n';
+              << "Evidence: " << (workspace.root / ".cppapplab/evidence.txt").u8string() << '\n'
+              << "Log: " << (workspace.root / ".cppapplab/last-check.log").u8string() << '\n';
 
     print_check_guidance(workspace, passed, log.str());
     return passed ? 0 : 1;
@@ -441,7 +446,7 @@ void remove_build_fingerprint(const std::filesystem::path& path) {
     }
     const auto status = std::filesystem::symlink_status(path);
     if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
-        throw std::runtime_error("Refusing to use an unsafe build fingerprint: " + path.string());
+        throw std::runtime_error("Refusing to use an unsafe build fingerprint: " + path.u8string());
     }
     std::filesystem::remove(path);
 }
@@ -456,12 +461,12 @@ void write_build_fingerprint(const std::filesystem::path& path, const std::strin
     {
         std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
         if (!output) {
-            throw std::runtime_error("Cannot create build fingerprint: " + temporary.string());
+            throw std::runtime_error("Cannot create build fingerprint: " + temporary.u8string());
         }
         output << fingerprint << '\n';
         output.flush();
         if (!output) {
-            throw std::runtime_error("Cannot write build fingerprint: " + temporary.string());
+            throw std::runtime_error("Cannot write build fingerprint: " + temporary.u8string());
         }
     }
     std::error_code error;
@@ -483,7 +488,7 @@ std::optional<std::string> read_build_fingerprint(const std::filesystem::path& p
     }
     std::ifstream input(path, std::ios::binary);
     if (!input) {
-        throw std::runtime_error("Cannot read build fingerprint: " + path.string());
+        throw std::runtime_error("Cannot read build fingerprint: " + path.u8string());
     }
     std::string value;
     std::getline(input, value);
@@ -506,7 +511,7 @@ int build_exact_stdout_workspace(const Workspace& workspace) {
     const auto stamp_path = build_fingerprint_path(build_directory);
     remove_build_fingerprint(stamp_path);
 
-    const auto executable = build_directory / "learner_app";
+    const auto executable = learner_executable(build_directory);
     if (std::filesystem::exists(executable) || std::filesystem::is_symlink(executable)) {
         const auto status = std::filesystem::symlink_status(executable);
         if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
@@ -517,8 +522,8 @@ int build_exact_stdout_workspace(const Workspace& workspace) {
 
     const auto source = workspace.root / task.source_files.front();
     const std::vector<std::string> arguments{
-        "g++", "-std=c++17", "-Wall", "-Wextra", "-Wpedantic",
-        "-Werror", "-g", source.string(), "-o", executable.string()};
+        tool_command("g++"), "-std=c++17", "-Wall", "-Wextra", "-Wpedantic",
+        "-Werror", "-g", source.u8string(), "-o", executable.u8string()};
     std::cout << "$ g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -g "
               << task.source_files.front().generic_string()
               << " -o .cppapplab/build/learner_app\n";
@@ -568,20 +573,20 @@ int build_cmake_gtest_workspace(const Workspace& workspace) {
 
     const auto staged_sources = stage_declared_cpp_sources(task, workspace.root, build_directory);
     const std::vector<std::string> configure_arguments{
-        "cmake", "-S", fixture.string(), "-B", build_directory.string(),
+        tool_command("cmake"), "-S", fixture.u8string(), "-B", build_directory.u8string(),
         "-DCMAKE_BUILD_TYPE=Debug",
-        "-DCPPAPPLAB_LEARNER_SOURCE_DIR=" + staged_sources.string()};
-    std::cout << "$ cmake -S " << fixture.string() << " -B " << build_directory.string()
-              << " -DCPPAPPLAB_LEARNER_SOURCE_DIR=" << staged_sources.string() << '\n';
+        "-DCPPAPPLAB_LEARNER_SOURCE_DIR=" + staged_sources.u8string()};
+    std::cout << "$ cmake -S " << fixture.u8string() << " -B " << build_directory.u8string()
+              << " -DCPPAPPLAB_LEARNER_SOURCE_DIR=" << staged_sources.u8string() << '\n';
 
     const ProcessResult configure = run_process(
         configure_arguments, workspace.root, std::chrono::seconds(30), kMaxCompilerOutput);
     std::cout << configure.output;
     bool passed = process_succeeded(configure);
     if (passed) {
-        std::cout << "\n$ cmake --build " << build_directory.string() << " --parallel 2\n";
+        std::cout << "\n$ cmake --build " << build_directory.u8string() << " --parallel 2\n";
         const ProcessResult build = run_process(
-            {"cmake", "--build", build_directory.string(), "--parallel", "2"},
+            {tool_command("cmake"), "--build", build_directory.u8string(), "--parallel", "2"},
             workspace.root, std::chrono::seconds(90), kMaxCompilerOutput);
         std::cout << build.output;
         passed = process_succeeded(build);
@@ -632,7 +637,7 @@ void require_real_directory(const std::filesystem::path& path) {
             "Build is missing. Run 'cppapplab build <workspace-directory>' first.");
     }
     if (error || !std::filesystem::is_directory(status) || std::filesystem::is_symlink(status)) {
-        throw std::runtime_error("Expected a real, non-symlink build directory: " + path.string());
+        throw std::runtime_error("Expected a real, non-symlink build directory: " + path.u8string());
     }
 }
 
@@ -651,7 +656,7 @@ std::string require_current_build(const Workspace& workspace,
 int run_exact_stdout_workspace(const Workspace& workspace) {
     const auto build_directory = build_directory_for(workspace);
     const std::string built_fingerprint = require_current_build(workspace, build_directory);
-    const auto executable = build_directory / "learner_app";
+    const auto executable = learner_executable(build_directory);
     const auto status = std::filesystem::symlink_status(executable);
     if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
         throw std::runtime_error("The learner executable is missing or unsafe. Build the task first.");
@@ -659,7 +664,7 @@ int run_exact_stdout_workspace(const Workspace& workspace) {
 
     std::cout << "$ .cppapplab/build/learner_app\n";
     const ProcessResult execution = run_process(
-        {executable.string()}, workspace.root, std::chrono::seconds(5), kMaxProgramOutput);
+        {executable.u8string()}, workspace.root, std::chrono::seconds(5), kMaxProgramOutput);
     std::cout << execution.output;
     const bool unchanged = source_fingerprint(*workspace.task, workspace.root) == built_fingerprint;
     const bool passed = process_succeeded(execution) && unchanged;
@@ -681,9 +686,9 @@ int run_cmake_gtest_workspace(const Workspace& workspace) {
     const auto build_directory = build_directory_for(workspace);
     const std::string built_fingerprint = require_current_build(workspace, build_directory);
     const ProcessResult tests = run_process(
-        {"ctest", "--test-dir", build_directory.string(), "--output-on-failure"},
+        {tool_command("ctest"), "--test-dir", build_directory.u8string(), "--output-on-failure"},
         workspace.root, std::chrono::seconds(45), kMaxCompilerOutput);
-    std::cout << "$ ctest --test-dir " << build_directory.string() << " --output-on-failure\n"
+    std::cout << "$ ctest --test-dir " << build_directory.u8string() << " --output-on-failure\n"
               << tests.output;
     const bool unchanged = source_fingerprint(*workspace.task, workspace.root) == built_fingerprint;
     const bool passed = process_succeeded(tests) && unchanged;
@@ -849,7 +854,7 @@ int build_application_workspace(const std::filesystem::path& workspace_path) {
     const auto stamp_path = application_fingerprint_path(build_directory);
     remove_build_fingerprint(stamp_path);
 
-    const auto executable = build_directory / "learner_app";
+    const auto executable = learner_executable(build_directory);
     if (std::filesystem::exists(executable) || std::filesystem::is_symlink(executable)) {
         const auto status = std::filesystem::symlink_status(executable);
         if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
@@ -859,11 +864,11 @@ int build_application_workspace(const std::filesystem::path& workspace_path) {
     }
 
     std::vector<std::string> arguments{
-        "g++", "-std=c++17", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-g"};
+        tool_command("g++"), "-std=c++17", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-g"};
     const auto include_directory = workspace.root / "include";
     if (std::filesystem::is_directory(include_directory) && !std::filesystem::is_symlink(include_directory)) {
         arguments.push_back("-I");
-        arguments.push_back(include_directory.string());
+        arguments.push_back(include_directory.u8string());
     }
 
     for (const std::string& relative : profile->platform_include_directories) {
@@ -887,7 +892,7 @@ int build_application_workspace(const std::filesystem::path& workspace_path) {
             throw std::runtime_error("Application platform include directory is missing or unsafe: " + relative);
         }
         arguments.push_back("-I");
-        arguments.push_back(directory.string());
+        arguments.push_back(directory.u8string());
     }
 
     for (const std::string& relative : profile->sources) {
@@ -899,7 +904,7 @@ int build_application_workspace(const std::filesystem::path& workspace_path) {
         if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
             throw std::runtime_error("Application source is missing or unsafe: " + relative);
         }
-        arguments.push_back(source.string());
+        arguments.push_back(source.u8string());
     }
     for (const std::string& relative : profile->platform_sources) {
         const std::filesystem::path relative_path(relative);
@@ -921,13 +926,13 @@ int build_application_workspace(const std::filesystem::path& workspace_path) {
         if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
             throw std::runtime_error("Application platform source is missing or unsafe: " + relative);
         }
-        arguments.push_back(source.string());
+        arguments.push_back(source.u8string());
     }
     if (profile->link_threads) {
         arguments.push_back("-pthread");
     }
     arguments.push_back("-o");
-    arguments.push_back(executable.string());
+    arguments.push_back(executable.u8string());
 
     std::cout << "$ g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -g";
     if (profile->link_threads) {
@@ -1102,7 +1107,7 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
         throw std::runtime_error("Application build is missing or stale. Build the current source first.");
     }
 
-    const auto executable = build_directory / "learner_app";
+    const auto executable = learner_executable(build_directory);
     const auto executable_status = std::filesystem::symlink_status(executable);
     if (!std::filesystem::is_regular_file(executable_status) ||
         std::filesystem::is_symlink(executable_status)) {
@@ -1138,9 +1143,9 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
         ScopedEnvironmentValue todo_file(L"CPPAPPLAB_TODO_FILE", runtime_directory / "todos.tsv");
 #else
         ScopedEnvironmentValue todo_file(
-            "CPPAPPLAB_TODO_FILE", (runtime_directory / "todos.tsv").string());
+            "CPPAPPLAB_TODO_FILE", (runtime_directory / "todos.tsv").u8string());
 #endif
-        std::vector<std::string> command{executable.string()};
+        std::vector<std::string> command{executable.u8string()};
         command.insert(command.end(), application_arguments.begin(), application_arguments.end());
         const ProcessResult result = run_process(
             command, runtime_directory, std::chrono::seconds(10), kMaxProgramOutput);
@@ -1159,7 +1164,7 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
         return passed ? 0 : 1;
     }
 
-    std::vector<std::string> command{executable.string()};
+    std::vector<std::string> command{executable.u8string()};
     command.insert(command.end(), application_arguments.begin(), application_arguments.end());
     const ProcessResult result = run_process(
         command, runtime_directory, std::chrono::seconds(10), kMaxProgramOutput, standard_input);
@@ -1218,15 +1223,15 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
     const auto staged_sources = stage_declared_cpp_sources(task, workspace.root, build_directory);
 
     const std::vector<std::string> configure_arguments{
-        "cmake",
+        tool_command("cmake"),
         "-S",
-        fixture.string(),
+        fixture.u8string(),
         "-B",
-        build_directory.string(),
+        build_directory.u8string(),
         "-DCMAKE_BUILD_TYPE=Debug",
-        "-DCPPAPPLAB_LEARNER_SOURCE_DIR=" + staged_sources.string()};
-    log << "$ cmake -S " << fixture.string() << " -B " << build_directory.string()
-        << " -DCPPAPPLAB_LEARNER_SOURCE_DIR=" << staged_sources.string() << '\n';
+        "-DCPPAPPLAB_LEARNER_SOURCE_DIR=" + staged_sources.u8string()};
+    log << "$ cmake -S " << fixture.u8string() << " -B " << build_directory.u8string()
+        << " -DCPPAPPLAB_LEARNER_SOURCE_DIR=" << staged_sources.u8string() << '\n';
 
     const ProcessResult configure = run_process(configure_arguments, workspace.root,
                                                 std::chrono::seconds(30), kMaxCompilerOutput);
@@ -1240,9 +1245,9 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
     bool built = false;
     if (configured) {
         const ProcessResult build =
-            run_process({"cmake", "--build", build_directory.string(), "--parallel", "2"},
+            run_process({tool_command("cmake"), "--build", build_directory.u8string(), "--parallel", "2"},
                         workspace.root, std::chrono::seconds(90), kMaxCompilerOutput);
-        log << "\n$ cmake --build " << build_directory.string() << " --parallel 2\n"
+        log << "\n$ cmake --build " << build_directory.u8string() << " --parallel 2\n"
             << build.output;
         built = process_succeeded(build);
         if (!built) {
@@ -1254,9 +1259,9 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
     bool acceptance_tests_passed = false;
     if (built) {
         const ProcessResult ctest =
-            run_process({"ctest", "--test-dir", build_directory.string(), "--output-on-failure"},
+            run_process({tool_command("ctest"), "--test-dir", build_directory.u8string(), "--output-on-failure"},
                         workspace.root, std::chrono::seconds(45), kMaxCompilerOutput);
-        log << "\n$ ctest --test-dir " << build_directory.string() << " --output-on-failure\n"
+        log << "\n$ ctest --test-dir " << build_directory.u8string() << " --output-on-failure\n"
             << ctest.output;
 
         const std::string expected_summary =
@@ -1290,7 +1295,12 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
     const auto now = std::chrono::system_clock::now();
     const std::time_t timestamp = std::chrono::system_clock::to_time_t(now);
     std::tm utc{};
-    if (::gmtime_r(&timestamp, &utc) != nullptr) {
+#ifdef _WIN32
+    const bool converted = ::gmtime_s(&utc, &timestamp) == 0;
+#else
+    const bool converted = ::gmtime_r(&timestamp, &utc) != nullptr;
+#endif
+    if (converted)
         char formatted[32]{};
         if (std::strftime(formatted, sizeof(formatted), "%Y-%m-%dT%H:%M:%SZ", &utc) != 0) {
             evidence.timestamp = formatted;
@@ -1307,8 +1317,8 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
               << "Result: " << (passed ? "PASS" : "FAIL") << '\n'
               << "Acceptance: " << evidence.tests_passed << '/' << evidence.tests_total << '\n'
               << "Source fingerprint: " << evidence.fingerprint << '\n'
-              << "Evidence: " << (workspace.root / ".cppapplab/evidence.txt").string() << '\n'
-              << "Log: " << (workspace.root / ".cppapplab/last-check.log").string() << '\n';
+              << "Evidence: " << (workspace.root / ".cppapplab/evidence.txt").u8string() << '\n'
+              << "Log: " << (workspace.root / ".cppapplab/last-check.log").u8string() << '\n';
 
     print_check_guidance(workspace, passed, log.str());
     return passed ? 0 : 1;
@@ -1329,12 +1339,12 @@ int show_status(const std::filesystem::path& workspace_path) {
     const Workspace workspace = open_workspace(workspace_path);
     const auto evidence = read_evidence(workspace.root);
 
-    std::cout << "Workspace: " << workspace.root.string() << '\n'
+    std::cout << "Workspace: " << workspace.root.u8string() << '\n'
               << "Task: " << workspace.task->id << '\n';
 
     if (!evidence.has_value()) {
         std::cout << "Status: NOT CHECKED\n"
-                  << "Run: cppapplab check \"" << workspace.root.string() << "\"\n";
+                  << "Run: cppapplab check \"" << workspace.root.u8string() << "\"\n";
         return 0;
     }
 
@@ -1419,7 +1429,7 @@ int show_progress() {
                                      : "another workspace has a current PASS";
         } else if (!record->checked) {
             state = "IN PROGRESS";
-            detail = record->workspace_root.string();
+            detail = record->workspace_root.u8string();
         } else if (record->evidence.passed) {
             state = "STALE";
             detail = "source changed or saved workspace is unavailable";
@@ -1451,10 +1461,10 @@ int resume_task(std::string_view task_id) {
             throw std::runtime_error("Saved workspace belongs to a different task.");
         }
         std::cout << "Resuming task: " << workspace.task->id << '\n'
-                  << "Workspace: " << workspace.root.string() << '\n';
+                  << "Workspace: " << workspace.root.u8string() << '\n';
         return show_status(workspace.root);
     } catch (const std::exception& error) {
-        std::cout << "Saved workspace is unavailable: " << record->workspace_root.string() << '\n'
+        std::cout << "Saved workspace is unavailable: " << record->workspace_root.u8string() << '\n'
                   << "Reason: " << error.what() << '\n'
                   << "Create a new workspace with cppapplab start if the original was moved or "
                      "deleted.\n";
@@ -1576,7 +1586,7 @@ int guided_learn(std::string_view requested_task_id) {
     std::cout << "CppAppLab · Guided learning\n\n"
               << (resumed ? "Resuming your saved workspace\n" : "Created your learner workspace\n")
               << "Task: " << selected->id << " · " << selected->title << '\n'
-              << "Workspace: " << workspace.root.string() << "\n\n"
+              << "Workspace: " << workspace.root.u8string() << "\n\n"
               << "Files in this task:\n";
     for (const auto& source : selected->source_files) {
         std::cout << "  - " << source.generic_string() << '\n';
@@ -1592,11 +1602,11 @@ int guided_learn(std::string_view requested_task_id) {
     std::cout << "\n--- Your next steps ---\n"
               << "0. 中文学习路线与常见问题：" << cli << " guide\n"
               << "1. Open the workspace in your editor. VS Code users can run:\n"
-              << "   code \"" << workspace.root.string() << "\"\n"
+              << "   code \"" << workspace.root.u8string() << "\"\n"
               << "2. If you need help, request the first hint:\n"
-              << "   " << cli << " hint \"" << workspace.root.string() << "\" 1\n"
+              << "   " << cli << " hint \"" << workspace.root.u8string() << "\" 1\n"
               << "3. When your implementation is ready, run the fixed acceptance check:\n"
-              << "   " << cli << " check \"" << workspace.root.string() << "\"\n"
+              << "   " << cli << " check \"" << workspace.root.u8string() << "\"\n"
               << "4. After PASS, continue with the next available task:\n"
               << "   " << cli << " learn\n\n"
               << "Your workspace and progress are saved between sessions. "
@@ -1794,7 +1804,7 @@ int show_history(std::string_view task_id) {
         std::cout << record.evidence.timestamp << "  " << (record.evidence.passed ? "PASS" : "FAIL")
                   << "  " << record.evidence.tests_passed << '/' << record.evidence.tests_total
                   << '\n'
-                  << "  Workspace: " << record.workspace_root.string() << '\n'
+                  << "  Workspace: " << record.workspace_root.u8string() << '\n'
                   << "  Fingerprint: " << record.evidence.fingerprint << '\n';
     }
     return 0;
@@ -1891,9 +1901,9 @@ int run_cli(int argc, char* argv[]) {
 
             const Workspace workspace = create_workspace(*task, argv[3]);
             register_workspace(workspace.root);
-            std::cout << "Created learner workspace: " << workspace.root.string() << '\n'
+            std::cout << "Created learner workspace: " << workspace.root.u8string() << '\n'
                       << "Task: " << task->id << '\n'
-                      << "Next: cppapplab lesson \"" << workspace.root.string() << "\"\n";
+                      << "Next: cppapplab lesson \"" << workspace.root.u8string() << "\"\n";
             return 0;
         }
         if (command == "lesson") {

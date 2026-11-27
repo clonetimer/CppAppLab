@@ -1,0 +1,112 @@
+name: CP7 Windows native foundation
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cppapplab-native-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-native-process:
+    name: Windows native GCC foundation and W1 fixture acceptance
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Install native MinGW-w64 UCRT GCC toolchain
+        id: msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-gtest
+            git
+      - name: Verify the compiler targets native Windows
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $toolBin = Join-Path $env:MSYS2_LOCATION 'ucrt64\bin'
+          $gcc = Join-Path $toolBin 'gcc.exe'
+          if (-not (Test-Path $gcc)) { throw "UCRT64 GCC was not installed at $gcc" }
+          $target = (& $gcc -dumpmachine).Trim()
+          if ($target -ne 'x86_64-w64-mingw32') {
+            throw "Expected native Windows GCC target x86_64-w64-mingw32, received $target from $gcc"
+          }
+          & $gcc --version
+          & (Join-Path $toolBin 'g++.exe') --version
+          & (Join-Path $toolBin 'cmake.exe') --version
+          & (Join-Path $toolBin 'ninja.exe') --version
+      - name: Configure the real Win32 process backend and GoogleTest fixture
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $toolBin = Join-Path $env:MSYS2_LOCATION 'ucrt64\bin'
+          $env:PATH = "$toolBin;$env:PATH"
+          $build = Join-Path $env:RUNNER_TEMP 'cppapplab windows native process'
+          & (Join-Path $toolBin 'cmake.exe') -S tests/windows-native-process -B $build -G Ninja -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_CXX_COMPILER=$toolBin/g++.exe" "-DCMAKE_MAKE_PROGRAM=$toolBin/ninja.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build native Windows PE executables
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $toolBin = Join-Path $env:MSYS2_LOCATION 'ucrt64\bin'
+          $env:PATH = "$toolBin;$env:PATH"
+          $build = Join-Path $env:RUNNER_TEMP 'cppapplab windows native process'
+          & (Join-Path $toolBin 'cmake.exe') --build $build --parallel
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $testExe = Join-Path $build 'cppapplab_process_tests.exe'
+          $format = (& (Join-Path $toolBin 'objdump.exe') -f $testExe | Out-String)
+          if ($format -notmatch 'pei-x86-64') {
+            throw "The process test executable is not a native x86-64 Windows PE image: $format"
+          }
+      - name: Run shared process contracts and native W1 compiler smoke
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $toolBin = Join-Path $env:MSYS2_LOCATION 'ucrt64\bin'
+          $env:PATH = "$toolBin;$env:PATH"
+          $build = Join-Path $env:RUNNER_TEMP 'cppapplab windows native process'
+          & (Join-Path $toolBin 'ctest.exe') --test-dir $build --output-on-failure
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build and run the original Calculator acceptance fixture
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $prefix = Join-Path $env:MSYS2_LOCATION 'ucrt64'
+          $toolBin = Join-Path $prefix 'bin'
+          $env:PATH = "$toolBin;$env:PATH"
+          $build = Join-Path $env:RUNNER_TEMP 'cppapplab native calculator'
+          $source = Join-Path $env:GITHUB_WORKSPACE 'labs/w1/calculator/reference'
+          & (Join-Path $toolBin 'cmake.exe') -S course/fixtures/w1/calculator -B $build -G Ninja -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_CXX_COMPILER=$toolBin/g++.exe" "-DCMAKE_MAKE_PROGRAM=$toolBin/ninja.exe" "-DCMAKE_PREFIX_PATH=$prefix" "-DCPPAPPLAB_LEARNER_SOURCE_DIR=$source"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $toolBin 'cmake.exe') --build $build --parallel
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($exe in @('calculator_cli.exe', 'calculator_acceptance_tests.exe')) {
+            $path = Join-Path $build $exe
+            $format = (& (Join-Path $toolBin 'objdump.exe') -f $path | Out-String)
+            if ($LASTEXITCODE -ne 0 -or $format -notmatch 'pei-x86-64') { throw "Not a native PE: $path" }
+            $imports = (& (Join-Path $toolBin 'objdump.exe') -p $path | Out-String)
+            if ($LASTEXITCODE -ne 0 -or $imports -match 'msys-2\.0\.dll|cygwin1\.dll') { throw "POSIX compatibility runtime imported: $path" }
+          }
+          $listed = & (Join-Path $toolBin 'ctest.exe') --test-dir $build --show-only=json-v1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $tests = ($listed | Out-String | ConvertFrom-Json).tests
+          if ($tests.Count -ne 9) { throw "Expected all 9 original Calculator tests; found $($tests.Count)" }
+          & (Join-Path $toolBin 'ctest.exe') --test-dir $build --output-on-failure --timeout 10
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

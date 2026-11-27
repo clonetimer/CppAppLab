@@ -144,6 +144,7 @@ if(BUILD_TESTING)
             tests/windows-native-process/native_learning_test.cpp
         )
         target_compile_definitions(cppapplab_native_learning_tests PRIVATE _WIN32_WINNT=0x0A00)
+        target_include_directories(cppapplab_native_learning_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
         target_link_libraries(cppapplab_native_learning_tests PRIVATE cppapplab_core GTest::gtest_main)
         include(GoogleTest)
         gtest_discover_tests(cppapplab_native_learning_tests PROPERTIES TIMEOUT 180)

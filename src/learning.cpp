@@ -21,8 +21,17 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <cstdio>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#include <io.h>
+#include "windows_state_io.hpp"
+#else
 #include <unistd.h>
+#endif
 
 namespace cppapplab {
 namespace {
@@ -31,6 +40,68 @@ constexpr std::size_t kMaxLessonBytes = 64U * 1024U;
 constexpr std::size_t kMaxHintBytes = 32U * 1024U;
 constexpr std::size_t kMaxCompilerOutput = 128U * 1024U;
 constexpr std::size_t kMaxProgramOutput = 16U * 1024U;
+
+std::filesystem::path path_from_cli(std::string_view value) {
+#ifdef _WIN32
+    return std::filesystem::u8path(value.begin(), value.end());
+#else
+    return std::filesystem::path(value);
+#endif
+}
+
+std::string tool_command(std::string_view tool) {
+#ifdef _WIN32
+    return std::string(tool) + ".exe";
+#else
+    return std::string(tool);
+#endif
+}
+
+std::filesystem::path learner_executable(const std::filesystem::path& directory) {
+#ifdef _WIN32
+    return directory / "learner_app.exe";
+#else
+    return directory / "learner_app";
+#endif
+}
+
+bool interactive_console_available() {
+#ifdef _WIN32
+    return _isatty(_fileno(stdin)) != 0 && _isatty(_fileno(stdout)) != 0;
+#else
+    return ::isatty(STDIN_FILENO) != 0 && ::isatty(STDOUT_FILENO) != 0;
+#endif
+}
+
+bool matches_expected_stdout(std::string_view actual, std::string_view expected) {
+#ifdef _WIN32
+    // Normalize only the Windows text-mode LF-to-CRLF conversion; all other bytes remain exact.
+    std::string logical;
+    logical.reserve(actual.size());
+    for (std::size_t index = 0U; index < actual.size(); ++index) {
+        if (actual[index] == '\\r') {
+            if (index + 1U >= actual.size() || actual[index + 1U] != '\\n') {
+                return false;
+            }
+            ++index;
+            logical.push_back('\\n');
+        } else {
+            logical.push_back(actual[index]);
+        }
+    }
+    return logical == expected;
+#else
+    return actual == expected;
+#endif
+}
+
+bool packaged_launcher_configured() {
+#ifdef _WIN32
+    return windows_state_io::environment_path(L"CPPAPPLAB_LAUNCH_COMMAND").has_value();
+#else
+    return std::getenv("CPPAPPLAB_LAUNCH_COMMAND") != nullptr;
+#endif
+}
 
 std::string suggested_cli_command() {
     const char* launcher = std::getenv("CPPAPPLAB_LAUNCH_COMMAND");

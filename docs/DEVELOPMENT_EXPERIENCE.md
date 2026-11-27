@@ -582,3 +582,26 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - Why: portable foundations can run native while POSIX/epoll courses remain Linux. Native compiler target/PE and real execution are necessary; launcher syntax is not sufficient.
 - Pitfalls: Windows stdout text CRLF is not a raw binary contract. Normalize only at the specific W1 text boundary; do not rewrite binary pipes. Keep original process timeouts; test W2–W4 file symlink/reparse safety rather than silently skip it. Old CI is historical, new CI required.
 - Evidence: old run 44561161976 passed isolated process backend; current CP7 foundation candidate pending fresh CI. Root Linux guard intentionally stays until real engine port.
+
+
+## 73. CP7-B2a — Native state I/O integrated into actual progress and evidence APIs
+
+- Prior #85 merged at `16f072e7`; native GCC 16.2.0 process/W1 13/13 and
+  Calculator 9/9, existing 14 applicable CI jobs PASS.
+- Changed: keep shared progress serialization and prerequisite logic; native
+  Win32 backend uses wide paths, explicit local native state root, checked
+  handles, exclusive temporaries, handle rename, FlushFileBuffers and bounded
+  LockFileEx history access. Workspace marker/evidence read/write and native
+  source fingerprint now use the same adapter.
+- Why: progress must retain exact source identity and recoverable state, rather
+  than inventing an independent Windows progress system.
+- Pitfalls: a path string or std::filesystem symlink test alone does not cover
+  junctions and alternate streams. No-follow inspection plus held ancestor
+  handles and actual NTFS rejection tests matter. Local app state is not a
+  same-user sandbox; separate workspace creation/copy confinement is still
+  required. Do not silently skip a security test or conflate synthetic unit-test
+  evidence with actual compiler acceptance. Use four child processes for the
+  history lock test, not only threads.
+- Candidate evidence: 7 new native state tests, previous 13 and 9 original
+  Calculator tests, existing Ubuntu matrix. Fresh CI pending; root native build,
+  browser and install-free package remain unqualified.

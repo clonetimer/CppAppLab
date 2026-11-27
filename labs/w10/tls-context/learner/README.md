@@ -1,0 +1,1 @@
+Implement only src/tls_context.cpp. The fixed header owns SSL_CTX and SSL through RAII. Use the classic workbench or CLI check. The test fixture generates temporary local certificates and uses an in-memory BIO pair; no external network service is used.

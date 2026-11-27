@@ -239,3 +239,39 @@ TEST(HttpServerWorkflowTest, W9FuzzOracleStarterFailsAndReferencePassesFixedCont
     EXPECT_EQ(passed->tests_total, task->expected_test_count);
     EXPECT_EQ(passed->tests_passed, task->expected_test_count);
 }
+
+TEST(HttpServerWorkflowTest, W10TlsContextStarterFailsAndReferencePassesFixedContract) {
+    const cppapplab::Task* task = cppapplab::find_task("w10.tls-context");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state_directory("CPPAPPLAB_STATE_DIR", temporary.path() / "state");
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "tls-context");
+    auto check = [&]() {
+        std::vector<std::string> arguments{"cppapplab", "check", workspace.root.string()};
+        std::vector<char*> argv;
+        for (auto& argument : arguments) {
+            argv.push_back(argument.data());
+        }
+        return cppapplab::run_cli(static_cast<int>(argv.size()), argv.data());
+    };
+
+    EXPECT_NE(check(), 0);
+    const auto failed = cppapplab::read_evidence(workspace.root);
+    ASSERT_TRUE(failed.has_value());
+    EXPECT_FALSE(failed->passed);
+    const auto reference = cppapplab::data_root() / "labs/w10/tls-context/reference";
+    std::filesystem::copy_file(reference / "src/tls_context.cpp",
+                               workspace.root / "src/tls_context.cpp",
+                               std::filesystem::copy_options::overwrite_existing);
+    {
+        std::ofstream untrusted(workspace.root / "include/tls_context.hpp", std::ios::trunc);
+        ASSERT_TRUE(untrusted.good());
+        untrusted << "#error Learner header must not define the fixed contract\n";
+    }
+    EXPECT_EQ(check(), 0);
+    const auto passed = cppapplab::read_evidence(workspace.root);
+    ASSERT_TRUE(passed.has_value());
+    EXPECT_TRUE(passed->passed);
+    EXPECT_EQ(passed->tests_total, task->expected_test_count);
+    EXPECT_EQ(passed->tests_passed, task->expected_test_count);
+}

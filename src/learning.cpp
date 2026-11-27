@@ -25,8 +25,12 @@
 #include <cstdio>
 
 #ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <windows.h>
 #include <io.h>
 #include "windows_state_io.hpp"
@@ -937,8 +941,8 @@ int run_cmake_gtest_workspace(const Workspace& workspace) {
 struct ApplicationBuildProfile {
     std::vector<std::string> sources;
     bool link_threads{false};
-    std::vector<std::string> platform_sources;
-    std::vector<std::string> platform_include_directories;
+    std::vector<std::string> platform_sources{};
+    std::vector<std::string> platform_include_directories{};
 };
 
 std::optional<ApplicationBuildProfile> application_build_profile(const Task& task) {

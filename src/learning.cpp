@@ -11,6 +11,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <ctime>
+#include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <fstream>
@@ -442,12 +443,140 @@ bool process_succeeded(const ProcessResult& result) {
     return !result.timed_out && !result.output_truncated && result.exit_code == 0;
 }
 
+#ifdef _WIN32
+bool ascii_path(const std::filesystem::path& path) {
+    for (const wchar_t character : path.native()) {
+        if (character < 32 || character > 126 || character == L';') {
+            return false;
+        }
+    }
+    return true;
+}
+
+// MinGW and CMake's test discovery may use narrow paths internally even when
+// their parent was launched with CreateProcessW. Keep build artifacts separate
+// from the learner's Unicode source and progress paths.
+std::filesystem::path native_build_root() {
+    const auto configured =
+        windows_state_io::environment_path(L"CPPAPPLAB_NATIVE_BUILD_ROOT");
+    auto root = std::filesystem::absolute(
+                    configured.value_or(std::filesystem::temp_directory_path() /
+                                        "CppAppLab-native-build"))
+                    .lexically_normal();
+    if (!ascii_path(root)) {
+        // A short alias is an optional convenience, never a prerequisite.
+        // Create only the owned cache directory through our checked adapter.
+        windows_state_io::ensure_directory(root);
+        const DWORD required = GetShortPathNameW(root.c_str(), nullptr, 0U);
+        if (required != 0U) {
+            std::wstring alias(required, L'\0');
+            const DWORD length = GetShortPathNameW(root.c_str(), alias.data(), required);
+            if (length != 0U && length < required) {
+                alias.resize(length);
+                const std::filesystem::path candidate(alias);
+                if (ascii_path(candidate) && std::filesystem::equivalent(root, candidate)) {
+                    root = candidate;
+                }
+            }
+        }
+    }
+    if (!ascii_path(root)) {
+        throw std::runtime_error(
+            "Native CMake needs an ASCII build-cache path. Set "
+            "CPPAPPLAB_NATIVE_BUILD_ROOT to a writable local folder such as "
+            "D:\\CppAppLabBuild. Your learner workspace and progress may remain Unicode.");
+    }
+    windows_state_io::ensure_directory(root);
+    return root;
+}
+
+std::filesystem::path native_workspace_cache(const Workspace& workspace) {
+    const std::string identity = workspace.root.u8string() + "\n" + workspace.task->id + "\n";
+    std::uint64_t key = 14695981039346656037ULL;
+    for (const unsigned char byte : identity) {
+        key ^= byte;
+        key *= 1099511628211ULL;
+    }
+    std::ostringstream name;
+    name << workspace.task->id << '-' << std::hex << key;
+    const auto cache = native_build_root() / name.str();
+    const auto marker = cache / "workspace-owner.txt";
+    if (!windows_state_io::entry_exists(cache)) {
+        windows_state_io::create_directory_exclusive(cache);
+        windows_state_io::atomic_write(marker, identity);
+    }
+    windows_state_io::require_directory(cache);
+    if (!windows_state_io::regular_exists(marker) ||
+        windows_state_io::read(marker, 64U * 1024U) != identity) {
+        throw std::runtime_error(
+            "Native build cache ownership does not match this workspace; refusing to reuse it.");
+    }
+    return cache;
+}
+#endif
+
 std::filesystem::path build_directory_for(const Workspace& workspace) {
     const auto state_directory = workspace.root / ".cppapplab";
     if (workspace.task->acceptance_kind == AcceptanceKind::ExactStdout) {
         return state_directory / "build";
     }
+#ifdef _WIN32
+    return native_workspace_cache(workspace) / "build";
+#else
     return state_directory / (workspace.task->id + "-build");
+#endif
+}
+
+// Stage the trusted, platform-owned fixture, not learner CMakeLists or reference
+// solutions. Preserve the original relative course/fixtures and cmake layout.
+std::filesystem::path fixture_for_build(const Workspace& workspace,
+                                        const std::filesystem::path& build_directory) {
+    const auto fixture = data_root() / workspace.task->acceptance_fixture;
+#ifdef _WIN32
+    windows_state_io::require_directory(fixture);
+    const auto platform_root = build_directory.parent_path() / "platform";
+    if (windows_state_io::entry_exists(platform_root)) {
+        windows_state_io::require_directory(platform_root);
+        windows_state_io::remove_tree(platform_root);
+    }
+    const auto staged = platform_root / workspace.task->acceptance_fixture;
+    windows_state_io::ensure_directory(staged);
+    windows_state_io::copy_tree(fixture, staged);
+    // W2-W4 fixtures share this original platform CLI workflow script.
+    if (workspace.task->week >= 2U) {
+        const auto scripts = platform_root / "cmake";
+        windows_state_io::ensure_directory(scripts);
+        windows_state_io::copy_file(data_root() / "cmake" / "AssertTodoCliWorkflow.cmake",
+                                    scripts / "AssertTodoCliWorkflow.cmake");
+    }
+    return staged;
+#else
+    (void)build_directory;
+    const auto status = std::filesystem::symlink_status(fixture);
+    if (!std::filesystem::is_directory(status) || std::filesystem::is_symlink(status)) {
+        throw std::runtime_error("Platform acceptance fixture is missing or unsafe.");
+    }
+    return fixture;
+#endif
+}
+
+void add_native_cmake_profile(std::vector<std::string>& arguments) {
+#ifdef _WIN32
+    arguments.insert(arguments.end(), {"-G", "Ninja", "-DCMAKE_CXX_COMPILER=g++.exe"});
+#else
+    (void)arguments;
+#endif
+}
+
+std::filesystem::path fixture_process_directory(const Workspace& workspace,
+                                                const std::filesystem::path& build_directory) {
+#ifdef _WIN32
+    (void)workspace;
+    return build_directory;
+#else
+    (void)build_directory;
+    return workspace.root;
+#endif
 }
 
 std::filesystem::path build_fingerprint_path(const std::filesystem::path& build_directory) {
@@ -580,30 +709,26 @@ int build_cmake_gtest_workspace(const Workspace& workspace) {
     const auto stamp_path = build_fingerprint_path(build_directory);
     remove_build_fingerprint(stamp_path);
 
-    const auto fixture = data_root() / task.acceptance_fixture;
-    const auto fixture_status = std::filesystem::symlink_status(fixture);
-    if (!std::filesystem::is_directory(fixture_status) ||
-        std::filesystem::is_symlink(fixture_status)) {
-        throw std::runtime_error("Platform acceptance fixture is missing or unsafe.");
-    }
+    const auto fixture = fixture_for_build(workspace, build_directory);
 
     const auto staged_sources = stage_declared_cpp_sources(task, workspace.root, build_directory);
-    const std::vector<std::string> configure_arguments{
+    std::vector<std::string> configure_arguments{
         tool_command("cmake"), "-S", fixture.u8string(), "-B", build_directory.u8string(),
         "-DCMAKE_BUILD_TYPE=Debug",
         "-DCPPAPPLAB_LEARNER_SOURCE_DIR=" + staged_sources.u8string()};
+    add_native_cmake_profile(configure_arguments);
     std::cout << "$ cmake -S " << fixture.u8string() << " -B " << build_directory.u8string()
               << " -DCPPAPPLAB_LEARNER_SOURCE_DIR=" << staged_sources.u8string() << '\n';
 
     const ProcessResult configure = run_process(
-        configure_arguments, workspace.root, std::chrono::seconds(30), kMaxCompilerOutput);
+        configure_arguments, fixture_process_directory(workspace, build_directory), std::chrono::seconds(30), kMaxCompilerOutput);
     std::cout << configure.output;
     bool passed = process_succeeded(configure);
     if (passed) {
         std::cout << "\n$ cmake --build " << build_directory.u8string() << " --parallel 2\n";
         const ProcessResult build = run_process(
             {tool_command("cmake"), "--build", build_directory.u8string(), "--parallel", "2"},
-            workspace.root, std::chrono::seconds(90), kMaxCompilerOutput);
+            fixture_process_directory(workspace, build_directory), std::chrono::seconds(90), kMaxCompilerOutput);
         std::cout << build.output;
         passed = process_succeeded(build);
         if (build.timed_out) {
@@ -703,7 +828,7 @@ int run_cmake_gtest_workspace(const Workspace& workspace) {
     const std::string built_fingerprint = require_current_build(workspace, build_directory);
     const ProcessResult tests = run_process(
         {tool_command("ctest"), "--test-dir", build_directory.u8string(), "--output-on-failure"},
-        workspace.root, std::chrono::seconds(45), kMaxCompilerOutput);
+        fixture_process_directory(workspace, build_directory), std::chrono::seconds(45), kMaxCompilerOutput);
     std::cout << "$ ctest --test-dir " << build_directory.u8string() << " --output-on-failure\n"
               << tests.output;
     const bool unchanged = source_fingerprint(*workspace.task, workspace.root) == built_fingerprint;
@@ -1221,7 +1346,7 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
     const std::string fingerprint_before = source_fingerprint(task, workspace.root);
     const auto state_directory = workspace.root / ".cppapplab";
     ensure_real_directory(state_directory);
-    const auto build_directory = state_directory / (task.id + "-build");
+    const auto build_directory = build_directory_for(workspace);
     ensure_real_directory(build_directory);
 
     std::ostringstream log;
@@ -1229,16 +1354,11 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
     const unsigned tests_total = task.expected_test_count;
     bool passed = false;
 
-    const auto fixture = data_root() / task.acceptance_fixture;
-    const auto fixture_status = std::filesystem::symlink_status(fixture);
-    if (!std::filesystem::is_directory(fixture_status) ||
-        std::filesystem::is_symlink(fixture_status)) {
-        throw std::runtime_error("Platform acceptance fixture is missing or unsafe.");
-    }
+    const auto fixture = fixture_for_build(workspace, build_directory);
 
     const auto staged_sources = stage_declared_cpp_sources(task, workspace.root, build_directory);
 
-    const std::vector<std::string> configure_arguments{
+    std::vector<std::string> configure_arguments{
         tool_command("cmake"),
         "-S",
         fixture.u8string(),
@@ -1246,10 +1366,11 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
         build_directory.u8string(),
         "-DCMAKE_BUILD_TYPE=Debug",
         "-DCPPAPPLAB_LEARNER_SOURCE_DIR=" + staged_sources.u8string()};
+    add_native_cmake_profile(configure_arguments);
     log << "$ cmake -S " << fixture.u8string() << " -B " << build_directory.u8string()
         << " -DCPPAPPLAB_LEARNER_SOURCE_DIR=" << staged_sources.u8string() << '\n';
 
-    const ProcessResult configure = run_process(configure_arguments, workspace.root,
+    const ProcessResult configure = run_process(configure_arguments, fixture_process_directory(workspace, build_directory),
                                                 std::chrono::seconds(30), kMaxCompilerOutput);
     log << configure.output;
 
@@ -1262,7 +1383,7 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
     if (configured) {
         const ProcessResult build =
             run_process({tool_command("cmake"), "--build", build_directory.u8string(), "--parallel", "2"},
-                        workspace.root, std::chrono::seconds(90), kMaxCompilerOutput);
+                        fixture_process_directory(workspace, build_directory), std::chrono::seconds(90), kMaxCompilerOutput);
         log << "\n$ cmake --build " << build_directory.u8string() << " --parallel 2\n"
             << build.output;
         built = process_succeeded(build);
@@ -1276,7 +1397,7 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
     if (built) {
         const ProcessResult ctest =
             run_process({tool_command("ctest"), "--test-dir", build_directory.u8string(), "--output-on-failure"},
-                        workspace.root, std::chrono::seconds(45), kMaxCompilerOutput);
+                        fixture_process_directory(workspace, build_directory), std::chrono::seconds(45), kMaxCompilerOutput);
         log << "\n$ ctest --test-dir " << build_directory.u8string() << " --output-on-failure\n"
             << ctest.output;
 

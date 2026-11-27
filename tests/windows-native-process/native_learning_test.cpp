@@ -193,7 +193,7 @@ TEST(NativeLearningWorkflow, RealW1CompileCheckPersistsEvidenceAndUnlocksCalcula
                                     ".cppapplab-workspace"));
 }
 
-TEST(NativeLearningWorkflow, RealCalculatorCMakeGoogleTestAcceptanceUsesSharedEngine) {
+TEST(NativeLearningWorkflow, RealW1ThroughW4CMakeGoogleTestAcceptanceUsesSharedEngine) {
     Scratch scratch;
     IsolatedProfile profile(scratch.root());
 

@@ -161,7 +161,7 @@ jobs:
           $listed = & (Join-Path $toolBin 'ctest.exe') --test-dir $build --show-only=json-v1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $tests = ($listed | Out-String | ConvertFrom-Json).tests
-          if ($tests.Count -ne 5) { throw "Expected five end-to-end native learning tests; found $($tests.Count)" }
+          if ($tests.Count -ne 6) { throw "Expected six native learning tests; found $($tests.Count)" }
           & (Join-Path $toolBin 'ctest.exe') --test-dir $build --output-on-failure --no-tests=error --timeout 300
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

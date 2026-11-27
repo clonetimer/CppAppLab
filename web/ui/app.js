@@ -723,7 +723,7 @@
       if (selected) state.task.execution_available = selected.execution_available;
       ui.taskState.textContent = stateLabel(selectedState);
       ui.taskState.dataset.state = selectedState;
-      ui.startButton.disabled = state.busy || !state.progressFresh || selectedState === "LOCKED" || environmentBlocked(state.task);
+      ui.startButton.disabled = state.busy || !state.progressFresh || selectedState === "LOCKED";
     }
     updateProgressSummary();
     renderCourseList();
@@ -768,7 +768,7 @@
       return offer("课程状态需要刷新，刷新后再继续下一课。", "刷新课程状态", "refresh");
     }
     if (environmentBlocked(state.task)) {
-      return offer("当前 Windows 原生工作台可阅读教材与提示；本课的编译、运行及正式验收需要 Linux / WSL2。");
+      return offer("本课需要 Linux / WSL2。可打开已准备的 Ubuntu 工作台；两边的验收记录独立，不自动迁移 PASS。", "进入 WSL2 学习", "handoff");
     }
     if (state.task.state === "LOCKED") {
       const prerequisite = (state.task.prerequisites || []).map((id) => state.tasks.find((task) => task.id === id))
@@ -813,6 +813,7 @@
     const action = ui.workflowAction.dataset.action;
     if (action === "task") return selectTask(ui.workflowAction.dataset.taskId);
     if (action === "start") return startTask({ currentTarget: ui.workflowAction });
+    if (action === "handoff") return handoffTask(ui.workflowAction);
     if (action === "workspace") return retryWorkspaceFiles(ui.workflowAction);
     if (action === "troubleshooting") return jumpToLessonSection("Troubleshooting");
     if (["build", "run", "check"].includes(action)) return runWorkspaceAction(action, ui.workflowAction);
@@ -1493,8 +1494,8 @@
       renderLesson();
       const locked = task.state === "LOCKED";
       const environmentRequired = environmentBlocked(task);
-      ui.startButton.disabled = locked || environmentRequired;
-      ui.startButton.textContent = environmentRequired ? "需要 Linux / WSL2" : locked ? "完成前置任务后解锁" :
+      ui.startButton.disabled = locked;
+      ui.startButton.textContent = environmentRequired ? "进入 WSL2 学习  →" : locked ? "完成前置任务后解锁" :
         task.state === "PASSED" ? "打开学习工作区  →" : "开始 / 继续学习  →";
       if (["IN PROGRESS", "NEEDS WORK", "STALE", "PASSED"].includes(task.state)) {
         try { await loadWorkspaceFiles(state.preferredFile, { focusEditor: options.focusEditor }); }
@@ -1512,9 +1513,39 @@
     }
   }
 
+  async function handoffTask(triggerButton) {
+    if (!state.task || state.busy || !environmentBlocked(state.task)) return;
+    const taskId = state.task.id;
+    setBusy(true, "正在检查已准备的 WSL2 环境…", triggerButton, "连接 WSL2…");
+    try {
+      const result = await api("/api/v1/tasks/" + encodeURIComponent(taskId) + "/handoff",
+        { method: "POST", body: {} });
+      const target = new URL(result.url);
+      if (target.protocol !== "http:" || target.hostname !== "127.0.0.1" ||
+          !["8766", "8767"].includes(target.port) || target.pathname !== "/" ||
+          target.search || target.username || target.password ||
+          new URLSearchParams(target.hash.slice(1)).get("task") !== taskId ||
+          result.execution_environment !== "linux" || result.progress_transferred !== false) {
+        throw new Error("未获得有效的 Linux 工作台地址。");
+      }
+      toast("已连接 " + result.distribution + "。Linux 验收记录独立，可使用浏览器后退返回本机。");
+      window.location.assign(target.href);
+    } catch (error) {
+      toast(error.message);
+      beginConsoleOperation("WSL2 环境切换", "正在显示环境检查结果…");
+      ui.console.textContent = error.message;
+      ui.checkResult.textContent = "环境未就绪";
+      ui.checkResult.className = "check-result fail";
+      finishConsoleOperation(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function startTask(event) {
     const triggerButton = event && event.currentTarget ? event.currentTarget : ui.startButton;
-    if (!state.task || state.busy || environmentBlocked(state.task)) return;
+    if (!state.task || state.busy) return;
+    if (environmentBlocked(state.task)) return handoffTask(triggerButton);
     setBusy(true, "正在准备学习工作区…", triggerButton, "准备中…");
     try {
       const result = await api("/api/v1/tasks/" + encodeURIComponent(state.task.id) + "/start", {
@@ -2075,7 +2106,7 @@
         ui.serviceStopButton
       ].forEach(clearButtonPending);
     }
-    ui.startButton.disabled = value || !state.progressFresh || !state.task || environmentBlocked(state.task) || ["LOCKED", "UNKNOWN"].includes(state.task.state);
+    ui.startButton.disabled = value || !state.progressFresh || !state.task || ["LOCKED", "UNKNOWN"].includes(state.task.state);
     ui.saveButton.disabled = value || !state.workspaceReady || state.dirtyFiles.size === 0;
     ui.buildButton.disabled = value || !state.workspaceReady;
     ui.runButton.disabled = value || !state.workspaceReady;

@@ -8,6 +8,7 @@ It uses only the Python standard library and binds to loopback by default.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import http.client
 import json
 from collections import deque
@@ -35,6 +36,7 @@ from urllib.parse import unquote, urlsplit
 import knowledge_lab
 import modern_cpp
 import modern_projects
+import wsl_handoff
 
 
 MAX_CATALOG_BYTES = 64 * 1024
@@ -529,6 +531,7 @@ class CppAppLabWebServer(ThreadingHTTPServer):
         self.workspace_root = workspace_root
         self.ui_root = ui_root.resolve()
         self.csrf_token = secrets.token_urlsafe(32)
+        self.instance_id = secrets.token_hex(16)
         self.child_env = os.environ.copy()
         self.child_env["CPPAPPLAB_DATA_DIR"] = str(self.root)
         home_key = "USERPROFILE" if NATIVE_WINDOWS else "HOME"
@@ -1539,6 +1542,10 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             self._send_json(200 if exit_code == 0 else 503, {
                 "status": "ok" if exit_code == 0 else "degraded",
                 "service": "CppAppLab",
+                "instance_id": self.server.instance_id,
+                "catalog_sha256": hashlib.sha256(
+                    (self.server.root / "course/tasks.tsv").read_bytes().replace(b"\r\n", b"\n")
+                ).hexdigest(),
                 "engine": output.strip(),
                 "task_count": len(self.server.tasks),
                 "execution_environment": "native-windows" if NATIVE_WINDOWS else "linux",
@@ -1747,6 +1754,23 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
                 parts = [unquote(part) for part in parsed.path.split("/") if part]
                 if len(parts) >= 4 and parts[:3] == ["api", "v1", "workspaces"]:
                     self.server.require_task_environment(parts[3])
+                if len(parts) == 5 and parts[:3] == ["api", "v1", "tasks"] and parts[4] == "handoff":
+                    task = self.server.task_by_id.get(parts[3])
+                    if task is None:
+                        raise ApiError(404, "Unknown task ID.")
+                    if self._read_json() != {}:
+                        raise ApiError(400, "Only the fixed task handoff action is accepted.")
+                    if not NATIVE_WINDOWS or self.server.task_executable(task):
+                        raise ApiError(409, "Only Linux-specialized tasks can be handed off from native Windows.")
+                    catalog = hashlib.sha256(
+                        (self.server.root / "course/tasks.tsv").read_bytes().replace(b"\r\n", b"\n")
+                    ).hexdigest()
+                    try:
+                        result = wsl_handoff.handoff(parts[3], self.server.server_address[1], catalog)
+                    except wsl_handoff.HandoffError as exc:
+                        raise ApiError(exc.status, str(exc)) from exc
+                    self._send_json(200, result)
+                    return
                 if len(parts) == 5 and parts[:3] == ["api", "v1", "modern-projects"]:
                     self._modern_project_action(parts[3], parts[4])
                     return

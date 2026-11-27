@@ -689,3 +689,10 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - Actual run 45994789903 at 6618a44e: archive creation, all 40,614 file hashes, Chinese batch output and native HTTP startup passed; corrected Hello World build failed at cwchar including missing wchar.h. No packaged acceptance or verified uploaded candidate.
 - Changed: validate archive native headers, propagate an explicit relocated native sysroot to the real GCC and CMake invocations, and add a strict standalone bundled C++17 compile/link/run probe. Check the real W1 red log is an output mismatch, and require the actual relocated CMake sysroot alongside compiler/GTest identity. No changes to fixtures, course rows, Linux behavior or symlink policy.
 - Lesson: successful version output, extraction and web startup do not prove compiler relocation; prove target header search, link, execution, then full course progression. Fresh Windows package and primary CI mandatory; this correction is not yet verified.
+
+
+## 83. CP7-D1 verified; D2a freeze the observed acquisition version set
+
+- D1 #95 merged at d9ee945c. Portable 45996403950 passed actual relocated 101/101, 40,614 file hashes and bundled compiler/GTest/sysroot; primary 14/14 and foundation green. Artifact 15196891172 is internal only.
+- D2a freezes all 63 observed UCRT64 versions from the passing log, rejects any set/version drift, obtains pacman sync metadata, explicitly downloads matching archives without install or refresh, verifies each SHA-256, and binds the report to the packaged and independently extracted candidate. Test negative cases separately. No guessed hashes.
+- Lesson: an installed version snapshot is not immutable acquisition. Capture actual archive bytes first; only then freeze the reviewed hashes and replay without silent upgrade. Third-party corresponding source and legal review remain separate gates; no public release or physical-target claim.

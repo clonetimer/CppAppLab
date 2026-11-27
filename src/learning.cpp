@@ -42,6 +42,23 @@ constexpr std::size_t kMaxHintBytes = 32U * 1024U;
 constexpr std::size_t kMaxCompilerOutput = 128U * 1024U;
 constexpr std::size_t kMaxProgramOutput = 16U * 1024U;
 
+bool task_executable_here(const Task& task) {
+#ifdef _WIN32
+    return task.week <= 4U;
+#else
+    (void)task;
+    return true;
+#endif
+}
+
+void require_task_environment(const Task& task) {
+    if (!task_executable_here(task)) {
+        throw std::invalid_argument(
+            "Task requires Linux/WSL2: " + task.id +
+            ". Open CppAppLab in Ubuntu; native Windows supports W1-W4.");
+    }
+}
+
 std::filesystem::path path_from_cli(std::string_view value) {
 #ifdef _WIN32
     return std::filesystem::u8path(value.begin(), value.end());
@@ -183,6 +200,9 @@ void print_task_catalog() {
     std::cout << "CppAppLab · Available tasks\n\n";
     for (const Task& task : task_catalog()) {
         std::cout << task.id << "  |  " << task.title << "  |  W" << task.week;
+        if (!task_executable_here(task)) {
+            std::cout << "  |  Linux/WSL2 required";
+        }
         if (!task.prerequisites.empty()) {
             std::cout << "  |  requires ";
             for (std::size_t index = 0; index < task.prerequisites.size(); ++index) {
@@ -460,8 +480,9 @@ std::filesystem::path native_build_root() {
     const auto configured =
         windows_state_io::environment_path(L"CPPAPPLAB_NATIVE_BUILD_ROOT");
     auto root = std::filesystem::absolute(
-                    configured.value_or(std::filesystem::temp_directory_path() /
-                                        "CppAppLab-native-build"))
+                    configured.has_value() ? *configured
+                                           : std::filesystem::temp_directory_path() /
+                                                 "CppAppLab-native-build")
                     .lexically_normal();
     if (!ascii_path(root)) {
         // A short alias is an optional convenience, never a prerequisite.
@@ -584,6 +605,9 @@ std::filesystem::path build_fingerprint_path(const std::filesystem::path& build_
 }
 
 void remove_build_fingerprint(const std::filesystem::path& path) {
+#ifdef _WIN32
+    windows_state_io::remove_file(path);
+#else
     if (!std::filesystem::exists(path) && !std::filesystem::is_symlink(path)) {
         return;
     }
@@ -592,9 +616,13 @@ void remove_build_fingerprint(const std::filesystem::path& path) {
         throw std::runtime_error("Refusing to use an unsafe build fingerprint: " + path.u8string());
     }
     std::filesystem::remove(path);
+#endif
 }
 
 void write_build_fingerprint(const std::filesystem::path& path, const std::string& fingerprint) {
+#ifdef _WIN32
+    windows_state_io::atomic_write(path, fingerprint + "\n");
+#else
     remove_build_fingerprint(path);
     auto temporary = path;
     temporary += ".tmp";
@@ -618,9 +646,19 @@ void write_build_fingerprint(const std::filesystem::path& path, const std::strin
         std::filesystem::remove(temporary);
         throw std::runtime_error("Cannot publish build fingerprint: " + error.message());
     }
+#endif
 }
 
 std::optional<std::string> read_build_fingerprint(const std::filesystem::path& path) {
+#ifdef _WIN32
+    if (!windows_state_io::regular_exists(path)) {
+        return std::nullopt;
+    }
+    std::istringstream input(windows_state_io::read(path, 256U));
+    std::string value;
+    std::getline(input, value);
+    return value;
+#else
     if (!std::filesystem::exists(path) && !std::filesystem::is_symlink(path)) {
         return std::nullopt;
     }
@@ -639,6 +677,7 @@ std::optional<std::string> read_build_fingerprint(const std::filesystem::path& p
         throw std::runtime_error("Failed while reading build fingerprint.");
     }
     return value;
+#endif
 }
 
 int build_exact_stdout_workspace(const Workspace& workspace) {
@@ -760,6 +799,7 @@ int build_cmake_gtest_workspace(const Workspace& workspace) {
 
 int build_workspace(const std::filesystem::path& workspace_path) {
     const Workspace workspace = open_workspace(workspace_path);
+    require_task_environment(*workspace.task);
     switch (workspace.task->acceptance_kind) {
         case AcceptanceKind::ExactStdout:
             return build_exact_stdout_workspace(workspace);
@@ -770,6 +810,9 @@ int build_workspace(const std::filesystem::path& workspace_path) {
 }
 
 void require_real_directory(const std::filesystem::path& path) {
+#ifdef _WIN32
+    windows_state_io::require_directory(path);
+#else
     std::error_code error;
     const auto status = std::filesystem::symlink_status(path, error);
     if (status.type() == std::filesystem::file_type::not_found &&
@@ -780,6 +823,7 @@ void require_real_directory(const std::filesystem::path& path) {
     if (error || !std::filesystem::is_directory(status) || std::filesystem::is_symlink(status)) {
         throw std::runtime_error("Expected a real, non-symlink build directory: " + path.u8string());
     }
+#endif
 }
 
 std::string require_current_build(const Workspace& workspace,
@@ -982,6 +1026,7 @@ bool declared_source(const Task& task, const std::string& relative) {
 int build_application_workspace(const std::filesystem::path& workspace_path) {
     const Workspace workspace = open_workspace(workspace_path);
     const Task& task = *workspace.task;
+    require_task_environment(task);
     const auto profile = application_build_profile(task);
     if (!profile.has_value()) {
         throw std::runtime_error("This task has no registered browser application profile.");
@@ -1124,6 +1169,7 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
                               const std::vector<std::string>& requested) {
     const Workspace workspace = open_workspace(workspace_path);
     const Task& task = *workspace.task;
+    require_task_environment(task);
     const auto profile = application_build_profile(task);
     if (!profile.has_value()) {
         throw std::runtime_error("This task has no registered browser application profile.");
@@ -1326,6 +1372,7 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
 
 int run_workspace(const std::filesystem::path& workspace_path) {
     const Workspace workspace = open_workspace(workspace_path);
+    require_task_environment(*workspace.task);
     switch (workspace.task->acceptance_kind) {
         case AcceptanceKind::ExactStdout:
             return run_exact_stdout_workspace(workspace);
@@ -1348,6 +1395,9 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
     ensure_real_directory(state_directory);
     const auto build_directory = build_directory_for(workspace);
     ensure_real_directory(build_directory);
+#ifdef _WIN32
+    remove_build_fingerprint(build_fingerprint_path(build_directory));
+#endif
 
     std::ostringstream log;
     unsigned tests_passed = 0U;
@@ -1463,6 +1513,7 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
 
 int check_workspace(const std::filesystem::path& workspace_path) {
     const Workspace workspace = open_workspace(workspace_path);
+    require_task_environment(*workspace.task);
     switch (workspace.task->acceptance_kind) {
         case AcceptanceKind::ExactStdout:
             return check_exact_stdout_workspace(workspace_path);
@@ -1528,6 +1579,10 @@ int show_next(const std::filesystem::path& workspace_path) {
             continue;
         }
 
+        if (!task_executable_here(candidate)) {
+            std::cout << "Next task requires Linux/WSL2: " << candidate.id << '\n';
+            return 0;
+        }
         std::string missing_prerequisite;
         if (prerequisites_satisfied(candidate, &missing_prerequisite)) {
             std::cout << "Next available task: " << candidate.id << " · " << candidate.title << '\n'
@@ -1552,7 +1607,10 @@ int show_progress() {
         std::string state;
         std::string detail;
 
-        if (!record.has_value()) {
+        if (!task_executable_here(task)) {
+            state = "LINUX/WSL2 REQUIRED";
+            detail = "not executable in native Windows";
+        } else if (!record.has_value()) {
             std::string missing_prerequisite;
             if (prerequisites_satisfied(task, &missing_prerequisite)) {
                 state = "NOT STARTED";
@@ -1687,6 +1745,7 @@ int guided_learn(std::string_view requested_task_id) {
             throw std::invalid_argument("Unknown task ID: " + std::string(requested_task_id));
         }
 
+        require_task_environment(*selected);
         std::string missing_prerequisite;
         if (!prerequisites_satisfied(*selected, &missing_prerequisite)) {
             throw std::invalid_argument("Task is locked: complete " + missing_prerequisite +
@@ -1694,7 +1753,7 @@ int guided_learn(std::string_view requested_task_id) {
         }
     } else {
         for (const Task& task : task_catalog()) {
-            if (has_current_pass(task.id)) {
+            if (!task_executable_here(task) || has_current_pass(task.id)) {
                 continue;
             }
             if (prerequisites_satisfied(task)) {
@@ -1703,6 +1762,9 @@ int guided_learn(std::string_view requested_task_id) {
             }
         }
         if (selected == nullptr) {
+#ifdef _WIN32
+            std::cout << "No unpassed native Windows task is available. W5-W9 require Linux/WSL2.\n";
+#endif
             std::cout << "No unpassed task is currently available.\n"
                       << "Run 'cppapplab progress' to review the course, or choose a task with "
                          "'cppapplab learn <task-id>'.\n";
@@ -1753,6 +1815,9 @@ int guided_learn(std::string_view requested_task_id) {
 }
 
 std::string task_state_label(const Task& task) {
+    if (!task_executable_here(task)) {
+        return "LINUX/WSL2 REQUIRED";
+    }
     if (has_current_pass(task.id)) {
         return "PASSED";
     }
@@ -1871,6 +1936,7 @@ int interactive_menu() {
         std::size_t stale = 0U;
         std::size_t available = 0U;
         std::size_t locked = 0U;
+        std::size_t environment_required = 0U;
 
         for (const Task& task : tasks) {
             const std::string state = task_state_label(task);
@@ -1884,6 +1950,8 @@ int interactive_menu() {
                 ++stale;
             } else if (state == "AVAILABLE") {
                 ++available;
+            } else if (state == "LINUX/WSL2 REQUIRED") {
+                ++environment_required;
             } else {
                 ++locked;
             }
@@ -1893,7 +1961,11 @@ int interactive_menu() {
                   << "Course: " << passed << '/' << tasks.size() << " passed"
                   << " · in progress: " << in_progress << " · needs work: " << needs_work
                   << " · stale: " << stale << " · available: " << available
-                  << " · locked: " << locked << "\n\n"
+                  << " · locked: " << locked;
+        if (environment_required != 0U) {
+            std::cout << " · Linux/WSL2 required: " << environment_required;
+        }
+        std::cout << "\n\n"
                   << "  1. Continue learning\n"
                   << "  2. Choose or search a task\n"
                   << "  3. View course progress\n"
@@ -2030,6 +2102,7 @@ int run_cli(int argc, char* argv[]) {
                 throw std::invalid_argument("Unknown task ID: " + std::string(argv[2]));
             }
 
+            require_task_environment(*task);
             std::string missing_prerequisite;
             if (!prerequisites_satisfied(*task, &missing_prerequisite)) {
                 throw std::invalid_argument("Task is locked: complete " + missing_prerequisite +

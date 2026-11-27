@@ -62,3 +62,43 @@
 当前根 CMake 仍有 Linux-only guard，不绕过；`src/progress.cpp` 的 flock/open/fsync/O_NOFOLLOW、`src/learning.cpp` 的 POSIX 进程/可执行文件及路径、`src/workspace.cpp` 的重解析点安全，以及网页的 start_new_session/killpg 都是后续真实阻塞点。W2–W4 已有 CMake 直接 CLI 多进程测试，但文件 symlink 安全断言与 Windows 非管理员环境须单独验证；不得跳过。CI 安装 MSYS2 UCRT 工具链仅用于构建与验证原生 PE，不是未来产品的运行时依赖；用户 ZIP 工具链尚未交付。
 
 首次候选状态：待当前 head 的 Windows/Ubuntu CI。禁止把旧 CI 或新增源文件当作当前版本原生验收通过。
+
+
+## CP7-A/B1 verified; CP7-B2a native state integration (2026-11-27)
+
+CP7-A/B1 merged as `16f072e7bfc4f064b0690e6ea8ecc85232f54f41` (#85).
+Final [Windows run 45951955376](https://github.com/clonetimer/CppAppLab/actions/runs/45951955376)
+used native UCRT64 GCC 16.2.0: shared process + W1 foundation 13/13 and original
+Calculator fixture 9/9. [Existing CI 45951955373](https://github.com/clonetimer/CppAppLab/actions/runs/45951955373)
+passed 14 applicable jobs, push-only compatibility skipped. These are isolated
+native foundations, not the full Windows learner application.
+
+B2a integrates the Win32 state adapter into the actual shared progress and workspace
+sources, without changing the root Linux-only build guard. Native progress defaults
+to `%LOCALAPPDATA%/CppAppLab/native-windows/progress`; explicit CPPAPPLAB_STATE_DIR
+must designate a dedicated native state directory, not an imported Linux record
+store. The existing progress/history format and source-fingerprint semantics are
+retained; workspace paths round-trip as UTF-8. Existing Linux I/O uses its
+original POSIX implementation. Native progress and workspace evidence use wide
+paths, no-follow file handles, checked local fixed-drive ancestors, bounded
+reads, CREATE_NEW temporaries, FlushFileBuffers and handle-based atomic rename.
+History append and read use bounded LockFileEx acquisition, with the original
+1 MiB history limit. Existing reparse-point ancestors, reparse files, hard-linked
+files and alternate streams are rejected. Directory handles are held without
+delete sharing during each operation. This protects normal local application
+state; it is not an arbitrary same-user adversarial sandbox, a multi-record
+transaction, or a power-loss durability guarantee. Full workspace creation/copy
+path confinement remains a separate gate before the native root engine is exposed.
+
+The Windows workflow adds seven native state tests, including actual shared
+ProgressRecord/workspace/evidence APIs, Chinese and space paths, stale
+fingerprint/prerequisite transitions, real NTFS junction and hard-link
+rejection, bounded append, and four separate native child processes appending
+80 uniquely identified rows to one history. Test evidence used to exercise
+storage is fixture-only, not a learner's compiler PASS. No fixture may silently
+skip a junction/hard-link assertion. The workflow checks 20 native process/W1/state
+tests (13 previous + 7 new), all original 9 Calculator cases, PE/import identity,
+and the unchanged original Ubuntu workflow. This B2a revision is a candidate
+until current CI completes. The next gate is native safe workspace creation,
+fixed native toolchain/profile and full root learning engine; no Windows ZIP or
+native browser product claimed yet.

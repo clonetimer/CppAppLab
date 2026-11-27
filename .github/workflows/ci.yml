@@ -925,9 +925,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $source = Join-Path $workspace 'src\main.cpp'
           $program = @'
-#include <iostream>
-int main() { std::cout << "Hello, CppAppLab!\n"; return 0; }
-'@
+          #include <iostream>
+          int main() { std::cout << "Hello, CppAppLab!\n"; return 0; }
+          '@
           [System.IO.File]::WriteAllText($source, $program, [System.Text.UTF8Encoding]::new($false))
           & $exe lesson $workspace | Out-Null
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

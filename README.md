@@ -1,6 +1,6 @@
 # CppAppLab
 
-> **当前主线（2026-11-27）：CP7 Windows 原生教学与双环境统一。** 目标为 Windows 11 x64 原生 W1–W4、现有现代 C++ 教学和保留完整 Ubuntu/WSL2 Linux 专项。当前正式可用产品仍为 Ubuntu 22.04/24.04（Windows 通过 WSL2），原生组件处于候选开发，尚无 Windows 原生学习者包。参见[CP7 计划](docs/CP7_WINDOWS_DUAL_ENVIRONMENT_PLAN.md)及[ADR](docs/DECISIONS.md)。
+> **当前主线（2026-11-27）：CP7 Windows 原生教学与双环境统一。** 目标为 Windows 11 x64 原生 W1–W4、现有现代 C++ 教学和保留完整 Ubuntu/WSL2 Linux 专项。W1–W4 的共享 Windows 原生 CLI 已通过 101 项固定验收（#93，含中文工作区；实际用户机器及符号链接权限尚待确认）。现有正式学习者包仍为 Ubuntu 22.04/24.04（Windows 可通过 WSL2）；原生网页候选尚待 CI，Windows 免安装学习者包尚未交付。参见[CP7 计划](docs/CP7_WINDOWS_DUAL_ENVIRONMENT_PLAN.md)及[ADR](docs/DECISIONS.md)。
 
 **CppAppLab** is a hands-on C++ learning and engineering-practice platform. It takes a learner from the first C++ program to maintainable systems software, concurrent programs, TCP services, and an HTTP/1.1 server.
 
@@ -23,6 +23,16 @@ bash scripts/start-web-workbench.sh
 **教程语言：**“课程讲解”标题旁的 **教程语言** 可以选择 **中文 / English**。首次打开默认中文，浏览器会记住选择；课程目录、正文、故障排查、验收要求和三级提示随之切换。全部 25 节课的中英文内容随项目提供，无需在线翻译。切换语言不会重载工作区或改变代码、运行输出与验收进度；代码示例、文件名和命令保留原样。此设置控制课程内容，操作界面仍使用中文。
 
 如果源码目录还没有 `build/cppapplab`，先按[快速入门的构建步骤](docs/QUICKSTART.md#2-run-the-one-command-setup)完成构建，再启动工作台。
+
+### Windows 原生网页：源码构建候选（尚待 CI）
+
+在已有 MinGW-w64 UCRT GCC、CMake、Ninja、GoogleTest 和 Python 的 Windows 环境中，完成原生 CMake 构建后，可用 PowerShell 启动候选：
+
+```powershell
+.\scripts\start-native-web-workbench.ps1 -Binary .\build\cppapplab.exe
+```
+
+打开本机 `http://127.0.0.1:8765/`。本候选不调用 WSL、不自动安装工具或修改系统设置；W1–W4 可执行，W5–W9 教材仍可阅读但实际运行需 Ubuntu。Windows 原生知识实验及现代工程尚待验证。创建真实文件符号链接需开发者模式或相应权限，当前尚非双击免安装交付版。
 
 ### 使用学习者压缩包：直接打开网页工作台
 

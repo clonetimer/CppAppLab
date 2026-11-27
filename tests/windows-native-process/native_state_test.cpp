@@ -377,6 +377,7 @@ TEST(NativeWorkspace, RejectsTemplateJunctionAndCleansPartialWorkspace) {
     const auto template_source = data_root / hello->learner_template / "src";
     const auto outside = scratch.root() / "outside";
     io::ensure_directory(outside);
+    fs::remove_all(template_source);
     Junction junction(template_source, outside);
     const auto destination = scratch.root() / "learner";
     EXPECT_THROW(cppapplab::create_workspace(*hello, destination), std::runtime_error);

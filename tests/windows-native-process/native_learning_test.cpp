@@ -103,15 +103,19 @@ struct IsolatedProfile {
     explicit IsolatedProfile(const fs::path& root)
         : home(root / L"用户 配置"),
           state(root / L"课程进度 状态"),
+          build_cache(root / "native-build-cache"),
           user_profile(L"USERPROFILE", home),
-          state_directory(L"CPPAPPLAB_STATE_DIR", state) {
+          state_directory(L"CPPAPPLAB_STATE_DIR", state),
+          native_build_directory(L"CPPAPPLAB_NATIVE_BUILD_ROOT", build_cache) {
         fs::create_directories(home);
     }
 
     fs::path home;
     fs::path state;
+    fs::path build_cache;
     ScopedPathEnvironment user_profile;
     ScopedPathEnvironment state_directory;
+    ScopedPathEnvironment native_build_directory;
 };
 
 TEST(NativeLearningWorkflow, LearnCreatesAndReopensWorkspaceUnderUnicodeUserProfile) {
@@ -159,6 +163,14 @@ TEST(NativeLearningWorkflow, RealW1CompileCheckPersistsEvidenceAndUnlocksCalcula
                  "    std::cout << \"Hello, CppAppLab!\\n\";\n"
                  "    return 0;\n"
                  "}\n");
+
+    {
+        StdoutCapture capture;
+        ASSERT_EQ(invoke({"cppapplab", "build", workspace.u8string()}), 0) << capture.str();
+        ASSERT_EQ(invoke({"cppapplab", "run", workspace.u8string()}), 0) << capture.str();
+    }
+    EXPECT_FALSE(cppapplab::has_current_pass("w1.hello-world"));
+    EXPECT_FALSE(cppapplab::read_evidence(workspace).has_value());
 
     std::string check_output;
     int check_result = -1;
@@ -213,47 +225,35 @@ TEST(NativeLearningWorkflow, RealW1ThroughW4CMakeGoogleTestAcceptanceUsesSharedE
     }
     ASSERT_TRUE(cppapplab::has_current_pass("w1.hello-world"));
 
-    const auto* calculator = cppapplab::find_task("w1.calculator");
-    ASSERT_NE(calculator, nullptr);
-    const auto calculator_workspace = cppapplab::create_workspace(
-        *calculator, profile.home / "cppapplab-work" / "w1.calculator");
-    const auto reference = cppapplab::data_root() / "labs" / "w1" / "calculator" / "reference";
-    for (const auto& relative : calculator->source_files) {
-        const auto source = reference / relative;
-        const auto destination = calculator_workspace.root / relative;
-        fs::create_directories(destination.parent_path());
-        fs::copy_file(source, destination, fs::copy_options::overwrite_existing);
-    }
-
-    std::string check_output;
-    int check_result = -1;
-    {
-        StdoutCapture capture;
-        check_result = invoke({"cppapplab", "check", calculator_workspace.root.u8string()});
-        check_output = capture.str();
-    }
-    ASSERT_EQ(check_result, 0) << check_output;
-    EXPECT_NE(check_output.find("Result: PASS"), std::string::npos);
-    EXPECT_NE(check_output.find("Acceptance: " + std::to_string(calculator->expected_test_count) +
-                                "/" + std::to_string(calculator->expected_test_count)),
-              std::string::npos);
-    EXPECT_TRUE(cppapplab::has_current_pass("w1.calculator"));
-
-    // Continue through the real W2-W4 platform-owned CMake/GoogleTest fixtures.
-    // Each task receives only its declared reference sources; the shared learning
-    // engine still stages them, invokes CMake/CTest, and writes the formal evidence.
-    for (const std::string task_id : {"w2.todo-cli", "w3.task-manager", "w4.quality-gate"}) {
+    // All four CMake courses stay under the same Unicode learner profile.
+    // Only fixture-owned, ephemeral build artifacts use the ASCII cache.
+    for (const std::string task_id : {"w1.calculator", "w2.todo-cli",
+                                      "w3.task-manager", "w4.quality-gate"}) {
+        SCOPED_TRACE(task_id);
         const auto* task = cppapplab::find_task(task_id);
-        ASSERT_NE(task, nullptr) << task_id;
-        const auto workspace = cppapplab::create_workspace(
-            *task, profile.home / "cppapplab-work" / task->id);
+        ASSERT_NE(task, nullptr);
+        const auto workspace_path = profile.home / "cppapplab-work" / task_id;
+        ASSERT_EQ(invoke({"cppapplab", "start", task_id, workspace_path.u8string()}), 0);
+        const auto workspace = cppapplab::open_workspace(workspace_path);
         const auto reference = cppapplab::data_root() /
                                task->learner_template.parent_path() / "reference";
+        // Only this integration-test fixture seeds the reference implementation.
+        // Production build/check continues to read the actual learner workspace.
         for (const auto& relative : task->source_files) {
             const auto source = reference / relative;
             const auto destination = workspace.root / relative;
             fs::create_directories(destination.parent_path());
             fs::copy_file(source, destination, fs::copy_options::overwrite_existing);
+        }
+
+        if (task_id == "w1.calculator") {
+            StdoutCapture capture;
+            ASSERT_EQ(invoke({"cppapplab", "build", workspace.root.u8string()}), 0)
+                << capture.str();
+            ASSERT_EQ(invoke({"cppapplab", "run", workspace.root.u8string()}), 0)
+                << capture.str();
+            EXPECT_FALSE(cppapplab::has_current_pass(task_id));
+            EXPECT_FALSE(cppapplab::read_evidence(workspace.root).has_value());
         }
 
         std::string output;
@@ -263,14 +263,34 @@ TEST(NativeLearningWorkflow, RealW1ThroughW4CMakeGoogleTestAcceptanceUsesSharedE
             result = invoke({"cppapplab", "check", workspace.root.u8string()});
             output = capture.str();
         }
-        const std::string full_log = cppapplab::windows_state_io::read(
-            workspace.root / ".cppapplab" / "last-check.log", 128U * 1024U);
-        ASSERT_EQ(result, 0) << task_id << "\n" << output << "\nFull CMake/CTest log:\n" << full_log;
-        EXPECT_NE(output.find("Result: PASS"), std::string::npos) << task_id;
+        const std::string log = cppapplab::windows_state_io::read(
+            workspace.root / ".cppapplab" / "last-check.log", 256U * 1024U);
+        ASSERT_EQ(result, 0) << output << "\nFull CMake/CTest log:\n" << log;
+        EXPECT_NE(output.find("Result: PASS"), std::string::npos);
         EXPECT_NE(output.find("Acceptance: " + std::to_string(task->expected_test_count) +
                               "/" + std::to_string(task->expected_test_count)),
-                  std::string::npos) << task_id;
-        EXPECT_TRUE(cppapplab::has_current_pass(task_id)) << task_id;
+                  std::string::npos);
+        EXPECT_TRUE(cppapplab::has_current_pass(task_id));
+        const auto evidence = cppapplab::read_evidence(workspace.root);
+        ASSERT_TRUE(evidence.has_value());
+        EXPECT_TRUE(evidence->passed);
+        EXPECT_EQ(evidence->tests_passed, task->expected_test_count);
+        EXPECT_EQ(evidence->tests_total, task->expected_test_count);
+        EXPECT_FALSE(fs::exists(workspace.root / ".cppapplab" / (task_id + "-build")));
+    }
+
+    std::size_t owned_caches = 0U;
+    for (const auto& entry : fs::directory_iterator(profile.build_cache)) {
+        ASSERT_TRUE(entry.is_directory());
+        EXPECT_TRUE(fs::is_regular_file(entry.path() / "workspace-owner.txt"));
+        EXPECT_TRUE(fs::is_regular_file(entry.path() / "build" / "CMakeCache.txt"));
+        ++owned_caches;
+    }
+    EXPECT_EQ(owned_caches, 4U);
+    {
+        StdoutCapture capture;
+        ASSERT_EQ(invoke({"cppapplab", "learn"}), 0);
+        EXPECT_NE(capture.str().find("W5-W9 require Linux/WSL2"), std::string::npos);
     }
 }
 
@@ -296,6 +316,10 @@ TEST(NativeLearningWorkflow, WrongOutputCannotUnlockCalculator) {
     }
     EXPECT_EQ(check_result, 1) << check_output;
     EXPECT_NE(check_output.find("Result: FAIL"), std::string::npos);
+    const std::string log = cppapplab::windows_state_io::read(
+        workspace / ".cppapplab" / "last-check.log", 256U * 1024U);
+    EXPECT_NE(log.find("not the required output"), std::string::npos);
+    EXPECT_NE(log.find("Output did not match the task contract"), std::string::npos);
     EXPECT_FALSE(cppapplab::has_current_pass("w1.hello-world"));
 
     const auto calculator = scratch.root() / L"locked calculator workspace";
@@ -328,6 +352,35 @@ TEST(NativeLearningWorkflow, LessonAndHintsReadFromUnicodeWorkspace) {
         hint = capture.str();
     }
     EXPECT_FALSE(hint.empty());
+}
+
+TEST(NativeLearningWorkflow, LinuxTasksRemainVisibleButCannotRunNatively) {
+    Scratch scratch;
+    IsolatedProfile profile(scratch.root());
+    EXPECT_EQ(cppapplab::task_catalog().size(), 25U);
+    {
+        StdoutCapture capture;
+        ASSERT_EQ(invoke({"cppapplab", "list"}), 0);
+        const auto output = capture.str();
+        EXPECT_NE(output.find("w5.system-lab"), std::string::npos);
+        EXPECT_NE(output.find("w9.http-fuzzing"), std::string::npos);
+        EXPECT_NE(output.find("Linux/WSL2 required"), std::string::npos);
+    }
+    const auto path = profile.home / "linux-only";
+    EXPECT_EQ(invoke({"cppapplab", "start", "w5.system-lab", path.u8string()}), 2);
+    EXPECT_EQ(invoke({"cppapplab", "learn", "w5.system-lab"}), 2);
+    EXPECT_FALSE(fs::exists(path));
+
+    // Simulate an already-existing Linux-only workspace without granting progress.
+    const auto* task = cppapplab::find_task("w5.system-lab");
+    ASSERT_NE(task, nullptr);
+    const auto workspace = cppapplab::create_workspace(*task, path);
+    for (const std::string command : {"build", "run", "check", "app-build"}) {
+        EXPECT_EQ(invoke({"cppapplab", command, workspace.root.u8string()}), 2);
+    }
+    EXPECT_EQ(invoke({"cppapplab", "app-run", workspace.root.u8string(), "list"}), 2);
+    EXPECT_FALSE(cppapplab::read_evidence(workspace.root).has_value());
+    EXPECT_FALSE(cppapplab::read_progress(task->id).has_value());
 }
 
 }  // namespace

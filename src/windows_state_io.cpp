@@ -122,7 +122,7 @@ struct DirectoryChain {
     DirectoryChain result;
     Path current = path.root_path();
     auto open_directory = [&](const Path& directory, bool allow_create) {
-        Handle initial(CreateFileW(directory.c_str(), FILE_READ_ATTRIBUTES,
+        Handle initial(CreateFileW(directory.c_str(), FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY,
                                    FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
                                    FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr));
         if (initial) {
@@ -143,7 +143,7 @@ struct DirectoryChain {
                 fail("CreateDirectoryW", create_error);
             }
         }
-        Handle opened(CreateFileW(directory.c_str(), FILE_READ_ATTRIBUTES,
+        Handle opened(CreateFileW(directory.c_str(), FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY,
                                   FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
                                   FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr));
         if (!opened) {
@@ -321,7 +321,7 @@ std::string read(const Path& input, std::uintmax_t maximum_bytes) {
     validate_handle(file.get(), false);
     ByteLock lock(file.get(), false);
     const auto size = file_size(file.get());
-    if (size > maximum_bytes || size > std::numeric_limits<std::size_t>::max()) {
+    if (size > maximum_bytes || size > static_cast<std::uintmax_t>(std::string{}.max_size())) {
         throw std::runtime_error("State file exceeds its size limit.");
     }
     std::string content(static_cast<std::size_t>(size), '\0');

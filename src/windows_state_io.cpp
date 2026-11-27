@@ -11,6 +11,7 @@
 #include <cstring>
 #include <cwctype>
 #include <limits>
+#include <iterator>
 #include <stdexcept>
 #include <system_error>
 #include <utility>

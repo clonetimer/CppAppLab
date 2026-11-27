@@ -1899,7 +1899,7 @@ int run_cli(int argc, char* argv[]) {
                                             " and pass its current acceptance check first.");
             }
 
-            const Workspace workspace = create_workspace(*task, argv[3]);
+            const Workspace workspace = create_workspace(*task, path_from_cli(argv[3]));
             register_workspace(workspace.root);
             std::cout << "Created learner workspace: " << workspace.root.u8string() << '\n'
                       << "Task: " << task->id << '\n'
@@ -1911,7 +1911,7 @@ int run_cli(int argc, char* argv[]) {
                 throw std::invalid_argument("Usage: cppapplab lesson <workspace-directory>");
             }
 
-            const Workspace workspace = open_workspace(argv[2]);
+            const Workspace workspace = open_workspace(path_from_cli(argv[2]));
             const auto lesson = data_root() / workspace.task->lesson_path;
             std::cout << read_lesson_file(lesson, kMaxLessonBytes);
             return 0;
@@ -1921,7 +1921,7 @@ int run_cli(int argc, char* argv[]) {
                 throw std::invalid_argument("Usage: cppapplab hint <workspace-directory> <1|2|3>");
             }
 
-            const Workspace workspace = open_workspace(argv[2]);
+            const Workspace workspace = open_workspace(path_from_cli(argv[2]));
             const std::string_view level_text{argv[3]};
             if (level_text.size() != 1 || level_text[0] < '1' || level_text[0] > '3') {
                 throw std::invalid_argument("Hint level must be 1, 2, or 3.");
@@ -1936,13 +1936,13 @@ int run_cli(int argc, char* argv[]) {
             if (argc != 3) {
                 throw std::invalid_argument("Usage: cppapplab build <workspace-directory>");
             }
-            return build_workspace(argv[2]);
+            return build_workspace(path_from_cli(argv[2]));
         }
         if (command == "app-build") {
             if (argc != 3) {
                 throw std::invalid_argument("Usage: cppapplab app-build <workspace-directory>");
             }
-            return build_application_workspace(argv[2]);
+            return build_application_workspace(path_from_cli(argv[2]));
         }
         if (command == "app-run") {
             if (argc < 4) {
@@ -1953,14 +1953,14 @@ int run_cli(int argc, char* argv[]) {
             for (int index = 3; index < argc; ++index) {
                 requested.emplace_back(argv[index]);
             }
-            return run_application_workspace(argv[2], requested);
+            return run_application_workspace(path_from_cli(argv[2]), requested);
         }
         if (command == "app-run-stdin") {
             if (argc != 4) {
                 throw std::invalid_argument(
                     "Usage: cppapplab app-run-stdin <workspace-directory> <parse|dispatch>");
             }
-            const Workspace workspace = open_workspace(argv[2]);
+            const Workspace workspace = open_workspace(path_from_cli(argv[2]));
             if ((workspace.task->id != "w8.http-parser" || std::string_view(argv[3]) != "parse") &&
                 (workspace.task->id != "w8.router" || std::string_view(argv[3]) != "dispatch")) {
                 throw std::invalid_argument("Only registered HTTP stdin actions are supported.");
@@ -1979,31 +1979,31 @@ int run_cli(int argc, char* argv[]) {
             if (!std::cin.eof()) {
                 throw std::runtime_error("Unable to read HTTP input from standard input.");
             }
-            return run_application_workspace(argv[2], {argv[3], input});
+            return run_application_workspace(path_from_cli(argv[2]), {argv[3], input});
         }
         if (command == "run") {
             if (argc != 3) {
                 throw std::invalid_argument("Usage: cppapplab run <workspace-directory>");
             }
-            return run_workspace(argv[2]);
+            return run_workspace(path_from_cli(argv[2]));
         }
         if (command == "check") {
             if (argc != 3) {
                 throw std::invalid_argument("Usage: cppapplab check <workspace-directory>");
             }
-            return check_workspace(argv[2]);
+            return check_workspace(path_from_cli(argv[2]));
         }
         if (command == "status") {
             if (argc != 3) {
                 throw std::invalid_argument("Usage: cppapplab status <workspace-directory>");
             }
-            return show_status(argv[2]);
+            return show_status(path_from_cli(argv[2]));
         }
         if (command == "next") {
             if (argc != 3) {
                 throw std::invalid_argument("Usage: cppapplab next <workspace-directory>");
             }
-            return show_next(argv[2]);
+            return show_next(path_from_cli(argv[2]));
         }
 
         throw std::invalid_argument("Unknown command: " + std::string(command));

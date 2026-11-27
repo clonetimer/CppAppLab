@@ -68,10 +68,12 @@ jobs:
           $build = Join-Path $env:RUNNER_TEMP 'cppapplab windows native process'
           & (Join-Path $toolBin 'cmake.exe') --build $build --parallel
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $testExe = Join-Path $build 'cppapplab_process_tests.exe'
-          $format = (& (Join-Path $toolBin 'objdump.exe') -f $testExe | Out-String)
-          if ($format -notmatch 'pei-x86-64') {
-            throw "The process test executable is not a native x86-64 Windows PE image: $format"
+          foreach ($exe in @('cppapplab_process_tests.exe', 'cppapplab_process_test_child.exe', 'cppapplab_native_w1_tests.exe')) {
+            $path = Join-Path $build $exe
+            $format = (& (Join-Path $toolBin 'objdump.exe') -f $path | Out-String)
+            if ($LASTEXITCODE -ne 0 -or $format -notmatch 'pei-x86-64') { throw "Not a native PE: $path" }
+            $imports = (& (Join-Path $toolBin 'objdump.exe') -p $path | Out-String)
+            if ($LASTEXITCODE -ne 0 -or $imports -match 'msys-2\.0\.dll|cygwin1\.dll') { throw "POSIX compatibility runtime imported: $path" }
           }
       - name: Run shared process contracts and native W1 compiler smoke
         shell: pwsh
@@ -81,7 +83,7 @@ jobs:
           $toolBin = Join-Path $env:MSYS2_LOCATION 'ucrt64\bin'
           $env:PATH = "$toolBin;$env:PATH"
           $build = Join-Path $env:RUNNER_TEMP 'cppapplab windows native process'
-          & (Join-Path $toolBin 'ctest.exe') --test-dir $build --output-on-failure
+          & (Join-Path $toolBin 'ctest.exe') --test-dir $build --output-on-failure --no-tests=error
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build and run the original Calculator acceptance fixture
         shell: pwsh

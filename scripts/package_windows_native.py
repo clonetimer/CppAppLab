@@ -112,7 +112,8 @@ class Archive:
         self.zip.close()
 
 
-def package(root: Path, binary: Path, msys: Path, python_zip: Path, out: Path) -> Path:
+def package(root: Path, binary: Path, msys: Path, python_zip: Path, out: Path,
+            acquisition_report: Path) -> Path:
     if os.name != "nt":
         raise RuntimeError("Native Windows build host required.")
     root, binary, msys, python_zip, out = (
@@ -121,6 +122,19 @@ def package(root: Path, binary: Path, msys: Path, python_zip: Path, out: Path) -
     )
     if digest(python_zip) != PYTHON_SHA256:
         raise RuntimeError("Official embedded Python ZIP SHA-256 mismatch.")
+    lock = root / "packaging/windows/ucrt64-versions.json"
+    baseline = json.loads(lock.read_text(encoding="utf-8"))
+    report = json.loads(acquisition_report.read_text(encoding="utf-8"))
+    if (report["schema_version"] != 1 or
+            report["status"] != "ARCHIVE_HASH_CAPTURE_CANDIDATE" or
+            report["version_baseline_sha256"] != digest(lock) or
+            report["baseline"] != baseline["baseline"]):
+        raise RuntimeError("Acquisition report does not match the frozen version baseline.")
+    records = report["packages"]
+    if ({name: value["version"] for name, value in records.items()} != baseline["packages"]
+            or any(not re.fullmatch(r"[0-9a-f]{64}", value["sha256"])
+                   or value["bytes"] <= 0 for value in records.values())):
+        raise RuntimeError("Incomplete or mismatched acquisition archive hashes.")
     prefix = msys / "ucrt64"
     for name in REQUIRED_TOOLS:
         if not (prefix / "bin" / name).is_file():
@@ -157,7 +171,8 @@ def package(root: Path, binary: Path, msys: Path, python_zip: Path, out: Path) -
         "python": {"version": PYTHON_VERSION, "url": PYTHON_URL,
                    "archive_sha256": PYTHON_SHA256,
                    "release_page": "https://www.python.org/downloads/release/python-31410/"},
-        "toolchain_acquisition": "MSYS2 UCRT64 installed package inventory; observed exact versions",
+        "toolchain_acquisition": "MSYS2 UCRT64 frozen version set; actual archive hash capture candidate",
+        "acquisition_report_sha256": digest(acquisition_report),
         "toolchain_target": target,
         "toolchain_packages": [],
         "formal_task_ids": ["w1.hello-world", "w1.calculator", "w2.todo-cli",
@@ -171,6 +186,8 @@ def package(root: Path, binary: Path, msys: Path, python_zip: Path, out: Path) -
     archive = Archive(archive_path)
     try:
         archive.file("bin/cppapplab.exe", binary, binary.parent)
+        archive.bytes("provenance/acquisition-lock-candidate.json", acquisition_report.read_bytes())
+        archive.bytes("provenance/ucrt64-versions.json", lock.read_bytes())
         tracked = git(root, "ls-files", "-z", "--",
                       "course", "labs", "cmake", "web/server", "web/ui").decode("utf-8")
         for name in sorted(filter(None, tracked.split("\0"))):
@@ -241,6 +258,10 @@ def package(root: Path, binary: Path, msys: Path, python_zip: Path, out: Path) -
             else:
                 print(f"[INFO] Included {name} {pkg_version}: {package_meta['installed_files']} files.")
             manifest["toolchain_packages"].append(package_meta)
+        actual_versions = {meta["name"][0]: meta["version"][0]
+                           for meta in manifest["toolchain_packages"]}
+        if actual_versions != baseline["packages"]:
+            raise RuntimeError("Installed package inventory drifted after acquisition capture.")
         if REQUIRED_PACKAGES - seen_packages:
             raise RuntimeError(f"Missing package provenance: {REQUIRED_PACKAGES - seen_packages}")
         if not any(name.startswith("toolchain/share/licenses/") for name in archive.files):
@@ -283,5 +304,7 @@ if __name__ == "__main__":
     parser.add_argument("--msys2-root", type=Path, required=True)
     parser.add_argument("--python-zip", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--acquisition-report", type=Path, required=True)
     args = parser.parse_args()
-    package(args.root, args.binary, args.msys2_root, args.python_zip, args.output)
+    package(args.root, args.binary, args.msys2_root, args.python_zip, args.output,
+            args.acquisition_report)

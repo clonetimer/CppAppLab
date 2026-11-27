@@ -67,6 +67,16 @@ def verify(archive: Path) -> None:
         # Chinese learner and progress locations remain independent of it.
         package = base / "Relocated learner package"
         manifest = verify_extract(archive, package)
+        acquisition = package / "provenance/acquisition-lock-candidate.json"
+        baseline = package / "provenance/ucrt64-versions.json"
+        report = json.loads(acquisition.read_text(encoding="utf-8"))
+        lock = json.loads(baseline.read_text(encoding="utf-8"))
+        assert hashlib.sha256(acquisition.read_bytes()).hexdigest() == manifest["acquisition_report_sha256"]
+        assert hashlib.sha256(baseline.read_bytes()).hexdigest() == report["version_baseline_sha256"]
+        assert report["status"] == "ARCHIVE_HASH_CAPTURE_CANDIDATE"
+        assert {name: value["version"] for name, value in report["packages"].items()} == lock["packages"]
+        assert {meta["name"][0]: meta["version"][0] for meta in manifest["toolchain_packages"]} == lock["packages"]
+        print(f"[PASS] Packaged acquisition provenance: {len(lock['packages'])} exact versions and archive hashes.")
         home = base / "学员 配置"
         home.mkdir()
         system = Path(os.environ["SystemRoot"])

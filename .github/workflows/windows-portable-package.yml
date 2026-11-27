@@ -5,6 +5,8 @@ on:
     paths:
       - 'packaging/windows/**'
       - 'scripts/package_windows_native.py'
+      - 'scripts/verify_windows_toolchain_lock.py'
+      - 'tests/test_windows_toolchain_lock.py'
       - 'tests/test_windows_native_package.py'
       - 'src/**'
       - 'include/**'
@@ -47,6 +49,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Verify frozen UCRT64 versions and capture exact upstream archive hashes
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          python -m unittest discover -s tests -p 'test_windows_toolchain_lock.py'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $report = Join-Path $env:RUNNER_TEMP 'cppapplab-native-package/acquisition-lock-candidate.json'
+          python scripts/verify_windows_toolchain_lock.py --msys2-root $env:MSYS2_LOCATION --lock packaging/windows/ucrt64-versions.json --output $report
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build the actual release learner engine
         shell: pwsh
         env:
@@ -82,7 +94,7 @@ jobs:
           $out = Join-Path $env:RUNNER_TEMP 'cppapplab-native-package'
           python -m py_compile scripts/package_windows_native.py packaging/windows/start-native.py tests/test_windows_native_package.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python scripts/package_windows_native.py --root . --binary $binary --msys2-root $env:MSYS2_LOCATION --python-zip $pythonZip --output $out
+          python scripts/package_windows_native.py --root . --binary $binary --msys2-root $env:MSYS2_LOCATION --python-zip $pythonZip --acquisition-report (Join-Path $out 'acquisition-lock-candidate.json') --output $out
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Extract and exercise all five packaged native courses using bundled tools
         shell: pwsh
@@ -103,3 +115,11 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
+
+      - name: Upload small independently reviewable acquisition hash report
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppapplab-windows-acquisition-lock-candidate-${{ github.sha }}
+          path: ${{ runner.temp }}/cppapplab-native-package/acquisition-lock-candidate.json
+          if-no-files-found: error
+          retention-days: 30

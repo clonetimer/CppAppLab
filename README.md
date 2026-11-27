@@ -180,3 +180,7 @@ CppAppLab is an educational engineering lab, not a production C++ framework or a
 
 
 基础知识覆盖审计见 [审计报告](docs/CPP17_KNOWLEDGE_COVERAGE.md)（51 项 W1–W6 抽样；第一轮 21 组已验证，第二轮 7 组待验收；正式任务数不变）。
+
+### 可选现代 C++ 教学（CP4 候选）
+
+现有 23 个正式工程仍用 C++17，不需要升级编译器。现代知识对照使用独立 GCC 13.x 配置，Ubuntu 24.04 可手动安装 g++-13；没有工具链时知识仍可阅读，运行按钮不可用，不回退。首批 C++20/23 实验待专项验证，见 [现代配置](docs/MODERN_CPP_PROFILE.md)。

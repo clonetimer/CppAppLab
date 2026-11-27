@@ -12,6 +12,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+import modern_cpp
+
 MAX_LOG = 64 * 1024
 TOPICS: tuple[dict[str, Any], ...] = (
     {
@@ -484,12 +486,14 @@ TOPICS: tuple[dict[str, Any], ...] = (
     },
 )
 BY_ID = {topic["id"]: topic for topic in TOPICS}
+ALL_BY_ID = {**BY_ID, **modern_cpp.BY_ID}
 
 
 def catalog(task_ids: set[str]) -> list[dict[str, Any]]:
     # The task registry remains authoritative, including in partial installations.
-    return [dict(topic, course_available=topic["task"] in task_ids)
-            for topic in TOPICS]
+    classic = [dict(topic, standard=17, course_available=topic["task"] in task_ids)
+               for topic in TOPICS]
+    return classic + modern_cpp.catalog(task_ids)
 
 
 def execute(command: list[str], cwd: Path, timeout: float) -> dict[str, Any]:
@@ -525,6 +529,8 @@ def execute(command: list[str], cwd: Path, timeout: float) -> dict[str, Any]:
 
 
 def run(topic_id: str, variant: str) -> dict[str, Any]:
+    if topic_id in modern_cpp.BY_ID:
+        return modern_cpp.run(topic_id, variant, execute)
     topic = BY_ID[topic_id]
     if not topic["phase"] or variant not in {"failure", "repair"}:
         raise ValueError("Unknown runnable experiment or variant.")

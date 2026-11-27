@@ -123,3 +123,12 @@ ctest --test-dir build --output-on-failure
 - **template-specialization · 类模板特化** — 主模板提供通用实现，显式特化替换某个完整类型的实现，偏特化匹配一类类型。本实验同时检查主模板、指针偏特化和 int 显式特化；缺失特化由真实 static_assert 拒绝。 Answer<int> 与 Answer<int*> 分别匹配哪一个定义？ 为不同输入类型写小型 trait，先用 static_assert 验证匹配，再考虑模板接口扩展。
 - **type-traits · 类型特征与 SFINAE** — std::is_integral_v 是编译期类型谓词，enable_if 在条件为假时使该模板候选不参与重载。替换失败不总是硬错误；没有可用候选时调用仍然报错。 只允许整数的 twice 为什么不能接收 double？ 增加一个适合浮点数的独立重载，并对整数、浮点和不支持类型分别验证。
 - **memory-order · release/acquire 与发布顺序** — release 写入和读取该值的 acquire 建立同步关系，发布前的写入应对获取方可见。负例故意先发布 ready，再等待消费者确认才写 payload；全部共享通信采用原子，确定性观察旧值 0，无数据竞争。修复先写 payload 再 release。此对照证明发布顺序的重要性，不声称 relaxed 必然失败或验证所有硬件内存模型。 如果先置 ready 再写数据，即便 ready 使用 release/acquire，消费者一定能读到新数据吗？ 画出两个线程的 happens-before 链；指出哪些操作受同步保护，何时应优先使用互斥锁。
+
+## 现代 C++ 泛型与并发补课
+
+CP4 现代标准补课使用独立 GCC 13 配置，不属于原 C++17 工程验收。通过「查知识」搜索编号，先预测、运行真实失败/修复、解释，再完成自己的独立练习。缺少编译器或特性时不计为预期失败，不影响原课程。
+
+- **cpp20-concepts · Concepts 与约束重载（C++20）** — 用 std::integral 约束模板，观察浮点实参的真实拒绝。
+- **cpp20-jthread · jthread 与协作停止（C++20）** — 发出协作停止请求，以真实握手观察令牌后 join。
+- **cpp20-coroutine · 协程挂起、恢复与句柄所有权（C++20）** — 观察初始挂起和恢复后的一次 yield，再销毁拥有的句柄。
+- **cpp23-if-consteval · if consteval 与求值语境（C++23）** — 比较清单常量求值和运行期分支。

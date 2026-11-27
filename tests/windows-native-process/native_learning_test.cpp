@@ -193,6 +193,51 @@ TEST(NativeLearningWorkflow, RealW1CompileCheckPersistsEvidenceAndUnlocksCalcula
                                     ".cppapplab-workspace"));
 }
 
+TEST(NativeLearningWorkflow, RealCalculatorCMakeGoogleTestAcceptanceUsesSharedEngine) {
+    Scratch scratch;
+    IsolatedProfile profile(scratch.root());
+
+    const auto* hello = cppapplab::find_task("w1.hello-world");
+    ASSERT_NE(hello, nullptr);
+    const auto hello_workspace = cppapplab::create_workspace(
+        *hello, profile.home / "cppapplab-work" / "w1.hello-world");
+    write_source(hello_workspace.root,
+                 "#include <iostream>\n"
+                 "int main() { std::cout << \"Hello, CppAppLab!\\n\"; return 0; }\n");
+    {
+        StdoutCapture capture;
+        ASSERT_EQ(invoke({"cppapplab", "check", hello_workspace.root.u8string()}), 0)
+            << capture.str();
+    }
+    ASSERT_TRUE(cppapplab::has_current_pass("w1.hello-world"));
+
+    const auto* calculator = cppapplab::find_task("w1.calculator");
+    ASSERT_NE(calculator, nullptr);
+    const auto calculator_workspace = cppapplab::create_workspace(
+        *calculator, profile.home / "cppapplab-work" / "w1.calculator");
+    const auto reference = cppapplab::data_root() / "labs" / "w1" / "calculator" / "reference";
+    for (const auto& relative : calculator->source_files) {
+        const auto source = reference / relative;
+        const auto destination = calculator_workspace.root / relative;
+        fs::create_directories(destination.parent_path());
+        fs::copy_file(source, destination, fs::copy_options::overwrite_existing);
+    }
+
+    std::string check_output;
+    int check_result = -1;
+    {
+        StdoutCapture capture;
+        check_result = invoke({"cppapplab", "check", calculator_workspace.root.u8string()});
+        check_output = capture.str();
+    }
+    ASSERT_EQ(check_result, 0) << check_output;
+    EXPECT_NE(check_output.find("Result: PASS"), std::string::npos);
+    EXPECT_NE(check_output.find("Acceptance: " + std::to_string(calculator->expected_test_count) +
+                                "/" + std::to_string(calculator->expected_test_count)),
+              std::string::npos);
+    EXPECT_TRUE(cppapplab::has_current_pass("w1.calculator"));
+}
+
 TEST(NativeLearningWorkflow, WrongOutputCannotUnlockCalculator) {
     Scratch scratch;
     IsolatedProfile profile(scratch.root());

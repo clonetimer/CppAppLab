@@ -123,3 +123,22 @@ jobs:
           path: ${{ runner.temp }}/cppapplab-native-package/acquisition-replay.json
           if-no-files-found: error
           retention-days: 30
+
+      - name: Collect exact-version source and license evidence (not release approval)
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          python -m unittest discover -s tests -p 'test_windows_redistribution_audit.py'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $out = Join-Path $env:RUNNER_TEMP 'cppapplab-native-package'
+          python scripts/audit_windows_redistribution.py --root . --msys2-root $env:MSYS2_LOCATION --summary (Join-Path $out 'package-summary.json') --output (Join-Path $out 'redistribution-evidence.json')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path (Join-Path $out 'redistribution-evidence.json'))) { throw 'Missing redistribution evidence report' }
+      - name: Upload source and license evidence for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppapplab-windows-redistribution-evidence-${{ github.sha }}
+          path: ${{ runner.temp }}/cppapplab-native-package/redistribution-evidence.json
+          if-no-files-found: error
+          retention-days: 30

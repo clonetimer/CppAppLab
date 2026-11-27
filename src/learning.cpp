@@ -325,7 +325,7 @@ int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
         log << "\n[CppAppLab] Compilation failed with exit code " << compilation.exit_code << ".\n";
     } else {
         log << "\n$ .cppapplab/build/learner_app\n";
-        const ProcessResult execution = run_process({executable_argument}, workspace.root,
+        const ProcessResult execution = run_process({executable.u8string()}, workspace.root,
                                                     std::chrono::seconds(5), kMaxProgramOutput);
         log << execution.output;
 

@@ -77,3 +77,7 @@ powershell -ExecutionPolicy Bypass -File .\tests\windows-target-machine-acceptan
 - 跳过的 job 必须单独标记，不能折算为 PASS。
 - 课程目录覆盖不等于学员掌握；固定夹具通过不等于迁移能力通过。
 - 对 fuzz 结果只报告实际次数、工具链、语料和是否发现问题，不把有限无发现扩大为安全结论。
+
+## CP6-B packaged browser candidate
+
+#83 was merged as `ffea39d984934c3b9d624a62eedce2266f5a3418` after run 45945570547 passed all 14 applicable jobs (one push-only job skipped). Its prebuilt learner packages provided CLI only. This candidate ships the existing web service and static UI beside the prebuilt CLI, with a single foreground loopback entry point. Both Ubuntu package jobs must now run real HTTP W1 starter FAIL, build/run, formal PASS, source staleness and restart persistence from a relocated package, without building the platform again. The existing source Chromium gate remains separate; the package API test is not a new human or browser-DOM qualification. No new course or acceptance contract, no new Node runtime, no native Windows claim. Target-machine and human learning remain NOT RUN.

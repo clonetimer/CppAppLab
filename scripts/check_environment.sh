@@ -63,6 +63,17 @@ else
     fail "libgtest-dev is required for platform acceptance tests; install it with: sudo apt install libgtest-dev"
 fi
 
+if dpkg-query -W -f='${Status}' libssl-dev 2>/dev/null | grep -q 'install ok installed'; then
+    pass "OpenSSL development package is installed"
+else
+    fail "libssl-dev is required for W10 TLS acceptance; install it with: sudo apt install libssl-dev openssl"
+fi
+if command -v openssl >/dev/null 2>&1; then
+    pass "OpenSSL: $(openssl version)"
+else
+    fail "openssl is required to generate disposable local W10 test certificates"
+fi
+
 if command -v cmake >/dev/null 2>&1; then
     cmake_version="$(cmake --version | awk 'NR == 1 {print $3}')"
     if dpkg --compare-versions "$cmake_version" ge "3.18"; then

@@ -20,7 +20,7 @@ fi
 # shellcheck source=scripts/lib/terminal.sh
 source "$ROOT/scripts/lib/terminal.sh"
 
-required_packages=(build-essential cmake git gdb libgtest-dev)
+required_packages=(build-essential cmake git gdb libgtest-dev libssl-dev openssl)
 missing_packages=()
 for package in "${required_packages[@]}"; do
     if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q 'install ok installed'; then

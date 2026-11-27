@@ -41,7 +41,7 @@ To run the P8-E Windows 11 + WSL2 target-machine acceptance and generate a JSON 
 .\tests\windows-target-machine-acceptance.ps1
 ~~~
 
-If multiple supported Ubuntu distributions are installed, the script asks you to select one. You can pass `-Distro Ubuntu-22.04` or `-Distro Ubuntu-24.04`, and `-RepoPath` for a non-default Linux checkout. It verifies Windows 11, WSL2, Ubuntu version, the actual Windows launcher/browser handoff, the CppAppLab health identity, the 25-task catalog count and the served page. Evidence is written under `artifacts/windows-target-machine/`. The script intentionally leaves the workbench running and does not stop or alter learner workspaces. A PASS is target-machine evidence; hosted CI syntax checks alone are not.
+If multiple supported Ubuntu distributions are installed, the script asks you to select one. You can pass `-Distro Ubuntu-22.04` or `-Distro Ubuntu-24.04`, and `-RepoPath` for a non-default Linux checkout. It verifies Windows 11, WSL2, Ubuntu version, the actual Windows launcher/browser handoff, the CppAppLab health identity, the 26-task catalog count and the served page. Evidence is written under `artifacts/windows-target-machine/`. The script intentionally leaves the workbench running and does not stop or alter learner workspaces. A PASS is target-machine evidence; hosted CI syntax checks alone are not.
 
 ## 2. Verify Ubuntu
 
@@ -65,7 +65,9 @@ sudo apt install -y \
   gdb \
   clang-format \
   clang-tidy \
-  libgtest-dev
+  libgtest-dev \
+  libssl-dev \
+  openssl
 ~~~
 
 The required compiler is GCC/g++. The course baseline is C++17. CMake must be at least 3.18.

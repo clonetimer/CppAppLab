@@ -25,7 +25,7 @@ Install the Ubuntu packages once:
 
 ~~~bash
 sudo apt update
-sudo apt install -y build-essential cmake git gdb libgtest-dev
+sudo apt install -y build-essential cmake git gdb libgtest-dev libssl-dev openssl
 ~~~
 
 Then run the environment check:
@@ -34,7 +34,7 @@ Then run the environment check:
 bash scripts/check_environment.sh
 ~~~
 
-The prebuilt CppAppLab CLI is included. GCC, CMake and GoogleTest are still required because learner acceptance fixtures compile the learner's C++ source on the local machine. GDB is used by the environment and debugging lessons.
+The prebuilt CppAppLab CLI is included. GCC, CMake and GoogleTest are still required because learner acceptance fixtures compile the learner's C++ source on the local machine. GDB is used by the environment and debugging lessons. W10 TLS acceptance also needs OpenSSL 3.x headers/library and the openssl command for disposable local certificate fixtures.
 
 ## What is included
 

@@ -3,4 +3,6 @@ cmake
 git
 gdb
 libgtest-dev
+libssl-dev
+openssl
 python3

@@ -9,6 +9,7 @@ Target: an existing Ubuntu @TARGET_UBUNTU_VERSION@ LTS x86_64 (amd64) installati
 Required learner/build toolchain:
 
 - build-essential (GCC/G++)
+- libssl-dev and openssl (W10 local TLS acceptance)
 - CMake
 - Git
 - GDB

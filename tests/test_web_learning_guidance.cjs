@@ -121,7 +121,7 @@ async function fixture(browser, { referenceFixture = false, pendingEditor = fals
     }
     assert.ok(ready, "real learning server must start: " + errors);
     await page.goto(baseUrl);
-    await page.waitForFunction(() => document.querySelectorAll("#course-list .task-link").length === 24);
+    await page.waitForFunction(() => document.querySelectorAll("#course-list .task-link").length === 25);
   } catch (error) {
     await close();
     throw error;
@@ -192,7 +192,7 @@ async function guideReady(page) {
   await page.waitForFunction(() => document.querySelector("#learning-guide").open &&
     !document.querySelector("#guide-content").hidden &&
     document.querySelector("#guide-content").getAttribute("aria-busy") === "false" &&
-    document.querySelectorAll("#guide-content .guide-task-button").length === 24 &&
+    document.querySelectorAll("#guide-content .guide-task-button").length === 25 &&
     [...document.querySelectorAll("#guide-sections button")].every((button) => !button.disabled));
 }
 
@@ -270,7 +270,7 @@ const cases = {
       assert.equal(await page.locator("#guide-close").evaluate((element) => document.activeElement === element), true);
       const ids = await page.locator("#guide-content .guide-task-button").evaluateAll((buttons) =>
         buttons.map((button) => button.dataset.taskId));
-      assert.equal(ids.length, 24);
+      assert.equal(ids.length, 25);
       assert.deepEqual(ids.sort(), catalog.tasks.map((task) => task.id).sort(),
         "the real Markdown must expose each registered course exactly once");
       const sections = ["第一次使用", "常用词解释", "按阶段学习", "常见错误"];
@@ -652,7 +652,7 @@ const cases = {
     try {
       // Query changes force genuine startup reads rather than a same-document hash transition.
       await page.goto(baseUrl + "/?bookmark=unknown#task=missing.lesson&file=src%2Fmain.cpp");
-      await page.waitForFunction(() => document.querySelectorAll("#course-list .task-link").length === 24 && !location.hash);
+      await page.waitForFunction(() => document.querySelectorAll("#course-list .task-link").length === 25 && !location.hash);
       assert.equal(await page.locator("#welcome-panel").isVisible(), true);
       assert.equal(reads.some(([, url]) => url.includes("missing.lesson")), false,
         "an unknown bookmarked task must not reach a task API endpoint");

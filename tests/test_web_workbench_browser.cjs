@@ -149,7 +149,7 @@ async function startService(label) {
       const response = await fetch(baseUrl + "/api/v1/health");
       if (response.ok) {
         const health = await response.json();
-        if (health.status === "ok" && health.task_count === 24) {
+        if (health.status === "ok" && health.task_count === 25) {
           ready = true;
           break;
         }
@@ -335,7 +335,7 @@ async function main() {
       document.querySelector("#engine-status")?.textContent.includes("本地引擎已连接")
     );
     await page.waitForFunction(() =>
-      document.querySelectorAll("#course-list .task-link").length === 24
+      document.querySelectorAll("#course-list .task-link").length === 25
     );
 
     // Exercise the actual first-use path rather than selecting a lesson from
@@ -1114,7 +1114,7 @@ async function main() {
       document.querySelector("#engine-status")?.textContent.includes("本地引擎已连接")
     );
     await page.waitForFunction(() =>
-      document.querySelectorAll("#course-list .task-link").length === 24
+      document.querySelectorAll("#course-list .task-link").length === 25
     );
     await page.locator('#course-list .task-link[data-task-id="w3.task-manager"]').click();
     await page.waitForFunction(() =>
@@ -1281,7 +1281,7 @@ async function main() {
     assert.equal(await page.locator("#app-execute-button").isDisabled(), true);
 
     // P8-C5: walk every catalog entry in the actual browser. This verifies
-    // that all 24 tasks are selectable, have their authoritative lesson and
+    // that all 25 tasks are selectable, have their authoritative lesson and
     // state rendered, and expose the same prerequisite metadata as the API.
     const catalogTaskIds = [
       "w1.hello-world", "w1.calculator", "w2.todo-cli", "w3.task-manager",
@@ -1291,7 +1291,7 @@ async function main() {
       "w8.http-keep-alive", "w8.http-connection-guards",
       "w8.http-graceful-shutdown", "w8.http-observability",
       "w8.http-operational-load", "w9.http-chunked", "w9.request-target",
-      "w9.static-root", "w9.http-hardening"
+      "w9.static-root", "w9.http-hardening", "w9.http-fuzzing"
     ];
     assert.equal(await page.locator("#course-list .task-link").count(), catalogTaskIds.length);
     for (const taskId of catalogTaskIds) {
@@ -1366,7 +1366,7 @@ async function main() {
       document.querySelector("#engine-status")?.textContent.includes("本地引擎已连接")
     );
     await page.waitForFunction(() =>
-      document.querySelectorAll("#course-list .task-link").length === 24
+      document.querySelectorAll("#course-list .task-link").length === 25
     );
     await page.locator('#course-list .task-link[data-task-id="w1.hello-world"]').click();
     await page.waitForFunction(() =>
@@ -1478,7 +1478,7 @@ async function main() {
       document.querySelector("#engine-status")?.textContent.includes("本地引擎已连接")
     );
     await fallbackPage.waitForFunction(() =>
-      document.querySelectorAll("#course-list .task-link").length === 24
+      document.querySelectorAll("#course-list .task-link").length === 25
     );
     const fallbackHello = fallbackPage.locator('#course-list .task-link[data-task-id="w1.hello-world"]');
     await fallbackHello.click();

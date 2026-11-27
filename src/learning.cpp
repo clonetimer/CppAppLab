@@ -771,6 +771,29 @@ std::filesystem::path application_fingerprint_path(const std::filesystem::path& 
     return directory / "cppapplab-app-source.fingerprint";
 }
 
+#ifdef _WIN32
+class ScopedEnvironmentValue {
+   public:
+    ScopedEnvironmentValue(const wchar_t* name, const std::filesystem::path& value)
+        : name_(name), previous_(windows_state_io::environment_path(name)) {
+        if (!SetEnvironmentVariableW(name_.c_str(), value.c_str())) {
+            throw std::runtime_error("Cannot set application runtime environment.");
+        }
+    }
+
+    ~ScopedEnvironmentValue() {
+        (void)SetEnvironmentVariableW(name_.c_str(),
+                                      previous_.has_value() ? previous_->c_str() : nullptr);
+    }
+
+    ScopedEnvironmentValue(const ScopedEnvironmentValue&) = delete;
+    ScopedEnvironmentValue& operator=(const ScopedEnvironmentValue&) = delete;
+
+   private:
+    std::wstring name_;
+    std::optional<std::filesystem::path> previous_;
+};
+#else
 class ScopedEnvironmentValue {
    public:
     ScopedEnvironmentValue(std::string name, std::string value) : name_(std::move(name)) {
@@ -799,6 +822,7 @@ class ScopedEnvironmentValue {
     std::string previous_;
     bool had_previous_{false};
 };
+#endif
 
 bool declared_source(const Task& task, const std::string& relative) {
     for (const auto& source : task.source_files) {
@@ -1110,8 +1134,12 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
     }
     if (task.id == "w2.todo-cli" || task.id == "w3.task-manager" ||
         task.id == "w4.quality-gate") {
+#ifdef _WIN32
+        ScopedEnvironmentValue todo_file(L"CPPAPPLAB_TODO_FILE", runtime_directory / "todos.tsv");
+#else
         ScopedEnvironmentValue todo_file(
             "CPPAPPLAB_TODO_FILE", (runtime_directory / "todos.tsv").string());
+#endif
         std::vector<std::string> command{executable.string()};
         command.insert(command.end(), application_arguments.begin(), application_arguments.end());
         const ProcessResult result = run_process(
@@ -1435,16 +1463,29 @@ int resume_task(std::string_view task_id) {
 }
 
 std::filesystem::path default_workspace_root(const Task& task) {
+#ifdef _WIN32
+    const auto home = windows_state_io::environment_path(L"USERPROFILE");
+    if (!home.has_value()) {
+        throw std::runtime_error(
+            "USERPROFILE is not set; use the explicit start command or configure a Windows user profile.");
+    }
+    return *home / "cppapplab-work" / task.id;
+#else
     const char* home = std::getenv("HOME");
     if (home == nullptr || home[0] == '\0') {
         throw std::runtime_error(
             "HOME is not set; use the explicit start command or set HOME before using learn.");
     }
     return std::filesystem::path(home) / "cppapplab-work" / task.id;
+#endif
 }
 
 bool workspace_path_is_occupied(const std::filesystem::path& path) {
+#ifdef _WIN32
+    return windows_state_io::entry_exists(path);
+#else
     return std::filesystem::exists(path) || std::filesystem::is_symlink(path);
+#endif
 }
 
 std::optional<Workspace> find_existing_workspace(const Task& task) {
@@ -1541,7 +1582,7 @@ int guided_learn(std::string_view requested_task_id) {
         std::cout << "  - " << source.generic_string() << '\n';
     }
 
-    if (std::getenv("CPPAPPLAB_LAUNCH_COMMAND") != nullptr) {
+    if (packaged_launcher_configured()) {
         std::cout << "提示：教程中 ./build/cppapplab 示例适用于源码版本；请使用页面底部自动生成的学习包命令。\n";
     }
     std::cout << "\n--- Task guide ---\n";
@@ -1767,7 +1808,7 @@ void print_help() {
 
 int run_cli(int argc, char* argv[]) {
     if (argc <= 1) {
-        if (::isatty(STDIN_FILENO) != 0 && ::isatty(STDOUT_FILENO) != 0) {
+        if (interactive_console_available()) {
             return interactive_menu();
         }
         print_help();

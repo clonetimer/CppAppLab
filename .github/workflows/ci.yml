@@ -938,6 +938,63 @@ jobs:
           $next = & $exe learn | Out-String
           if ($LASTEXITCODE -ne 0 -or $next -notmatch 'w1\.calculator') { throw 'A current W1 PASS did not unlock Calculator.' }
 
+      - name: Prepare native Windows Python web runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate and exercise native Windows web service
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $toolBin = Join-Path $env:MSYS2_LOCATION 'ucrt64\bin'
+          $env:PATH = "$toolBin;$env:PATH"
+          $env:CMAKE_PREFIX_PATH = Join-Path $env:MSYS2_LOCATION 'ucrt64'
+          $build = Join-Path $env:RUNNER_TEMP 'cppapplab native learning root'
+          $exe = Join-Path $build 'cppapplab.exe'
+          $tokens = $null
+          $errors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/start-native-web-workbench.ps1').Path,
+            [ref]$tokens, [ref]$errors)
+          if ($errors.Count -gt 0) { throw ($errors | Out-String) }
+          python -m py_compile web/server/cppapplab_web.py tests/test_native_web_workbench.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --check web/ui/app.js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --check tests/test_native_web_workbench_browser.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/test_native_web_workbench.py . $exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install pinned Chromium browser runner on Windows
+        shell: pwsh
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npx playwright install chromium
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise real Windows browser and capture screenshots
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $toolBin = Join-Path $env:MSYS2_LOCATION 'ucrt64\bin'
+          $env:PATH = "$toolBin;$env:PATH"
+          $env:CMAKE_PREFIX_PATH = Join-Path $env:MSYS2_LOCATION 'ucrt64'
+          $env:CPPAPPLAB_TEST_BINARY = Join-Path $env:RUNNER_TEMP 'cppapplab native learning root\cppapplab.exe'
+          $env:CPPAPPLAB_TEST_PYTHON = (Get-Command python.exe).Source
+          $env:CPPAPPLAB_BROWSER_ARTIFACT_DIR = Join-Path $env:RUNNER_TEMP 'cppapplab-windows-browser-artifacts'
+          node tests/test_native_web_workbench_browser.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload native Windows browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppapplab-windows-browser-${{ github.sha }}
+          path: ${{ runner.temp }}/cppapplab-windows-browser-artifacts/*.png
+          if-no-files-found: warn
+          retention-days: 14
+
   browser-workbench:
     name: Chromium browser acceptance (Ubuntu 24.04)
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.run_full_ubuntu_validation) }}

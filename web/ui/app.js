@@ -327,8 +327,13 @@
       "NEEDS WORK": "需要修改",
       "STALE": "结果已过期",
       "LOCKED": "未解锁",
+      "LINUX/WSL2 REQUIRED": "需要 Linux / WSL2",
       "UNKNOWN": "状态未知"
     })[value] || value || "未知";
+  }
+
+  function environmentBlocked(task) {
+    return task && (task.execution_available === false || task.state === "LINUX/WSL2 REQUIRED");
   }
 
   function readLessonLanguage() {
@@ -576,7 +581,10 @@
 
   function updateProgressSummary() {
     const passed = state.tasks.filter((task) => task.state === "PASSED").length;
-    ui.progress.textContent = passed + " / " + state.tasks.length + " 个任务已通过";
+    const executable = state.tasks.filter(task => !environmentBlocked(task)).length;
+    const nativeLimited = executable < state.tasks.length;
+    ui.progress.textContent = passed + " / " + executable + " 个" + (nativeLimited ? "本机" : "") + "任务已通过" +
+      (nativeLimited ? " · " + (state.tasks.length - executable) + " 项需 WSL2" : "");
     ui.taskCount.textContent = String(state.tasks.length);
   }
 
@@ -615,7 +623,7 @@
         button.title = courseTitle(task);
         const marker = document.createElement("span");
         marker.className = "task-marker";
-        marker.textContent = task.state === "PASSED" ? "✓" : task.state === "LOCKED" ? "·" : task.id.split(".").slice(-1)[0].slice(0, 2).toUpperCase();
+        marker.textContent = task.state === "PASSED" ? "✓" : (task.state === "LOCKED" || environmentBlocked(task)) ? "·" : task.id.split(".").slice(-1)[0].slice(0, 2).toUpperCase();
         const copy = document.createElement("span");
         copy.className = "task-link-copy";
         const title = document.createElement("strong");
@@ -705,16 +713,17 @@
     }
     if (request !== state.catalogRequest) return false;
     state.tasks = Array.isArray(data.tasks) ? data.tasks : [];
-    const knownStates = ["AVAILABLE", "NOT STARTED", "IN PROGRESS", "PASSED", "NEEDS WORK", "STALE", "LOCKED"];
+    const knownStates = ["AVAILABLE", "NOT STARTED", "IN PROGRESS", "PASSED", "NEEDS WORK", "STALE", "LOCKED", "LINUX/WSL2 REQUIRED"];
     state.progressFresh = state.tasks.length > 0 && state.tasks.every((task) => knownStates.includes(task.state));
     const selected = state.task && state.tasks.find((task) => task.id === state.task.id);
     if (state.task) {
       const selectedState = selected ? selected.state : "UNKNOWN";
       if (!selected) state.progressFresh = false;
       state.task.state = selectedState;
+      if (selected) state.task.execution_available = selected.execution_available;
       ui.taskState.textContent = stateLabel(selectedState);
       ui.taskState.dataset.state = selectedState;
-      ui.startButton.disabled = state.busy || !state.progressFresh || selectedState === "LOCKED";
+      ui.startButton.disabled = state.busy || !state.progressFresh || selectedState === "LOCKED" || environmentBlocked(state.task);
     }
     updateProgressSummary();
     renderCourseList();
@@ -722,7 +731,9 @@
       || state.tasks.find((task) => task.state === "AVAILABLE");
     ui.continueButton.disabled = state.busy || !state.progressFresh || !next;
     ui.continueButton.textContent = !state.progressFresh ? "课程状态暂不可用" : next ? "继续学习  →" :
-      state.tasks.every((task) => task.state === "PASSED") ? "课程已完成" : "暂无可开始课程";
+      state.tasks.every((task) => task.state === "PASSED") ? "课程已完成" :
+      state.tasks.every((task) => task.state === "PASSED" || environmentBlocked(task)) ?
+        "本机课程已完成 · 后续需要 WSL2" : "暂无可开始课程";
     updateWorkflowGuidance();
     updateResumeAction();
     enhanceGuideCourses();
@@ -755,6 +766,9 @@
     if (state.busy) return offer("正在处理当前课程，请等待结果后继续操作。");
     if (!state.progressFresh) {
       return offer("课程状态需要刷新，刷新后再继续下一课。", "刷新课程状态", "refresh");
+    }
+    if (environmentBlocked(state.task)) {
+      return offer("当前 Windows 原生工作台可阅读教材与提示；本课的编译、运行及正式验收需要 Linux / WSL2。");
     }
     if (state.task.state === "LOCKED") {
       const prerequisite = (state.task.prerequisites || []).map((id) => state.tasks.find((task) => task.id === id))
@@ -1478,8 +1492,9 @@
       ui.taskState.dataset.state = task.state;
       renderLesson();
       const locked = task.state === "LOCKED";
-      ui.startButton.disabled = locked;
-      ui.startButton.textContent = locked ? "完成前置任务后解锁" :
+      const environmentRequired = environmentBlocked(task);
+      ui.startButton.disabled = locked || environmentRequired;
+      ui.startButton.textContent = environmentRequired ? "需要 Linux / WSL2" : locked ? "完成前置任务后解锁" :
         task.state === "PASSED" ? "打开学习工作区  →" : "开始 / 继续学习  →";
       if (["IN PROGRESS", "NEEDS WORK", "STALE", "PASSED"].includes(task.state)) {
         try { await loadWorkspaceFiles(state.preferredFile, { focusEditor: options.focusEditor }); }
@@ -1499,7 +1514,7 @@
 
   async function startTask(event) {
     const triggerButton = event && event.currentTarget ? event.currentTarget : ui.startButton;
-    if (!state.task || state.busy) return;
+    if (!state.task || state.busy || environmentBlocked(state.task)) return;
     setBusy(true, "正在准备学习工作区…", triggerButton, "准备中…");
     try {
       const result = await api("/api/v1/tasks/" + encodeURIComponent(state.task.id) + "/start", {
@@ -1596,8 +1611,10 @@
     $("knowledge-lesson").hidden = !topic.course_available;
     $("knowledge-experiment").hidden = !topic.phase;
     const profile = $("knowledge-profile");
-    profile.hidden = !(topic.standard > 17);
-    if (!profile.hidden) {
+    profile.hidden = !(topic.standard > 17) && topic.execution_available !== false;
+    if (topic.execution_available === false) {
+      profile.textContent = topic.environment_reason || "本环境仅支持阅读，实验执行尚待验证。";
+    } else if (!profile.hidden) {
       profile.textContent = "C++" + topic.standard + " · 独立 GCC 13 配置 · " +
         (topic.toolchain_present ? "已检测编译器文件，运行时核验版本及特性宏"
           : "缺少 /usr/bin/g++-13；Ubuntu 24.04 可手动安装 g++-13 后刷新网页。原 C++17 课程不受影响。");
@@ -1606,7 +1623,7 @@
       $("knowledge-bad").textContent = topic.bad;
       $("knowledge-good").textContent = topic.good;
     }
-    const unavailable = topic.standard > 17 && !topic.toolchain_present;
+    const unavailable = topic.execution_available === false || (topic.standard > 17 && !topic.toolchain_present);
     $("knowledge-failure").disabled = knowledgeState.running || !state.csrfToken || unavailable;
     $("knowledge-repair").disabled = knowledgeState.running || !state.csrfToken || unavailable;
   }
@@ -1663,7 +1680,7 @@
   async function runKnowledge(variant) {
     if (knowledgeState.running || !state.csrfToken) return;
     const topic = (knowledgeState.topics || []).find((item) => item.id === knowledgeState.active);
-    if (!topic?.phase || (topic.standard > 17 && !topic.toolchain_present)) return;
+    if (!topic?.phase || topic.execution_available === false || (topic.standard > 17 && !topic.toolchain_present)) return;
     knowledgeState.running = true;
     const session = knowledgeState.session;
     $("knowledge-status").textContent = "正在本机运行固定实验…";
@@ -1732,10 +1749,10 @@
     const meta = modernState.projects.find(item => item.id === modernState.active);
     const record = modernState.record;
     $("modern-choice").disabled = modernState.busy || !meta;
-    $("modern-start").disabled = modernState.busy || !meta || !!record || !state.csrfToken;
+    $("modern-start").disabled = modernState.busy || !meta || !!record || !state.csrfToken || meta.execution_available === false;
     $("modern-close").disabled = modernState.busy;
-    $("modern-start").textContent = record ? "项目已打开" : "打开学习项目";
-    $("modern-profile").textContent = meta ? "C++" + meta.standard + " · 独立 GCC 13 · " +
+    $("modern-start").textContent = meta?.execution_available === false ? "原生执行尚待验证" : record ? "项目已打开" : "打开学习项目";
+    $("modern-profile").textContent = meta?.execution_available === false ? meta.environment_reason : meta ? "C++" + meta.standard + " · 独立 GCC 13 · " +
       meta.count + " 项固定 GoogleTest · " + (meta.toolchain_present ?
         "运行时核验工具链" : "缺少 g++-13；Ubuntu 24.04 可安装 g++-13、cmake 和 libgtest-dev 后刷新网页") : "";
     $("modern-task").textContent = meta ? (state.lessonLanguage === "en" ? meta.en : meta.zh) : "";
@@ -2056,7 +2073,7 @@
         ui.serviceStopButton
       ].forEach(clearButtonPending);
     }
-    ui.startButton.disabled = value || !state.progressFresh || !state.task || ["LOCKED", "UNKNOWN"].includes(state.task.state);
+    ui.startButton.disabled = value || !state.progressFresh || !state.task || environmentBlocked(state.task) || ["LOCKED", "UNKNOWN"].includes(state.task.state);
     ui.saveButton.disabled = value || !state.workspaceReady || state.dirtyFiles.size === 0;
     ui.buildButton.disabled = value || !state.workspaceReady;
     ui.runButton.disabled = value || !state.workspaceReady;
@@ -2953,6 +2970,9 @@
       state.csrfToken = session.csrf_token;
       const health = await api("/api/v1/health");
       if (health.status !== "ok") throw new Error("本地 CppAppLab 引擎未就绪。");
+      const native = health.execution_environment === "native-windows";
+      const environment = $("execution-environment");
+      if (environment) environment.textContent = native ? "本地运行 · Windows 原生" : "本地运行 · Linux / WSL2";
       ui.engine.classList.add("online");
       ui.engine.innerHTML = '<span class="pulse"></span>本地引擎已连接';
       if (await loadTasks()) await followLearningLocation();

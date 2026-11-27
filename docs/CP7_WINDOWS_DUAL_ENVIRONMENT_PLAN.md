@@ -201,3 +201,51 @@ GCC upstream symlink support work (https://gcc.gnu.org/pipermail/gcc-patches/202
 Delivery caveat: CreateSymbolicLinkW with SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE needs Developer Mode for non-elevated use (https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createsymboliclinkw). Hosted Windows CI is not evidence that a clean, nonadmin Windows 11 without this capability can perform W2-W4 formal checks. This is a real CP7-D/G gate; do not silently enable system settings or weaken the security contract.
 
 Current candidate remains PR #93, pending fresh complete CI. No Windows browser/ZIP or target-machine/human claim.
+
+
+## CP7-B2c/C verified; CP7-F1 native browser candidate
+
+PR #93 merged at `3e2fdaeee664274c6b5286553edd73d938fbab23`.
+Final Windows run [45981293387](https://github.com/clonetimer/CppAppLab/actions/runs/45981293387):
+25/25 original native foundations, independent Calculator 9/9, six root
+integration tests including the complete W1-W4 Unicode workspace chain,
+and external native Unicode CLI smoke. The original formal contracts
+(Hello World 1 + Calculator 9 + Todo 19 + TaskManager 31 + QualityGate 41)
+all passed through the shared root engine. Full CI
+[45981293216](https://github.com/clonetimer/CppAppLab/actions/runs/45981293216):
+all 14 applicable jobs passed, one push-only job skipped. The hosted
+Windows result qualifies the engine and fixed course acceptance, not
+a clean nonadministrator Windows 11 with Developer Mode disabled.
+Real user acceptance and learning efficacy remain NOT RUN.
+
+F1 is deliberately a source-built native browser candidate ahead of
+packaging: reuse the existing local Python HTTP service and UI, bind
+loopback exclusively on Windows, supervise actual CLI processes, and
+rely on the existing native engine's non-inherited kill-on-close Job
+Objects for descendants. Track live native CLI calls, reject new calls
+after shutdown, terminate active CLI roots on timeout or controlled
+server shutdown; abrupt external termination of the Python supervisor
+is not a qualified cleanup path. Native browser API actions are
+serialized to avoid simultaneous edits/checks within this service.
+Local native path checks reject reparse points, hard-linked regular
+files, device names, alternate streams and unsafe ancestors before
+resolution; this is not a same-user security sandbox. Preserve the
+Linux browser/service path and fixed mutation token/origin guards.
+
+The native UI shows all 25 tasks but marks 20 as Linux/WSL2 required,
+keeps lessons and hints readable, limits execution to five W1-W4
+tasks and counts only those five in native progress. Unqualified
+knowledge experiments, modern C++ projects and network service
+execution are explicitly unavailable on native Windows; no false
+PASS or silent Linux fallback. No visual redesign.
+
+Source-build entry point: `scripts/start-native-web-workbench.ps1`,
+with an explicit native executable and Python on the caller's PATH;
+no WSL invocation, toolchain download, global PATH changes or
+Developer Mode changes. CI uses installed UCRT GCC and Python 3.12,
+checks native HTTP W1 red/build/run/green, Calculator 9/9, restart,
+history/stale behavior, hard-link and port guards, and actual
+descendant shutdown. Pinned Chromium runs the native fallback-editor
+DOM journey and captures Windows screenshots. New CI pending.
+This does not deliver the install-free Windows package or the unified
+WSL switching mechanism. CP7-D, E and remaining F/G are open.

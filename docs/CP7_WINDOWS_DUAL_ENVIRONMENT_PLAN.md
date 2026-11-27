@@ -115,3 +115,16 @@ Candidate head `75990c2d2de4fec208fae9a2d469d45b693c5fb0`:
 - Windows run [45957192856](https://github.com/clonetimer/CppAppLab/actions/runs/45957192856): 20/20 process/W1/native-state tests and original Calculator 9/9 passed. The final tested implementation flushes and closes the temporary before MoveFileExW.
 - Existing Linux regression [45957192865](https://github.com/clonetimer/CppAppLab/actions/runs/45957192865): all 14 applicable jobs PASS; one push-only compatibility check skipped as configured. This includes both Ubuntu builds, ASan/UBSan, clang-tidy, Chromium, CP4 GCC13, CP5 fuzz, package and offline-dependency gates.
 - PR #86 is ready for merge. B2a qualifies native progress/workspace evidence storage and the W1/Calculator native fixtures only. It does not qualify native workspace creation/copy, full learning engine, Python browser supervision, a Windows package or target-machine acceptance.
+
+
+## CP7-B2b — Native workspace creation and safe template copy (candidate)
+
+Implemented on top of CP7-B2a main `a6f1aab087a7da902d73ed794398203dcb04e01a`:
+
+- Windows `create_workspace` now rejects existing destinations, creates parents through the checked native directory API, creates the workspace exclusively, copies the actual learner template without following reparse points, publishes the workspace marker, and cleans partial workspaces through no-follow removal.
+- `open_workspace` validates the entire directory chain with native handles. Source fingerprints, evidence and marker reads already use the shared native I/O adapter.
+- Task catalog loading now reads the real `tasks.tsv` using wide-path no-follow I/O; `CPPAPPLAB_DATA_DIR` is read with `GetEnvironmentVariableW`, and compiled data roots use UTF-8 path decoding. This allows a Unicode install/data directory.
+- Tree copy rejects reparse-point entries, device entries and multiply linked files. Source and destination trees may not contain one another. Cleanup removes a final junction/reparse entry itself rather than traversing its target.
+- Five new tests cover workspace creation/reopen in Unicode paths, template junction rejection, hard-linked template rejection, destination-parent junction rejection, and safe junction cleanup. The Windows workflow count is raised from 20 to 25 tests (13 process/W1 + 7 state + 5 workspace); original Calculator remains 9/9. No course row or fixture contract changed.
+
+Current status: implementation candidate; fresh Windows and Ubuntu CI pending. Root CMake still rejects Windows, the complete `learning.cpp` CLI and Python browser supervisor are not yet native, and there is no Windows package. The next B2c gate is to qualify the native workspace/security tests and then port toolchain/process/environment/CRLF behavior in the learning engine without exposing Linux-only W5–W9 on Windows.

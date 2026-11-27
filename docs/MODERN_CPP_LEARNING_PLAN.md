@@ -82,3 +82,8 @@ PR #81 已合并至 main，合并提交 `41feb08eadbe6464b7092ca4e3141258a4a22d8
 ## CP6 启动：交付证据与学习验证
 
 CP6 不新增课程、不改固定验收、不重做已通过的 CP0–CP5。执行边界与验收清单见 [CP6 交付与学习验证清单](CP6_DELIVERY_AND_LEARNING_VALIDATION.md)。真实 Windows 11 + WSL2 目标机执行和真人学习迁移评估必须由真实环境/参与者产生证据；自动化 CI、模型推演和课程目录覆盖均不能代替。
+
+
+## CP6 implementation closeout and successor
+
+PR #84 merged as `731522a4eeab44dbb05114f87efcae7d2d3ffd8b`; final CI 45947613724 all 14 applicable jobs passed, two native Ubuntu package web smokes passed and W8 concurrent sanitizer repeats 20/20 on each Ubuntu. Real target-machine and human evaluation are deferred to post-delivery feedback, NOT RUN. CP0–CP6 implementation is closed. This file is historical for the prior milestone; active CP7 [Windows native and dual environment plan](CP7_WINDOWS_DUAL_ENVIRONMENT_PLAN.md) supersedes its paused-native direction, not its teaching or acceptance standards.

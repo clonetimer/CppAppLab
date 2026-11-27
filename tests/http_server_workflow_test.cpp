@@ -167,3 +167,39 @@ TEST(HttpServerWorkflowTest, D6AdvancedTasksUseLearnerSourcesInFixedAcceptance) 
         EXPECT_EQ(evidence->tests_total, task->expected_test_count) << task_id;
     }
 }
+
+TEST(HttpServerWorkflowTest, W9AdmissionStarterFailsAndReferencePassesFixedContract) {
+    const cppapplab::Task* task = cppapplab::find_task("w9.http-hardening");
+    ASSERT_NE(task, nullptr);
+    TemporaryDirectory temporary;
+    ScopedEnvironment state_directory("CPPAPPLAB_STATE_DIR", temporary.path() / "state");
+    const auto workspace = cppapplab::create_workspace(*task, temporary.path() / "http-admission");
+    auto check = [&]() {
+        std::vector<std::string> arguments{"cppapplab", "check", workspace.root.string()};
+        std::vector<char*> argv;
+        for (auto& argument : arguments) {
+            argv.push_back(argument.data());
+        }
+        return cppapplab::run_cli(static_cast<int>(argv.size()), argv.data());
+    };
+
+    EXPECT_NE(check(), 0);
+    const auto failed = cppapplab::read_evidence(workspace.root);
+    ASSERT_TRUE(failed.has_value());
+    EXPECT_FALSE(failed->passed);
+    const auto reference = cppapplab::data_root() / "labs/w9/http-hardening/reference";
+    std::filesystem::copy_file(reference / "src/http_hardening.cpp",
+                               workspace.root / "src/http_hardening.cpp",
+                               std::filesystem::copy_options::overwrite_existing);
+    {
+        std::ofstream untrusted(workspace.root / "include/http_hardening.hpp", std::ios::trunc);
+        ASSERT_TRUE(untrusted.good());
+        untrusted << "#error Learner header must not define the fixed contract\n";
+    }
+    EXPECT_EQ(check(), 0);
+    const auto passed = cppapplab::read_evidence(workspace.root);
+    ASSERT_TRUE(passed.has_value());
+    EXPECT_TRUE(passed->passed);
+    EXPECT_EQ(passed->tests_total, task->expected_test_count);
+    EXPECT_EQ(passed->tests_passed, task->expected_test_count);
+}

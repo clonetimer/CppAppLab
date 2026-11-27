@@ -1,0 +1,1 @@
+Implement only src/http_hardening.cpp. The provided headers are for reading; the fixed acceptance fixture uses the platform-owned admission interface and existing A1 parser. Use cppapplab build, run, check in the learning engine. No network endpoint is opened by this exercise.

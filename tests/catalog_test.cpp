@@ -267,3 +267,16 @@ TEST(TaskCatalogTest, ExposesSecureStaticRootExercise) {
 TEST(TaskCatalogTest, UnknownTaskDoesNotResolve) {
     EXPECT_EQ(cppapplab::find_task("w99.unknown"), nullptr);
 }
+
+TEST(TaskCatalogTest, ExposesHttpAdmissionPolicyExercise) {
+    const cppapplab::Task* task = cppapplab::find_task("w9.http-hardening");
+    ASSERT_NE(task, nullptr);
+    EXPECT_EQ(task->week, 9U);
+    EXPECT_EQ(task->order, 4U);
+    EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
+    ASSERT_EQ(task->source_files.size(), 1U);
+    EXPECT_EQ(task->source_files.front(), "src/http_hardening.cpp");
+    EXPECT_EQ(task->expected_test_count, 24U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w9.static-root");
+}

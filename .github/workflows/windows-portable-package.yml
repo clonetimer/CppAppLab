@@ -6,6 +6,8 @@ on:
       - 'packaging/windows/**'
       - 'scripts/package_windows_native.py'
       - 'scripts/verify_windows_toolchain_lock.py'
+      - 'scripts/replay_windows_toolchain_lock.py'
+      - 'tests/test_windows_toolchain_replay.py'
       - 'tests/test_windows_toolchain_lock.py'
       - 'tests/test_windows_native_package.py'
       - 'src/**'
@@ -34,30 +36,26 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
-      - name: Install native toolchain on the build runner only
+      - name: Prepare MSYS2 base and trusted keyring only (no native packages)
         id: msys2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: UCRT64
+          msystem: MSYS
           update: true
-          install: >-
-            mingw-w64-ucrt-x86_64-gcc
-            mingw-w64-ucrt-x86_64-cmake
-            mingw-w64-ucrt-x86_64-ninja
-            mingw-w64-ucrt-x86_64-gtest
-            mingw-w64-ucrt-x86_64-gdb
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Verify frozen UCRT64 versions and capture exact upstream archive hashes
+      - name: Replay all exact signed UCRT64 archives against the frozen lock
         shell: pwsh
         env:
           MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
         run: |
           python -m unittest discover -s tests -p 'test_windows_toolchain_lock.py'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $report = Join-Path $env:RUNNER_TEMP 'cppapplab-native-package/acquisition-lock-candidate.json'
-          python scripts/verify_windows_toolchain_lock.py --msys2-root $env:MSYS2_LOCATION --lock packaging/windows/ucrt64-versions.json --output $report
+          python -m unittest discover -s tests -p 'test_windows_toolchain_replay.py'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $report = Join-Path $env:RUNNER_TEMP 'cppapplab-native-package/acquisition-replay.json'
+          python scripts/replay_windows_toolchain_lock.py --msys2-root $env:MSYS2_LOCATION --baseline packaging/windows/ucrt64-versions.json --lock packaging/windows/ucrt64-archives.json --output $report
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build the actual release learner engine
         shell: pwsh
@@ -94,7 +92,7 @@ jobs:
           $out = Join-Path $env:RUNNER_TEMP 'cppapplab-native-package'
           python -m py_compile scripts/package_windows_native.py packaging/windows/start-native.py tests/test_windows_native_package.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python scripts/package_windows_native.py --root . --binary $binary --msys2-root $env:MSYS2_LOCATION --python-zip $pythonZip --acquisition-report (Join-Path $out 'acquisition-lock-candidate.json') --output $out
+          python scripts/package_windows_native.py --root . --binary $binary --msys2-root $env:MSYS2_LOCATION --python-zip $pythonZip --acquisition-report (Join-Path $out 'acquisition-replay.json') --output $out
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Extract and exercise all five packaged native courses using bundled tools
         shell: pwsh
@@ -116,10 +114,10 @@ jobs:
           compression-level: 0
           retention-days: 14
 
-      - name: Upload small independently reviewable acquisition hash report
+      - name: Upload frozen archive replay receipt
         uses: actions/upload-artifact@v4
         with:
-          name: cppapplab-windows-acquisition-lock-candidate-${{ github.sha }}
-          path: ${{ runner.temp }}/cppapplab-native-package/acquisition-lock-candidate.json
+          name: cppapplab-windows-acquisition-replay-${{ github.sha }}
+          path: ${{ runner.temp }}/cppapplab-native-package/acquisition-replay.json
           if-no-files-found: error
           retention-days: 30

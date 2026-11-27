@@ -7,8 +7,18 @@ project(
     LANGUAGES CXX
 )
 
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    message(FATAL_ERROR "CppAppLab learning engine requires Linux; use WSL2 + Ubuntu 22.04 LTS or 24.04 LTS.")
+if(WIN32)
+    if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        message(FATAL_ERROR "The validated native Windows toolchain is MinGW-w64 UCRT GCC. Use the UCRT64 GCC environment.")
+    endif()
+    set(CPPAPPLAB_PLATFORM_SOURCES
+        src/process_win32.cpp
+        src/windows_state_io.cpp
+    )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(CPPAPPLAB_PLATFORM_SOURCES src/process.cpp)
+else()
+    message(FATAL_ERROR "CppAppLab supports native Windows (UCRT64 GCC) and Linux. W5-W9 remain Linux/WSL2 learning tasks.")
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -76,7 +86,7 @@ add_library(
     src/task.cpp
     src/workspace.cpp
     src/progress.cpp
-    src/process.cpp
+    ${CPPAPPLAB_PLATFORM_SOURCES}
     src/learning.cpp
 )
 target_include_directories(
@@ -93,8 +103,18 @@ target_compile_definitions(
 )
 target_link_libraries(cppapplab_core PUBLIC cppapplab_build_options)
 
+if(WIN32)
+    find_package(Threads REQUIRED)
+    target_compile_definitions(cppapplab_core PUBLIC _WIN32_WINNT=0x0A00)
+    target_link_libraries(cppapplab_core PUBLIC Threads::Threads)
+endif()
+
 add_executable(cppapplab src/main.cpp)
 target_link_libraries(cppapplab PRIVATE cppapplab_core)
+if(WIN32)
+    target_compile_definitions(cppapplab PRIVATE _WIN32_WINNT=0x0A00)
+    target_link_options(cppapplab PRIVATE -municode)
+endif()
 
 if(BUILD_TESTING)
     find_package(GTest CONFIG QUIET)
@@ -118,11 +138,21 @@ if(BUILD_TESTING)
         endif()
     endif()
 
-    add_executable(cppapplab_process_test_child tests/process_test_child.cpp)
-    target_link_libraries(cppapplab_process_test_child PRIVATE cppapplab_build_options)
+    if(WIN32)
+        add_executable(
+            cppapplab_native_learning_tests
+            tests/windows-native-process/native_learning_test.cpp
+        )
+        target_compile_definitions(cppapplab_native_learning_tests PRIVATE _WIN32_WINNT=0x0A00)
+        target_link_libraries(cppapplab_native_learning_tests PRIVATE cppapplab_core GTest::gtest_main)
+        include(GoogleTest)
+        gtest_discover_tests(cppapplab_native_learning_tests PROPERTIES TIMEOUT 180)
+    else()
+        add_executable(cppapplab_process_test_child tests/process_test_child.cpp)
+        target_link_libraries(cppapplab_process_test_child PRIVATE cppapplab_build_options)
 
-    add_executable(
-        cppapplab_tests
+        add_executable(
+            cppapplab_tests
         tests/smoke_test.cpp
         tests/catalog_test.cpp
         tests/progress_test.cpp
@@ -152,6 +182,7 @@ if(BUILD_TESTING)
     target_include_directories(cppapplab_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
     add_dependencies(cppapplab_tests cppapplab_process_test_child)
 
-    include(GoogleTest)
-    gtest_discover_tests(cppapplab_tests)
+        include(GoogleTest)
+        gtest_discover_tests(cppapplab_tests)
+    endif()
 endif()

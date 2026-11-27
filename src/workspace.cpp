@@ -91,6 +91,12 @@ void atomic_write(const std::filesystem::path& path, const std::string& content)
 void copy_tree_without_symlinks(const std::filesystem::path& source,
                                 const std::filesystem::path& destination,
                                 bool create_destination = true) {
+#ifdef _WIN32
+    if (create_destination) {
+        windows_state_io::create_directory_exclusive(destination);
+    }
+    windows_state_io::copy_tree(source, destination);
+#else
     std::error_code error;
     const auto source_status = std::filesystem::symlink_status(source, error);
     if (error || !std::filesystem::is_directory(source_status) ||
@@ -118,6 +124,7 @@ void copy_tree_without_symlinks(const std::filesystem::path& source,
                                      source_path.string());
         }
     }
+#endif
 }
 
 std::string fnv_hex(std::uint64_t value) {
@@ -165,6 +172,7 @@ void validate_relative_source_path(const std::filesystem::path& relative_path,
             throw std::runtime_error("Task source path contains an unsafe component.");
         }
 
+#ifndef _WIN32
         current /= component;
         const auto status = std::filesystem::symlink_status(current);
         if (std::filesystem::is_symlink(status)) {
@@ -176,6 +184,9 @@ void validate_relative_source_path(const std::filesystem::path& relative_path,
             throw std::runtime_error("Learner source parent is not a directory: " +
                                      current.string());
         }
+#else
+        ++component_index;
+#endif
     }
 }
 
@@ -200,23 +211,36 @@ unsigned parse_unsigned(const std::map<std::string, std::string>& values, const 
 
 Workspace create_workspace(const Task& task, const std::filesystem::path& destination) {
     const auto absolute_destination = std::filesystem::absolute(destination).lexically_normal();
+    const auto template_path = data_root() / task.learner_template;
 
+#ifdef _WIN32
+    if (windows_state_io::entry_exists(absolute_destination)) {
+        throw std::runtime_error("Workspace already exists; start never overwrites learner work: " +
+                                 absolute_destination.u8string());
+    }
+    windows_state_io::ensure_directory(absolute_destination.parent_path());
+    windows_state_io::create_directory_exclusive(absolute_destination);
+    try {
+        windows_state_io::copy_tree(template_path, absolute_destination);
+        const std::string marker = std::string(kWorkspaceMarker) + "\ntask_id=" + task.id + "\n";
+        atomic_write(absolute_destination / ".cppapplab-workspace", marker);
+    } catch (...) {
+        windows_state_io::remove_tree(absolute_destination);
+        throw;
+    }
+#else
     if (std::filesystem::exists(absolute_destination) ||
         std::filesystem::is_symlink(absolute_destination)) {
         throw std::runtime_error("Workspace already exists; start never overwrites learner work: " +
                                  absolute_destination.string());
     }
-
-    const auto template_path = data_root() / task.learner_template;
     std::filesystem::create_directories(absolute_destination.parent_path());
     if (!std::filesystem::create_directory(absolute_destination)) {
         throw std::runtime_error("Workspace already exists; start never overwrites learner work: " +
                                  absolute_destination.string());
     }
-
     try {
         copy_tree_without_symlinks(template_path, absolute_destination, false);
-
         const std::string marker = std::string(kWorkspaceMarker) + "\ntask_id=" + task.id + "\n";
         atomic_write(absolute_destination / ".cppapplab-workspace", marker);
     } catch (...) {
@@ -224,18 +248,22 @@ Workspace create_workspace(const Task& task, const std::filesystem::path& destin
         std::filesystem::remove_all(absolute_destination, ignored);
         throw;
     }
-
+#endif
     return open_workspace(absolute_destination);
 }
 
 Workspace open_workspace(const std::filesystem::path& root) {
     const auto absolute_root = std::filesystem::absolute(root).lexically_normal();
+#ifdef _WIN32
+    windows_state_io::require_directory(absolute_root);
+#else
     std::error_code error;
     const auto root_status = std::filesystem::symlink_status(absolute_root, error);
     if (error || !std::filesystem::is_directory(root_status) ||
         std::filesystem::is_symlink(root_status)) {
         throw std::runtime_error("Workspace must be a real directory: " + absolute_root.string());
     }
+#endif
 
     const std::string marker = read_regular_file(absolute_root / ".cppapplab-workspace", 512U);
     std::istringstream input(marker);

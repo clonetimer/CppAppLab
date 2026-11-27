@@ -68,6 +68,13 @@ def configure(root: Path, web) -> tuple[Path, Path]:
     system = Path(os.environ.get("SystemRoot", r"C:\Windows"))
     os.environ["PATH"] = os.pathsep.join((str(tools / "bin"), str(system / "System32"), str(system)))
     os.environ["CMAKE_PREFIX_PATH"] = str(tools)
+    # MSYS2 GCC is built with --with-sysroot=/ucrt64 and native headers
+    # relative to that root. A relocated prefix must not depend on the
+    # driver rediscovering its original installation name or drive.
+    for relative in ("include/wchar.h", "include/windows.h"):
+        if not (tools / relative).is_file():
+            raise RuntimeError(f"Incomplete bundled native headers: {relative}")
+    os.environ["CPPAPPLAB_NATIVE_SYSROOT"] = tools.as_posix()
     os.environ["CPPAPPLAB_DATA_DIR"] = str(root)
     os.environ["CPPAPPLAB_LAUNCH_COMMAND"] = str(root / "cppapplab.cmd")
 
@@ -122,6 +129,31 @@ def verify_tools(binary: Path, prefix: Path) -> None:
         output = subprocess.check_output([str(command), "--version"], timeout=30)
         print(command.name + ": " + output.decode("utf-8", errors="replace").splitlines()[0],
               flush=True)
+
+    # Versions and -dumpmachine do not exercise the C/C++ header search,
+    # startup objects, linker, or runtime DLLs. Test the actual relocated
+    # toolchain with the same explicit sysroot used by the learning engine.
+    compiler = prefix / "bin/g++.exe"
+    sysroot = "--sysroot=" + prefix.as_posix()
+    with tempfile.TemporaryDirectory(prefix="cppapplab-tool-probe-") as directory:
+        work = Path(directory)
+        (work / "probe.cpp").write_text(
+            '#include <cwchar>\n#include <windows.h>\n#include <iostream>\n'
+            'int main() { if (std::wcslen(L"ok") != 2 || !GetCurrentProcessId()) '
+            'return 1; std::cout << "native-sysroot-ok\\n"; }\n',
+            encoding="ascii")
+        result = subprocess.run(
+            [str(compiler), sysroot, "-std=c++17", "-Wall", "-Wextra",
+             "-Wpedantic", "-Werror", "-v", "probe.cpp", "-o", "probe.exe"],
+            cwd=work, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            timeout=60, encoding="utf-8", errors="replace")
+        if result.returncode:
+            raise RuntimeError("Relocated GCC compile/link probe failed:\n" + result.stdout)
+        output = subprocess.check_output([str(work / "probe.exe")], cwd=work, timeout=10)
+        if output.strip() != b"native-sysroot-ok":
+            raise RuntimeError("Relocated GCC executable probe returned unexpected output.")
+    print("Native compiler sysroot:", prefix, flush=True)
+    print("[PASS] Relocated GCC C++17 header, link and executable probe.", flush=True)
 
 
 def main() -> int:

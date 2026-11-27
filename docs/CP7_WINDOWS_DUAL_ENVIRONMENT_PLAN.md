@@ -327,3 +327,10 @@ configure their own UTF-8 stdout/stderr, retaining the exact Chinese banner
 assertion through the batch launcher and redirected output. Do not rely on
 PYTHONIOENCODING in isolated embedded mode or change the system codepage.
 New current-head CI is required before merge.
+
+
+### CP7-D1 relocated GCC sysroot correction (candidate)
+
+At head `6618a44e71af9dcdd71e56ba680e2d0d5b70edf1`, [portable run 45994789903](https://github.com/clonetimer/CppAppLab/actions/runs/45994789903) built the Release PE, verified the pinned embedded Python, created/extracted and checked 40,614 archive files (SHA-256 e6209b7d694c7feb140f57e307a0313358101d2d64d7a9aee63b922d8eb173c5), passed the Chinese batch banner, tool version checks and actual native HTTP startup. W1 formal red was observed, but the corrected W1 build failed in libstdc++ cwchar: `fatal error: wchar.h: No such file or directory`. No verified ZIP uploaded and no packaged course PASS established. The version probe alone was inadequate.
+
+MSYS2 GCC 16.2.0-7's [build recipe](https://github.com/msys2/MINGW-packages/blob/master/mingw-w64-gcc/PKGBUILD) configures the sysroot to MINGW_PREFIX and native system headers to /include. The candidate explicitly supplies the verified relocated bundled prefix as CPPAPPLAB_NATIVE_SYSROOT; the shared native engine passes --sysroot to direct GCC builds/checks and CMAKE_SYSROOT to CMake fixtures. This is a targeted candidate correction, not a confirmed diagnosis of every GCC search path. Source-built native and Linux invocations without that package setting keep their prior behavior. Require actual wchar.h/windows.h bytes in the archive and a native compile/link/run probe during --verify-tools, not just --version. The smoke additionally requires W1 red to be the intended output mismatch and checks all four CMake sysroots against the relocated package. All 101 original fixed course checks, real symlink tests, compiler/GTest identity, restart/resume/stale, port conflict and current CI remain mandatory. No formal release or physical-machine PASS claimed until separately verified.

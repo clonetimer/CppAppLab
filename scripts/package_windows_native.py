@@ -249,6 +249,10 @@ def package(root: Path, binary: Path, msys: Path, python_zip: Path, out: Path) -
             if "toolchain/bin/" + tool not in archive.files:
                 raise RuntimeError(f"Required tool/runtime missing from installed file inventory: {tool}")
 
+        for relative in ("include/wchar.h", "include/windows.h"):
+            if "toolchain/" + relative not in archive.files:
+                raise RuntimeError(f"Native header missing from installed package inventory: {relative}")
+
         archive.bytes("BUILD-INFO.txt", (
             f"CppAppLab {version}\nSource: {commit}\nTarget: Windows x64 UCRT64\n"
             f"Embedded Python: {PYTHON_VERSION}\nStatus: CI candidate, not a public release\n"

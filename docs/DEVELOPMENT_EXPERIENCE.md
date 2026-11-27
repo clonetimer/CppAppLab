@@ -682,3 +682,10 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - Second attempt built Release and verified Python, then stopped on the dependency-only GCC cc-libs package. Allow only this named metadata-only aggregate with its declared dependencies; require real libgcc/libstdc++/libwinpthread packages and DLLs. No general empty-payload exception.
 - Run 45990927948 created and independently extracted/verified 40,614 manifest files on Windows, SHA-256 4ad4225c73dbdfdc59a77770ae6300bcdbc270ea3f0b7bfc3d03a1d31df9cac0. Batch launch failed printing Chinese to redirected CP1252 stdout. Configure only the embedded launcher's stdout/stderr as UTF-8 and assert the exact Chinese startup message in the actual batch test. Also configure the test harness output so reporting cannot fail on the same text.
 - Full primary CI 45990927981 passed all 14 applicable jobs, including restored Ubuntu sanitizer. Foundation 45990927940 passed. No extracted learner course checks or artifact upload from the failed portable run. Keep #95 open; rerun the complete gate.
+
+
+## 82. CP7-D1 — GCC sysroot relocation (candidate)
+
+- Actual run 45994789903 at 6618a44e: archive creation, all 40,614 file hashes, Chinese batch output and native HTTP startup passed; corrected Hello World build failed at cwchar including missing wchar.h. No packaged acceptance or verified uploaded candidate.
+- Changed: validate archive native headers, propagate an explicit relocated native sysroot to the real GCC and CMake invocations, and add a strict standalone bundled C++17 compile/link/run probe. Check the real W1 red log is an output mismatch, and require the actual relocated CMake sysroot alongside compiler/GTest identity. No changes to fixtures, course rows, Linux behavior or symlink policy.
+- Lesson: successful version output, extraction and web startup do not prove compiler relocation; prove target header search, link, execution, then full course progression. Fresh Windows package and primary CI mandatory; this correction is not yet verified.

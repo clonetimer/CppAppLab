@@ -79,6 +79,36 @@ std::string tool_command(std::string_view tool) {
 #endif
 }
 
+std::optional<std::string> native_package_sysroot() {
+#ifdef _WIN32
+    const auto root = windows_state_io::environment_path(L"CPPAPPLAB_NATIVE_SYSROOT");
+    if (root.has_value()) {
+        if (!root->is_absolute()) {
+            throw std::runtime_error("Native package sysroot must be an absolute path.");
+        }
+        windows_state_io::require_directory(*root);
+        if (!windows_state_io::regular_exists(*root / "include/wchar.h") ||
+            !windows_state_io::regular_exists(*root / "include/windows.h")) {
+            throw std::runtime_error("Native package sysroot is missing required Windows headers.");
+        }
+        return root->generic_u8string();
+    }
+#endif
+    return std::nullopt;
+}
+
+void add_native_gcc_sysroot(std::vector<std::string>& arguments) {
+    if (const auto sysroot = native_package_sysroot()) {
+        arguments.insert(arguments.begin() + 1, "--sysroot=" + *sysroot);
+    }
+}
+
+void log_native_package_sysroot(std::ostream& output) {
+    if (const auto sysroot = native_package_sysroot()) {
+        output << "Native compiler sysroot: " << *sysroot << '\n';
+    }
+}
+
 std::filesystem::path learner_executable(const std::filesystem::path& directory) {
 #ifdef _WIN32
     return directory / "learner_app.exe";
@@ -334,11 +364,13 @@ int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
     const auto source = workspace.root / task.source_files.front();
     const std::string executable_argument = executable.u8string();
 #endif
-    const std::vector<std::string> compile_arguments{
+    std::vector<std::string> compile_arguments{
         tool_command("g++"), "-std=c++17", "-Wall", "-Wextra", "-Wpedantic",
         "-Werror", "-g", source.generic_string(), "-o", executable_argument};
+    add_native_gcc_sysroot(compile_arguments);
 
     std::ostringstream log;
+    log_native_package_sysroot(log);
     log << "$ g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -g "
         << task.source_files.front().generic_string() << " -o .cppapplab/build/learner_app\n";
 
@@ -626,6 +658,9 @@ void prepare_fixture_build_directory(const std::filesystem::path& path) {
 void add_native_cmake_profile(std::vector<std::string>& arguments) {
 #ifdef _WIN32
     arguments.insert(arguments.end(), {"-G", "Ninja", "-DCMAKE_CXX_COMPILER=g++.exe"});
+    if (const auto sysroot = native_package_sysroot()) {
+        arguments.push_back("-DCMAKE_SYSROOT:PATH=" + *sysroot);
+    }
 #else
     (void)arguments;
 #endif
@@ -752,9 +787,11 @@ int build_exact_stdout_workspace(const Workspace& workspace) {
     const auto source = workspace.root / task.source_files.front();
     const std::string executable_argument = executable.u8string();
 #endif
-    const std::vector<std::string> arguments{
+    std::vector<std::string> arguments{
         tool_command("g++"), "-std=c++17", "-Wall", "-Wextra", "-Wpedantic",
         "-Werror", "-g", source.generic_string(), "-o", executable_argument};
+    add_native_gcc_sysroot(arguments);
+    log_native_package_sysroot(std::cout);
     std::cout << "$ g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -g "
               << task.source_files.front().generic_string()
               << " -o .cppapplab/build/learner_app\n";
@@ -803,6 +840,7 @@ int build_cmake_gtest_workspace(const Workspace& workspace) {
         "-DCMAKE_BUILD_TYPE=Debug",
         "-DCPPAPPLAB_LEARNER_SOURCE_DIR=" + staged_sources.u8string()};
     add_native_cmake_profile(configure_arguments);
+    log_native_package_sysroot(std::cout);
     std::cout << "$ cmake -S " << fixture.u8string() << " -B " << build_directory.u8string()
               << " -DCPPAPPLAB_LEARNER_SOURCE_DIR=" << staged_sources.u8string() << '\n';
 
@@ -1098,6 +1136,8 @@ int build_application_workspace(const std::filesystem::path& workspace_path) {
 
     std::vector<std::string> arguments{
         tool_command("g++"), "-std=c++17", "-Wall", "-Wextra", "-Wpedantic", "-Werror", "-g"};
+    add_native_gcc_sysroot(arguments);
+    log_native_package_sysroot(std::cout);
     const auto include_directory = workspace.root / "include";
     if (std::filesystem::is_directory(include_directory) && !std::filesystem::is_symlink(include_directory)) {
         arguments.push_back("-I");
@@ -1479,6 +1519,7 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
         "-DCMAKE_BUILD_TYPE=Debug",
         "-DCPPAPPLAB_LEARNER_SOURCE_DIR=" + staged_sources.u8string()};
     add_native_cmake_profile(configure_arguments);
+    log_native_package_sysroot(log);
     log << "$ cmake -S " << fixture.u8string() << " -B " << build_directory.u8string()
         << " -DCPPAPPLAB_LEARNER_SOURCE_DIR=" << staged_sources.u8string() << '\n';
 

@@ -79,6 +79,7 @@ def verify(archive: Path) -> None:
         # A hostile toolchain variable must not leak through the package launcher.
         env["CMAKE_PREFIX_PATH"] = str(base / "nonexistent-host-cmake")
         env["GCC_EXEC_PREFIX"] = str(base / "nonexistent-host-gcc")
+        env["CPPAPPLAB_NATIVE_SYSROOT"] = str(base / "nonexistent-host-sysroot")
         python = package / "runtime/python.exe"
         launcher = package / "start-native.py"
         cmd = system / "System32/cmd.exe"
@@ -94,6 +95,7 @@ def verify(archive: Path) -> None:
         assert versions.returncode == 0, versions.stdout
         assert "x86_64-w64-mingw32" in versions.stdout and "gdb.exe:" in versions.stdout
         assert "CppAppLab Windows 原生候选包" in versions.stdout, versions.stdout
+        assert "[PASS] Relocated GCC C++17 header, link and executable probe." in versions.stdout, versions.stdout
         print(versions.stdout)
         cli = batch("cppapplab.cmd", "--version")
         assert cli.returncode == 0 and manifest["version"] in cli.stdout, cli.stdout
@@ -173,7 +175,14 @@ def verify(archive: Path) -> None:
                     assert started["workspace_ready"] and not started["resumed"], started
                     endpoint = f"/api/v1/workspaces/{task_id}"
                     if task_id == "w1.hello-world":
-                        assert not request(endpoint + "/check", "POST", {})["passed"]
+                        red = request(endpoint + "/check", "POST", {})
+                        assert not red["passed"], red
+                        # A broken compiler is not a legitimate wrong-output
+                        # learner failure. Inspect the real fixed-check log.
+                        red_log = (home / "cppapplab-work" / task_id /
+                                   ".cppapplab/last-check.log").read_text(
+                                       encoding="utf-8", errors="replace")
+                        assert "Output did not match the task contract." in red_log, red_log
                     task = request(f"/api/v1/tasks/{task_id}")
                     # Resolve the original frozen test-only source seeding from
                     # the package's own task table and reference baselines.
@@ -214,8 +223,9 @@ def verify(archive: Path) -> None:
                     data = cache.read_text(encoding="utf-8", errors="replace")
                     selected = {line.split(":", 1)[0]: Path(line.split("=", 1)[1])
                                 for line in data.splitlines()
-                                if line.startswith(("CMAKE_CXX_COMPILER:", "GTest_DIR:"))}
-                    assert set(selected) == {"CMAKE_CXX_COMPILER", "GTest_DIR"}, (cache, selected)
+                                if line.startswith(("CMAKE_CXX_COMPILER:", "GTest_DIR:", "CMAKE_SYSROOT:"))}
+                    assert set(selected) == {"CMAKE_CXX_COMPILER", "GTest_DIR", "CMAKE_SYSROOT"}, (cache, selected)
+                    assert os.path.samefile(selected["CMAKE_SYSROOT"], prefix), selected
                     assert os.path.samefile(selected["CMAKE_CXX_COMPILER"], prefix / "bin/g++.exe"), selected
                     assert selected["GTest_DIR"].resolve().is_relative_to(prefix), selected
                     assert (selected["GTest_DIR"] / "GTestConfig.cmake").is_file(), selected

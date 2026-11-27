@@ -15,7 +15,7 @@
 ## 其他入口
 
 - `Start-CppAppLab.cmd --port 8766`：使用另一回环端口。
-- `Start-CppAppLab.cmd --verify-tools`：检查随包工具链的实际版本。
+- `Start-CppAppLab.cmd --verify-tools`：检查随包工具链的实际版本，并在临时目录中完成原生 C++17 头文件、链接和可执行文件运行探针；不改变学习进度。
 - `cppapplab.cmd learn`：直接使用相同的原生 CLI。
 - `Start-CppAppLab.cmd --no-browser`：只启动前台服务，手动打开终端显示的地址。
 

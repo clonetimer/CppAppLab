@@ -171,6 +171,7 @@ void validate_relative_source_path(const std::filesystem::path& relative_path,
         if (component == "." || component == "..") {
             throw std::runtime_error("Task source path contains an unsafe component.");
         }
+#ifndef _WIN32
         current /= component;
         const auto status = std::filesystem::symlink_status(current);
         if (std::filesystem::is_symlink(status)) {
@@ -182,6 +183,7 @@ void validate_relative_source_path(const std::filesystem::path& relative_path,
             throw std::runtime_error("Learner source parent is not a directory: " +
                                      current.string());
         }
+#endif
     }
 }
 

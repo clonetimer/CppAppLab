@@ -41,4 +41,27 @@ Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 SOURCES
 fi
 
+# Hosted CI only: CppAppLab's compiler dependencies are from Ubuntu, not
+# the runner's preconfigured Microsoft production repository. Disable an
+# isolated source file for that exact repository, never a mixed-source
+# file or a user's machine. Retain signature and failure checks on Ubuntu.
+if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+    for source_file in /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
+        [[ -f "$source_file" ]] || continue
+        mapfile -t urls < <(sed '/^[[:space:]]*#/d' "$source_file" | grep -Eo 'https?://[^[:space:]]+' || true)
+        [[ "${#urls[@]}" -gt 0 ]] || continue
+        microsoft_only=true
+        for url in "${urls[@]}"; do
+            if [[ "${url%/}" != "https://packages.microsoft.com/ubuntu/$VERSION_ID/prod" ]]; then
+                microsoft_only=false
+                break
+            fi
+        done
+        if [[ "$microsoft_only" == true ]]; then
+            echo "[INFO] Disabling unused Microsoft repository on this hosted CI runner: $source_file"
+            sudo mv "$source_file" "$source_file.cppapplab-disabled"
+        fi
+    done
+fi
+
 sudo apt-get -o Acquire::Retries=3 update

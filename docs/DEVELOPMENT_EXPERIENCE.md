@@ -665,3 +665,27 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - Changed: native HTTP service uses USERPROFILE, native PE, tracked bounded CLI supervision, exclusive loopback bind and serialized native API operations. Reparse/hardlink inspection occurs before path resolution. Existing Linux service and UI retained. Separate environment-required status from prerequisites; unverified native experiments/projects remain explicitly read-only or disabled. Added source PowerShell launcher, real HTTP and Chromium smoke, screenshot upload.
 - Why: no second learning engine and no artificial browser PASS. UI must distinguish real executable course scope and operating-system limitations.
 - Boundaries: source launcher still needs native GCC/CMake/Ninja/GTest/Python already available; Windows file-symlink permission remains a clean-target gate. No native modern compiler claim, install-free package, target-machine/human or abrupt Python termination qualification. Fresh F1 CI required.
+
+
+## 80. CP7-D1 — Move toolchain acquisition into the Windows delivery build
+
+- Verified #94: all 14 applicable CI jobs and independent native foundation passed. Native HTTP, real Chromium offline editor, learner descendant shutdown and screenshots verified; merged at 95a7e716.
+- Changed: native Windows Release package builder copies only installed UCRT64 package-owned files and exact package metadata, preserves toolchain layout/licenses, uses SHA-256-pinned official embedded Python 3.14.10, includes existing course/fixture/web assets, and emits per-file plus archive checksums. Added portable batch/CLI launchers and child-only toolchain environment, real no-host-PATH relocated package smoke and dedicated CI.
+- Why: testing a preinstalled runner is insufficient for the learner's install-free delivery. Check the actual ZIP and the compiler/GTest paths selected by CMake, not merely executable presence.
+- Pitfalls: keep MSYS2 acquisition confined to build CI, preserve original fixed tests, separate Unicode learning files from MinGW toolchain/cache paths, probe real symlink creation capability without enabling Developer Mode. Do not claim a new upstream version lock from observed versions or claim redistribution approval from collecting license files.
+- Boundary: CI package candidate pending; public release requires exact dependency acquisition lock and corresponding-source/license review, actual nonadmin and offline target feedback. Modern C++ and environment switching still open.
+
+
+## 81. CP7-D1 — Strict Release and relocated ZIP startup diagnostics
+
+- Actual failures: first build stopped on NOMINMAX and missing aggregate vector initializers under -Werror; Ubuntu 24.04 dependency setup failed on an unused Microsoft APT URI (403). Guarded macros, initialized optional vectors, isolated only dedicated unused Microsoft source files on hosted CI while preserving signatures and fail-on-error checks.
+- Second attempt built Release and verified Python, then stopped on the dependency-only GCC cc-libs package. Allow only this named metadata-only aggregate with its declared dependencies; require real libgcc/libstdc++/libwinpthread packages and DLLs. No general empty-payload exception.
+- Run 45990927948 created and independently extracted/verified 40,614 manifest files on Windows, SHA-256 4ad4225c73dbdfdc59a77770ae6300bcdbc270ea3f0b7bfc3d03a1d31df9cac0. Batch launch failed printing Chinese to redirected CP1252 stdout. Configure only the embedded launcher's stdout/stderr as UTF-8 and assert the exact Chinese startup message in the actual batch test. Also configure the test harness output so reporting cannot fail on the same text.
+- Full primary CI 45990927981 passed all 14 applicable jobs, including restored Ubuntu sanitizer. Foundation 45990927940 passed. No extracted learner course checks or artifact upload from the failed portable run. Keep #95 open; rerun the complete gate.
+
+
+## 82. CP7-D1 — GCC sysroot relocation (candidate)
+
+- Actual run 45994789903 at 6618a44e: archive creation, all 40,614 file hashes, Chinese batch output and native HTTP startup passed; corrected Hello World build failed at cwchar including missing wchar.h. No packaged acceptance or verified uploaded candidate.
+- Changed: validate archive native headers, propagate an explicit relocated native sysroot to the real GCC and CMake invocations, and add a strict standalone bundled C++17 compile/link/run probe. Check the real W1 red log is an output mismatch, and require the actual relocated CMake sysroot alongside compiler/GTest identity. No changes to fixtures, course rows, Linux behavior or symlink policy.
+- Lesson: successful version output, extraction and web startup do not prove compiler relocation; prove target header search, link, execution, then full course progression. Fresh Windows package and primary CI mandatory; this correction is not yet verified.

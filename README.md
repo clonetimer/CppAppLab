@@ -1,6 +1,6 @@
 # CppAppLab
 
-> **当前主线（2026-11-27）：CP7 Windows 原生教学与双环境统一。** 目标为 Windows 11 x64 原生 W1–W4、现有现代 C++ 教学和保留完整 Ubuntu/WSL2 Linux 专项。W1–W4 的共享 Windows 原生 CLI 已通过 101 项固定验收（#93，含中文工作区；实际用户机器及符号链接权限尚待确认）。现有正式学习者包仍为 Ubuntu 22.04/24.04（Windows 可通过 WSL2）；原生网页候选尚待 CI，Windows 免安装学习者包尚未交付。参见[CP7 计划](docs/CP7_WINDOWS_DUAL_ENVIRONMENT_PLAN.md)及[ADR](docs/DECISIONS.md)。
+> **当前主线（2026-11-27）：CP7 Windows 原生教学与双环境统一。** 目标为 Windows 11 x64 原生 W1–W4、现有现代 C++ 教学和保留完整 Ubuntu/WSL2 Linux 专项。W1–W4 的共享 Windows 原生 CLI 已通过 101 项固定验收（#93，含中文工作区；实际用户机器及符号链接权限尚待确认）。现有正式学习者包仍为 Ubuntu 22.04/24.04（Windows 可通过 WSL2）；原生网页已通过 #94 的真实 HTTP 和 Chromium 验收并合并，Windows 免安装学习者包进入 CP7-D1 候选打包验证。参见[CP7 计划](docs/CP7_WINDOWS_DUAL_ENVIRONMENT_PLAN.md)及[ADR](docs/DECISIONS.md)。
 
 **CppAppLab** is a hands-on C++ learning and engineering-practice platform. It takes a learner from the first C++ program to maintainable systems software, concurrent programs, TCP services, and an HTTP/1.1 server.
 
@@ -24,15 +24,19 @@ bash scripts/start-web-workbench.sh
 
 如果源码目录还没有 `build/cppapplab`，先按[快速入门的构建步骤](docs/QUICKSTART.md#2-run-the-one-command-setup)完成构建，再启动工作台。
 
-### Windows 原生网页：源码构建候选（尚待 CI）
+### Windows 原生网页：已验证源码构建入口
 
-在已有 MinGW-w64 UCRT GCC、CMake、Ninja、GoogleTest 和 Python 的 Windows 环境中，完成原生 CMake 构建后，可用 PowerShell 启动候选：
+在已有 MinGW-w64 UCRT GCC、CMake、Ninja、GoogleTest 和 Python 的 Windows 环境中，完成原生 CMake 构建后，可用 PowerShell 启动：
 
 ```powershell
 .\scripts\start-native-web-workbench.ps1 -Binary .\build\cppapplab.exe
 ```
 
-打开本机 `http://127.0.0.1:8765/`。本候选不调用 WSL、不自动安装工具或修改系统设置；W1–W4 可执行，W5–W9 教材仍可阅读但实际运行需 Ubuntu。Windows 原生知识实验及现代工程尚待验证。创建真实文件符号链接需开发者模式或相应权限，当前尚非双击免安装交付版。
+打开本机 `http://127.0.0.1:8765/`。此入口不调用 WSL、不自动安装工具或修改系统设置；W1–W4 可执行，W5–W9 教材仍可阅读但实际运行需 Ubuntu。Windows 原生知识实验及现代工程尚待验证。创建真实文件符号链接需开发者模式或相应权限，当前尚非双击免安装交付版。
+
+### Windows 原生免安装 ZIP（CP7-D1 CI 候选，尚待验收）
+
+打包流程将原生 GCC、CMake、Ninja、GoogleTest、GDB 与官方嵌入式 Python 随预编译引擎交付。候选 ZIP 解压后使用 `Start-CppAppLab.cmd`，无需另外安装学习工具链。正式交付以前须验证实际解压包及其依赖、对应源码与许可证；中文学员目录可保留，工具链安装位置仍需英文目录或有效短路径别名。W2–W4 的真实符号链接测试权限限制不变。当前尚无正式 Windows Release。
 
 ### 使用学习者压缩包：直接打开网页工作台
 

@@ -574,3 +574,11 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - **Why:** Consistent parsing can still be incorrect. Validate the observer with intentionally inconsistent result objects, compare all observable fields and actual consumed-prefix behavior; reuse earlier parser contracts rather than rewrite grammar.
 - **Pitfalls:** A no-op oracle can pass a fuzz smoke. Test its false-negative behavior first. Do not equate a requested run budget or ordinary CTest PASS with actual coverage-guided execution. Preserve genuine failure artifacts and toolchain/source/seed digests; do not manufacture a minimized reproduction when none was produced. Only local in-memory data and trusted learner code. Full protocol correctness and production security are out of scope.
 - **Evidence:** Actual CLI starter FAIL/reference PASS, 21 fixed tests under GCC, sanitizer and clang-tidy on both Ubuntu releases, full 25-task browser/bilingual/package regression, and independent actual 10,000-run libFuzzer log/coverage/artifact gate. Candidate pending CI. W9 freezes after A5 acceptance; continue W10.
+
+
+## 72. CP7-A/B1 — Selective native backend reuse, not a stale migration merge
+
+- Changed: old #67 head 08e3666cca90e79295a021f3cc1f2b965bcee518 was 32 commits behind CP6 main. Reuse only the actual Win32 process implementation and the two shared process test deltas; add separate native CI and original Calculator fixture, plus W1 native compiler/text-contract smoke. Freeze 25-task environment matrix.
+- Why: portable foundations can run native while POSIX/epoll courses remain Linux. Native compiler target/PE and real execution are necessary; launcher syntax is not sufficient.
+- Pitfalls: Windows stdout text CRLF is not a raw binary contract. Normalize only at the specific W1 text boundary; do not rewrite binary pipes. Keep original process timeouts; test W2–W4 file symlink/reparse safety rather than silently skip it. Old CI is historical, new CI required.
+- Evidence: old run 44561161976 passed isolated process backend; current CP7 foundation candidate pending fresh CI. Root Linux guard intentionally stays until real engine port.

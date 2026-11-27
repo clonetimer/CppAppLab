@@ -581,7 +581,10 @@
 
   function updateProgressSummary() {
     const passed = state.tasks.filter((task) => task.state === "PASSED").length;
-    ui.progress.textContent = passed + " / " + state.tasks.length + " 个任务已通过";
+    const executable = state.tasks.filter(task => !environmentBlocked(task)).length;
+    const nativeLimited = executable < state.tasks.length;
+    ui.progress.textContent = passed + " / " + executable + " 个" + (nativeLimited ? "本机" : "") + "任务已通过" +
+      (nativeLimited ? " · " + (state.tasks.length - executable) + " 项需 WSL2" : "");
     ui.taskCount.textContent = String(state.tasks.length);
   }
 
@@ -1677,7 +1680,7 @@
   async function runKnowledge(variant) {
     if (knowledgeState.running || !state.csrfToken) return;
     const topic = (knowledgeState.topics || []).find((item) => item.id === knowledgeState.active);
-    if (!topic?.phase || (topic.standard > 17 && !topic.toolchain_present)) return;
+    if (!topic?.phase || topic.execution_available === false || (topic.standard > 17 && !topic.toolchain_present)) return;
     knowledgeState.running = true;
     const session = knowledgeState.session;
     $("knowledge-status").textContent = "正在本机运行固定实验…";
@@ -2967,6 +2970,9 @@
       state.csrfToken = session.csrf_token;
       const health = await api("/api/v1/health");
       if (health.status !== "ok") throw new Error("本地 CppAppLab 引擎未就绪。");
+      const native = health.execution_environment === "native-windows";
+      const environment = $("execution-environment");
+      if (environment) environment.textContent = native ? "本地运行 · Windows 原生" : "本地运行 · Linux / WSL2";
       ui.engine.classList.add("online");
       ui.engine.innerHTML = '<span class="pulse"></span>本地引擎已连接';
       if (await loadTasks()) await followLearningLocation();

@@ -125,6 +125,13 @@ def verify_tools(binary: Path, prefix: Path) -> None:
 
 
 def main() -> int:
+    # Embedded Python ignores PYTHONIOENCODING in isolated mode. Windows
+    # redirected output may otherwise default to cp1252 (or another ANSI
+    # codepage), crashing on the Chinese startup message before any tools run.
+    # Set the encoding of our own streams, never the user's global codepage.
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None:
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
     parser = argparse.ArgumentParser(description="CppAppLab native Windows portable candidate")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--no-browser", action="store_true")

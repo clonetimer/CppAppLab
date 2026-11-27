@@ -322,9 +322,14 @@ int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
         std::filesystem::remove(executable);
     }
 
+#ifdef _WIN32
     const auto source = task.source_files.front();
     const std::string executable_argument =
         executable.lexically_relative(workspace.root).generic_string();
+#else
+    const auto source = workspace.root / task.source_files.front();
+    const std::string executable_argument = executable.u8string();
+#endif
     const std::vector<std::string> compile_arguments{
         tool_command("g++"), "-std=c++17", "-Wall", "-Wextra", "-Wpedantic",
         "-Werror", "-g", source.generic_string(), "-o", executable_argument};
@@ -463,6 +468,27 @@ bool process_succeeded(const ProcessResult& result) {
     return !result.timed_out && !result.output_truncated && result.exit_code == 0;
 }
 
+bool fixed_ctest_passed(const ProcessResult& result, unsigned expected_count) {
+    if (!process_succeeded(result) || expected_count == 0U) {
+        return false;
+    }
+    const auto count = std::to_string(expected_count);
+    const std::string legacy = "100% tests passed, 0 tests failed out of " + count;
+    const std::string modern = "100% tests passed out of " + count;
+    std::istringstream output(result.output);
+    for (std::string line; std::getline(output, line);) {
+        const auto first = line.find_first_not_of(" \t\r");
+        if (first == std::string::npos) {
+            continue;
+        }
+        line = line.substr(first, line.find_last_not_of(" \t\r") - first + 1U);
+        if (line == legacy || line == modern) {
+            return true;
+        }
+    }
+    return false;
+}
+
 #ifdef _WIN32
 bool ascii_path(const std::filesystem::path& path) {
     for (const wchar_t character : path.native()) {
@@ -578,6 +604,18 @@ std::filesystem::path fixture_for_build(const Workspace& workspace,
         throw std::runtime_error("Platform acceptance fixture is missing or unsafe.");
     }
     return fixture;
+#endif
+}
+
+void prepare_fixture_build_directory(const std::filesystem::path& path) {
+#ifdef _WIN32
+    if (windows_state_io::entry_exists(path)) {
+        windows_state_io::require_directory(path);
+        windows_state_io::remove_tree(path);
+    }
+    windows_state_io::create_directory_exclusive(path);
+#else
+    ensure_real_directory(path);
 #endif
 }
 
@@ -702,9 +740,14 @@ int build_exact_stdout_workspace(const Workspace& workspace) {
         std::filesystem::remove(executable);
     }
 
+#ifdef _WIN32
     const auto source = task.source_files.front();
     const std::string executable_argument =
         executable.lexically_relative(workspace.root).generic_string();
+#else
+    const auto source = workspace.root / task.source_files.front();
+    const std::string executable_argument = executable.u8string();
+#endif
     const std::vector<std::string> arguments{
         tool_command("g++"), "-std=c++17", "-Wall", "-Wextra", "-Wpedantic",
         "-Werror", "-g", source.generic_string(), "-o", executable_argument};
@@ -744,7 +787,7 @@ int build_cmake_gtest_workspace(const Workspace& workspace) {
     const auto state_directory = workspace.root / ".cppapplab";
     ensure_real_directory(state_directory);
     const auto build_directory = build_directory_for(workspace);
-    ensure_real_directory(build_directory);
+    prepare_fixture_build_directory(build_directory);
     const auto stamp_path = build_fingerprint_path(build_directory);
     remove_build_fingerprint(stamp_path);
 
@@ -876,7 +919,7 @@ int run_cmake_gtest_workspace(const Workspace& workspace) {
     std::cout << "$ ctest --test-dir " << build_directory.u8string() << " --output-on-failure\n"
               << tests.output;
     const bool unchanged = source_fingerprint(*workspace.task, workspace.root) == built_fingerprint;
-    const bool passed = process_succeeded(tests) && unchanged;
+    const bool passed = fixed_ctest_passed(tests, workspace.task->expected_test_count) && unchanged;
     if (tests.timed_out) {
         std::cout << "\n[CppAppLab] Test execution exceeded the 45-second time limit.\n";
     } else if (tests.output_truncated) {
@@ -1054,7 +1097,12 @@ int build_application_workspace(const std::filesystem::path& workspace_path) {
     const auto include_directory = workspace.root / "include";
     if (std::filesystem::is_directory(include_directory) && !std::filesystem::is_symlink(include_directory)) {
         arguments.push_back("-I");
+#ifdef _WIN32
+        windows_state_io::require_directory(include_directory);
+        arguments.push_back("include");
+#else
         arguments.push_back(include_directory.u8string());
+#endif
     }
 
     for (const std::string& relative : profile->platform_include_directories) {
@@ -1090,7 +1138,14 @@ int build_application_workspace(const std::filesystem::path& workspace_path) {
         if (!std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
             throw std::runtime_error("Application source is missing or unsafe: " + relative);
         }
+#ifdef _WIN32
+        if (!windows_state_io::regular_exists(source)) {
+            throw std::runtime_error("Application source is missing: " + relative);
+        }
+        arguments.push_back(std::filesystem::path(relative).generic_string());
+#else
         arguments.push_back(source.u8string());
+#endif
     }
     for (const std::string& relative : profile->platform_sources) {
         const std::filesystem::path relative_path(relative);
@@ -1118,7 +1173,11 @@ int build_application_workspace(const std::filesystem::path& workspace_path) {
         arguments.push_back("-pthread");
     }
     arguments.push_back("-o");
+#ifdef _WIN32
+    arguments.push_back(executable.lexically_relative(workspace.root).generic_string());
+#else
     arguments.push_back(executable.u8string());
+#endif
 
     std::cout << "$ g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror -g";
     if (profile->link_threads) {
@@ -1327,7 +1386,9 @@ int run_application_workspace(const std::filesystem::path& workspace_path,
     if (task.id == "w2.todo-cli" || task.id == "w3.task-manager" ||
         task.id == "w4.quality-gate") {
 #ifdef _WIN32
-        ScopedEnvironmentValue todo_file(L"CPPAPPLAB_TODO_FILE", runtime_directory / "todos.tsv");
+        // The child runs in runtime_directory; its ordinary narrow argv/getenv
+        // need not encode the Unicode learner workspace's absolute path.
+        ScopedEnvironmentValue todo_file(L"CPPAPPLAB_TODO_FILE", std::filesystem::path("todos.tsv"));
 #else
         ScopedEnvironmentValue todo_file(
             "CPPAPPLAB_TODO_FILE", (runtime_directory / "todos.tsv").u8string());
@@ -1394,10 +1455,7 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
     const auto state_directory = workspace.root / ".cppapplab";
     ensure_real_directory(state_directory);
     const auto build_directory = build_directory_for(workspace);
-    ensure_real_directory(build_directory);
-#ifdef _WIN32
-    remove_build_fingerprint(build_fingerprint_path(build_directory));
-#endif
+    prepare_fixture_build_directory(build_directory);
 
     std::ostringstream log;
     unsigned tests_passed = 0U;
@@ -1451,10 +1509,7 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
         log << "\n$ ctest --test-dir " << build_directory.u8string() << " --output-on-failure\n"
             << ctest.output;
 
-        const std::string expected_summary =
-            "100% tests passed, 0 tests failed out of " + std::to_string(task.expected_test_count);
-        acceptance_tests_passed =
-            process_succeeded(ctest) && ctest.output.find(expected_summary) != std::string::npos;
+        acceptance_tests_passed = fixed_ctest_passed(ctest, task.expected_test_count);
 
         if (acceptance_tests_passed) {
             tests_passed = task.expected_test_count;

@@ -8,7 +8,6 @@
 #include <atomic>
 #include <chrono>
 #include <cstddef>
-#include <cstring>
 #include <cwctype>
 #include <limits>
 #include <iterator>
@@ -252,37 +251,6 @@ void flush(HANDLE handle) {
     }
 }
 
-// Rename the file represented by the still-open handle. Unlike closing a named
-// temporary and then renaming its path, this does not reopen the source.
-void publish(HANDLE handle, HANDLE parent_directory, const Path& destination) {
-    // RootDirectory is the already validated and pinned parent directory.
-    // A single leaf name avoids ambiguous DOS-vs-NT absolute rename semantics.
-    const auto name = destination.filename().native();
-    if (name.empty() || name == L"." || name == L"..") {
-        throw std::runtime_error("Invalid state destination leaf name.");
-    }
-    const std::size_t name_bytes = name.size() * sizeof(wchar_t);
-    const std::size_t bytes = offsetof(FILE_RENAME_INFO, FileName) + name_bytes;
-    if (bytes > std::numeric_limits<DWORD>::max()) {
-        throw std::runtime_error("State destination path is too long.");
-    }
-    std::vector<unsigned char> storage(bytes, 0U);
-    auto* info = reinterpret_cast<FILE_RENAME_INFO*>(storage.data());
-    info->ReplaceIfExists = TRUE;
-    info->RootDirectory = parent_directory;
-    info->FileNameLength = static_cast<DWORD>(name_bytes);
-    std::memcpy(info->FileName, name.data(), name_bytes);
-    const auto deadline = Clock::now() + kLockTimeout;
-    while (!SetFileInformationByHandle(handle, FileRenameInfo, info, static_cast<DWORD>(bytes))) {
-        const DWORD error = GetLastError();
-        if ((error != ERROR_SHARING_VIOLATION && error != ERROR_ACCESS_DENIED) ||
-            Clock::now() >= deadline) {
-            fail("SetFileInformationByHandle(FileRenameInfo)", error);
-        }
-        Sleep(10U);
-    }
-}
-
 void discard(HANDLE handle) noexcept {
     FILE_DISPOSITION_INFO info{};
     info.DeleteFile = TRUE;
@@ -369,7 +337,7 @@ void atomic_write(const Path& input, std::string_view content) {
     Path temporary = path;
     temporary += L".tmp." + std::to_wstring(GetCurrentProcessId()) + L"." +
                  std::to_wstring(sequence.fetch_add(1U));
-    Handle file = open_file(temporary, GENERIC_WRITE | DELETE, 0U, CREATE_NEW);
+    Handle file = open_file(temporary, GENERIC_WRITE | DELETE, FILE_SHARE_DELETE, CREATE_NEW);
     if (!file) {
         fail("Create exclusive state temporary");
     }
@@ -378,7 +346,13 @@ void atomic_write(const Path& input, std::string_view content) {
         write_all(file.get(), content);
         flush(file.get());
         (void)existing_regular(path);
-        publish(file.get(), chain.handles.back().get(), path);
+        // The temporary and destination are siblings on the same pinned local
+        // volume. MoveFileExW performs a same-volume atomic rename; do not set
+        // MOVEFILE_COPY_ALLOWED (copy/delete would weaken the atomic contract).
+        if (!MoveFileExW(temporary.c_str(), path.c_str(),
+                         MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+            fail("MoveFileExW(state atomic replace)");
+        }
     } catch (...) {
         discard(file.get());
         throw;

@@ -649,3 +649,11 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
   compilation itself failed. Use the CLI to start each successive task.
 - Evidence: fresh candidate CI required; no Windows package or real target
   machine qualification.
+
+
+## 78. CP7-B2c/C — Preserve file-symlink security checks across native Windows and Linux
+
+- Actual prior CI: #93 first head passed native Hello World and Calculator 9/9 inside Unicode workspaces; W2 passed 17/19. Both link tests failed during setup because MinGW's std::filesystem::create_symlink is not implemented. W3/W4 were not reached. All 13 non-Windows jobs passed.
+- Changed: use the real Win32 file-symlink API with checked reparse tag for the six existing fixture cases; preserve all assertion bodies and original Linux setup. Keep W2/W3/W4 learner data/algorithms unchanged except a portable leaf guard; native reference and W4 prefilled code actually use that guard before read/replacement. Add starter helper and guidance, not a completed learner answer.
+- Pitfall: MinGW already defines NOMINMAX; the first corrected fixture compilation failed under -Werror. Guard definitions rather than disabling warning gates. Also distinguish link creation from link inspection: older libstdc++ follows links in its Windows lstat fallback; use native attributes before opening data. W4 reference learner tests are in reference/src, not reference/tests.
+- Limit: creating an actual Windows file symlink still needs Developer Mode or appropriate existing privilege. Do not bypass the real test, equate a junction with a file symlink or claim ordinary nonadmin target-machine qualification. Keep CP7-D/G open for that constraint. Fresh candidate CI still required.

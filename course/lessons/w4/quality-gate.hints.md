@@ -26,3 +26,5 @@ Keep diagnostics separate:
 7. Run Valgrind when installed and record the exact command.
 
 Do not change expected values merely to silence a failing test. Explain the invariant that the test is intended to protect.
+
+**Native Windows note / Windows 原生说明：** the provided TaskManager implementation uses the same portable leaf-path check as W2–W3. Do not change or bypass the platform-owned symlink tests. These tests create an actual file symlink; native Windows needs Developer Mode or existing symlink-creation permission. Linux-specific Valgrind remains on the Linux learning route. Your ten learner-owned assertions and the original 41-test acceptance count remain unchanged.

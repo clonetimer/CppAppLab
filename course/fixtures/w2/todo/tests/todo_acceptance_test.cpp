@@ -11,7 +11,55 @@
 #include <string>
 #include <system_error>
 
+#ifdef _WIN32
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0A00
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+
 namespace {
+
+// MinGW's std::filesystem::create_symlink may report ENOSYS on Windows.
+// Create a real file symlink with the OS API instead; do not skip this
+// security contract or substitute a regular file/directory junction.
+void create_test_file_symlink(const std::filesystem::path& target,
+                              const std::filesystem::path& link) {
+#ifdef _WIN32
+    constexpr DWORD kAllowUnprivilegedCreate = 0x2U;
+    if (!CreateSymbolicLinkW(link.c_str(), target.c_str(), kAllowUnprivilegedCreate)) {
+        const DWORD error = GetLastError();
+        if (error != ERROR_INVALID_PARAMETER ||
+            !CreateSymbolicLinkW(link.c_str(), target.c_str(), 0U)) {
+            const DWORD actual_error =
+                error == ERROR_INVALID_PARAMETER ? GetLastError() : error;
+            throw std::system_error(static_cast<int>(actual_error), std::system_category(),
+                                    "Cannot create actual Windows file symlink for acceptance; "
+                                    "Windows requires Developer Mode or symlink privilege");
+        }
+    }
+    WIN32_FIND_DATAW data{};
+    const HANDLE find = FindFirstFileW(link.c_str(), &data);
+    if (find == INVALID_HANDLE_VALUE) {
+        throw std::system_error(static_cast<int>(GetLastError()), std::system_category(),
+                                "Cannot inspect acceptance symlink");
+    }
+    (void)FindClose(find);
+    if ((data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) == 0U ||
+        (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0U ||
+        data.dwReserved0 != IO_REPARSE_TAG_SYMLINK) {
+        throw std::runtime_error("Acceptance fixture did not create a real file symlink.");
+    }
+#else
+    std::filesystem::create_symlink(target, link);
+#endif
+}
 
 class TemporaryDirectory {
    public:
@@ -234,7 +282,7 @@ TEST(TodoAcceptanceTest, LoadRejectsSymlinkedDataFile) {
     const auto target = temporary.path() / "target.tsv";
     const auto link = temporary.path() / "linked.tsv";
     write_file(target, "CPPAPPLAB_TODO_V1\n");
-    std::filesystem::create_symlink(target, link);
+    create_test_file_symlink(target, link);
     cppapplab::todo::List items;
 
     const auto result = cppapplab::todo::load(items, link);
@@ -247,7 +295,7 @@ TEST(TodoAcceptanceTest, SaveRefusesSymlinkedDestination) {
     const auto target = temporary.path() / "target.tsv";
     const auto link = temporary.path() / "linked.tsv";
     write_file(target, "do not overwrite\n");
-    std::filesystem::create_symlink(target, link);
+    create_test_file_symlink(target, link);
     const cppapplab::todo::List items{{1U, "new data", false}};
 
     const auto result = cppapplab::todo::save(items, link);

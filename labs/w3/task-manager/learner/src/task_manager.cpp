@@ -2,7 +2,38 @@
 
 #include <utility>
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+
 namespace cppapplab::tasks {
+
+namespace {
+
+// The data-file contract rejects links before read or replacement. MinGW's
+// filesystem::symlink_status can follow Windows links in older libstdc++.
+// This leaf check is not a sandbox or a general directory-confinement check.
+[[maybe_unused, nodiscard]] bool unsafe_data_link(const std::filesystem::path& path) {
+#ifdef _WIN32
+    const DWORD attributes = GetFileAttributesW(path.c_str());
+    if (attributes == INVALID_FILE_ATTRIBUTES) {
+        const DWORD error = GetLastError();
+        // Missing files are allowed; other inspection failures are unsafe.
+        return error != ERROR_FILE_NOT_FOUND && error != ERROR_PATH_NOT_FOUND;
+    }
+    return (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0U;
+#else
+    return std::filesystem::is_symlink(path);
+#endif
+}
+
+}  // namespace
 
 TaskManager::TaskManager(const TaskManager& other) {
     // TODO(W3-MANAGER-1): deep-copy each uniquely owned Task.
@@ -77,12 +108,14 @@ bool TaskManager::empty() const noexcept {
 
 Result TaskManager::save(const std::filesystem::path& path) const {
     // TODO(W3-MANAGER-12): preserve the W2 versioned file format and publish atomically.
+    // Use unsafe_data_link(path) and unsafe_data_link(temporary) before writing.
     (void)path;
     return {Error::IoError, "not implemented"};
 }
 
 Result TaskManager::load(const std::filesystem::path& path) {
     // TODO(W3-MANAGER-13): parse transactionally, then swap the validated state.
+    // Reject unsafe_data_link(path) before inspecting or opening the file.
     (void)path;
     return {Error::InvalidFormat, "not implemented"};
 }

@@ -116,3 +116,74 @@ jobs:
           if ($tests.Count -ne 9) { throw "Expected all 9 original Calculator tests; found $($tests.Count)" }
           & (Join-Path $toolBin 'ctest.exe') --test-dir $build --output-on-failure --timeout 10
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Configure the root Windows-native learning engine
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $prefix = Join-Path $env:MSYS2_LOCATION 'ucrt64'
+          $toolBin = Join-Path $prefix 'bin'
+          $env:PATH = "$toolBin;$env:PATH"
+          $env:CMAKE_PREFIX_PATH = $prefix
+          $build = Join-Path $env:RUNNER_TEMP 'cppapplab native learning root'
+          & (Join-Path $toolBin 'cmake.exe') -S . -B $build -G Ninja -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_CXX_COMPILER=$toolBin/g++.exe" "-DCMAKE_MAKE_PROGRAM=$toolBin/ninja.exe" -DCPPAPPLAB_FETCH_GTEST=OFF
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build the real cppapplab.exe and native learning integration tests
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $prefix = Join-Path $env:MSYS2_LOCATION 'ucrt64'
+          $toolBin = Join-Path $prefix 'bin'
+          $env:PATH = "$toolBin;$env:PATH"
+          $env:CMAKE_PREFIX_PATH = $prefix
+          $build = Join-Path $env:RUNNER_TEMP 'cppapplab native learning root'
+          & (Join-Path $toolBin 'cmake.exe') --build $build --parallel
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($exe in @('cppapplab.exe', 'cppapplab_native_learning_tests.exe')) {
+            $path = Join-Path $build $exe
+            $format = (& (Join-Path $toolBin 'objdump.exe') -f $path | Out-String)
+            if ($LASTEXITCODE -ne 0 -or $format -notmatch 'pei-x86-64') { throw "Not a native PE: $path" }
+            $imports = (& (Join-Path $toolBin 'objdump.exe') -p $path | Out-String)
+            if ($LASTEXITCODE -ne 0 -or $imports -match 'msys-2\.0\.dll|cygwin1\.dll') { throw "POSIX compatibility runtime imported: $path" }
+          }
+      - name: Run native learning workflow tests and the real Unicode CLI
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          $prefix = Join-Path $env:MSYS2_LOCATION 'ucrt64'
+          $toolBin = Join-Path $prefix 'bin'
+          $env:PATH = "$toolBin;$env:PATH"
+          $env:CMAKE_PREFIX_PATH = $prefix
+          $build = Join-Path $env:RUNNER_TEMP 'cppapplab native learning root'
+          $listed = & (Join-Path $toolBin 'ctest.exe') --test-dir $build --show-only=json-v1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $tests = ($listed | Out-String | ConvertFrom-Json).tests
+          if ($tests.Count -ne 6) { throw "Expected six native learning tests; found $($tests.Count)" }
+          & (Join-Path $toolBin 'ctest.exe') --test-dir $build --output-on-failure --no-tests=error --timeout 300
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP 'CppAppLab 用户配置'
+          $env:CPPAPPLAB_STATE_DIR = Join-Path $env:RUNNER_TEMP 'CppAppLab 学习状态'
+          $workspace = Join-Path $env:USERPROFILE 'W1 原生 workspace with spaces'
+          $exe = Join-Path $build 'cppapplab.exe'
+          & $exe --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $exe start w1.hello-world $workspace
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $source = Join-Path $workspace 'src\main.cpp'
+          $program = @'
+          #include <iostream>
+          int main() { std::cout << "Hello, CppAppLab!\n"; return 0; }
+          '@
+          [System.IO.File]::WriteAllText($source, $program, [System.Text.UTF8Encoding]::new($false))
+          & $exe lesson $workspace | Out-Null
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $exe check $workspace
+          if ($LASTEXITCODE -ne 0) { throw 'Native CLI W1 fixed acceptance did not PASS.' }
+          $history = & $exe history w1.hello-world | Out-String
+          if ($LASTEXITCODE -ne 0 -or $history -notmatch 'PASS') { throw 'Native CLI progress/history did not persist PASS.' }
+          $next = & $exe learn | Out-String
+          if ($LASTEXITCODE -ne 0 -or $next -notmatch 'w1\.calculator') { throw 'A current W1 pass did not unlock the next course task.' }

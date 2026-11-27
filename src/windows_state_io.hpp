@@ -21,6 +21,8 @@ void create_directory_exclusive(const std::filesystem::path& directory);
 [[nodiscard]] bool entry_exists(const std::filesystem::path& path);
 void copy_tree(const std::filesystem::path& source, const std::filesystem::path& destination);
 void remove_tree(const std::filesystem::path& path);
+void copy_file(const std::filesystem::path& source, const std::filesystem::path& destination);
+void remove_file(const std::filesystem::path& path);
 [[nodiscard]] bool regular_exists(const std::filesystem::path& path);
 [[nodiscard]] std::string read(const std::filesystem::path& path, std::uintmax_t maximum_bytes);
 void atomic_write(const std::filesystem::path& path, std::string_view content);

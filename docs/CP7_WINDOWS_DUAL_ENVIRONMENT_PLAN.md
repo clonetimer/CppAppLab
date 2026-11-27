@@ -128,3 +128,76 @@ Implemented on top of CP7-B2a main `a6f1aab087a7da902d73ed794398203dcb04e01a`:
 - Five new tests cover workspace creation/reopen in Unicode paths, template junction rejection, hard-linked template rejection, destination-parent junction rejection, and safe junction cleanup. The Windows workflow count is raised from 20 to 25 tests (13 process/W1 + 7 state + 5 workspace); original Calculator remains 9/9. No course row or fixture contract changed.
 
 Current status: implementation candidate; fresh Windows and Ubuntu CI pending. Root CMake still rejects Windows, the complete `learning.cpp` CLI and Python browser supervisor are not yet native, and there is no Windows package. The next B2c gate is to qualify the native workspace/security tests and then port toolchain/process/environment/CRLF behavior in the learning engine without exposing Linux-only W5–W9 on Windows.
+
+
+## CP7-B2c — Root Windows-native learning engine (candidate, PR #88)
+
+**Goal:** build the existing shared C++ learning engine as a real `cppapplab.exe` on Windows, rather than treating the isolated process/state fixtures as product completion.
+
+### Implementation in candidate
+- Root CMake now selects the existing Win32 `CreateProcessW` process backend and no-follow Windows state adapter on Windows; Linux retains its original POSIX process backend.
+- Native Windows CMake is explicitly qualified only for MinGW-w64 UCRT GCC. MSVC is not claimed.
+- The Windows entry point is `wmain`; arguments are converted from UTF-16 to UTF-8. The shared CLI converts filesystem arguments from UTF-8 back to native Windows paths.
+- The shared CLI now uses `USERPROFILE`, `GetEnvironmentVariableW` / `SetEnvironmentVariableW` for native path environment, Windows console detection, `gmtime_s`, `.exe` learner outputs, and `g++.exe` / `cmake.exe` / `ctest.exe`.
+- Course material reads and declared C++ source staging use native no-follow file operations. The fixed stdout contract remains byte-exact except for normalizing only the Windows CRT's valid LF-to-CRLF text-mode conversion; all other bytes and exit/timeout/output constraints remain strict.
+- Five new native integration tests cover Unicode USERPROFILE workspace creation/resume, actual W1-W4 fixed acceptance/evidence/history/prerequisite chain, wrong-output rejection and prerequisite lock, and Unicode lesson/hint reads.
+- The primary `CppAppLab CI` Windows job now installs UCRT64 and runs the 25 process/state/workspace tests, original Calculator 9/9, root CMake build, four learning integration tests, native PE import checks and a real Unicode `cppapplab.exe start → lesson → check → history → learn` journey.
+
+### Acceptance boundary
+PR #88 is still a candidate. Do not claim native learner completion until the Windows job has actually built and run the root project and all five integration tests, and the existing Ubuntu 22.04/24.04 matrix is green. A source-only or isolated process test is insufficient.
+
+**Still not delivered:** Windows learner package/installer, Windows browser/Python supervisor, MSVC support, W5–W9 native execution, and real target-machine acceptance. W5–W9 remain on Linux/WSL2; all 25 tasks and fixed acceptance contracts remain unchanged.
+
+
+## CP7-B2c — Unicode CMake build-cache correction (candidate)
+
+PR #92's Windows run [45969984755](https://github.com/clonetimer/CppAppLab/actions/runs/45969984755)
+built the real root `cppapplab.exe`, passed the 25 foundation tests and the
+original Calculator 9/9 fixture, and passed four of five root learning tests.
+Actual W1 acceptance from a Chinese workspace, history and prerequisite
+unlock succeeded using relative compiler paths and an absolute UTF-16
+process-launch path. The remaining W1–W4 chain stopped at Calculator's
+GoogleTest discovery in a Unicode build directory; W2–W4 were not reached.
+
+This candidate retains Unicode learner workspaces, but relocates native
+CMake fixture builds to an owned local ASCII cache (default: system temp
+directory / CppAppLab-native-build; override:
+`CPPAPPLAB_NATIVE_BUILD_ROOT`). The engine derives a per-workspace cache
+key and checks the full workspace/task ownership marker before reusing it.
+A checked short-path alias is optional; if no ASCII cache path can be
+established, the CLI reports how to choose a writable local cache, not
+how to rename a Windows account. The learner's declared source files,
+original fixture and original shared CLI workflow script are staged
+through the native no-follow adapter. No reference answer is copied by
+production code. Build/check prepare fresh native fixture trees, and run
+requires the current source-fingerprint stamp. CMake uses Ninja/GCC.
+The fixed CTest count must match an exact successful summary line
+(legacy or new CTest format), with nonzero exit, timeout, truncation or
+zero expected tests rejected. All 25 catalog rows and original fixtures
+remain unchanged.
+
+Native CLI explicitly marks W5–W9 as Linux/WSL2-required, separately
+from prerequisite locks; start/learn/build/run/check/app-build/app-run
+cannot execute these tasks natively. Six native root tests include the
+actual Unicode W1–W4 course chain, build/run versus formal PASS separation,
+wrong-output evidence, and Linux-only rejection. The original W2–W4
+symlink tests must run without skips.
+
+Current status: candidate, fresh Windows/Ubuntu CI required. The cache
+is ordinary local application storage, not a same-user security sandbox;
+same-workspace simultaneous execution is not qualified. Native browser,
+installer, offline tools, real nonadministrator target machine and
+human learning evaluation remain unqualified.
+
+
+### CP7-B2c/C — Windows file-symlink compatibility follow-up
+
+Initial PR #93 head `498c380b`, native run [45974884979](https://github.com/clonetimer/CppAppLab/actions/runs/45974884979) and full run [45974885077](https://github.com/clonetimer/CppAppLab/actions/runs/45974885077): root native PE and 25/25 foundation tests pass; 5/6 native learning integration tests pass; real Hello World and Calculator (9/9) pass from a Unicode learner workspace. W2 reaches all 19 tests: 17 pass, two fail before invoking the learner code because MinGW's std::filesystem::create_symlink reports ENOSYS. W3/W4 not reached. All 13 non-Windows jobs pass; native Windows fails, one push-only job skipped.
+
+Correct the **setup only** of the two original security tests in each W2/W3/W4 fixture. On Windows call CreateSymbolicLinkW and verify IO_REPARSE_TAG_SYMLINK, not a regular-file substitute. Retain Linux std::filesystem::create_symlink and all original names, counts, assertions, real CLI persistence workflows. No skip; absence of symlink creation permission remains an explicit failure. First correction run 45980630027 reached native root execution but failed compiling the fixture because MinGW already defines NOMINMAX=1. Guard both Windows header macros without relaxing -Werror.
+
+GCC upstream symlink support work (https://gcc.gnu.org/pipermail/gcc-patches/2026-June/721803.html) also documents the Windows lstat-following-link limitation in the existing implementation. Provide a small `unsafe_data_link` helper in W2/W3 starter sources, native reference implementations and W4 prefilled implementation. Windows uses GetFileAttributesW to reject reparse points and unexpected inspection errors; Linux retains its standard symlink behavior. It is a leaf-path guard, not an arbitrary same-user sandbox. Preserve all original course algorithms and source declarations, and update the existing third hints without adding new hint levels. The W4 reference-test seeding path is corrected to reference/src/task_manager_test.cpp, matching the existing Linux workflow. Original 25 catalog entries and expected counts (1 exact output + 9+19+31+41) unchanged.
+
+Delivery caveat: CreateSymbolicLinkW with SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE needs Developer Mode for non-elevated use (https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createsymboliclinkw). Hosted Windows CI is not evidence that a clean, nonadmin Windows 11 without this capability can perform W2-W4 formal checks. This is a real CP7-D/G gate; do not silently enable system settings or weaken the security contract.
+
+Current candidate remains PR #93, pending fresh complete CI. No Windows browser/ZIP or target-machine/human claim.

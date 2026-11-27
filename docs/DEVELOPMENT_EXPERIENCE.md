@@ -619,3 +619,41 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 - Why: a native process runner and progress store are insufficient if the platform can follow a junction while copying a learner template or writing a workspace. The native path must own creation, marker publication and failure cleanup too.
 - Pitfalls: testing only `is_symlink` does not prove junction safety. Use a real NTFS mount-point junction and a hard-linked template file; neither is silently skipped. Test the external target remains unchanged and partial destination is removed. Use the compiled source root to seed the temporary data root before changing `CPPAPPLAB_DATA_DIR`.
 - Evidence: code and test fixtures committed to CP7-B2b candidate; current Windows/Ubuntu CI pending. No root learning-engine or browser native claim until subsequent gates pass.
+
+
+## 76. CP7-B2c — Promote native process/storage adapters into the shared learning CLI
+
+- **Changed:** Root CMake selects the existing Win32 process backend and no-follow state adapter; the shared CLI gets a native `wmain` entry point, UTF-8 argument/path conversion, USERPROFILE defaults, Win32 environment restoration, Windows UTC/console APIs and `.exe` learner outputs. Course reads and staged source copies use the native safe filesystem adapter. Added five end-to-end native learning tests, including the complete W1-W4 fixed-acceptance/prerequisite chain and an actual Unicode CLI CI journey.
+- **Why:** An isolated process runner proves the operating-system primitive, not the learning product. The real command line must create a learner workspace, load a lesson, compile the learner's actual source, run the fixed check, persist evidence and unlock the next task on Windows.
+- **Pitfalls:** Windows command lines arrive as UTF-16; narrow `main(char**)` can corrupt Chinese paths. Convert in `wmain` to UTF-8, then use `u8path` and UTF-8 process arguments. MinGW text-mode stdout may translate LF to CRLF when redirected; normalize only that platform conversion, never arbitrary output. Keep the Linux `gmtime_r`, `isatty`, `setenv` and process backend behind platform guards.
+- **Validation boundary:** Candidate PR #88. Existing Ubuntu source matrix and the new Windows root build/tests are pending. No Windows package, browser supervisor, MSVC, or W5–W9 native support is claimed.
+
+
+## 77. CP7-B2c — Separate Unicode learner state from native toolchain build cache
+
+- Verified prior #92 Windows run 45969984755: 25/25 native foundation,
+  Calculator 9/9 independent fixture, root executable built, 4/5 native
+  learning tests. W1 Chinese workspace actual acceptance succeeded.
+  W1–W4 chain failed at Calculator GoogleTest discovery; no W2–W4 PASS claimed.
+- Changed: native CMake builds use an owned per-workspace ASCII cache;
+  learner files, progress and evidence remain at their original Unicode
+  locations. Copy actual declared sources and platform-owned fixture/script,
+  preserve Ninja/GCC/CTest and exact test counts. Keep Linux fixture paths.
+  Added native-only execution boundary for W5–W9 and six real integration tests.
+- Why: CreateProcessW handles Unicode executable launch, but the toolchain's
+  internal discovery and subprocess paths are distinct. Do not move learner
+  workspaces to English paths merely to make a test pass.
+- Pitfalls: recent CTest emits "100% tests passed out of N" while older
+  versions include ", 0 tests failed"; validate exact line and count, not
+  a loose substring. Do not permit a wrong-output test to pass because
+  compilation itself failed. Use the CLI to start each successive task.
+- Evidence: fresh candidate CI required; no Windows package or real target
+  machine qualification.
+
+
+## 78. CP7-B2c/C — Preserve file-symlink security checks across native Windows and Linux
+
+- Actual prior CI: #93 first head passed native Hello World and Calculator 9/9 inside Unicode workspaces; W2 passed 17/19. Both link tests failed during setup because MinGW's std::filesystem::create_symlink is not implemented. W3/W4 were not reached. All 13 non-Windows jobs passed.
+- Changed: use the real Win32 file-symlink API with checked reparse tag for the six existing fixture cases; preserve all assertion bodies and original Linux setup. Keep W2/W3/W4 learner data/algorithms unchanged except a portable leaf guard; native reference and W4 prefilled code actually use that guard before read/replacement. Add starter helper and guidance, not a completed learner answer.
+- Pitfall: MinGW already defines NOMINMAX; the first corrected fixture compilation failed under -Werror. Guard definitions rather than disabling warning gates. Also distinguish link creation from link inspection: older libstdc++ follows links in its Windows lstat fallback; use native attributes before opening data. W4 reference learner tests are in reference/src, not reference/tests.
+- Limit: creating an actual Windows file symlink still needs Developer Mode or appropriate existing privilege. Do not bypass the real test, equate a junction with a file symlink or claim ordinary nonadmin target-machine qualification. Keep CP7-D/G open for that constraint. Fresh candidate CI still required.

@@ -240,7 +240,12 @@ TEST(NativeLearningWorkflow, RealW1ThroughW4CMakeGoogleTestAcceptanceUsesSharedE
         // Only this integration-test fixture seeds the reference implementation.
         // Production build/check continues to read the actual learner workspace.
         for (const auto& relative : task->source_files) {
-            const auto source = reference / relative;
+            // W4's frozen reference test source is stored in reference/src,
+            // while the learner owns it at tests/task_manager_test.cpp.
+            const auto source =
+                task_id == "w4.quality-gate" && relative == "tests/task_manager_test.cpp"
+                    ? reference / "src" / "task_manager_test.cpp"
+                    : reference / relative;
             const auto destination = workspace.root / relative;
             fs::create_directories(destination.parent_path());
             fs::copy_file(source, destination, fs::copy_options::overwrite_existing);

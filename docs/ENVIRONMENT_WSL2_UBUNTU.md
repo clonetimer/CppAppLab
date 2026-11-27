@@ -41,7 +41,7 @@ To run the P8-E Windows 11 + WSL2 target-machine acceptance and generate a JSON 
 .\tests\windows-target-machine-acceptance.ps1
 ~~~
 
-If multiple supported Ubuntu distributions are installed, the script asks you to select one. You can pass `-Distro Ubuntu-22.04` or `-Distro Ubuntu-24.04`, and `-RepoPath` for a non-default Linux checkout. It verifies Windows 11, WSL2, Ubuntu version, the actual Windows launcher/browser handoff, the CppAppLab health identity, the 23-task catalog count and the served page. Evidence is written under `artifacts/windows-target-machine/`. The script intentionally leaves the workbench running and does not stop or alter learner workspaces. A PASS is target-machine evidence; hosted CI syntax checks alone are not.
+If multiple supported Ubuntu distributions are installed, the script asks you to select one. You can pass `-Distro Ubuntu-22.04` or `-Distro Ubuntu-24.04`, and `-RepoPath` for a non-default Linux checkout. It verifies Windows 11, WSL2, Ubuntu version, the actual Windows launcher/browser handoff, the CppAppLab health identity, the 24-task catalog count and the served page. Evidence is written under `artifacts/windows-target-machine/`. The script intentionally leaves the workbench running and does not stop or alter learner workspaces. A PASS is target-machine evidence; hosted CI syntax checks alone are not.
 
 ## 2. Verify Ubuntu
 

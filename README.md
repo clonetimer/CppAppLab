@@ -6,7 +6,7 @@
 
 ## 开始学习：先看课程，再做练习
 
-CppAppLab 当前主干包含 **23 个可操作的 W1–W9 学习任务**。
+CppAppLab 课程目录包含 **24 个 W1–W9 学习任务**（A4 为本轮验收候选）。
 
 ### 已构建源码项目：打开网页工作台
 
@@ -20,7 +20,7 @@ bash scripts/start-web-workbench.sh
 
 **知识导航：** 课程目录旁「查知识」支持中英文术语搜索，关联现有讲义和固定独立失败/修复实验。真实编译诊断可进入对应知识点；实验不影响正式课程验收或源码。生命周期与并发先阅读已有课程，不执行故意未定义行为。
 
-**教程语言：**“课程讲解”标题旁的 **教程语言** 可以选择 **中文 / English**。首次打开默认中文，浏览器会记住选择；课程目录、正文、故障排查、验收要求和三级提示随之切换。全部 23 节课的中英文内容随项目提供，无需在线翻译。切换语言不会重载工作区或改变代码、运行输出与验收进度；代码示例、文件名和命令保留原样。此设置控制课程内容，操作界面仍使用中文。
+**教程语言：**“课程讲解”标题旁的 **教程语言** 可以选择 **中文 / English**。首次打开默认中文，浏览器会记住选择；课程目录、正文、故障排查、验收要求和三级提示随之切换。全部 24 节课的中英文内容随项目提供，无需在线翻译。切换语言不会重载工作区或改变代码、运行输出与验收进度；代码示例、文件名和命令保留原样。此设置控制课程内容，操作界面仍使用中文。
 
 如果源码目录还没有 `build/cppapplab`，先按[快速入门的构建步骤](docs/QUICKSTART.md#2-run-the-one-command-setup)完成构建，再启动工作台。
 
@@ -28,7 +28,7 @@ bash scripts/start-web-workbench.sh
 
 在解压目录运行 `./cppapplab`，选择 **1. Continue learning**（继续学习）。源码构建也可用 `./build/cppapplab` 打开命令行首页。在首页选 **5** 或在终端给启动命令加上 `guide`，即可阅读[中文学习导航](course/LEARNING_GUIDE_ZH.md)。
 
-当前发布范围为 W1–W9 已实现任务；W9-A4/A5 及 W10–W12 尚处于路线图中。环境要求与部署说明保留在后文，供确有需要时查询。
+当前发布范围为 W1–W9 已实现任务；W9-A4 为当前验收候选，W9-A5 及 W10–W12 尚处于路线图中。环境要求与部署说明保留在后文，供确有需要时查询。
 
 ## Current implementation baseline
 
@@ -47,9 +47,9 @@ The values above describe the current supported source-build/CI environment. Nat
 
 ## Current learning tasks
 
-The main branch contains 23 hands-on tasks across W1–W9. W1–W7 cover C++ fundamentals, Linux systems, concurrency and TCP; W8 builds the HTTP server and its six D6 engineering tasks; W9 adds chunked transfer decoding, strict request-target/query parsing and descriptor-confined static-file access. `course/tasks.tsv` is the authoritative task catalog.
+The course catalog contains 24 tasks across W1–W9, including the CP5 A4 candidate. W1–W7 cover C++ fundamentals, Linux systems, concurrency and TCP; W8 builds the HTTP server and its six D6 engineering tasks; W9 adds chunked transfer decoding, strict request-target/query parsing and descriptor-confined static-file access. `course/tasks.tsv` is the authoritative task catalog.
 
-**推荐先读：** [中文学习导航（23 个任务）](course/LEARNING_GUIDE_ZH.md)。零基础学习者先看其中的「第一次使用」四步说明和常用词解释；也可以在终端运行 `./build/cppapplab guide`。重点是先完成第一关，再逐步理解工具和原理，不必预先读完整套安装与工程文档。
+**推荐先读：** [中文学习导航（24 个任务）](course/LEARNING_GUIDE_ZH.md)。零基础学习者先看其中的「第一次使用」四步说明和常用词解释；也可以在终端运行 `./build/cppapplab guide`。重点是先完成第一关，再逐步理解工具和原理，不必预先读完整套安装与工程文档。
 
 **Interactive command-line home:**
 
@@ -114,7 +114,7 @@ The current learning path intentionally teaches Linux/POSIX APIs for the systems
 | W8 | HTTP/1.1, parser, response, routing, static files, event loop | Educational HTTP server |
 | W9 | Chunked transfer, framing safety, URL and filesystem security, parser fuzzing | Hardened HTTP protocol stack |
 
-The detailed course map and acceptance boundaries live in [course/CURRICULUM.md](course/CURRICULUM.md). The current 23-task catalog and its acceptance contracts remain frozen while teaching usability is improved. W2's Todo task exercises STL algorithms and durable file I/O through a cumulative command-line application.
+The detailed course map and acceptance boundaries live in [course/CURRICULUM.md](course/CURRICULUM.md). The original 23 task rows and acceptance contracts remain frozen; CP5 may append a new task only with fixed learner boundaries and actual acceptance. W2's Todo task exercises STL algorithms and durable file I/O through a cumulative command-line application.
 
 ## Project principles
 
@@ -183,6 +183,10 @@ CppAppLab is an educational engineering lab, not a production C++ framework or a
 
 ### 可选现代 C++ 教学
 
-现有 23 个正式工程仍用 C++17，不需要升级编译器。现代知识对照使用独立 GCC 13.x 配置，Ubuntu 24.04 可手动安装 g++-13；没有工具链时知识仍可阅读，运行按钮不可用，不回退。首批 10 组 C++20/23 实验已在 Ubuntu 24.04 的 GCC 13.3.0 实测通过，见 [现代配置](docs/MODERN_CPP_PROFILE.md)。
+经典正式工程仍用 C++17，不需要升级编译器。现代知识对照使用独立 GCC 13.x 配置，Ubuntu 24.04 可手动安装 g++-13；没有工具链时知识仍可阅读，运行按钮不可用，不回退。首批 10 组 C++20/23 实验已在 Ubuntu 24.04 的 GCC 13.3.0 实测通过，见 [现代配置](docs/MODERN_CPP_PROFILE.md)。
 
-第二轮候选提供两个独立可编辑现代项目（采样窗口统计、定宽报文头解析），通过网页「查知识 → 现代工程实践」访问；需要额外 GCC 13、CMake 和 GoogleTest，原 23 个 C++17 任务不受影响。候选待 CI 验收，见 [独立现代工程](docs/MODERN_CPP_PROJECTS.md)。
+第二轮两个独立可编辑现代项目（采样窗口统计、定宽报文头解析）已通过 #79 实际验收，网页「查知识 → 现代工程实践」访问；需要额外 GCC 13、CMake 和 GoogleTest，经典 C++17 任务不受影响。见 [独立现代工程](docs/MODERN_CPP_PROJECTS.md)。
+
+### CP5 · W9-A4 请求准入策略（验收候选）
+
+追加 `w9.http-hardening`，不改变原 23 个任务及其验收契约。复用已验证 A1 解析器，学习首条消息边界、明确资源预算和确定性拒绝策略；24 项固定 GoogleTest、双语教材与三级提示。此关为本地内存输入策略，不是已经部署的加固服务器；候选待 CI，A5 及 W10–W12 待推进。

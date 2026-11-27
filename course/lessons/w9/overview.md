@@ -18,7 +18,11 @@ The advanced curriculum remains cumulative: learners extend the W8 server and it
 | A4 | w9.http-hardening | Request-smuggling regression cases, header/framing policy, resource limits and deterministic protocol errors |
 | A5 | w9.http-fuzzing | Parser fuzz target, regression corpus, sanitizer-backed fuzz smoke and minimized reproductions |
 
-A1 (chunked transfer decoding) and A2 (request-target and query parsing) are merged into main. A1 has 35 fixed tests and A2 has 39; both passed GCC, ASan/UBSan, clang-tidy and the real learning-engine check. A3 (secure static-root confinement) is merged via PR #29 (`f741e34`); its 34-case fixture passed GCC, ASan/UBSan and clang-tidy, and the real learning-engine check passed. Final PR-head run `43013017702` passed all three jobs, including root 66/66. A4–A5 remain roadmap stages.
+A1 (chunked transfer decoding) and A2 (request-target and query parsing) are merged into main. A1 has 35 fixed tests and A2 has 39; both passed GCC, ASan/UBSan, clang-tidy and the real learning-engine check. A3 (secure static-root confinement) is merged via PR #29 (`f741e34`); its 34-case fixture passed GCC, ASan/UBSan and clang-tidy, and the real learning-engine check passed. Final PR-head run `43013017702` passed all three jobs, including root 66/66. A4 is registered in this CP5 candidate with a 24-test fixed contract; actual CI is pending. A5 remains the next roadmap stage.
+
+### W9-A4 contract (candidate)
+
+Use the existing A1 parser, without rewriting its grammar. Limit one request to 8192 header bytes, 32 header fields, 65536 decoded-body bytes and 98304 wire bytes. Accept only a complete first request, retain exact consumed bytes, and expose no partial request on incomplete input or rejection. Categorize malformed input and resource rejection deterministically; rejection requires closing the connection. This is an isolated input-policy exercise, not live server integration or exhaustive security validation.
 
 ### W9-A1 contract
 

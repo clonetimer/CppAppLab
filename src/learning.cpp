@@ -79,12 +79,12 @@ bool matches_expected_stdout(std::string_view actual, std::string_view expected)
     std::string logical;
     logical.reserve(actual.size());
     for (std::size_t index = 0U; index < actual.size(); ++index) {
-        if (actual[index] == '\\r') {
-            if (index + 1U >= actual.size() || actual[index + 1U] != '\\n') {
+        if (actual[index] == '\r') {
+            if (index + 1U >= actual.size() || actual[index + 1U] != '\n') {
                 return false;
             }
             ++index;
-            logical.push_back('\\n');
+            logical.push_back('\n');
         } else {
             logical.push_back(actual[index]);
         }
@@ -364,7 +364,7 @@ int check_exact_stdout_workspace(const std::filesystem::path& workspace_path) {
 #else
     const bool converted = ::gmtime_r(&timestamp, &utc) != nullptr;
 #endif
-    if (converted)
+    if (converted) {
         char formatted[32]{};
         if (std::strftime(formatted, sizeof(formatted), "%Y-%m-%dT%H:%M:%SZ", &utc) != 0) {
             evidence.timestamp = formatted;
@@ -1312,7 +1312,7 @@ int check_cmake_gtest_workspace(const std::filesystem::path& workspace_path) {
 #else
     const bool converted = ::gmtime_r(&timestamp, &utc) != nullptr;
 #endif
-    if (converted)
+    if (converted) {
         char formatted[32]{};
         if (std::strftime(formatted, sizeof(formatted), "%Y-%m-%dT%H:%M:%SZ", &utc) != 0) {
             evidence.timestamp = formatted;

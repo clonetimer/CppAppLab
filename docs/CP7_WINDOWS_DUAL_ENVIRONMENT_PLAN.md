@@ -147,3 +147,44 @@ Current status: implementation candidate; fresh Windows and Ubuntu CI pending. R
 PR #88 is still a candidate. Do not claim native learner completion until the Windows job has actually built and run the root project and all five integration tests, and the existing Ubuntu 22.04/24.04 matrix is green. A source-only or isolated process test is insufficient.
 
 **Still not delivered:** Windows learner package/installer, Windows browser/Python supervisor, MSVC support, W5–W9 native execution, and real target-machine acceptance. W5–W9 remain on Linux/WSL2; all 25 tasks and fixed acceptance contracts remain unchanged.
+
+
+## CP7-B2c — Unicode CMake build-cache correction (candidate)
+
+PR #92's Windows run [45969984755](https://github.com/clonetimer/CppAppLab/actions/runs/45969984755)
+built the real root `cppapplab.exe`, passed the 25 foundation tests and the
+original Calculator 9/9 fixture, and passed four of five root learning tests.
+Actual W1 acceptance from a Chinese workspace, history and prerequisite
+unlock succeeded using relative compiler paths and an absolute UTF-16
+process-launch path. The remaining W1–W4 chain stopped at Calculator's
+GoogleTest discovery in a Unicode build directory; W2–W4 were not reached.
+
+This candidate retains Unicode learner workspaces, but relocates native
+CMake fixture builds to an owned local ASCII cache (default: system temp
+directory / CppAppLab-native-build; override:
+`CPPAPPLAB_NATIVE_BUILD_ROOT`). The engine derives a per-workspace cache
+key and checks the full workspace/task ownership marker before reusing it.
+A checked short-path alias is optional; if no ASCII cache path can be
+established, the CLI reports how to choose a writable local cache, not
+how to rename a Windows account. The learner's declared source files,
+original fixture and original shared CLI workflow script are staged
+through the native no-follow adapter. No reference answer is copied by
+production code. Build/check prepare fresh native fixture trees, and run
+requires the current source-fingerprint stamp. CMake uses Ninja/GCC.
+The fixed CTest count must match an exact successful summary line
+(legacy or new CTest format), with nonzero exit, timeout, truncation or
+zero expected tests rejected. All 25 catalog rows and original fixtures
+remain unchanged.
+
+Native CLI explicitly marks W5–W9 as Linux/WSL2-required, separately
+from prerequisite locks; start/learn/build/run/check/app-build/app-run
+cannot execute these tasks natively. Six native root tests include the
+actual Unicode W1–W4 course chain, build/run versus formal PASS separation,
+wrong-output evidence, and Linux-only rejection. The original W2–W4
+symlink tests must run without skips.
+
+Current status: candidate, fresh Windows/Ubuntu CI required. The cache
+is ordinary local application storage, not a same-user security sandbox;
+same-workspace simultaneous execution is not qualified. Native browser,
+installer, offline tools, real nonadministrator target machine and
+human learning evaluation remain unqualified.

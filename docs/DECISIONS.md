@@ -43,7 +43,7 @@
 
 ## ADR-0007 — Windows 11 native is the sole supported runtime target
 
-**Status:** Historical accepted direction; implementation paused by the user. See ADR-0008 for the active delivery boundary.
+**Status:** Historical accepted direction; implementation paused by the user. Superseded by ADR-0008 for CP0–CP6 and ADR-0009 for CP7.
 
 **Decision:** The product target is Windows 11 running CppAppLab directly as a native Windows application. WSL, Ubuntu, a Linux kernel, Bash, apt/dpkg and a POSIX compatibility runtime are not product prerequisites. This decision supersedes the runtime-environment choices in ADR-0001 and ADR-0006; those records remain unchanged as historical decisions.
 
@@ -60,10 +60,19 @@
 
 ## ADR-0008 — Freeze the current learning baseline; prioritize teaching usability
 
-**Status:** Active (2026-11-26).
+**Status:** Historical CP0–CP6 decision (2026-11-26); CP7 direction is ADR-0009.
 
 **Decision:** Preserve the 23 C++17 W1–W9 tasks, prerequisite graph, declared editable files and fixed platform-owned acceptance contracts. The active implementation is Ubuntu 22.04/24.04, including WSL2 startup on Windows. Suspend ADR-0007 implementation; keep the inventory, branch and Draft PR #67 intact. Do not claim a native Windows product or target-machine acceptance.
 
 **Reason:** The user's active priority is understandable browser teaching, using the lessons learned from RustAppLab, not an operating-system migration. UI changes may improve presentation but cannot change compiler, source fingerprint, workspace isolation or tests. Modern C++20/23 work, when started, must use separately verified compiler feature/toolchain profiles and not raise the C++17 baseline.
 
 **Execution:** See MODERN_CPP_LEARNING_PLAN.md. Freeze scope by phase, use actual browser/engine results and the same-state before/after captures, merge only after applicable CI. A passing program is not evidence of independent learner comprehension.
+
+
+## ADR-0009 — Native Windows foundations plus preserved Linux specialty route
+
+**Status:** Accepted development direction (2026-11-27); implementation candidate, not a supported native product yet.
+
+**Decision:** Windows 11 x64 W1–W4 and existing representative modern C++ content are the first native targets. W5–W9 stay on Ubuntu 22.04/24.04 (including WSL2). Preserve 25 registered C++17 tasks and all fixed contracts. Use native MinGW-w64 UCRT GCC, CMake and GoogleTest. No Bash, WSL or Linux runtime for native execution. Environment availability is separate from prerequisite state and formal PASS. Do not automatically import cross-environment evidence without verified equivalence. CP7 does not require Winsock/IOCP or new courses. Reuse the reviewed isolated Win32 process backend from #67 selectively, not its old branch wholesale. Full root engine, persistence, path safety, actual learner workflow, tooling, browser, offline package and original Linux regression are distinct gates. Real target machine/human results remain post-delivery feedback and must not be represented as passed.
+
+See [CP7 plan](CP7_WINDOWS_DUAL_ENVIRONMENT_PLAN.md).

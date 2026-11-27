@@ -81,7 +81,7 @@ store. The existing progress/history format and source-fingerprint semantics are
 retained; workspace paths round-trip as UTF-8. Existing Linux I/O uses its
 original POSIX implementation. Native progress and workspace evidence use wide
 paths, no-follow file handles, checked local fixed-drive ancestors, bounded
-reads, CREATE_NEW temporaries, FlushFileBuffers and handle-based atomic rename.
+reads, CREATE_NEW temporaries, FlushFileBuffers and same-volume MoveFileExW replacement after the temporary is closed; checked parent directory handles stay pinned without FILE_SHARE_DELETE.
 History append and read use bounded LockFileEx acquisition, with the original
 1 MiB history limit. Existing reparse-point ancestors, reparse files, hard-linked
 files and alternate streams are rejected. Directory handles are held without
@@ -106,4 +106,12 @@ native browser product claimed yet.
 
 ### CP7-B2a regression findings and correction (2026-11-27)
 
-The first native state run failed four cases because the initial absolute-path rename returned success without the expected destination becoming visible. The second attempt used a non-null RootDirectory with a relative leaf and was rejected by Windows with ERROR_INVALID_PARAMETER. The final implementation uses the documented Win32 same-volume MoveFileExW path form, while holding checked parent-directory handles (without FILE_SHARE_DELETE), keeping the exclusive temporary file open with FILE_SHARE_DELETE, flushing it, and invoking MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH. MOVEFILE_COPY_ALLOWED is deliberately absent: source and destination are siblings on the same fixed volume; any cross-volume fallback would violate atomic replacement. This is the current candidate implementation, not yet verified by a fresh CI run. The previous failures remain recorded and are not counted as passes.
+The first native state run failed four cases because the initial absolute-path rename returned success without the expected destination becoming visible. The second attempt used a non-null RootDirectory with a relative leaf and was rejected by Windows with ERROR_INVALID_PARAMETER. The final implementation uses the documented Win32 same-volume MoveFileExW path form. It holds checked parent-directory handles (without FILE_SHARE_DELETE), writes and flushes an exclusive CREATE_NEW temporary, closes it before MoveFileExW (the documented API requirement), and invokes MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH. MOVEFILE_COPY_ALLOWED is deliberately absent: source and destination are siblings on the same fixed volume; any cross-volume fallback would weaken atomic replacement. MOVEFILE_COPY_ALLOWED is deliberately absent: source and destination are siblings on the same fixed volume; any cross-volume fallback would violate atomic replacement. This implementation passed the final current-head Windows and Linux CI runs recorded below. The previous failures remain recorded and are not counted as passes.
+
+
+### CP7-B2a final verification (2026-11-27)
+
+Candidate head `75990c2d2de4fec208fae9a2d469d45b693c5fb0`:
+- Windows run [45957192856](https://github.com/clonetimer/CppAppLab/actions/runs/45957192856): 20/20 process/W1/native-state tests and original Calculator 9/9 passed. The final tested implementation flushes and closes the temporary before MoveFileExW.
+- Existing Linux regression [45957192865](https://github.com/clonetimer/CppAppLab/actions/runs/45957192865): all 14 applicable jobs PASS; one push-only compatibility check skipped as configured. This includes both Ubuntu builds, ASan/UBSan, clang-tidy, Chromium, CP4 GCC13, CP5 fuzz, package and offline-dependency gates.
+- PR #86 is ready for merge. B2a qualifies native progress/workspace evidence storage and the W1/Calculator native fixtures only. It does not qualify native workspace creation/copy, full learning engine, Python browser supervision, a Windows package or target-machine acceptance.

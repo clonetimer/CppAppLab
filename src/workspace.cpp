@@ -158,7 +158,9 @@ void validate_relative_source_path(const std::filesystem::path& relative_path,
         throw std::runtime_error("Task source path must be relative to the workspace.");
     }
 
-#ifndef _WIN32
+#ifdef _WIN32
+    (void)workspace_root;  // The native read adapter validates every path component.
+#else
     std::filesystem::path current = workspace_root;
     std::size_t component_index = 0;
     const std::size_t component_count =
@@ -169,7 +171,6 @@ void validate_relative_source_path(const std::filesystem::path& relative_path,
         if (component == "." || component == "..") {
             throw std::runtime_error("Task source path contains an unsafe component.");
         }
-#ifndef _WIN32
         current /= component;
         const auto status = std::filesystem::symlink_status(current);
         if (std::filesystem::is_symlink(status)) {
@@ -181,7 +182,6 @@ void validate_relative_source_path(const std::filesystem::path& relative_path,
             throw std::runtime_error("Learner source parent is not a directory: " +
                                      current.string());
         }
-#endif
     }
 }
 

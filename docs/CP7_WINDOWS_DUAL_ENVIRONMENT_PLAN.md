@@ -140,7 +140,7 @@ Current status: implementation candidate; fresh Windows and Ubuntu CI pending. R
 - The Windows entry point is `wmain`; arguments are converted from UTF-16 to UTF-8. The shared CLI converts filesystem arguments from UTF-8 back to native Windows paths.
 - The shared CLI now uses `USERPROFILE`, `GetEnvironmentVariableW` / `SetEnvironmentVariableW` for native path environment, Windows console detection, `gmtime_s`, `.exe` learner outputs, and `g++.exe` / `cmake.exe` / `ctest.exe`.
 - Course material reads and declared C++ source staging use native no-follow file operations. The fixed stdout contract remains byte-exact except for normalizing only the Windows CRT's valid LF-to-CRLF text-mode conversion; all other bytes and exit/timeout/output constraints remain strict.
-- Five new native integration tests cover Unicode USERPROFILE workspace creation/resume, actual W1 compile/check/evidence/history/unlock, wrong-output rejection and prerequisite lock, and Unicode lesson/hint reads.
+- Five new native integration tests cover Unicode USERPROFILE workspace creation/resume, actual W1-W4 fixed acceptance/evidence/history/prerequisite chain, wrong-output rejection and prerequisite lock, and Unicode lesson/hint reads.
 - The primary `CppAppLab CI` Windows job now installs UCRT64 and runs the 25 process/state/workspace tests, original Calculator 9/9, root CMake build, four learning integration tests, native PE import checks and a real Unicode `cppapplab.exe start → lesson → check → history → learn` journey.
 
 ### Acceptance boundary

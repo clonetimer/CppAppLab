@@ -28,6 +28,11 @@ class TestSourceMapping(unittest.TestCase):
         self.assertTrue(notice_path("ucrt64/share/licenses/gcc/COPYING.RUNTIME"))
         self.assertTrue(notice_path("ucrt64/share/doc/python/LICENSE.txt"))
         self.assertFalse(notice_path("ucrt64/include/license_parser.h"))
+        self.assertFalse(notice_path("ucrt64/lib/license_helper.dll"))
+        self.assertFalse(notice_path("ucrt64/include/COPYRIGHT_parser.hpp"))
+        self.assertTrue(notice_path("ucrt64/share/doc/gcc/COPYING.RUNTIME"))
+        self.assertTrue(notice_path("ucrt64/share/doc/example/LICENSE-MIT"))
+        self.assertTrue(notice_path("ucrt64/share/licenses/example/custom-license"))
         self.assertFalse(notice_path("ucrt64/bin/g++.exe"))
 
 

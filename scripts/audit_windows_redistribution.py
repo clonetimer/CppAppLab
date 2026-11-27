@@ -38,8 +38,24 @@ def source_identity(meta: dict) -> str:
 def notice_path(name: str) -> bool:
     relative = PurePosixPath(name)
     leaf = relative.name.upper()
-    return (name.startswith("ucrt64/share/licenses/") or
-            bool(re.match(r"^(LICENSE|COPYING|NOTICE|COPYRIGHT)(?:[._-]|$)", leaf)))
+    if name.startswith("ucrt64/share/licenses/"):
+        return True
+    # Header/source names such as license_parser.h are not legal notices.
+    # Outside the dedicated license directory, inventory only conventional
+    # notice names with text/markup suffixes (or extensionless COPYING.*).
+    if not re.match(r"^(LICENSE|COPYING|NOTICE|COPYRIGHT)(?:[._-]|$)", leaf):
+        return False
+    if relative.suffix.lower() in {".h", ".hpp", ".hh", ".hxx", ".c", ".cc",
+                                  ".cpp", ".cxx", ".py", ".pyc", ".pyo",
+                                  ".dll", ".exe", ".a", ".o", ".obj", ".lib",
+                                  ".so", ".dylib", ".cmake", ".js", ".ts",
+                                  ".rs", ".go", ".java", ".class", ".sh",
+                                  ".cmd", ".bat", ".ps1"}:
+        return False
+    return (leaf in {"LICENSE", "COPYING", "NOTICE", "COPYRIGHT"} or
+            relative.suffix.lower() in {".txt", ".md", ".rst", ".html", ".htm",
+                                         ".license", ".lic", ".rtf"} or
+            bool(re.fullmatch(r"(?:LICENSE|COPYING|NOTICE|COPYRIGHT)[._-](?:GPL|LGPL|AGPL|BSD|MIT|APACHE|RUNTIME|LIBRARY|LESSER)(?:[._-][0-9A-Z]+)*", leaf)))
 
 
 def groups_and_notices(summary: dict, lock: dict, msys: Path) -> tuple[list[dict], dict]:

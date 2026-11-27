@@ -179,9 +179,11 @@ D6-B through D6-D2 learner templates include a known completed baseline for the 
 
 **A4 verified (PR #80):** `w9.http-hardening` adds a strict bounded admission policy over the fixed W9-A1 parser. One declared editable implementation, platform-owned header, 24 fixed tests, bilingual lesson and three progressive hints. The per-request policy is not a deployed server security qualification. Original tasks and contracts remain intact.
 
-**A5 candidate:** `w9.http-fuzzing` adds the learner-owned observation oracle with 21 fixed tests and a platform-owned A1/A4 replay driver. Eight seed inputs and a separate actual Clang/libFuzzer ASan/UBSan campaign (10,000 requested runs, 4 KiB max input); evidence is required, not inferred from ordinary unit tests. CI pending. W10–W12 remain planned.
+**A5 verified (PR #81):** `w9.http-fuzzing` passed 21/21 fixed tests in all six Ubuntu GCC/sanitizer/clang-tidy configurations and 10,000/10,000 actual bounded Clang/libFuzzer ASan/UBSan executions (cov=496, ft=1231, findings=0), CI 45941194975. W9 representative scope is closed. The bounded campaign does not establish complete parser security.
 
-## W10 — TLS and WebSocket services (planned)
+## W10 — TLS and WebSocket services
+
+**A1 candidate:** `w10.tls-context` is the 26th classical task, with a fixed RAII interface and 17 OpenSSL-backed tests for certificate/key loading, explicit trust, hostname checks and real in-memory BIO handshakes/data transfer. Test CA and leaf identities are generated locally in the build directory. Requires OpenSSL 3.x development library and CLI; earlier C++17 tasks remain unchanged. Not a network listener or epoll integration; actual CI pending.
 
 - OpenSSL context/certificate/key lifecycle
 - non-blocking TLS handshake and epoll integration

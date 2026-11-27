@@ -18,13 +18,13 @@ The advanced curriculum remains cumulative: learners extend the W8 server and it
 | A4 | w9.http-hardening | Request-smuggling regression cases, header/framing policy, resource limits and deterministic protocol errors |
 | A5 | w9.http-fuzzing | Parser fuzz target, regression corpus, sanitizer-backed fuzz smoke and minimized reproductions |
 
-A1 (chunked transfer decoding) and A2 (request-target and query parsing) are merged into main. A1 has 35 fixed tests and A2 has 39; both passed GCC, ASan/UBSan, clang-tidy and the real learning-engine check. A3 (secure static-root confinement) is merged via PR #29 (`f741e34`); its 34-case fixture passed GCC, ASan/UBSan and clang-tidy, and the real learning-engine check passed. Final PR-head run `43013017702` passed all three jobs, including root 66/66. A4 merged via PR #80, `8779b597`; CI 45926525718 all 13 applicable jobs PASS, A4 24/24 on both Ubuntu releases in GCC, sanitizer and clang-tidy configurations. A5 is the current 21-test candidate; actual bounded fuzz campaign and full CI are pending.
+A1 (chunked transfer decoding) and A2 (request-target and query parsing) are merged into main. A1 has 35 fixed tests and A2 has 39; both passed GCC, ASan/UBSan, clang-tidy and the real learning-engine check. A3 (secure static-root confinement) is merged via PR #29 (`f741e34`); its 34-case fixture passed GCC, ASan/UBSan and clang-tidy, and the real learning-engine check passed. Final PR-head run `43013017702` passed all three jobs, including root 66/66. A4 merged via PR #80, `8779b597`; CI 45926525718 all 13 applicable jobs PASS, A4 24/24 on both Ubuntu releases in GCC, sanitizer and clang-tidy configurations. A5 merged via PR #81 (41feb08e); CI 45941194975 all 14 applicable jobs PASS. Six configurations 21/21; actual bounded libFuzzer 10000/10000, cov=496, ft=1231, findings=0. W9 scoped curriculum is frozen.
 
 ### W9-A4 contract (verified)
 
 Use the existing A1 parser, without rewriting its grammar. Limit one request to 8192 header bytes, 32 header fields, 65536 decoded-body bytes and 98304 wire bytes. Accept only a complete first request, retain exact consumed bytes, and expose no partial request on incomplete input or rejection. Categorize malformed input and resource rejection deterministically; rejection requires closing the connection. This is an isolated input-policy exercise, not live server integration or exhaustive security validation.
 
-### W9-A5 contract (candidate)
+### W9-A5 contract (verified)
 
 Learners implement the observation validator and equivalence comparison. The fixed driver calls the existing A1/A4 parser twice and verifies accepted consumed prefixes; synthetic inconsistent observations verify the oracle itself. Real fixed tests and the optional local coverage-guided campaign are separate evidence. Eight seeds, 10,000 requested executions and 4 KiB max length; only actual counters and actual findings may be reported. No network execution or comprehensive security claim.
 

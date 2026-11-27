@@ -1280,7 +1280,7 @@ class KnowledgeProbeTests(unittest.TestCase):
         with (root / "course/tasks.tsv").open(encoding="utf-8") as stream:
             tasks = {row[0]: row[4] for row in csv.reader(
                 (line for line in stream if line.strip() and not line.startswith("#")), delimiter="\t")}
-        self.assertEqual(len(tasks), 25)
+        self.assertEqual(len(tasks), 26)
         self.assertEqual(len(knowledge_lab.TOPICS), 32)
         self.assertEqual(len(knowledge_lab.BY_ID), 32)
         self.assertEqual(sum(bool(topic["phase"]) for topic in knowledge_lab.TOPICS), 28)

@@ -35,8 +35,8 @@ def main() -> int:
                 raise AssertionError(f"Expected 13 task fields, received {len(row)}: {row}")
             rows.append(row)
 
-    if len(rows) != 25:
-        raise AssertionError(f"Expected 25 released learner tasks; found {len(rows)}")
+    if len(rows) != 26:
+        raise AssertionError(f"Expected 26 released learner tasks; found {len(rows)}")
 
     counts: Counter[str] = Counter()
     previous_ids: set[str] = set()
@@ -104,17 +104,17 @@ def main() -> int:
         elif kind != "exact_stdout":
             raise AssertionError(f"Unknown acceptance kind for {task_id}: {kind}")
 
-    for week in range(1, 10):
+    for week in range(1, 11):
         if not counts[f"W{week}"]:
             raise AssertionError(f"No released tasks in W{week}")
-    if "W10" not in guide or "W12" not in guide:
+    if "W11" not in guide or "W12" not in guide:
         raise AssertionError("The guide must distinguish unfinished future curriculum")
 
-    print("[PASS] Course material audit: 25/25 registered tasks")
+    print("[PASS] Course material audit: 26/26 registered tasks")
     print("[PASS] Every released task has a goal, acceptance, three hints and editable files")
     print("[PASS] Every released task is linked in the Chinese study route")
     print("[PASS] Released course coverage: " + ", ".join(f"{k}={counts[k]}" for k in sorted(counts)))
-    print("[INFO] Future W10-W12 lessons remain explicitly unregistered")
+    print("[INFO] Future W10 transport/WebSocket and W11-W12 remain explicitly unregistered")
     return 0
 
 

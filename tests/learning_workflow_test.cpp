@@ -138,7 +138,7 @@ TEST(LearningWorkflowTest, ChineseGuideCoversAllRegisteredTasks) {
     }
     EXPECT_NE(output.find("中文学习导航"), std::string::npos);
     EXPECT_NE(output.find("AVAILABLE"), std::string::npos);
-    ASSERT_EQ(cppapplab::task_catalog().size(), 25U);
+    ASSERT_EQ(cppapplab::task_catalog().size(), 26U);
     for (const auto& task : cppapplab::task_catalog()) {
         EXPECT_NE(output.find(task.id), std::string::npos) << task.id;
     }

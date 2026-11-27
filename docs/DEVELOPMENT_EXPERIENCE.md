@@ -715,3 +715,13 @@ When a learner-facing class owns `std::unique_ptr<Impl>`, a constructor that thr
 
 - Fix Windows package profile to actual bundled GCC 16.2.0 and native target, use explicit sysroot and C++20/23, retain all CP4 source/marker/feature contracts and original Linux GCC13 profile. The native process bridge constructs only fixed probe commands, reuses the Win32 Job Object runner and validates the private cache. No arbitrary browser commands or learner state mutation.
 - Extend actual relocated ZIP smoke to 20/20 modern variants, exact compiler path and unchanged classic history, with rejection of caller-supplied compiler. Still candidate until Windows CI; source-built Windows and editable modern projects are separate qualification gates.
+
+
+### CP7-D3a notice detection correction
+
+Run 46009769033 at c770c511 passed signed replay, all 101 relocated fixed course tests and uploaded the internal candidate. The audit fixture correctly rejected the original overbroad notice predicate: `license_parser.h` was incorrectly inventoried as a license text. Tighten the predicate outside the dedicated license directory and keep all files inside the latter. Retain the failing fixture and add header, binary and conventional text cases. Do not count the earlier green run that omitted the audit step or this failed audit as source collection evidence. Fresh CI required.
+
+
+### CP7-E1 actual packaged experiment evidence
+
+At baff74a6, [46010049974](https://github.com/clonetimer/CppAppLab/actions/runs/46010049974) replayed 63 locked signed archives, verified 40,617 files, passed all 101 classic contracts and all 20 existing modern variants through the actual relocated HTTP workbench; classic state/history unchanged. The job then failed at the inherited D3a notice fixture. The separate Windows foundation passed. Integrate the tested notice predicate correction without changing any experiment source, and rerun complete CI.

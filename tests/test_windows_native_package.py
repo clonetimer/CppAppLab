@@ -204,13 +204,16 @@ def verify(archive: Path) -> None:
                 # relocated compiler and relocated GTest config, not the host.
                 caches = list((base / "cache").rglob("CMakeCache.txt"))
                 assert len(caches) == 4, caches
-                prefix = (package / "toolchain").as_posix().casefold()
+                prefix = (package / "toolchain").resolve()
                 for cache in caches:
-                    data = cache.read_text(encoding="utf-8", errors="replace").replace("\\", "/")
-                    selected = [line for line in data.splitlines()
-                                if line.startswith(("CMAKE_CXX_COMPILER:", "GTest_DIR:"))]
-                    assert len(selected) == 2, (cache, selected)
-                    assert all(prefix in line.casefold() for line in selected), (cache, selected)
+                    data = cache.read_text(encoding="utf-8", errors="replace")
+                    selected = {line.split(":", 1)[0]: Path(line.split("=", 1)[1])
+                                for line in data.splitlines()
+                                if line.startswith(("CMAKE_CXX_COMPILER:", "GTest_DIR:"))}
+                    assert set(selected) == {"CMAKE_CXX_COMPILER", "GTest_DIR"}, (cache, selected)
+                    assert os.path.samefile(selected["CMAKE_CXX_COMPILER"], prefix / "bin/g++.exe"), selected
+                    assert selected["GTest_DIR"].resolve().is_relative_to(prefix), selected
+                    assert (selected["GTest_DIR"] / "GTestConfig.cmake").is_file(), selected
                 conflict = batch("Start-CppAppLab.cmd", f"--no-browser --port {port}")
                 assert conflict.returncode != 0, conflict.stdout
                 assert request("/api/v1/health")["status"] == "ok"

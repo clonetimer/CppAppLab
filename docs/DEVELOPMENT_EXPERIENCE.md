@@ -759,3 +759,10 @@ The engine's aggregate current PASS can refer to a different historical workspac
 
 - Run 46036629470 verified Linux import and 101/101 reacceptance on both Ubuntu versions; Windows package 46036629266 passed 101 classic but export failed with 409. Browser download also timed out. Root cause: real CLI emits `Source fingerprint: fnv1a64:<16 hex>`, not a bare hex string. Freeze actual spelling, exact PASS/count and raw snapshot FNV identity; retain SHA-256 per file. Add tests for stale, wrong count, bare hex and duplicates.
 - Upgrade cross-OS evidence: export synthetic CI learner bytes from the actual relocated Windows HTTP service, hash/upload the small JSON, then use that same artifact on Ubuntu 22.04/24.04 in dependent jobs, real engine checks 101/101 and W5 unlock, no fallback. No personal learner data or acceptance records transferred. Actual WSL2/ordinary-user/human acceptance remains separate. Fresh CI required.
+
+
+## 92. CP7-F3b cross-OS verification complete; G closeout
+
+- #102 actual Windows export 5 tasks/13 declared source files, exact JSON hash 427377623cdfaa42cd874381e9592cfd73160639a635b1981f0eecbe7a3cb31a replayed on both Ubuntu versions (101/101 each), W5 unlock only after Linux checks. Full Windows 101+20+15, primary 14/14 and foundation PASS. Merged main 9ce07bd2 with identical tested head tree.
+- Downloaded small exchange and redistribution evidence artifacts and checked outer hashes, CRC, source content hashes, 59/59 signed source groups covering 63/63 binary packages and Python hash status. 14 packages no detected package-owned notice; retain as review items, not findings of noncompliance. No project license decision inferred.
+- G corrects stale learner documentation and package limits, embeds handover/review docs, uses the fixed #102 verified artifact as an anchor instead of endlessly updating a ZIP with its own hash. Fresh G CI still required. No additional course or feature scope.

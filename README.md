@@ -1,6 +1,6 @@
 # CppAppLab
 
-> **当前主线（2026-11-27）：CP7 Windows 原生教学与双环境统一。** Windows 免安装候选已在真实 CI 验收 W1–W4 的 101 项固定合同、20 个现代 C++ 对照变体及两个现代工程的 15 项测试；保留完整 25 个正式课程和 Ubuntu 22.04/24.04 路径。#101 已合并，#102 源码交换仍待最新跨平台 CI。普通 Windows 11 实机、真实 WSL2 切换、真人学习评估及公开再分发审批仍未完成。开始学习见下文，具体版本和验收边界见[CP7 交付手册](docs/CP7_WINDOWS_HANDOVER.md)。
+> **当前主线（2026-11-27）：CP7 Windows 原生教学与双环境统一。** Windows 免安装候选已在真实 CI 验收 W1–W4 的 101 项固定合同、20 个现代 C++ 对照变体及两个现代工程的 15 项测试；保留完整 25 个正式课程和 Ubuntu 22.04/24.04 路径。#101、#102 已合并，Windows 实际源码导出及两版 Ubuntu 各 101 项重新验收通过。普通 Windows 11 实机、真实 WSL2 切换、真人学习评估及公开再分发审批仍未完成。开始学习见下文，具体版本和验收边界见[CP7 交付手册](docs/CP7_WINDOWS_HANDOVER.md)。
 
 **CppAppLab** is a hands-on C++ learning and engineering-practice platform. It takes a learner from the first C++ program to maintainable systems software, concurrent programs, TCP services, and an HTTP/1.1 server.
 
@@ -42,7 +42,7 @@ bash scripts/start-web-workbench.sh
 
 ### Windows 原生免安装 ZIP（内部 CI 候选，实际验收通过）
 
-原生 GCC 16.2.0、CMake、Ninja、GoogleTest、GDB 和官方嵌入式 Python 随包交付。下载[已验证的内部 CI 候选包](https://github.com/clonetimer/CppAppLab/actions/runs/46016954035/artifacts/15206159695)（登录并具有仓库访问权限，临时 artifact），校验内层 ZIP 的 SHA-256，完整解压到普通用户可写的英文目录（可含空格），双击包内 `Start-CppAppLab.cmd`。基础学习不需要 WSL 或另装编译工具链。中文学员目录支持已在 CI 验证；W2–W4 的真实文件符号链接仍需要相应权限。该版本通过 101 个经典合同、20 个现代对照变体和 15 个现代工程测试；#102 新源码复用功能尚非这个已验证版本的一部分。没有正式 Windows Release，详见[交付手册](docs/CP7_WINDOWS_HANDOVER.md)。
+原生 GCC 16.2.0、CMake、Ninja、GoogleTest、GDB 和官方嵌入式 Python 随包交付。下载[已验证的内部 CI 候选包](https://github.com/clonetimer/CppAppLab/actions/runs/46040159740/artifacts/15218809597)（登录并具有仓库访问权限，临时 artifact），校验内层 ZIP 的 SHA-256，完整解压到普通用户可写的英文目录（可含空格），双击包内 `Start-CppAppLab.cmd`。基础学习不需要 WSL 或另装编译工具链。中文学员目录支持已在 CI 验证；W2–W4 的真实文件符号链接仍需要相应权限。该版本通过 101 个经典合同、20 个现代对照变体和 15 个现代工程测试；源码交换实际通过 Windows 导出及 Ubuntu 22.04/24.04 各 101 项真实重验收；不迁移 PASS。没有正式 Windows Release，详见[交付手册](docs/CP7_WINDOWS_HANDOVER.md)。
 
 ### 使用学习者压缩包：直接打开网页工作台
 

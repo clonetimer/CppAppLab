@@ -188,3 +188,16 @@ is ordinary local application storage, not a same-user security sandbox;
 same-workspace simultaneous execution is not qualified. Native browser,
 installer, offline tools, real nonadministrator target machine and
 human learning evaluation remain unqualified.
+
+
+### CP7-B2c/C — Windows file-symlink compatibility follow-up
+
+Initial PR #93 head `498c380b`, native run [45974884979](https://github.com/clonetimer/CppAppLab/actions/runs/45974884979) and full run [45974885077](https://github.com/clonetimer/CppAppLab/actions/runs/45974885077): root native PE and 25/25 foundation tests pass; 5/6 native learning integration tests pass; real Hello World and Calculator (9/9) pass from a Unicode learner workspace. W2 reaches all 19 tests: 17 pass, two fail before invoking the learner code because MinGW's std::filesystem::create_symlink reports ENOSYS. W3/W4 not reached. All 13 non-Windows jobs pass; native Windows fails, one push-only job skipped.
+
+Correct the **setup only** of the two original security tests in each W2/W3/W4 fixture. On Windows call CreateSymbolicLinkW and verify IO_REPARSE_TAG_SYMLINK, not a regular-file substitute. Retain Linux std::filesystem::create_symlink and all original names, counts, assertions, real CLI persistence workflows. No skip; absence of symlink creation permission remains an explicit failure. First correction run 45980630027 reached native root execution but failed compiling the fixture because MinGW already defines NOMINMAX=1. Guard both Windows header macros without relaxing -Werror.
+
+GCC upstream symlink support work (https://gcc.gnu.org/pipermail/gcc-patches/2026-June/721803.html) also documents the Windows lstat-following-link limitation in the existing implementation. Provide a small `unsafe_data_link` helper in W2/W3 starter sources, native reference implementations and W4 prefilled implementation. Windows uses GetFileAttributesW to reject reparse points and unexpected inspection errors; Linux retains its standard symlink behavior. It is a leaf-path guard, not an arbitrary same-user sandbox. Preserve all original course algorithms and source declarations, and update the existing third hints without adding new hint levels. The W4 reference-test seeding path is corrected to reference/src/task_manager_test.cpp, matching the existing Linux workflow. Original 25 catalog entries and expected counts (1 exact output + 9+19+31+41) unchanged.
+
+Delivery caveat: CreateSymbolicLinkW with SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE needs Developer Mode for non-elevated use (https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createsymboliclinkw). Hosted Windows CI is not evidence that a clean, nonadmin Windows 11 without this capability can perform W2-W4 formal checks. This is a real CP7-D/G gate; do not silently enable system settings or weaken the security contract.
+
+Current candidate remains PR #93, pending fresh complete CI. No Windows browser/ZIP or target-machine/human claim.

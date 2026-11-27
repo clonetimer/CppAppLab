@@ -249,3 +249,60 @@ descendant shutdown. Pinned Chromium runs the native fallback-editor
 DOM journey and captures Windows screenshots. New CI pending.
 This does not deliver the install-free Windows package or the unified
 WSL switching mechanism. CP7-D, E and remaining F/G are open.
+
+
+## CP7-F1 verified; CP7-D1 portable Windows delivery candidate
+
+#94 merged at `95a7e7162a40e9971d0becdcf1392faaae3452d3`.
+Full CI [45986395723](https://github.com/clonetimer/CppAppLab/actions/runs/45986395723)
+passed all 14 applicable jobs (one push-only compatibility check skipped).
+The native Windows job executed real HTTP W1 build/run/check, Calculator 9/9,
+history, stale, restart, hard-link, token, port conflict, actual learner
+descendant shutdown and a genuine Chromium offline-editor journey.
+Windows screenshot artifact 15191289510 was uploaded in that run.
+Native foundation [45986395713](https://github.com/clonetimer/CppAppLab/actions/runs/45986395713)
+also passed. CP7-F1 is qualified for a source-built native workbench;
+it does not yet qualify install-free packaging.
+
+D1 moves the install step to the build runner, not the learner.
+A separate Windows 2025 job builds the native Release engine, acquires
+the official Python 3.14.10 AMD64 embedded ZIP against its published
+SHA-256, and packages the actual MSYS2 UCRT64 installed package inventory
+for GCC/CMake/CTest/Ninja/GTest/GDB and native dependencies. Preserve
+the prefix layout and original license files; copy only installed
+UCRT64 package-owned paths, with safe in-prefix link materialization.
+Record the exact installed package metadata, source commit, each
+file's SHA-256/size and ZIP hash. MSYS2 acquisition is currently a
+version-observed CI snapshot, not yet a locked repeatable acquisition
+of every dependency; this must be closed for a formal release.
+
+Package launch uses Start-CppAppLab.cmd and embedded Python, without
+external Python, shell compatibility layer, administrator elevation,
+global PATH changes, or runtime tool download. The package sets a
+child-only PATH to the bundled toolchain and Windows system folders,
+isolates other toolchain environment variables, and opens the local
+browser only after binding its own service. CLI wrapper uses the
+same package data root. Unicode learner paths stay independent of
+toolchain paths. A non-ASCII toolchain location requires an existing
+verified ASCII short alias or extraction to an ASCII path; the
+launcher can use a writable package cache when the default temp
+directory is incompatible. Real file-symlink capability is probed
+without changing Windows settings; if absent, W2-W4 full acceptance
+remains conditional, not waived.
+
+The new test extracts the actual ZIP into a relocated directory
+with spaces, verifies all listed file hashes, strips the host's
+toolchain PATH, exercises the batch launcher and embedded Python,
+opens the packaged HTTP service, performs real W1 red/build/run/green
+and all original W1-W4 fixed checks (101 contracts) using actual
+learner code, verifies relocated GCC/GTest paths in all four CMake
+caches, then tests port conflict and restart/resume/stale. Test-only
+reference seeding is not production behavior. Fresh CI pending.
+
+D1 is an internal CI candidate, not a public release. The complete
+corresponding third-party source and license/redistribution review,
+immutable upstream dependency acquisition lock, nonadmin Windows 11
+without file-symlink capability, fully offline physical machine,
+Unicode install path without ASCII alias, CP7-E native modern projects
+and knowledge experiments, CP7-F automatic environment handoff and
+real learner feedback remain open.

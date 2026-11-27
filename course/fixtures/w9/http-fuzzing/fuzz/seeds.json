@@ -1,0 +1,34 @@
+[
+  {
+    "id": "get",
+    "data": "GET / HTTP/1.1\r\nHost: local.test\r\n\r\n"
+  },
+  {
+    "id": "http10",
+    "data": "GET / HTTP/1.0\r\n\r\n"
+  },
+  {
+    "id": "partial-header",
+    "data": "GET / HTTP/1.1\r\nHost: local.test\r\n"
+  },
+  {
+    "id": "partial-body",
+    "data": "POST / HTTP/1.1\r\nHost: local.test\r\nContent-Length: 3\r\n\r\na"
+  },
+  {
+    "id": "binary-body",
+    "data": "POST / HTTP/1.1\r\nHost: local.test\r\nContent-Length: 3\r\n\r\na\u0000b"
+  },
+  {
+    "id": "chunked",
+    "data": "POST / HTTP/1.1\r\nHost: local.test\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ndata\r\n0\r\n\r\n"
+  },
+  {
+    "id": "pipeline",
+    "data": "GET / HTTP/1.1\r\nHost: local.test\r\n\r\nGET /next HTTP/1.1\r\nHost: local.test\r\n\r\n"
+  },
+  {
+    "id": "arbitrary",
+    "data": "\u0000\u0001\n"
+  }
+]

@@ -280,3 +280,16 @@ TEST(TaskCatalogTest, ExposesHttpAdmissionPolicyExercise) {
     ASSERT_EQ(task->prerequisites.size(), 1U);
     EXPECT_EQ(task->prerequisites.front(), "w9.static-root");
 }
+
+TEST(TaskCatalogTest, ExposesParserInvariantAndFuzzingExercise) {
+    const cppapplab::Task* task = cppapplab::find_task("w9.http-fuzzing");
+    ASSERT_NE(task, nullptr);
+    EXPECT_EQ(task->week, 9U);
+    EXPECT_EQ(task->order, 5U);
+    EXPECT_EQ(task->acceptance_kind, cppapplab::AcceptanceKind::CMakeGoogleTest);
+    ASSERT_EQ(task->source_files.size(), 1U);
+    EXPECT_EQ(task->source_files.front(), "src/admission_invariants.cpp");
+    EXPECT_EQ(task->expected_test_count, 21U);
+    ASSERT_EQ(task->prerequisites.size(), 1U);
+    EXPECT_EQ(task->prerequisites.front(), "w9.http-hardening");
+}

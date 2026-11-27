@@ -243,7 +243,7 @@ Full GCC/ASan/clang-tidy jobs are now opt-in through workflow_dispatch input run
 
 ## Course-first usability acceptance (learner priority)
 
-The product goal is a practical, understandable C++ course rather than an operating-system installer. The released scope is 23 verified learner tasks across W1–W9; W9-A4/A5 and W10–W12 remain planned and are not described as implemented.
+The product goal is a practical, understandable C++ course rather than an operating-system installer. The verified source scope is 24 learner tasks across W1–W9; A5 is the current 25th-task candidate. W10–W12 remain planned, not implemented.
 
 Current course-quality pass:
 
@@ -259,7 +259,7 @@ Routine CI now prioritizes the course audit, learner package smoke test and Wind
 
 ## Next curriculum expansion — W9 to W12
 
-**W9-A1 merged into `main` via PR #27 (`bfb3f3f`).** The task, `w9.http-chunked`, extends the W8 parser with bounded incremental HTTP/1.1 chunked decoding, trailer validation, anti-ambiguity framing and pipeline-safe consumed-byte reporting. Final PR-head run `43006252261` passed all three jobs: root 62/62 and W9 fixture 35/35 under GCC, ASan/UBSan and clang-tidy. The end-to-end learning-engine check passed. W9-A2 (strict request-target/query parsing) merged into main via PR #28 (`cca1c80`). Final PR-head run `43008862704` passed all three jobs: root 64/64, W9-A1 35/35 and W9-A2 39/39 under GCC, ASan/UBSan and clang-tidy. The end-to-end learning-engine checks passed for both W9 tasks. W9-A3 (`w9.static-root`) merged via PR #29 (`f741e34`). Final PR-head run `43013017702` passed all three jobs: root 66/66 and W9-A3 34/34 under GCC, ASan/UBSan and clang-tidy; W9-A1 and A2 regression fixtures passed 35/35 and 39/39. The end-to-end `cppapplab check` workflow verified current PASS evidence. W9-A4 is registered as the CP5 first candidate with a fixed 24-test admission policy; W9-A5 remains a roadmap stage.
+**W9-A1 merged into `main` via PR #27 (`bfb3f3f`).** The task, `w9.http-chunked`, extends the W8 parser with bounded incremental HTTP/1.1 chunked decoding, trailer validation, anti-ambiguity framing and pipeline-safe consumed-byte reporting. Final PR-head run `43006252261` passed all three jobs: root 62/62 and W9 fixture 35/35 under GCC, ASan/UBSan and clang-tidy. The end-to-end learning-engine check passed. W9-A2 (strict request-target/query parsing) merged into main via PR #28 (`cca1c80`). Final PR-head run `43008862704` passed all three jobs: root 64/64, W9-A1 35/35 and W9-A2 39/39 under GCC, ASan/UBSan and clang-tidy. The end-to-end learning-engine checks passed for both W9 tasks. W9-A3 (`w9.static-root`) merged via PR #29 (`f741e34`). Final PR-head run `43013017702` passed all three jobs: root 66/66 and W9-A3 34/34 under GCC, ASan/UBSan and clang-tidy; W9-A1 and A2 regression fixtures passed 35/35 and 39/39. The end-to-end `cppapplab check` workflow verified current PASS evidence. W9-A4 merged via PR #80 (8779b597), 24/24 fixed tests in all six Ubuntu GCC/sanitizer/clang-tidy configurations, CI 45926525718 all 13 applicable jobs PASS. W9-A5 is the current 21-test candidate plus independent actual bounded libFuzzer campaign.
 
 The rest of W9 is planned as a cumulative secure-protocol sequence:
 
@@ -274,7 +274,7 @@ Beyond W9:
 - **W11 — High-performance C++ services:** profiling, std::pmr, buffer reuse, scatter/gather I/O, sendfile, batching, backpressure, cache locality and latency percentiles.
 - **W12 — Production operations:** typed configuration, signal-driven shutdown/reload, health endpoints, correlation IDs, systemd deployment, recovery and release runbooks.
 
-W9-A1–A3 are merged and validated. CP5 A4 adds a candidate formal task (24 tests); A5 and W10–W12 remain unregistered curriculum targets. Actual acceptance and merge evidence must precede a completion claim.
+W9-A1–A4 are merged and validated. A5 adds a candidate formal task (21 fixed tests and a bounded sanitizer-backed campaign); W10–W12 remain unregistered. Actual acceptance and merge evidence must precede a completion claim.
 
 The roadmap is outcome-based. Additional lessons are added only when they improve a demonstrated learning or engineering outcome.
 

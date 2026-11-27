@@ -1,0 +1,1 @@
+Implement only src/admission_invariants.cpp. The fixed A1/A4 parser and driver are platform-owned. Formal GCC/CMake/GoogleTest acceptance is independent of the optional Clang/libFuzzer campaign. See the bilingual W9-A5 lesson. All inputs are local in-memory bytes; never send them to another service.

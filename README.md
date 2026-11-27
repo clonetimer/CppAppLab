@@ -6,7 +6,7 @@
 
 ## 开始学习：先看课程，再做练习
 
-CppAppLab 课程目录包含 **24 个 W1–W9 学习任务**（A4 为本轮验收候选）。
+CppAppLab 课程目录包含 **25 个 W1–W9 学习任务**（A1–A4 已验收，A5 为本轮候选）。
 
 ### 已构建源码项目：打开网页工作台
 
@@ -20,7 +20,7 @@ bash scripts/start-web-workbench.sh
 
 **知识导航：** 课程目录旁「查知识」支持中英文术语搜索，关联现有讲义和固定独立失败/修复实验。真实编译诊断可进入对应知识点；实验不影响正式课程验收或源码。生命周期与并发先阅读已有课程，不执行故意未定义行为。
 
-**教程语言：**“课程讲解”标题旁的 **教程语言** 可以选择 **中文 / English**。首次打开默认中文，浏览器会记住选择；课程目录、正文、故障排查、验收要求和三级提示随之切换。全部 24 节课的中英文内容随项目提供，无需在线翻译。切换语言不会重载工作区或改变代码、运行输出与验收进度；代码示例、文件名和命令保留原样。此设置控制课程内容，操作界面仍使用中文。
+**教程语言：**“课程讲解”标题旁的 **教程语言** 可以选择 **中文 / English**。首次打开默认中文，浏览器会记住选择；课程目录、正文、故障排查、验收要求和三级提示随之切换。全部 25 节课的中英文内容随项目提供，无需在线翻译。切换语言不会重载工作区或改变代码、运行输出与验收进度；代码示例、文件名和命令保留原样。此设置控制课程内容，操作界面仍使用中文。
 
 如果源码目录还没有 `build/cppapplab`，先按[快速入门的构建步骤](docs/QUICKSTART.md#2-run-the-one-command-setup)完成构建，再启动工作台。
 
@@ -28,7 +28,7 @@ bash scripts/start-web-workbench.sh
 
 在解压目录运行 `./cppapplab`，选择 **1. Continue learning**（继续学习）。源码构建也可用 `./build/cppapplab` 打开命令行首页。在首页选 **5** 或在终端给启动命令加上 `guide`，即可阅读[中文学习导航](course/LEARNING_GUIDE_ZH.md)。
 
-当前发布范围为 W1–W9 已实现任务；W9-A4 为当前验收候选，W9-A5 及 W10–W12 尚处于路线图中。环境要求与部署说明保留在后文，供确有需要时查询。
+当前发布范围为 W1–W9 已实现任务；W9-A4 已验收，W9-A5 为当前验收候选，W10–W12 尚处于路线图中。环境要求与部署说明保留在后文，供确有需要时查询。
 
 ## Current implementation baseline
 
@@ -47,9 +47,9 @@ The values above describe the current supported source-build/CI environment. Nat
 
 ## Current learning tasks
 
-The course catalog contains 24 tasks across W1–W9, including the CP5 A4 candidate. W1–W7 cover C++ fundamentals, Linux systems, concurrency and TCP; W8 builds the HTTP server and its six D6 engineering tasks; W9 adds chunked transfer decoding, strict request-target/query parsing and descriptor-confined static-file access. `course/tasks.tsv` is the authoritative task catalog.
+The course catalog contains 25 tasks across W1–W9, including the CP5 A5 candidate. W1–W7 cover C++ fundamentals, Linux systems, concurrency and TCP; W8 builds the HTTP server and its six D6 engineering tasks; W9 adds chunked transfer decoding, strict request-target/query parsing and descriptor-confined static-file access. `course/tasks.tsv` is the authoritative task catalog.
 
-**推荐先读：** [中文学习导航（24 个任务）](course/LEARNING_GUIDE_ZH.md)。零基础学习者先看其中的「第一次使用」四步说明和常用词解释；也可以在终端运行 `./build/cppapplab guide`。重点是先完成第一关，再逐步理解工具和原理，不必预先读完整套安装与工程文档。
+**推荐先读：** [中文学习导航（25 个任务）](course/LEARNING_GUIDE_ZH.md)。零基础学习者先看其中的「第一次使用」四步说明和常用词解释；也可以在终端运行 `./build/cppapplab guide`。重点是先完成第一关，再逐步理解工具和原理，不必预先读完整套安装与工程文档。
 
 **Interactive command-line home:**
 
@@ -187,6 +187,10 @@ CppAppLab is an educational engineering lab, not a production C++ framework or a
 
 第二轮两个独立可编辑现代项目（采样窗口统计、定宽报文头解析）已通过 #79 实际验收，网页「查知识 → 现代工程实践」访问；需要额外 GCC 13、CMake 和 GoogleTest，经典 C++17 任务不受影响。见 [独立现代工程](docs/MODERN_CPP_PROJECTS.md)。
 
-### CP5 · W9-A4 请求准入策略（验收候选）
+### CP5 · W9-A4 请求准入策略（已验收）
 
-追加 `w9.http-hardening`，不改变原 23 个任务及其验收契约。复用已验证 A1 解析器，学习首条消息边界、明确资源预算和确定性拒绝策略；24 项固定 GoogleTest、双语教材与三级提示。此关为本地内存输入策略，不是已经部署的加固服务器；候选待 CI，A5 及 W10–W12 待推进。
+追加 `w9.http-hardening`，不改变原 23 个任务及其验收契约。复用已验证 A1 解析器，学习首条消息边界、明确资源预算和确定性拒绝策略；24 项固定 GoogleTest、双语教材与三级提示。此关为本地内存输入策略，不是已经部署的加固服务器；已通过 #80 的 13 项适用 CI，双 Ubuntu 的六种配置均 24/24。
+
+### CP5 · W9-A5 解析器不变量与有界模糊测试（候选）
+
+第 25 个任务 `w9.http-fuzzing`：学员实现检查器，固定 A1/A4 解析链、21 项 GoogleTest、八个种子与独立真实 Clang/libFuzzer + ASan/UBSan 专项。普通课程仍用 GCC；额外专项在源码 checkout 上可选执行，实际 CI 待验收。只处理本地内存输入，不是网络测试工具，也不是安全认证。W10–W12 待推进。

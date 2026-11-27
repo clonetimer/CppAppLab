@@ -14,7 +14,7 @@ const ARTIFACTS = process.env.CPPAPPLAB_BROWSER_ARTIFACT_DIR || path.join(os.tmp
 const BASELINE = process.argv.includes("--baseline");
 const CATALOG_COUNT = fs.readFileSync(path.join(ROOT, "course", "tasks.tsv"), "utf8")
   .split(/\r?\n/).filter(line => line.trim() && !line.startsWith("#")).length;
-if (!BASELINE) assert.equal(CATALOG_COUNT, 24);
+if (!BASELINE) assert.equal(CATALOG_COUNT, 25);
 const LANGUAGE_KEY = "cppapplab.lesson-language.v1";
 const EDITOR_CDN = /https?:\/\/(cdn\.jsdelivr\.net|gcore\.jsdelivr\.net|cdnjs\.cloudflare\.com)\//;
 const HELLO = '#include <iostream>\nint main() { std::cout << "Hello, CppAppLab!\\n"; }\n';

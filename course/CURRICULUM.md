@@ -177,9 +177,9 @@ D6-B through D6-D2 learner templates include a known completed baseline for the 
 
 **Implemented task:** W9-A3, `w9.static-root`, is merged into `main` via PR #29 (`f741e34`). It reuses the completed W9-A2 target parser, retains a document-root directory descriptor, walks each path component with `openat` and `O_NOFOLLOW`, verifies regular files with `fstat`, and enforces bounded reads. Its 34-case fixture passed GCC, ASan/UBSan and clang-tidy; the end-to-end learner check passed. Final PR-head run `43013017702` passed all three jobs: root 66/66, W9-A1 35/35, W9-A2 39/39 and W9-A3 34/34.
 
-**A4 candidate:** `w9.http-hardening` adds a strict bounded admission policy over the fixed W9-A1 parser. One declared editable implementation, platform-owned header, 24 fixed tests, bilingual lesson and three progressive hints. The per-request policy is not a deployed server security qualification. Original tasks and contracts remain intact.
+**A4 verified (PR #80):** `w9.http-hardening` adds a strict bounded admission policy over the fixed W9-A1 parser. One declared editable implementation, platform-owned header, 24 fixed tests, bilingual lesson and three progressive hints. The per-request policy is not a deployed server security qualification. Original tasks and contracts remain intact.
 
-**Remaining W9 stage:** A5 parser fuzzing with a regression corpus; do not claim implementation before its actual bounded sanitizer run.
+**A5 candidate:** `w9.http-fuzzing` adds the learner-owned observation oracle with 21 fixed tests and a platform-owned A1/A4 replay driver. Eight seed inputs and a separate actual Clang/libFuzzer ASan/UBSan campaign (10,000 requested runs, 4 KiB max input); evidence is required, not inferred from ordinary unit tests. CI pending. W10–W12 remain planned.
 
 ## W10 — TLS and WebSocket services (planned)
 

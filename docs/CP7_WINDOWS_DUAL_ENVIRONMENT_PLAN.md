@@ -306,3 +306,24 @@ without file-symlink capability, fully offline physical machine,
 Unicode install path without ASCII alias, CP7-E native modern projects
 and knowledge experiments, CP7-F automatic environment handoff and
 real learner feedback remain open.
+
+
+### CP7-D1 actual archive and UTF-8 launcher correction
+
+[Portable run 45990927948](https://github.com/clonetimer/CppAppLab/actions/runs/45990927948)
+at head ce1ba4ee (tested merge ecf625d8ba4d) successfully built the strict
+Release executable, acquired and verified embedded Python, collected the
+installed native packages including the metadata-only cc-libs aggregator,
+created the ZIP, and extracted/verified all 40,614 manifest files. Archive
+SHA-256 in the log: 4ad4225c73dbdfdc59a77770ae6300bcdbc270ea3f0b7bfc3d03a1d31df9cac0.
+The actual batch --verify-tools step failed before tool execution because
+embedded Python's redirected stdout used CP1252 and the Chinese startup
+message could not be encoded. No extracted learner-course check ran and no
+verified artifact was uploaded. The full primary regression
+[45990927981](https://github.com/clonetimer/CppAppLab/actions/runs/45990927981)
+passed all 14 applicable jobs, including Ubuntu 24.04 sanitizer; foundation
+45990927940 passed. Fix the launcher and smoke harness to explicitly
+configure their own UTF-8 stdout/stderr, retaining the exact Chinese banner
+assertion through the batch launcher and redirected output. Do not rely on
+PYTHONIOENCODING in isolated embedded mode or change the system codepage.
+New current-head CI is required before merge.

@@ -1,0 +1,1 @@
+Reference admission policy over the existing A1 parser, built by course/fixtures/w9/http-hardening. This is an isolated bounded input-policy exercise, not an integrated production server or a proof of protocol security.

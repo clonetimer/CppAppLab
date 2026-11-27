@@ -12,6 +12,9 @@ const ROOT = path.resolve(process.env.CPPAPPLAB_TEST_ROOT || path.join(__dirname
 const BINARY = process.env.CPPAPPLAB_TEST_BINARY;
 const ARTIFACTS = process.env.CPPAPPLAB_BROWSER_ARTIFACT_DIR || path.join(os.tmpdir(), "cppapplab-learning-space-artifacts");
 const BASELINE = process.argv.includes("--baseline");
+const CATALOG_COUNT = fs.readFileSync(path.join(ROOT, "course", "tasks.tsv"), "utf8")
+  .split(/\r?\n/).filter(line => line.trim() && !line.startsWith("#")).length;
+if (!BASELINE) assert.equal(CATALOG_COUNT, 24);
 const EDITOR_CDN = /https?:\/\/(cdn\.jsdelivr\.net|gcore\.jsdelivr\.net|cdnjs\.cloudflare\.com)\//;
 const HELLO = '#include <iostream>\nint main() { std::cout << "Hello, CppAppLab!\\n"; }\n';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -102,7 +105,7 @@ async function fixture(browser) {
     }
     assert.ok(ready, "real learning server must start: " + errors);
     await page.goto(baseUrl);
-    await page.waitForFunction(() => document.querySelectorAll("#course-list .task-link").length === 23);
+    await page.waitForFunction(count => document.querySelectorAll("#course-list .task-link").length === count, CATALOG_COUNT);
   } catch (error) {
     await close();
     throw error;

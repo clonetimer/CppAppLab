@@ -12,6 +12,9 @@ const ROOT = path.resolve(process.env.CPPAPPLAB_TEST_ROOT || path.join(__dirname
 const BINARY = process.env.CPPAPPLAB_TEST_BINARY;
 const ARTIFACTS = process.env.CPPAPPLAB_BROWSER_ARTIFACT_DIR || path.join(os.tmpdir(), "cppapplab-lesson-language-artifacts");
 const BASELINE = process.argv.includes("--baseline");
+const CATALOG_COUNT = fs.readFileSync(path.join(ROOT, "course", "tasks.tsv"), "utf8")
+  .split(/\r?\n/).filter(line => line.trim() && !line.startsWith("#")).length;
+if (!BASELINE) assert.equal(CATALOG_COUNT, 24);
 const LANGUAGE_KEY = "cppapplab.lesson-language.v1";
 const EDITOR_CDN = /https?:\/\/(cdn\.jsdelivr\.net|gcore\.jsdelivr\.net|cdnjs\.cloudflare\.com)\//;
 const HELLO = '#include <iostream>\nint main() { std::cout << "Hello, CppAppLab!\\n"; }\n';
@@ -88,7 +91,7 @@ async function fixture(browser) {
     }
     assert.ok(ready, "real learning server must start: " + errors);
     await page.goto(baseUrl);
-    await page.waitForFunction(() => document.querySelectorAll("#course-list .task-link").length === 23);
+    await page.waitForFunction(count => document.querySelectorAll("#course-list .task-link").length === count, CATALOG_COUNT);
   } catch (error) {
     await close();
     throw error;
@@ -178,7 +181,7 @@ function hintBody(markdown, level, marker) {
 
 async function checkCatalogTranslations(environment) {
   const catalog = await getJson(environment, "/api/v1/tasks");
-  assert.equal(catalog.tasks.length, 23);
+  assert.equal(catalog.tasks.length, CATALOG_COUNT);
   const rows = new Map(fs.readFileSync(path.join(environment.root, "course", "tasks.tsv"), "utf8")
     .split(/\r?\n/).filter((line) => line && !line.startsWith("#"))
     .map((line) => { const fields = line.split("\t"); return [fields[0], fields]; }));
@@ -213,7 +216,7 @@ async function checkCatalogTranslations(environment) {
       }
     }));
   }
-  console.log("PASS: lesson language / 23 real lesson maps and 69 real hint maps");
+  console.log("PASS: lesson language / " + CATALOG_COUNT + " real lesson maps and " + CATALOG_COUNT * 3 + " real hint maps");
   return getJson(environment, "/api/v1/tasks/w1.calculator");
 }
 
@@ -412,7 +415,7 @@ async function checkSearch(environment, calculator) {
       assert.ok((await matches.first().textContent()).includes(label));
     }
     await page.locator("#task-search").fill("");
-    assert.equal(await page.locator("#course-list .task-link").count(), 23);
+    assert.equal(await page.locator("#course-list .task-link").count(), CATALOG_COUNT);
   }
   console.log("PASS: lesson language / Chinese and English title search");
 }

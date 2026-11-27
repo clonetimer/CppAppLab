@@ -447,10 +447,10 @@ test("guide course controls match all registered headings and ignore prose, code
   }
   app.enhanceGuideCourses();
   const buttons = app.ui.guideContent.querySelectorAll(".guide-task-button");
-  assert.equal(buttons.length, 23);
+  assert.equal(buttons.length, 24);
   assert.deepEqual(buttons.map((button) => button.dataset.taskId), ids);
   app.enhanceGuideCourses();
-  assert.equal(app.ui.guideContent.querySelectorAll(".guide-task-button").length, 23, "enhancement is idempotent");
+  assert.equal(app.ui.guideContent.querySelectorAll(".guide-task-button").length, 24, "enhancement is idempotent");
 });
 
 test("guide course controls become available when the catalog arrives after guide content", async () => {

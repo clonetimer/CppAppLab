@@ -392,6 +392,12 @@ std::filesystem::path stage_declared_cpp_sources(const Task& task,
                                                  const std::filesystem::path& workspace_root,
                                                  const std::filesystem::path& build_directory) {
     const auto stage_directory = build_directory / "learner-source";
+#ifdef _WIN32
+    if (windows_state_io::entry_exists(stage_directory)) {
+        windows_state_io::remove_tree(stage_directory);
+    }
+    windows_state_io::ensure_directory(stage_directory);
+#else
     if (std::filesystem::exists(stage_directory) || std::filesystem::is_symlink(stage_directory)) {
         const auto status = std::filesystem::symlink_status(stage_directory);
         if (std::filesystem::is_symlink(status) || !std::filesystem::is_directory(status)) {
@@ -400,6 +406,7 @@ std::filesystem::path stage_declared_cpp_sources(const Task& task,
         std::filesystem::remove_all(stage_directory);
     }
     std::filesystem::create_directories(stage_directory);
+#endif
 
     std::size_t staged_count = 0;
     for (const auto& relative_path : task.source_files) {
@@ -413,8 +420,13 @@ std::filesystem::path stage_declared_cpp_sources(const Task& task,
 
         const auto source = workspace_root / relative_path;
         const auto destination = stage_directory / relative_path;
+#ifdef _WIN32
+        windows_state_io::ensure_directory(destination.parent_path());
+        windows_state_io::copy_file(source, destination);
+#else
         std::filesystem::create_directories(destination.parent_path());
         std::filesystem::copy_file(source, destination);
+#endif
         ++staged_count;
     }
 

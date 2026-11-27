@@ -238,6 +238,34 @@ def verify(archive: Path) -> None:
                     print(f"[PASS] Relocated packaged native {task_id}: {count}/{count}.")
                 assert total == 101
 
+                # Actual native export uses passed learner bytes, not references
+                # or a Windows PASS record. No mutation and no native import.
+                before_export = states()
+                export_state = base / "学习记录"
+                records_before = {str(path.relative_to(export_state)): path.read_bytes()
+                                  for path in export_state.rglob("*") if path.is_file()}
+                exported = request("/api/v1/source-export", "POST", {})
+                assert set(exported) == {"schema_version", "kind", "catalog_sha256", "origin", "tasks"}
+                assert exported["kind"] == "cppapplab-source-reuse" and exported["origin"] == "native-windows"
+                assert exported["catalog_sha256"] == request("/api/v1/health")["catalog_sha256"]
+                assert [record["task_id"] for record in exported["tasks"]] == list(expected)
+                for record in exported["tasks"]:
+                    assert set(record) == {"task_id", "files"}
+                    task_id = record["task_id"]
+                    detail = request("/api/v1/tasks/" + task_id)
+                    assert {item["path"] for item in record["files"]} == set(detail["source_files"])
+                    for item in record["files"]:
+                        assert set(item) == {"path", "content", "sha256"}
+                        raw = (home / "cppapplab-work" / task_id / item["path"]).read_bytes()
+                        assert item["content"].encode("utf-8") == raw
+                        assert hashlib.sha256(raw).hexdigest() == item["sha256"]
+                request("/api/v1/source-export", "POST", {"path": "anything"}, status=400)
+                request("/api/v1/tasks/w1.hello-world/source-import", "POST", exported, status=409)
+                assert states() == before_export
+                assert {str(path.relative_to(export_state)): path.read_bytes()
+                        for path in export_state.rglob("*") if path.is_file()} == records_before
+                print("[PASS] Native source-only export: five passed courses, exact learner bytes; no evidence transfer.")
+
                 # Exercise the frozen 10 modern topic pairs in the actual
                 # relocated workbench using the bundled GCC, never host tools.
                 state_before = states()
@@ -343,6 +371,8 @@ def verify(archive: Path) -> None:
                 request("/api/v1/workspaces/w1.hello-world/files/src/main.cpp", "PUT",
                         {"content": "int main(){return 0;}\n"})
                 assert states()["w1.hello-world"] == "STALE"
+                after_stale = request("/api/v1/source-export", "POST", {})
+                assert "w1.hello-world" not in {row["task_id"] for row in after_stale["tasks"]}
                 print("[PASS] Portable ZIP native HTTP: 101/101 formal contracts, bundled "
                       "compiler and GTest paths, batch launch, restart/resume/stale, port conflict.")
             except BaseException:

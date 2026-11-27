@@ -37,6 +37,7 @@ import knowledge_lab
 import modern_cpp
 import modern_projects
 import wsl_handoff
+import source_transfer
 
 
 MAX_CATALOG_BYTES = 64 * 1024
@@ -612,6 +613,67 @@ class CppAppLabWebServer(ThreadingHTTPServer):
                 "output": payload + ("\n[output truncated]" if truncated else ""),
                 "timed_out": bool(timed), "truncated": bool(truncated),
                 "unavailable": bool(truncated or exit_code in (126, 127))}
+
+    def foundation_guard(self, parts: list[str]):
+        # Serialize source import with ordinary web operations that can open,
+        # write, build or check the same foundation workspace.
+        if NATIVE_WINDOWS or (len(parts) >= 4 and parts[:2] == ["api", "v1"] and
+                parts[2] in {"tasks", "workspaces"} and parts[3] in source_transfer.FOUNDATION_IDS):
+            return self.native_api_lock
+        return nullcontext()
+
+    def source_catalog_sha256(self) -> str:
+        path = safe_repo_file(self.root, "course/tasks.tsv", MAX_CATALOG_BYTES, "Task catalog")
+        return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+    def export_foundation_sources(self) -> dict:
+        if not NATIVE_WINDOWS:
+            raise ApiError(409, "Source export is available in the native Windows workbench.")
+        states = self.progress_states()
+        selected = [task for task in self.tasks
+                    if task["id"] in source_transfer.FOUNDATION_IDS and states.get(task["id"]) == "PASSED"]
+        if not selected:
+            raise ApiError(409, "没有当前已通过正式验收的 Windows 基础课程可导出。")
+        records = []
+        for task in selected:
+            work, _ = self.workspace_for_task(task["id"])
+            files = {}
+            for name in task["source_files"]:
+                path = safe_repo_file(work, name, source_transfer.MAX_TASK_BYTES, "Learner source")
+                _validate_native_path_chain(path)
+                files[name] = source_transfer.source_bytes(path)
+            records.append(source_transfer.record(task["id"], files))
+        current = self.progress_states()
+        if any(current.get(task["id"]) != "PASSED" for task in selected):
+            raise ApiError(409, "导出期间源码或前置验收状态已改变，请刷新后重试。")
+        return source_transfer.bundle(self.source_catalog_sha256(), records)
+
+    def import_foundation_sources(self, task_id: str, value: dict) -> dict:
+        if NATIVE_WINDOWS:
+            raise ApiError(409, "Source import requires the Linux execution environment.")
+        task = self.task_by_id.get(task_id)
+        if task is None or task_id not in source_transfer.FOUNDATION_IDS:
+            raise ApiError(404, "Only declared foundation courses can import learner sources.")
+        sources = source_transfer.validate_import(value, self.source_catalog_sha256(),
+                                                  task_id, task["source_files"])
+        if self.progress_states().get(task_id) != "AVAILABLE":
+            raise ApiError(409, "仅允许已解锁且尚未开始的 Linux 课程导入；已有学习成果不会被覆盖。")
+        # Validate starter bytes before creating anything. No foreign files,
+        # workspace markers, build output, progress or acceptance evidence.
+        starters = {}
+        for name in task["source_files"]:
+            template = safe_repo_file(self.root, task["learner_template"] + "/" + name,
+                                      source_transfer.MAX_TASK_BYTES, "Learner starter")
+            starters[name] = source_transfer.source_bytes(template)
+        work, output = self.workspace_for_task(task_id)
+        if "Created your learner workspace" not in output or "Resuming your saved workspace" in output:
+            raise ApiError(409, "已存在 Linux 工作区；请手工比较源码，不自动覆盖。")
+        targets = {name: safe_repo_file(work, name, source_transfer.MAX_TASK_BYTES, "Fresh learner source")
+                   for name in task["source_files"]}
+        source_transfer.populate_fresh(targets, starters, sources)
+        return {"task_id": task_id, "imported_files": len(sources),
+                "execution_environment": "linux", "requires_acceptance": True,
+                "progress_transferred": False}
 
     def workspace_for_task(self, task_id: str) -> tuple[Path, str]:
         task = self.task_by_id.get(task_id)
@@ -1492,7 +1554,7 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
             parsed = urlsplit(self.path)
             segments = [unquote(part) for part in parsed.path.split("/") if part]
             if segments[:2] == ["api", "v1"]:
-                with self.server.native_api_lock if NATIVE_WINDOWS else nullcontext():
+                with self.server.foundation_guard(segments):
                     self._handle_api_get(segments[2:])
             else:
                 self._serve_static(parsed.path)
@@ -1763,11 +1825,27 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         try:
             self._validate_mutation()
-            with self.server.native_api_lock if NATIVE_WINDOWS else nullcontext():
-                parsed = urlsplit(self.path)
-                parts = [unquote(part) for part in parsed.path.split("/") if part]
+            parsed = urlsplit(self.path)
+            parts = [unquote(part) for part in parsed.path.split("/") if part]
+            with self.server.foundation_guard(parts):
                 if len(parts) >= 4 and parts[:3] == ["api", "v1", "workspaces"]:
                     self.server.require_task_environment(parts[3])
+                if parts == ["api", "v1", "source-export"]:
+                    if self._read_json() != {}:
+                        raise ApiError(400, "Source export accepts no path or command.")
+                    try:
+                        result = self.server.export_foundation_sources()
+                    except source_transfer.TransferError as exc:
+                        raise ApiError(exc.status, str(exc)) from exc
+                    self._send_json(200, result)
+                    return
+                if len(parts) == 5 and parts[:3] == ["api", "v1", "tasks"] and parts[4] == "source-import":
+                    try:
+                        result = self.server.import_foundation_sources(parts[3], self._read_json())
+                    except source_transfer.TransferError as exc:
+                        raise ApiError(exc.status, str(exc)) from exc
+                    self._send_json(200, result)
+                    return
                 if len(parts) == 5 and parts[:3] == ["api", "v1", "tasks"] and parts[4] == "handoff":
                     task = self.server.task_by_id.get(parts[3])
                     if task is None:
@@ -1872,9 +1950,9 @@ class CppAppLabRequestHandler(BaseHTTPRequestHandler):
     def do_PUT(self) -> None:
         try:
             self._validate_mutation()
-            with self.server.native_api_lock if NATIVE_WINDOWS else nullcontext():
-                parsed = urlsplit(self.path)
-                parts = [unquote(part) for part in parsed.path.split("/") if part]
+            parsed = urlsplit(self.path)
+            parts = [unquote(part) for part in parsed.path.split("/") if part]
+            with self.server.foundation_guard(parts):
                 if len(parts) >= 4 and parts[:3] == ["api", "v1", "workspaces"]:
                     self.server.require_task_environment(parts[3])
                 if len(parts) >= 5 and parts[:2] == ["api", "v1"] and parts[2] == "workspaces" and parts[4] == "files":

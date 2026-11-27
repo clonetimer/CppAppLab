@@ -741,3 +741,10 @@ At baff74a6, [46010049974](https://github.com/clonetimer/CppAppLab/actions/runs/
 
 - Initial Windows package and Ubuntu unit CI failed before handoff because the fixture stub accidentally overrode unittest.TestCase.run. Native Chromium also enforced the obsolete disabled-start contract. Rename stub and change browser expectations only for the new handoff; still require disabled native build/run/check and real rejection routes. No weakening of formal acceptance.
 - F3a uses actual Linux engine progress and dependency graph, not Windows PASS, selects first unmet prerequisite, detects stale/unknown/contradictory state and tests the real Linux W1 acceptance then stale progression. No automatic source transfer, no fake PASS; explicit safe source reuse and physical WSL2 verification remain pending.
+
+
+## 90. CP7-F3b — Explicit source-only reuse; recheck on destination
+
+- #101 merged at 3fef8843, all three workflows green; actual Linux prerequisite and Windows DOM guards verified, 136 previous contracts retained. Actual WSL2 machine remains unverified.
+- One explicit Windows JSON export, per-course import on Linux with exact catalog, declared paths, SHA-256 and bounded UTF-8 bytes. Reject existing workspaces and locked courses; source import itself never records PASS or executes code. Serialize foundation web operations, stage all bytes before fresh starter replacement; no automatic overwrite or same-user sandbox claim.
+- Actual native export/DOM download and real Linux 101-contract recheck added; Linux test uses export-shaped reference fixtures, not real WSL transport. No new course or UI redesign, no license approval. Candidate until fresh CI.

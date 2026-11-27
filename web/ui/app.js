@@ -11,6 +11,7 @@
   ];
   const state = {
     csrfToken: "",
+    executionEnvironment: "",
     tasks: [],
     selectedTaskId: "",
     task: null,
@@ -737,6 +738,7 @@
     updateWorkflowGuidance();
     updateResumeAction();
     enhanceGuideCourses();
+    updateSourceTransfer();
     if (!state.progressFresh) toast("课程进度暂不可用，请重试刷新。");
     return state.progressFresh;
   }
@@ -1474,6 +1476,7 @@
       resetConsole();
       renderCourseList();
       state.task = task;
+      if ($("source-transfer-status")) $("source-transfer-status").textContent = "";
       state.preferredFile = options.filePath === undefined ? learningPosition().files[taskId] || "" : options.filePath;
       renderApplicationRunner();
       renderServiceRunner();
@@ -1511,6 +1514,76 @@
       state.navigatingTask = false;
       setBusy(false);
     }
+  }
+
+  function updateSourceTransfer() {
+    const group = $("source-transfer");
+    if (!group) return;
+    const native = state.executionEnvironment === "native-windows";
+    const linux = state.executionEnvironment === "linux";
+    const foundation = state.task && state.task.week <= 4;
+    const showExport = native && Boolean(state.task);
+    const showImport = linux && Boolean(foundation);
+    group.hidden = !showExport && !showImport;
+    $("source-export").hidden = !showExport;
+    $("source-import").hidden = !showImport;
+    $("source-export").disabled = state.busy || !state.progressFresh || state.dirtyFiles.size > 0 ||
+      !state.tasks.some(task => task.week <= 4 && task.state === "PASSED");
+    $("source-import").disabled = state.busy || !state.progressFresh || !foundation ||
+      state.task.state !== "AVAILABLE" || state.workspaceReady;
+  }
+
+  async function exportFoundationSources() {
+    if (state.busy || $("source-export").disabled) return;
+    setBusy(true);
+    try {
+      const bundle = await api("/api/v1/source-export", { method: "POST", body: {} });
+      const blob = new Blob([JSON.stringify(bundle)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      try {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "CppAppLab-Windows-sources.json";
+        document.body.append(link);
+        link.click();
+        link.remove();
+      } finally { setTimeout(() => URL.revokeObjectURL(url), 30000); }
+      $("source-transfer-status").textContent = "已导出 " + bundle.tasks.length +
+        " 门基础课程源码；不含验收记录。请在 Linux 按课导入。";
+    } catch (error) {
+      $("source-transfer-status").textContent = error.message;
+      toast(error.message);
+    } finally { setBusy(false); }
+  }
+
+  async function importFoundationSources(file) {
+    if (!file || state.busy || $("source-import").disabled || !state.task) return;
+    const taskId = state.task.id;
+    setBusy(true);
+    try {
+      if (file.size > 4 * 1024 * 1024) throw new Error("源码交换文件超过 4 MiB。");
+      const bundle = JSON.parse(await file.text());
+      if (!bundle || typeof bundle !== "object" || Array.isArray(bundle) || !Array.isArray(bundle.tasks))
+        throw new Error("请选择 CppAppLab 源码交换 JSON 文件。");
+      const matches = bundle.tasks.filter(item => item?.task_id === taskId);
+      if (matches.length !== 1) throw new Error("交换文件中没有唯一对应的本课源码。");
+      if (!window.confirm("将本课源码导入新 Linux 工作区？仅导入你信任的代码；已有工作区不会覆盖，仍需正式验收。")) return;
+      const result = await api("/api/v1/tasks/" + encodeURIComponent(taskId) + "/source-import",
+        { method: "POST", body: { ...bundle, tasks: matches } });
+      if (result.task_id !== taskId || result.execution_environment !== "linux" ||
+          result.requires_acceptance !== true || result.progress_transferred !== false)
+        throw new Error("未获得有效的源码导入结果。");
+      updateTaskState(taskId, "IN PROGRESS");
+      await loadTasks();
+      await loadWorkspaceFiles();
+      $("source-transfer-status").textContent = "已导入 " + result.imported_files +
+        " 个源码文件。请核对代码，然后执行 Linux 正式验收。";
+      toast("源码已复用，尚未通过 Linux 验收。");
+    } catch (error) {
+      $("source-transfer-status").textContent = error.message;
+      toast(error.message);
+      try { await loadTasks(); } catch {}
+    } finally { setBusy(false); }
   }
 
   async function handoffTask(triggerButton) {
@@ -2141,6 +2214,7 @@
     if (saveLabel) ui.saveState.textContent = saveLabel;
     updateWorkflowGuidance();
     updateStartAction();
+    updateSourceTransfer();
   }
 
   function updateApplicationGuidance() {
@@ -2890,6 +2964,13 @@
     ui.lessonLanguage.value = state.lessonLanguage;
     ui.lessonLanguage.addEventListener("change", () => changeLessonLanguage(ui.lessonLanguage.value));
     ui.search.addEventListener("input", renderCourseList);
+    $("source-export")?.addEventListener("click", exportFoundationSources);
+    $("source-import")?.addEventListener("click", () => $("source-import-file").click());
+    $("source-import-file")?.addEventListener("change", event => {
+      const file = event.currentTarget.files?.[0];
+      event.currentTarget.value = "";
+      importFoundationSources(file);
+    });
     $("knowledge-open")?.addEventListener("click", () => openKnowledge($("knowledge-open")));
     $("knowledge-close")?.addEventListener("click", closeKnowledge);
     $("knowledge-dialog")?.addEventListener("cancel", (event) => { event.preventDefault(); closeKnowledge(); });
@@ -3009,6 +3090,7 @@
       state.csrfToken = session.csrf_token;
       const health = await api("/api/v1/health");
       if (health.status !== "ok") throw new Error("本地 CppAppLab 引擎未就绪。");
+      state.executionEnvironment = health.execution_environment;
       const native = health.execution_environment === "native-windows";
       const environment = $("execution-environment");
       if (environment) environment.textContent = native ? "本地运行 · Windows 原生" : "本地运行 · Linux / WSL2";

@@ -39,6 +39,12 @@ class Handle {
         return value_ != INVALID_HANDLE_VALUE && value_ != nullptr;
     }
     [[nodiscard]] HANDLE get() const noexcept { return value_; }
+    void reset() noexcept {
+        if (*this) {
+            (void)CloseHandle(value_);
+        }
+        value_ = INVALID_HANDLE_VALUE;
+    }
 
    private:
     HANDLE value_;
@@ -337,7 +343,7 @@ void atomic_write(const Path& input, std::string_view content) {
     Path temporary = path;
     temporary += L".tmp." + std::to_wstring(GetCurrentProcessId()) + L"." +
                  std::to_wstring(sequence.fetch_add(1U));
-    Handle file = open_file(temporary, GENERIC_WRITE | DELETE, FILE_SHARE_DELETE, CREATE_NEW);
+    Handle file = open_file(temporary, GENERIC_WRITE | DELETE, 0U, CREATE_NEW);
     if (!file) {
         fail("Create exclusive state temporary");
     }
@@ -346,15 +352,22 @@ void atomic_write(const Path& input, std::string_view content) {
         write_all(file.get(), content);
         flush(file.get());
         (void)existing_regular(path);
-        // The temporary and destination are siblings on the same pinned local
-        // volume. MoveFileExW performs a same-volume atomic rename; do not set
-        // MOVEFILE_COPY_ALLOWED (copy/delete would weaken the atomic contract).
+        // MoveFileExW requires the source to be closed. The unique CREATE_NEW
+        // temporary lives beside the destination, while the checked parent
+        // directory handles remain pinned without FILE_SHARE_DELETE.
+        file.reset();
+        // This is a same-volume rename; do not set MOVEFILE_COPY_ALLOWED
+        // (copy/delete would weaken the atomic replacement contract).
         if (!MoveFileExW(temporary.c_str(), path.c_str(),
                          MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
             fail("MoveFileExW(state atomic replace)");
         }
     } catch (...) {
-        discard(file.get());
+        if (file) {
+            discard(file.get());
+        } else {
+            (void)DeleteFileW(temporary.c_str());
+        }
         throw;
     }
 }

@@ -487,6 +487,7 @@ void copy_tree_contents(const Path& source, const Path& destination) {
         if (name == L"." || name == L"..") {
             continue;
         }
+        validate_component(name);
         if ((data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0U ||
             (data.dwFileAttributes & FILE_ATTRIBUTE_DEVICE) != 0U) {
             throw std::runtime_error("Workspace template contains a reparse point or device entry.");

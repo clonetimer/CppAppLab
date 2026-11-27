@@ -167,7 +167,9 @@ TEST(NativeLearningWorkflow, RealW1CompileCheckPersistsEvidenceAndUnlocksCalcula
         check_result = invoke({"cppapplab", "check", workspace.u8string()});
         check_output = capture.str();
     }
-    ASSERT_EQ(check_result, 0) << check_output;
+    const std::string full_log = cppapplab::windows_state_io::read(
+        workspace / ".cppapplab" / "last-check.log", 128U * 1024U);
+    ASSERT_EQ(check_result, 0) << check_output << "\nFull compiler log:\n" << full_log;
     EXPECT_NE(check_output.find("Result: PASS"), std::string::npos);
     EXPECT_NE(check_output.find("Acceptance: 1/1"), std::string::npos);
     EXPECT_TRUE(cppapplab::has_current_pass("w1.hello-world"));

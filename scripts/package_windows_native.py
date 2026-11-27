@@ -13,6 +13,7 @@ from pathlib import Path, PurePosixPath
 import re
 import shutil
 import subprocess
+from urllib.parse import quote
 import zipfile
 
 PYTHON_VERSION = "3.14.10"
@@ -22,10 +23,19 @@ PYTHON_URL = (
 PYTHON_SHA256 = "90905e64a840557d8c1bc4f5b74db3d7ee85e3ffb217611cac1c7813acea4159"
 REQUIRED_PACKAGES = {
     "mingw-w64-ucrt-x86_64-" + name
-    for name in ("gcc", "cmake", "ninja", "gtest", "gdb")
+    for name in ("gcc", "cmake", "ninja", "gtest", "gdb", "libgcc", "libstdc++", "libwinpthread")
 }
 REQUIRED_TOOLS = ("g++.exe", "gcc.exe", "cmake.exe", "ctest.exe", "ninja.exe",
                   "gdb.exe", "objdump.exe")
+REQUIRED_RUNTIME_DLLS = ("libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll")
+# This documented GCC split-package aggregator has no installed payload.
+# Every concrete package still has to contribute its actual owned files.
+METADATA_ONLY_PACKAGES = {
+    "mingw-w64-ucrt-x86_64-cc-libs": {
+        "mingw-w64-ucrt-x86_64-libgcc",
+        "mingw-w64-ucrt-x86_64-libstdc++",
+    }
+}
 CHUNK = 1024 * 1024
 
 
@@ -206,7 +216,7 @@ def package(root: Path, binary: Path, msys: Path, python_zip: Path, out: Path) -
                             if key in {"NAME", "BASE", "VERSION", "ARCH", "LICENSE",
                                        "URL", "BUILDDATE", "DEPENDS", "PACKAGER"}}
             package_meta["installed_files"] = 0
-            package_meta["upstream_package_index"] = "https://packages.msys2.org/package/" + name
+            package_meta["upstream_package_index"] = "https://packages.msys2.org/packages/" + quote(name, safe="")
             archive.file(f"provenance/msys2/{name}/desc", record / "desc", msys)
             archive.file(f"provenance/msys2/{name}/files", record / "files", msys)
             for name_in_package in files:
@@ -215,16 +225,29 @@ def package(root: Path, binary: Path, msys: Path, python_zip: Path, out: Path) -
                 relative = safe_relative(name_in_package.removeprefix("ucrt64/"))
                 archive.file("toolchain/" + relative, prefix / relative, prefix)
                 package_meta["installed_files"] += 1
+            package_meta["payload_kind"] = "installed_files"
             if not package_meta["installed_files"]:
-                raise RuntimeError(f"Empty installed package inventory: {name} {pkg_version}")
+                expected_dependencies = METADATA_ONLY_PACKAGES.get(name)
+                declared_dependencies = {
+                    re.split(r"[<>=]", item, maxsplit=1)[0]
+                    for item in desc.get("DEPENDS", [])
+                }
+                if (expected_dependencies is None
+                        or not expected_dependencies <= declared_dependencies
+                        or any(not item.endswith("/") for item in files)):
+                    raise RuntimeError(f"Unexpected empty installed package inventory: {name} {pkg_version}")
+                package_meta["payload_kind"] = "metadata_only"
+                print(f"[INFO] Retaining dependency-only package {name} {pkg_version} in provenance.")
+            else:
+                print(f"[INFO] Included {name} {pkg_version}: {package_meta['installed_files']} files.")
             manifest["toolchain_packages"].append(package_meta)
         if REQUIRED_PACKAGES - seen_packages:
             raise RuntimeError(f"Missing package provenance: {REQUIRED_PACKAGES - seen_packages}")
         if not any(name.startswith("toolchain/share/licenses/") for name in archive.files):
             raise RuntimeError("Native acquisition has no collected license directory.")
-        for tool in REQUIRED_TOOLS:
+        for tool in REQUIRED_TOOLS + REQUIRED_RUNTIME_DLLS:
             if "toolchain/bin/" + tool not in archive.files:
-                raise RuntimeError(f"Required tool missing from installed file inventory: {tool}")
+                raise RuntimeError(f"Required tool/runtime missing from installed file inventory: {tool}")
 
         archive.bytes("BUILD-INFO.txt", (
             f"CppAppLab {version}\nSource: {commit}\nTarget: Windows x64 UCRT64\n"

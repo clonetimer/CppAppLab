@@ -188,7 +188,8 @@ def package(root: Path, binary: Path, msys: Path, python_zip: Path, out: Path,
         "limits": ["No public redistribution approval yet.",
                    "W5-W9 need Linux/WSL2.",
                    "W2-W4 real file-symlink checks need Developer Mode or existing privilege.",
-                   "Windows-native independent knowledge/modern projects pending.",
+                   "Native independent classic knowledge experiments are read-only.",
+                   "Actual WSL2 handoff, ordinary-user/offline target validation remain pending.",
                    "Target-machine/human assessment not run."],
     }
     archive = Archive(archive_path)
@@ -209,6 +210,8 @@ def package(root: Path, binary: Path, msys: Path, python_zip: Path, out: Path,
             ("packaging/windows/start-native.py", "start-native.py"),
             ("packaging/windows/README.md", "README.md"),
             ("README.md", "README-REPOSITORY.md"),
+            ("docs/CP7_WINDOWS_HANDOVER.md", "docs/CP7_WINDOWS_HANDOVER.md"),
+            ("docs/CP7_WINDOWS_REDISTRIBUTION.md", "docs/CP7_WINDOWS_REDISTRIBUTION.md"),
         ]:
             archive.file(destination, root / source, root)
         for name in ("LICENSE", "LICENSE.md", "COPYING", "NOTICE"):

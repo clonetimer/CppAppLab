@@ -25,6 +25,9 @@ def verify_extract(archive: Path, destination: Path) -> dict:
     with zipfile.ZipFile(archive) as z:
         manifest = json.loads(z.read("package-manifest.json"))
         assert manifest["status"] == "CI_CANDIDATE_NOT_PUBLIC_RELEASE"
+        assert "docs/CP7_WINDOWS_HANDOVER.md" in manifest["files"]
+        assert "docs/CP7_WINDOWS_REDISTRIBUTION.md" in manifest["files"]
+        assert "Native independent classic knowledge experiments are read-only." in manifest["limits"]
         entries = [info.filename for info in z.infolist()]
         assert len({entry.casefold() for entry in entries}) == len(entries)
         assert set(entries) == set(manifest["files"]) | {"package-manifest.json"}
